@@ -16,6 +16,16 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
+await page.locator("#current-page").filter({ hasText: "/wiki/plans/index.html" }).waitFor();
+const sessionControlsHidden = await page.locator(".terminal-actions").evaluate((element) => !element.open);
+if (!sessionControlsHidden) {
+  throw new Error("Expected terminal session controls to be collapsed by default");
+}
+const guardrailsCollapsed = await page.locator(".terminal-guardrails").evaluate((element) => !element.open);
+if (!guardrailsCollapsed) {
+  throw new Error("Expected terminal guardrails to be collapsed by default");
+}
+
 const initialTabs = await page.locator(".terminal-tab").allTextContents();
 for (const expected of ["shell", "checks", "dev-server", "git", "agent"]) {
   if (!initialTabs.some((tab) => tab.includes(expected))) {
@@ -23,12 +33,12 @@ for (const expected of ["shell", "checks", "dev-server", "git", "agent"]) {
   }
 }
 
-await page.locator("#wiki-nav a").filter({ hasText: "Plans" }).click();
+await page.locator("#current-plan-link").click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
 
 await page.locator("#current-page").filter({ hasText: /\/wiki\/plans\/index\.html$/ }).waitFor();
 const currentPage = await page.locator("#current-page").innerText();
-if (!currentPage.endsWith("/wiki/plans/index.html")) {
+if (currentPage !== "/wiki/plans/index.html") {
   throw new Error(`Expected /wiki/plans/index.html, got ${currentPage}`);
 }
 
@@ -136,8 +146,6 @@ await page.waitForFunction(() =>
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#guardrail-summary").filter({ hasText: "Local-only" }).waitFor();
-await page.locator("#canonical-boundary").filter({ hasText: "wiki/" }).waitFor();
-await page.locator("#runtime-boundary").filter({ hasText: ".hyperwiki/sessions/" }).waitFor();
 await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
 await page.locator("#verification-summary").filter({ hasText: "pnpm run check" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
@@ -179,7 +187,9 @@ if (!renameTarget) {
 if (!["pty", "pipe-fallback"].includes(renameTarget.mode)) {
   throw new Error(`Expected explicit terminal mode, got ${renameTarget.mode}`);
 }
-const renameResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}`, {
+const projectParam = new URL(page.url()).searchParams.get("project");
+const projectSuffix = projectParam ? `?project=${encodeURIComponent(projectParam)}` : "";
+const renameResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}${projectSuffix}`, {
   method: "PATCH",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ name: "renamed-smoke" })
@@ -188,13 +198,13 @@ if (!renameResponse.ok) {
   throw new Error(`Expected session rename to succeed, got ${renameResponse.status}`);
 }
 
-const exportResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}/export`, { method: "POST" });
+const exportResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}/export${projectSuffix}`, { method: "POST" });
 const exportData = await exportResponse.json();
 if (exportData.boundary !== "runtime-only") {
   throw new Error(`Expected runtime-only export boundary, got ${exportData.boundary}`);
 }
 
-const pruneResponse = await fetch(`${origin}/api/sessions/prune`, { method: "POST" });
+const pruneResponse = await fetch(`${origin}/api/sessions/prune${projectSuffix}`, { method: "POST" });
 if (!pruneResponse.ok) {
   throw new Error(`Expected session prune to succeed, got ${pruneResponse.status}`);
 }

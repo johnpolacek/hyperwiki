@@ -25,6 +25,11 @@
         <h1>HyperWiki</h1>
         <span id="server-status">Local</span>
       </div>
+      <nav class="primary-nav" aria-label="Primary workspace pages">
+        <a id="home-link" href="#/wiki/index.html">Home</a>
+        <a id="current-plan-link" href="#/wiki/plans/index.html">Current Plan</a>
+        <a id="log-link" href="#/wiki/log.html">Log</a>
+      </nav>
       <nav id="wiki-nav" class="wiki-nav" aria-label="Wiki pages">
         <a href="/wiki/index.html" target="wiki-frame" data-wiki-link>Home</a>
       </nav>
@@ -59,31 +64,27 @@
         <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>
         <button type="button" id="new-terminal">New</button>
       </div>
-      <div class="terminal-actions">
+      <details class="terminal-actions">
+        <summary>Session</summary>
         <button type="button" id="rename-terminal">Rename</button>
         <button type="button" id="restart-terminal">Restart</button>
         <button type="button" id="close-terminal">Close</button>
         <button type="button" id="export-terminal">Export</button>
         <button type="button" id="prune-sessions">Prune</button>
-      </div>
-      <section class="terminal-guardrails" aria-label="Terminal guardrails">
-        <div>
-          <span>Mode</span>
-          <strong id="guardrail-mode">Local-only</strong>
-        </div>
-        <div>
-          <span>Canonical</span>
-          <strong id="canonical-boundary">wiki/ and Git</strong>
-        </div>
-        <div>
-          <span>Runtime</span>
-          <strong id="runtime-boundary">.hyperwiki/state/ and .hyperwiki/sessions/</strong>
-        </div>
-        <div>
-          <span>Active Session</span>
-          <strong id="active-session-boundary">No active session</strong>
-        </div>
-      </section>
+      </details>
+      <details class="terminal-guardrails" aria-label="Terminal guardrails">
+        <summary><span id="guardrail-mode">Local-only</span><strong id="active-session-boundary">No active session</strong></summary>
+        <dl>
+          <div>
+            <dt>Canonical</dt>
+            <dd id="canonical-boundary">wiki/ and Git</dd>
+          </div>
+          <div>
+            <dt>Runtime</dt>
+            <dd id="runtime-boundary">.hyperwiki/state/ and .hyperwiki/sessions/</dd>
+          </div>
+        </dl>
+      </details>
       <div id="terminals" class="terminals"></div>
     </section>
   </main>

@@ -4,6 +4,9 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
+const homeLink = document.getElementById("home-link");
+const currentPlanLink = document.getElementById("current-plan-link");
+const logLink = document.getElementById("log-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
 const newTerminalButton = document.getElementById("new-terminal");
@@ -32,13 +35,14 @@ let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
 let activeProjectId = new URLSearchParams(location.search).get("project");
+let currentPlanPath = "/wiki/plans/index.html";
 
 await loadProjects();
 await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
 await loadGuardrails();
-activateWikiPage(pageFromHash());
+activateWikiPage(pageFromHash() || currentPlanPath);
 await restoreTerminals();
 activateTerminal("shell");
 
@@ -109,8 +113,9 @@ projectToggle.addEventListener("click", () => {
 
 async function restoreTerminals() {
   const [sessionData, layout] = await Promise.all([api(projectPath("/api/sessions")), api(projectPath("/api/layout"))]);
+  const layoutNames = new Set(layout.panels.map((panel) => panel.name));
   const reconnectable = sessionData.sessions
-    .filter((session) => session.status !== "closed" && session.reconnectable && session.retained)
+    .filter((session) => session.status !== "closed" && session.reconnectable && session.retained && layoutNames.has(session.name))
     .slice(-5);
   const panels = [...layout.panels, ...reconnectable];
   const seen = new Set();
@@ -141,15 +146,9 @@ async function loadWikiNav() {
   try {
     const response = await fetch(projectPath("/api/wiki"));
     const data = await response.json();
-    wikiNav.replaceChildren(
-      ...data.pages.map((page) => {
-        const link = document.createElement("a");
-        link.href = `#${page.path}`;
-        link.textContent = page.title;
-        link.dataset.path = page.path;
-        return link;
-      })
-    );
+    currentPlanPath = data.pages.find((page) => page.path.endsWith("/wiki/plans/index.html"))?.path || currentPlanPath;
+    updatePrimaryLinks(data.pages);
+    wikiNav.replaceChildren(...groupWikiPages(data.pages));
   } catch {
     document.getElementById("server-status").textContent = "Offline";
   }
@@ -158,7 +157,7 @@ async function loadWikiNav() {
 async function loadWorkspaceSummary() {
   try {
     const summary = await api(projectPath("/api/workspace"));
-    renderList(planSummary, summary.plan.summary.slice(0, 4));
+    renderList(planSummary, compactPlanSummary(summary.plan.summary));
     renderList(logSummary, summary.log.entries.slice(0, 4));
     renderList(
       verificationSummary,
@@ -179,10 +178,9 @@ async function loadGuardrails() {
     runtimeBoundary.textContent = guardrails.runtime.map((item) => item.path).join(" + ");
     runtimeBoundary.title = guardrails.runtime.map((item) => `${item.path}: ${item.detail}`).join("\n");
     renderList(guardrailSummary, [
-      `<strong>${escapeHtml(guardrails.mode.label)}</strong>: ${escapeHtml(guardrails.mode.value)}`,
+      `<strong>${escapeHtml(guardrails.mode.label)}</strong>`,
       `<strong>Canonical</strong>: ${escapeHtml(guardrails.canonical.map((item) => item.path).join(", "))}`,
-      `<strong>Runtime</strong>: ${escapeHtml(guardrails.runtime.map((item) => item.path).join(", "))}`,
-      `<strong>${escapeHtml(guardrails.commandHistory.label)}</strong>: ${escapeHtml(guardrails.commandHistory.detail)}`
+      `<strong>Runtime</strong>: ${escapeHtml(guardrails.runtime.map((item) => item.path).join(", "))}`
     ]);
   } catch {
     renderList(guardrailSummary, ["Guardrail summary unavailable"]);
@@ -232,9 +230,60 @@ async function switchProject(projectId) {
   await loadWikiNav();
   await loadWorkspaceSummary();
   await loadGuardrails();
-  activateWikiPage("/wiki/index.html");
+  activateWikiPage(currentPlanPath);
   await restoreTerminals();
   activateTerminal("shell");
+}
+
+function updatePrimaryLinks(pages) {
+  const home = pages.find((page) => page.path.endsWith("/wiki/index.html"))?.path || "/wiki/index.html";
+  const log = pages.find((page) => page.path.endsWith("/wiki/log.html"))?.path || "/wiki/log.html";
+  homeLink.href = `#${home}`;
+  currentPlanLink.href = `#${currentPlanPath}`;
+  logLink.href = `#${log}`;
+}
+
+function groupWikiPages(pages) {
+  const groups = [
+    { title: "Core", pages: pages.filter((page) => ["/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))) },
+    { title: "Plans", pages: pages.filter((page) => page.path.includes("/wiki/plans/") && !page.path.includes("/stage-")) },
+    { title: "Completed Stages", pages: pages.filter((page) => page.path.includes("/wiki/plans/mvp/stage-")) },
+    { title: "Sources", pages: pages.filter((page) => page.path.includes("/wiki/sources/")) }
+  ];
+  return groups
+    .filter((group) => group.pages.length > 0)
+    .map((group) => {
+      const details = document.createElement("details");
+      details.className = "wiki-nav-group";
+      details.open = group.title !== "Completed Stages";
+      const summary = document.createElement("summary");
+      summary.textContent = group.title;
+      details.append(summary, ...group.pages.map(renderWikiLink));
+      return details;
+    });
+}
+
+function renderWikiLink(page) {
+  const link = document.createElement("a");
+  link.href = `#${page.path}`;
+  link.textContent = cleanPageTitle(page);
+  link.dataset.path = page.path;
+  return link;
+}
+
+function cleanPageTitle(page) {
+  if (page.path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
+  if (page.path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
+  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) /, "Stage $1 · ");
+  if (page.title.toLowerCase() === "prd") return "PRD";
+  return page.title;
+}
+
+function compactPlanSummary(items) {
+  return items
+    .map((item) => item.replace(/^Next action:/, "Next:").replace(/^Current unit:/, "Current:"))
+    .filter((item) => /^(Status:|Current:|Next:)/.test(item))
+    .slice(0, 3);
 }
 
 function renderList(target, items) {
@@ -253,7 +302,8 @@ function activateWikiPage(path) {
   if (wikiFrame.getAttribute("src") !== nextPath) {
     wikiFrame.setAttribute("src", nextPath);
   }
-  currentPage.textContent = nextPath;
+  currentPage.textContent = displayWikiPath(nextPath);
+  currentPage.title = nextPath;
   openPage.href = nextPath;
   wikiNav.querySelectorAll("a").forEach((link) => {
     link.classList.toggle("active", link.dataset.path === nextPath);
@@ -283,7 +333,7 @@ function syncFrameLocation() {
 }
 
 function pageFromHash() {
-  return decodeURIComponent(location.hash.replace(/^#/, "")) || "/wiki/index.html";
+  return decodeURIComponent(location.hash.replace(/^#/, ""));
 }
 
 function normalizeWikiPath(path) {
@@ -298,6 +348,10 @@ function normalizeWikiPath(path) {
 
 function isWikiPath(path) {
   return (path.startsWith("/wiki/") || (path.startsWith("/projects/") && path.includes("/wiki/"))) && path.endsWith(".html");
+}
+
+function displayWikiPath(path) {
+  return path.replace(/^\/projects\/[^/]+/, "");
 }
 
 async function createTerminal(name, options = {}) {

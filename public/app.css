@@ -136,9 +136,16 @@ body {
 
 .wiki-nav {
   display: grid;
-  gap: 2px;
+  gap: 8px;
 }
 
+.primary-nav {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.primary-nav a,
 .wiki-nav a {
   display: block;
   padding: 7px 8px;
@@ -150,8 +157,28 @@ body {
   white-space: nowrap;
 }
 
+.primary-nav a {
+  font-weight: 700;
+}
+
+.wiki-nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.wiki-nav-group summary {
+  padding: 4px 8px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .wiki-nav a:hover,
-.wiki-nav a.active {
+.wiki-nav a.active,
+.primary-nav a:hover,
+.primary-nav a.active {
   background: #e1e4dd;
 }
 
@@ -271,18 +298,74 @@ body {
 }
 
 .terminal-actions {
-  display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   padding: 8px;
   border-bottom: 1px solid #2c302d;
+  color: #cbd2ca;
+}
+
+.terminal-actions summary {
+  width: max-content;
+  border: 1px solid #3d443f;
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: #1d211e;
+  color: #eef2ec;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.terminal-actions[open] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.terminal-actions[open] summary {
+  margin-right: 2px;
 }
 
 .terminal-guardrails {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
   border-bottom: 1px solid #2c302d;
+  background: #171a18;
+  color: #cbd2ca;
+}
+
+.terminal-guardrails summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.terminal-guardrails summary::-webkit-details-marker {
+  display: none;
+}
+
+.terminal-guardrails span {
+  color: #8f9a91;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.terminal-guardrails strong {
+  overflow: hidden;
+  color: #eef2ec;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-guardrails dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
   background: #2c302d;
 }
 
@@ -292,15 +375,13 @@ body {
   background: #171a18;
 }
 
-.terminal-guardrails span {
-  display: block;
-  margin-bottom: 2px;
+.terminal-guardrails dt {
   color: #8f9a91;
   font-size: 11px;
 }
 
-.terminal-guardrails strong {
-  display: block;
+.terminal-guardrails dd {
+  margin: 0;
   overflow: hidden;
   color: #eef2ec;
   font-size: 12px;
@@ -437,11 +518,15 @@ body {
     gap: 4px;
   }
 
+  .wiki-nav-group {
+    min-width: 150px;
+  }
+
   .workspace-summary {
     display: none;
   }
 
-  .terminal-guardrails {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .terminal-guardrails dl {
+    grid-template-columns: 1fr;
   }
 }
