@@ -48,8 +48,6 @@ if (activeTabs !== 1) {
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
-await page.locator("#session-policy").filter({ hasText: "Refresh restores tabs" }).waitFor();
-
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {

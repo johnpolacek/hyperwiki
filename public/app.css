@@ -168,7 +168,7 @@ body {
 
 .terminal-pane {
   display: grid;
-  grid-template-rows: auto auto auto auto 1fr;
+  grid-template-rows: auto auto auto 1fr;
   background: #111312;
   border-right: 0;
 }
@@ -207,13 +207,6 @@ body {
   gap: 6px;
   padding: 8px;
   border-bottom: 1px solid #2c302d;
-}
-
-.session-policy {
-  padding: 7px 10px;
-  border-bottom: 1px solid #2c302d;
-  color: #a9b4aa;
-  font-size: 12px;
 }
 
 .terminal-tabs {
