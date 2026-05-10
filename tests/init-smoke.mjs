@@ -33,6 +33,9 @@ if (!index.includes("Sample product for generated wiki verification.")) {
 if (!dev.includes("pnpm run dev") || !dev.includes("pnpm run test")) {
   throw new Error("Generated dev page did not include package scripts.");
 }
+if (!dev.includes("npx hyperwiki")) {
+  throw new Error("Generated dev page did not include the default HyperWiki launch command.");
+}
 if (prd.includes("HyperWiki turns repo-local project docs")) {
   throw new Error("Generated PRD still contains HyperWiki-specific product copy.");
 }

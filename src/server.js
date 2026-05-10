@@ -172,7 +172,7 @@ async function workspaceSummary(root, config) {
       { label: "Syntax checks", command: `${packageManager} run check` },
       { label: "Browser workspace smoke", command: `${packageManager} run smoke:browser` },
       { label: "One-command launch smoke", command: `${packageManager} run smoke:launch` },
-      { label: "Local workspace launch", command: "npx hyperwiki launch" }
+      { label: "Local workspace launch", command: "npx hyperwiki" }
     ],
     layout: layoutConfig(config)
   };

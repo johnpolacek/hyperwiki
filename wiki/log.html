@@ -21,6 +21,13 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 correction | dogfood launch command parity</h2>
+  <ul>
+    <li>Removed the HyperWiki-only <code>pnpm run launch</code> shortcut so dogfooding uses the same command path as normal initialized projects.</li>
+    <li>The canonical launch command is now <code>npx hyperwiki</code>, with <code>npx hyperwiki launch</code> available as the explicit subcommand.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 implementation | one-command local launch</h2>
   <ul>
     <li>Added <code>hyperwiki launch</code> and made bare <code>hyperwiki</code> launch the workspace by default.</li>

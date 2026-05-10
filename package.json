@@ -9,7 +9,6 @@
   },
   "scripts": {
     "dev": "node src/cli.js dev",
-    "launch": "node src/cli.js launch",
     "check": "node --check src/cli.js && node --check src/launch.js && node --check src/server.js && node --check src/init.js && node --check src/pty.js && node --check src/sessions.js && node --check public/app.js && node --check tests/browser-smoke.mjs && node --check tests/init-smoke.mjs && node --check tests/launch-smoke.mjs && node --check tests/pty-smoke.mjs && node --check tests/session-retention-smoke.mjs",
     "smoke:browser": "node tests/browser-smoke.mjs",
     "smoke:init": "node tests/init-smoke.mjs",

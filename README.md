@@ -12,13 +12,13 @@ Initialize a wiki in a project:
 npx hyperwiki init --yes
 ```
 
-Launch the local workspace:
+Launch the local workspace from any HyperWiki project:
 
 ```bash
-npx hyperwiki launch
+npx hyperwiki
 ```
 
-The command starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. It also prints the workspace URL, usually:
+The command starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
 
 ```text
 http://127.0.0.1:4177

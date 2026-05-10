@@ -45,7 +45,7 @@ export async function initHyperWiki(root, options = {}) {
   }
 
   console.log(`Initialized HyperWiki for ${context.projectName}`);
-  console.log("Run: npx hyperwiki launch");
+  console.log("Run: npx hyperwiki");
 }
 
 function defaultPanels(context) {
@@ -253,7 +253,7 @@ function devPage(context) {
 <h2>Commands</h2>
 <pre><code>${commands.map(escapeHtml).join("\n")}</code></pre>
 <h2>HyperWiki</h2>
-<pre><code>npx hyperwiki launch</code></pre>
+<pre><code>npx hyperwiki</code></pre>
 <h2>Workflow</h2>
 <p>Plan meaningful work in <a href="/wiki/plans/index.html">plans</a>, keep source truth in repo files and Git, and use the dev workspace to inspect wiki pages and terminal sessions.</p>`);
 }
