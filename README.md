@@ -18,7 +18,7 @@ Launch the local workspace from any HyperWiki project:
 npx hyperwiki
 ```
 
-The command starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
+The command registers the current HyperWiki-initialized project in your user-level project registry, starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
 
 ```text
 http://127.0.0.1:4177
@@ -43,6 +43,7 @@ wiki/
 ```
 
 The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwiki/state/` and `.hyperwiki/sessions/` should stay ignored unless intentionally exported.
+Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` so the workspace can switch between initialized projects without modifying their manifests.
 
 ## Local-Only Guardrails
 
@@ -54,7 +55,7 @@ The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwi
 
 ## Current Status
 
-The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, and WebSocket PTY transport for terminal panels. Refresh restores active retained terminal tabs plus required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; HyperWiki does not write terminal state into repo-visible wiki files automatically.
+The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, WebSocket PTY transport for terminal panels, and multi-project switching through a user-level registry. Refresh restores active retained terminal tabs plus required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; HyperWiki does not write terminal state into repo-visible wiki files automatically.
 
 Local verification:
 

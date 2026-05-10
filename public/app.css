@@ -26,12 +26,81 @@ body {
   min-height: 560px;
 }
 
+.workspace.has-projects {
+  grid-template-columns: 220px 180px minmax(360px, 1fr) minmax(360px, 0.9fr);
+}
+
+.workspace.has-projects.projects-collapsed {
+  grid-template-columns: 38px 180px minmax(360px, 1fr) minmax(360px, 0.9fr);
+}
+
 .sidebar,
+.project-sidebar,
 .wiki-pane,
 .terminal-pane {
   min-width: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
+}
+
+.project-sidebar {
+  padding: 12px 8px;
+  background: #e7e8e1;
+  overflow: hidden auto;
+}
+
+.project-toggle {
+  width: 100%;
+  border: 1px solid #c6c8c0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #f7f7f4;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.project-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.project-list button {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 7px 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-list button.active {
+  border-color: #c6c8c0;
+  background: #f7f7f4;
+  font-weight: 700;
+}
+
+.project-list button:disabled {
+  color: #8b9088;
+  cursor: not-allowed;
+}
+
+.workspace.projects-collapsed .project-sidebar {
+  padding-inline: 4px;
+}
+
+.workspace.projects-collapsed .project-list {
+  display: none;
+}
+
+.workspace.projects-collapsed .project-toggle {
+  writing-mode: vertical-rl;
 }
 
 .sidebar {
@@ -331,6 +400,24 @@ body {
   .workspace {
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(320px, 1fr) minmax(320px, 1fr);
+  }
+
+  .workspace.has-projects,
+  .workspace.has-projects.projects-collapsed {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(320px, 1fr) minmax(320px, 1fr);
+  }
+
+  .project-sidebar {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .project-list {
+    display: flex;
+    margin-top: 0;
   }
 
   .sidebar {

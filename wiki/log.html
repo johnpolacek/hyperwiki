@@ -21,6 +21,24 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 implementation | multi-project workspace</h2>
+  <ul>
+    <li>Added a user-level project registry at <code>~/.hyperwiki/projects.json</code> with <code>HYPERWIKI_HOME</code> support for isolated tests.</li>
+    <li><code>npx hyperwiki</code> now registers HyperWiki-initialized repos and opens the active project URL.</li>
+    <li>Added project-scoped APIs, project-scoped wiki routes, and project-scoped PTY/session routing while keeping per-project runtime state under each repo's <code>.hyperwiki/</code>.</li>
+    <li>Added a collapsible project sidebar that remains hidden for a single registered project and appears once multiple projects exist.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | multi-project workspace stage</h2>
+  <ul>
+    <li>Added Stage 05 for user-level project registration, project-scoped runtime APIs, and a collapsible project switcher.</li>
+    <li>Decision: single-project use stays visually unchanged until at least two projects are registered.</li>
+    <li>Decision: projects are added by launching <code>npx hyperwiki</code> from HyperWiki-initialized repos.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 correction | dogfood launch command parity</h2>
   <ul>
     <li>Removed the HyperWiki-only <code>pnpm run launch</code> shortcut so dogfooding uses the same command path as normal initialized projects.</li>

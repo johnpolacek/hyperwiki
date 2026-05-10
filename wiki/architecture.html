@@ -25,7 +25,9 @@
   <li>The CLI performs repeatable filesystem operations and starts the dev runtime.</li>
   <li>The wiki is canonical repo-visible HTML.</li>
   <li>The dev runtime renders the wiki and terminal workspace but is not a hidden source of truth.</li>
+  <li>A user-level registry at <code>~/.hyperwiki/projects.json</code> tracks known local HyperWiki projects for switching.</li>
   <li>Runtime state is ignored under <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code>.</li>
+  <li>Multi-project runtime APIs resolve project roots through the registry, but each project's wiki, Git status, and terminal sessions remain isolated to that project root.</li>
   <li>The workspace exposes local-only mode, canonical wiki/Git truth, ignored runtime state, session metadata, command history boundaries, and export/prune actions through the guardrails UI and <code>/api/guardrails</code>.</li>
 </ul>
   </main>

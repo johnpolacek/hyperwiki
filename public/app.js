@@ -22,12 +22,18 @@ const guardrailMode = document.getElementById("guardrail-mode");
 const canonicalBoundary = document.getElementById("canonical-boundary");
 const runtimeBoundary = document.getElementById("runtime-boundary");
 const activeSessionBoundary = document.getElementById("active-session-boundary");
+const workspace = document.querySelector(".workspace");
+const projectSidebar = document.getElementById("project-sidebar");
+const projectToggle = document.getElementById("project-toggle");
+const projectList = document.getElementById("project-list");
 const terminalSessions = new Map();
 let terminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
+let activeProjectId = new URLSearchParams(location.search).get("project");
 
+await loadProjects();
 await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
@@ -92,11 +98,17 @@ exportTerminalButton.addEventListener("click", async () => {
 });
 
 pruneSessionsButton.addEventListener("click", async () => {
-  await api("/api/sessions/prune", { method: "POST" });
+  await api(projectPath("/api/sessions/prune"), { method: "POST" });
+});
+
+projectToggle.addEventListener("click", () => {
+  const collapsed = !workspace.classList.contains("projects-collapsed");
+  workspace.classList.toggle("projects-collapsed", collapsed);
+  projectToggle.setAttribute("aria-expanded", String(!collapsed));
 });
 
 async function restoreTerminals() {
-  const [sessionData, layout] = await Promise.all([api("/api/sessions"), api("/api/layout")]);
+  const [sessionData, layout] = await Promise.all([api(projectPath("/api/sessions")), api(projectPath("/api/layout"))]);
   const reconnectable = sessionData.sessions
     .filter((session) => session.status !== "closed" && session.reconnectable && session.retained)
     .slice(-5);
@@ -114,7 +126,7 @@ async function restoreTerminals() {
 
 async function loadRepoContext() {
   try {
-    const repo = await api("/api/repo");
+    const repo = await api(projectPath("/api/repo"));
     repoBranch.textContent = repo.git.branch || "detached";
     repoDirty.textContent = repo.git.dirty ? "Dirty" : "Clean";
     repoDirty.title = repo.git.status.join("\n") || "No git changes";
@@ -127,7 +139,7 @@ async function loadRepoContext() {
 
 async function loadWikiNav() {
   try {
-    const response = await fetch("/api/wiki");
+    const response = await fetch(projectPath("/api/wiki"));
     const data = await response.json();
     wikiNav.replaceChildren(
       ...data.pages.map((page) => {
@@ -145,7 +157,7 @@ async function loadWikiNav() {
 
 async function loadWorkspaceSummary() {
   try {
-    const summary = await api("/api/workspace");
+    const summary = await api(projectPath("/api/workspace"));
     renderList(planSummary, summary.plan.summary.slice(0, 4));
     renderList(logSummary, summary.log.entries.slice(0, 4));
     renderList(
@@ -159,7 +171,7 @@ async function loadWorkspaceSummary() {
 
 async function loadGuardrails() {
   try {
-    guardrails = await api("/api/guardrails");
+    guardrails = await api(projectPath("/api/guardrails"));
     guardrailMode.textContent = guardrails.mode.label;
     guardrailMode.title = guardrails.mode.value;
     canonicalBoundary.textContent = guardrails.canonical.map((item) => item.path).join(" + ");
@@ -175,6 +187,54 @@ async function loadGuardrails() {
   } catch {
     renderList(guardrailSummary, ["Guardrail summary unavailable"]);
   }
+}
+
+async function loadProjects() {
+  const data = await api(projectPath("/api/projects"));
+  activeProjectId = data.activeProjectId || data.projects.find((project) => project.available)?.id || activeProjectId;
+  if (activeProjectId && !new URLSearchParams(location.search).get("project")) {
+    const url = new URL(location.href);
+    url.searchParams.set("project", activeProjectId);
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+  if (data.projects.length <= 1) {
+    projectSidebar.hidden = true;
+    workspace.classList.remove("has-projects", "projects-collapsed");
+    return;
+  }
+  projectSidebar.hidden = false;
+  workspace.classList.add("has-projects");
+  projectList.replaceChildren(
+    ...data.projects.map((project) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = project.name;
+      button.title = project.available ? project.root : `${project.root} unavailable`;
+      button.className = project.id === activeProjectId ? "active" : "";
+      button.disabled = !project.available;
+      button.addEventListener("click", () => switchProject(project.id));
+      return button;
+    })
+  );
+}
+
+async function switchProject(projectId) {
+  if (projectId === activeProjectId) return;
+  closeAllTerminals();
+  activeProjectId = projectId;
+  const url = new URL(location.href);
+  url.searchParams.set("project", projectId);
+  url.hash = "#/wiki/index.html";
+  history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  requestedWikiPath = "/wiki/index.html";
+  await loadProjects();
+  await loadRepoContext();
+  await loadWikiNav();
+  await loadWorkspaceSummary();
+  await loadGuardrails();
+  activateWikiPage("/wiki/index.html");
+  await restoreTerminals();
+  activateTerminal("shell");
 }
 
 function renderList(target, items) {
@@ -206,7 +266,7 @@ function activateWikiPage(path) {
 function syncFrameLocation() {
   try {
     const framePath = wikiFrame.contentWindow.location.pathname;
-    if (!framePath.startsWith("/wiki/") || framePath !== requestedWikiPath) {
+    if (!isWikiPath(framePath) || framePath !== requestedWikiPath) {
       return;
     }
     currentPage.textContent = framePath;
@@ -227,10 +287,17 @@ function pageFromHash() {
 }
 
 function normalizeWikiPath(path) {
-  if (!path.startsWith("/wiki/") || !path.endsWith(".html")) {
-    return "/wiki/index.html";
+  if (path.startsWith("/wiki/") && activeProjectId) {
+    return `/projects/${activeProjectId}${path}`;
+  }
+  if (!isWikiPath(path)) {
+    return activeProjectId ? `/projects/${activeProjectId}/wiki/index.html` : "/wiki/index.html";
   }
   return path;
+}
+
+function isWikiPath(path) {
+  return (path.startsWith("/wiki/") || (path.startsWith("/projects/") && path.includes("/wiki/"))) && path.endsWith(".html");
 }
 
 async function createTerminal(name, options = {}) {
@@ -287,7 +354,7 @@ async function createTerminal(name, options = {}) {
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
-    url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
+    url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
     onData: (data) => {
       const shouldFollowOutput = isTerminalNearBottom(el);
@@ -390,7 +457,19 @@ function closeTerminal(name) {
   session.el.remove();
   session.tab.remove();
   terminalSessions.delete(name);
-  void api(`/api/sessions/${session.id}`, { method: "DELETE" });
+  void api(projectPath(`/api/sessions/${session.id}`), { method: "DELETE" });
+}
+
+function closeAllTerminals() {
+  for (const name of [...terminalSessions.keys()]) {
+    const session = terminalSessions.get(name);
+    session?.transport.close();
+    session?.term.destroy();
+    session?.el.remove();
+    session?.tab.remove();
+    terminalSessions.delete(name);
+  }
+  activeTerminalName = null;
 }
 
 async function api(path, options = {}) {
@@ -402,6 +481,12 @@ async function api(path, options = {}) {
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json();
+}
+
+function projectPath(path) {
+  if (!activeProjectId) return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}project=${encodeURIComponent(activeProjectId)}`;
 }
 
 function escapeHtml(value) {

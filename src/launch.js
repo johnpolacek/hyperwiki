@@ -1,13 +1,16 @@
 import { execFile } from "node:child_process";
+import { ProjectRegistry } from "./projects.js";
 import { startDevServer } from "./server.js";
 
 export async function launchHyperWiki(root, options = {}) {
   const host = String(options.host || "127.0.0.1");
   const port = Number(options.port || 4177);
+  const registry = new ProjectRegistry();
+  const project = await registry.register(root);
   const baseUrl = `http://${host}:${port}`;
-  const workspaceUrl = `${baseUrl}/workspace/`;
+  const workspaceUrl = `${baseUrl}/workspace/?project=${encodeURIComponent(project.id)}`;
   const existing = await existingHyperWiki(baseUrl);
-  const serverInfo = existing ? null : await startDevServer(root, { host, port });
+  const serverInfo = existing ? null : await startDevServer(root, { host, port, projectId: project.id });
 
   await waitForWorkspace(workspaceUrl);
   const opened = options.open === false ? false : await openWorkspace(workspaceUrl, options);
@@ -22,6 +25,7 @@ export async function launchHyperWiki(root, options = {}) {
   return {
     url: baseUrl,
     workspaceUrl,
+    project,
     existing,
     opened,
     server: serverInfo?.server || null

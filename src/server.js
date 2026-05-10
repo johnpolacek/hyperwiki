@@ -8,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { createPtySession } from "./pty.js";
+import { ProjectRegistry } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -24,11 +25,19 @@ export async function startDevServer(root, options = {}) {
     throw new Error("HyperWiki dev server only binds to localhost addresses.");
   }
   const port = Number(options.port || 4177);
-  const sessionRegistry = new SessionRegistry(root);
-  const config = await readConfig(root);
+  const projectRegistry = new ProjectRegistry();
+  let activeProjectId = options.projectId || null;
+  if (!activeProjectId) {
+    try {
+      activeProjectId = (await projectRegistry.register(root)).id;
+    } catch {
+      activeProjectId = null;
+    }
+  }
+  const sessionRegistries = new Map();
 
   const server = createServer((request, response) => {
-    void handleRequest(root, request, response, sessionRegistry, config);
+    void handleRequest(root, request, response, { projectRegistry, sessionRegistries, activeProjectId });
   });
   const wss = new WebSocketServer({ noServer: true });
 
@@ -39,13 +48,17 @@ export async function startDevServer(root, options = {}) {
       return;
     }
     wss.handleUpgrade(request, socket, head, (ws) => {
-      const id = url.searchParams.get("id") || randomUUID();
-      const name = url.searchParams.get("name") || id;
-      const role = url.searchParams.get("role") || "shell";
-      const command = url.searchParams.get("command") || null;
-      const session = createPtySession(root, ws, { id, name, role, command, registry: sessionRegistry });
-      sessionRegistry.setCloser(id, () => ws.close());
-      ws.on("close", () => session.close());
+      void (async () => {
+        const project = await resolveProject(projectRegistry, url, activeProjectId, root);
+        const sessionRegistry = sessionRegistryFor(sessionRegistries, project.root);
+        const id = url.searchParams.get("id") || randomUUID();
+        const name = url.searchParams.get("name") || id;
+        const role = url.searchParams.get("role") || "shell";
+        const command = url.searchParams.get("command") || null;
+        const session = createPtySession(project.root, ws, { id, name, role, command, registry: sessionRegistry });
+        sessionRegistry.setCloser(id, () => ws.close());
+        ws.on("close", () => session.close());
+      })().catch(() => ws.close());
     });
   });
 
@@ -61,7 +74,7 @@ export async function startDevServer(root, options = {}) {
   return { server, host, port, url, workspaceUrl: `${url}/workspace/` };
 }
 
-async function handleRequest(root, request, response, sessionRegistry, config) {
+async function handleRequest(defaultRoot, request, response, context) {
   try {
     const url = new URL(request.url || "/", "http://localhost");
     if (url.pathname === "/") {
@@ -73,39 +86,53 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
       return;
     }
     if (url.pathname === "/api/wiki") {
-      await sendJson(response, await listWikiPages(root));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await listWikiPages(project.root, project.id));
       return;
     }
     if (url.pathname === "/api/health") {
       await sendJson(response, {
         ok: true,
         app: "hyperwiki",
-        root,
+        root: defaultRoot,
+        activeProjectId: context.activeProjectId,
         workspace: "/workspace/"
       });
       return;
     }
+    if (url.pathname === "/api/projects") {
+      await sendJson(response, await context.projectRegistry.list(url.searchParams.get("project") || context.activeProjectId));
+      return;
+    }
     if (url.pathname === "/api/workspace") {
-      await sendJson(response, await workspaceSummary(root, config));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await workspaceSummary(project.root, await readConfig(project.root)));
       return;
     }
     if (url.pathname === "/api/guardrails") {
-      await sendJson(response, guardrailSummary(root));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, guardrailSummary(project.root));
       return;
     }
     if (url.pathname === "/api/layout") {
-      await sendJson(response, layoutConfig(config));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, layoutConfig(await readConfig(project.root)));
       return;
     }
     if (url.pathname === "/api/repo") {
-      await sendJson(response, await repoContext(root));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await repoContext(project.root));
       return;
     }
     if (url.pathname === "/api/sessions") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
       await sendJson(response, { sessions: await sessionRegistry.list() });
       return;
     }
     if (url.pathname === "/api/sessions/prune" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
       await sessionRegistry.prune();
       await sendJson(response, { sessions: await sessionRegistry.list({ prune: false }) });
       return;
@@ -113,15 +140,21 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
     const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
     const exportMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/export$/);
     if (exportMatch && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
       await sendJson(response, await sessionRegistry.export(exportMatch[1]));
       return;
     }
     if (sessionMatch && request.method === "PATCH") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
       const body = await readJsonBody(request);
       await sendJson(response, { session: await sessionRegistry.rename(sessionMatch[1], body.name) });
       return;
     }
     if (sessionMatch && request.method === "DELETE") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
       await sendJson(response, { session: await sessionRegistry.close(sessionMatch[1]) });
       return;
     }
@@ -138,15 +171,36 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
         return;
       }
     }
+    const projectWikiMatch = url.pathname.match(/^\/projects\/([^/]+)\/wiki\/(.+)$/);
+    if (projectWikiMatch) {
+      const project = await context.projectRegistry.resolve(projectWikiMatch[1], defaultRoot);
+      const wikiRoot = path.join(project.root, "wiki");
+      await sendFile(response, path.join(wikiRoot, projectWikiMatch[2]), wikiRoot);
+      return;
+    }
     if (url.pathname.startsWith("/wiki/")) {
-      await sendFile(response, path.join(root, url.pathname), root);
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const wikiRoot = path.join(project.root, "wiki");
+      await sendFile(response, path.join(project.root, url.pathname), wikiRoot);
       return;
     }
     notFound(response);
   } catch (error) {
-    response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+    response.writeHead(error.statusCode || 500, { "content-type": "text/plain; charset=utf-8" });
     response.end(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function resolveProject(projectRegistry, url, activeProjectId, fallbackRoot) {
+  return projectRegistry.resolve(url.searchParams.get("project") || activeProjectId, fallbackRoot);
+}
+
+function sessionRegistryFor(registries, root) {
+  const key = path.resolve(root);
+  if (!registries.has(key)) {
+    registries.set(key, new SessionRegistry(key));
+  }
+  return registries.get(key);
 }
 
 async function workspaceSummary(root, config) {
@@ -357,23 +411,23 @@ async function readJsonBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
-async function listWikiPages(root) {
+async function listWikiPages(root, projectId = null) {
   const wikiRoot = path.join(root, "wiki");
   if (!existsSync(wikiRoot)) {
     return { pages: [] };
   }
   const pages = [];
-  await walkWiki(wikiRoot, wikiRoot, pages);
+  await walkWiki(wikiRoot, wikiRoot, pages, projectId);
   pages.sort((a, b) => a.path.localeCompare(b.path));
   return { pages };
 }
 
-async function walkWiki(baseRoot, directory, pages) {
+async function walkWiki(baseRoot, directory, pages, projectId) {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      await walkWiki(baseRoot, fullPath, pages);
+      await walkWiki(baseRoot, fullPath, pages, projectId);
       continue;
     }
     if (!entry.isFile() || path.extname(entry.name) !== ".html") {
@@ -382,7 +436,7 @@ async function walkWiki(baseRoot, directory, pages) {
     const relativePath = path.relative(baseRoot, fullPath).split(path.sep).join("/");
     pages.push({
       title: titleFromWikiPath(relativePath),
-      path: `/wiki/${relativePath}`
+      path: projectId ? `/projects/${projectId}/wiki/${relativePath}` : `/wiki/${relativePath}`
     });
   }
 }

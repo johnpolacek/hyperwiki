@@ -24,11 +24,11 @@ for (const expected of ["shell", "checks", "dev-server", "git", "agent"]) {
 }
 
 await page.locator("#wiki-nav a").filter({ hasText: "Plans" }).click();
-await page.waitForURL("**/workspace/#/wiki/plans/index.html");
+await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
 
-await page.locator("#current-page").filter({ hasText: "/wiki/plans/index.html" }).waitFor();
+await page.locator("#current-page").filter({ hasText: /\/wiki\/plans\/index\.html$/ }).waitFor();
 const currentPage = await page.locator("#current-page").innerText();
-if (currentPage !== "/wiki/plans/index.html") {
+if (!currentPage.endsWith("/wiki/plans/index.html")) {
   throw new Error(`Expected /wiki/plans/index.html, got ${currentPage}`);
 }
 

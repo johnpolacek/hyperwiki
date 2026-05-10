@@ -22,7 +22,7 @@
 <h2>Status</h2>
 <ul>
   <li>Last reviewed: 2026-05-10</li>
-  <li>Evidence basis: user prompt, package checks, implementation plan, and one-command launch implementation</li>
+  <li>Evidence basis: user prompt, package checks, implementation plan, one-command launch implementation, and multi-project workspace implementation</li>
   <li>Confidence: high</li>
 </ul>
 <h2>Defaults</h2>
@@ -34,6 +34,8 @@
   <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
   <li>Local-only server binding by default.</li>
   <li><code>hyperwiki launch</code> is the primary startup command. Bare <code>hyperwiki</code> also launches the local workspace by default; <code>hyperwiki dev</code> remains the lower-level server-only command.</li>
+  <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only HyperWiki-initialized repos are eligible in v1.</li>
+  <li>The project switcher stays hidden until more than one project is registered.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
 </ul>
