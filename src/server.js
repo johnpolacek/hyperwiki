@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -65,6 +65,10 @@ async function handleRequest(root, request, response, sessionRegistry) {
       await sendJson(response, await listWikiPages(root));
       return;
     }
+    if (url.pathname === "/api/workspace") {
+      await sendJson(response, await workspaceSummary(root));
+      return;
+    }
     if (url.pathname === "/api/repo") {
       await sendJson(response, await repoContext(root));
       return;
@@ -105,6 +109,101 @@ async function handleRequest(root, request, response, sessionRegistry) {
     response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
     response.end(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function workspaceSummary(root) {
+  const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
+  const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
+  const sourceBriefs = await sourceBriefSummary(root);
+  return {
+    plan: {
+      title: planDashboard.title || "Plans",
+      path: "/wiki/plans/index.html",
+      summary: planDashboard.summary
+    },
+    log: {
+      path: "/wiki/log.html",
+      entries: logEntries
+    },
+    sources: {
+      path: "/wiki/sources.html",
+      briefs: sourceBriefs
+    },
+    verification: [
+      { label: "Syntax checks", command: "npm run check" },
+      { label: "Browser workspace smoke", command: "npm run smoke:browser" },
+      { label: "Local dev server", command: "npx hyperwiki dev" }
+    ]
+  };
+}
+
+async function sourceBriefSummary(root) {
+  const sourceRoot = path.join(root, "wiki", "sources");
+  if (!existsSync(sourceRoot)) {
+    return [];
+  }
+  const entries = await readdir(sourceRoot, { withFileTypes: true });
+  const briefs = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".html")) {
+      continue;
+    }
+    const relative = `wiki/sources/${entry.name}`;
+    const summary = await htmlSummary(root, relative);
+    briefs.push({
+      title: summary.title || titleFromWikiPath(`sources/${entry.name}`),
+      path: `/${relative}`,
+      summary: summary.summary
+    });
+  }
+  return briefs.sort((a, b) => a.title.localeCompare(b.title));
+}
+
+async function htmlSummary(root, relativePath) {
+  const html = await readRepoFile(root, relativePath);
+  return {
+    title: firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is),
+    summary: listItemsFromFirstSummary(html)
+  };
+}
+
+async function htmlHeadings(root, relativePath, heading, limit) {
+  const html = await readRepoFile(root, relativePath);
+  const expression = new RegExp(`<${heading}[^>]*>(.*?)<\\/${heading}>`, "gis");
+  return [...html.matchAll(expression)].slice(0, limit).map((match) => stripHtml(match[1]));
+}
+
+async function readRepoFile(root, relativePath) {
+  const resolved = path.resolve(root, relativePath);
+  const rootPath = path.resolve(root);
+  if (!resolved.startsWith(`${rootPath}${path.sep}`)) {
+    throw new Error("File is outside project root.");
+  }
+  return readFile(resolved, "utf8");
+}
+
+function listItemsFromFirstSummary(html) {
+  const summaryList = html.match(/<section class="summary"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i);
+  if (!summaryList) {
+    return [];
+  }
+  return [...summaryList[1].matchAll(/<li[^>]*>(.*?)<\/li>/gis)].map((match) => stripHtml(match[1]));
+}
+
+function firstMatch(value, expression) {
+  const match = value.match(expression);
+  return match ? stripHtml(match[1]) : "";
+}
+
+function stripHtml(value) {
+  return String(value)
+    .replace(/<[^>]*>/g, "")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", "\"")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function repoContext(root) {

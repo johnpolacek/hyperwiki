@@ -23,8 +23,8 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: Unit 03 - Workspace File And Verification Views</li>
-    <li>Next action: add read-only workspace views for key wiki files, source briefs, plan status, recent log entries, and verification commands/results.</li>
+    <li>Current unit: Unit 04 - Init Template Quality And Dogfood Reset</li>
+    <li>Next action: improve generated HTML wiki templates so new projects get useful project-specific output, then run a clean dogfood init review.</li>
     <li>Blockers: none</li>
     <li>Validation: <code>npm run check</code>, <code>npm run smoke:browser</code>, HTTP/API smoke tests, terminal transport smoke test</li>
   </ul>
@@ -54,16 +54,16 @@
 <section>
   <h3>Unit 03 - Workspace File And Verification Views</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: complete</li>
     <li>Add read-only views for key wiki pages, source briefs, plan status, recent log entries, and verification commands/results.</li>
     <li>Keep repo files and Git canonical; do not add hidden browser-only project state.</li>
-    <li>Verification: browser smoke coverage for navigation between plan, log, sources, and verification views.</li>
+    <li>Verification: <code>npm run check</code>, <code>npm run smoke:browser</code>, <code>/api/workspace</code> smoke test.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 04 - Init Template Quality And Dogfood Reset</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: active</li>
     <li>Improve generated HTML wiki templates so new projects get useful plans, source pages, and project-specific language instead of HyperWiki-specific defaults.</li>
     <li>Run <code>hyperwiki init</code> in a clean sample repo and compare the output against the dogfood wiki.</li>
     <li>Verification: temp init snapshot review, no overwrite behavior check, browser smoke against a generated temp wiki.</li>

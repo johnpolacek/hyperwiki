@@ -12,6 +12,9 @@ const restartTerminalButton = document.getElementById("restart-terminal");
 const closeTerminalButton = document.getElementById("close-terminal");
 const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
+const planSummary = document.getElementById("plan-summary");
+const logSummary = document.getElementById("log-summary");
+const verificationSummary = document.getElementById("verification-summary");
 const terminalSessions = new Map();
 let terminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
@@ -19,6 +22,7 @@ let activeTerminalName = null;
 
 await loadRepoContext();
 await loadWikiNav();
+await loadWorkspaceSummary();
 activateWikiPage(pageFromHash());
 await createTerminal("shell");
 await createTerminal("checks");
@@ -101,6 +105,30 @@ async function loadWikiNav() {
   } catch {
     document.getElementById("server-status").textContent = "Offline";
   }
+}
+
+async function loadWorkspaceSummary() {
+  try {
+    const summary = await api("/api/workspace");
+    renderList(planSummary, summary.plan.summary.slice(0, 4));
+    renderList(logSummary, summary.log.entries.slice(0, 4));
+    renderList(
+      verificationSummary,
+      summary.verification.map((item) => `<code>${escapeHtml(item.command)}</code>`)
+    );
+  } catch {
+    renderList(planSummary, ["Workspace summary unavailable"]);
+  }
+}
+
+function renderList(target, items) {
+  target.replaceChildren(
+    ...items.map((item) => {
+      const li = document.createElement("li");
+      li.innerHTML = item;
+      return li;
+    })
+  );
 }
 
 function activateWikiPage(path) {
@@ -242,4 +270,12 @@ async function api(path, options = {}) {
     throw new Error(`Request failed: ${response.status}`);
   }
   return response.json();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
