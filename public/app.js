@@ -215,6 +215,7 @@ async function createTerminal(name, options = {}) {
   const el = document.createElement("div");
   el.className = "terminal theme-monokai";
   el.dataset.name = name;
+  el.tabIndex = 0;
   terminals.append(el);
 
   const tab = document.createElement("button");
@@ -237,9 +238,15 @@ async function createTerminal(name, options = {}) {
     cols: 100,
     rows: 24,
     cursorBlink: true,
+    onData(data) {
+      transport?.send(data);
+    },
     onResize(cols, rows) {
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
     }
+  });
+  el.addEventListener("pointerdown", () => {
+    requestAnimationFrame(() => term.focus());
   });
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -263,7 +270,6 @@ async function createTerminal(name, options = {}) {
 
   await term.init();
   transport.connect();
-  term.onData = (data) => transport.send(data);
 
   const session = { id, name, role: options.role || "shell", command: options.command || null, el, tab, label, term, transport };
   terminalSessions.set(name, session);
@@ -278,7 +284,10 @@ function activateTerminal(name) {
     session.tab.classList.toggle("active", active);
     session.tab.setAttribute("aria-selected", String(active));
   });
-  terminalSessions.get(name)?.term.focus();
+  const session = terminalSessions.get(name);
+  if (session) {
+    requestAnimationFrame(() => session.term.focus());
+  }
 }
 
 function closeTerminal(name) {

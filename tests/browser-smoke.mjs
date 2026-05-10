@@ -45,6 +45,14 @@ if (activeTabs !== 1) {
   throw new Error(`Expected 1 active terminal tab, got ${activeTabs}`);
 }
 
+await page.locator(".terminal-tab[data-name=\"shell\"]").click();
+await page.locator(".terminal.active").click();
+await page.keyboard.type("printf HYPERWIKI_UI_INPUT_OK");
+await page.keyboard.press("Enter");
+await page.waitForFunction(() =>
+  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_UI_INPUT_OK")
+);
+
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
