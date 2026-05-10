@@ -12,13 +12,13 @@ Initialize a wiki in a project:
 npx hyperwiki init --yes
 ```
 
-Start the local workspace:
+Launch the local workspace:
 
 ```bash
-npx hyperwiki dev
+npx hyperwiki launch
 ```
 
-Then open the printed local URL, usually:
+The command starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. It also prints the workspace URL, usually:
 
 ```text
 http://127.0.0.1:4177
@@ -30,6 +30,7 @@ http://127.0.0.1:4177
 npx hyperwiki
 npx hyperwiki init
 npx hyperwiki dev
+npx hyperwiki launch
 ```
 
 `init` creates:
@@ -58,9 +59,10 @@ The MVP includes an HTML wiki scaffold, local static workspace, local dev server
 Local verification:
 
 ```bash
-npm run check
-npm run smoke:browser
-npm run smoke:init
-npm run smoke:pty
-npm run smoke:sessions
+pnpm run check
+pnpm run smoke:browser
+pnpm run smoke:init
+pnpm run smoke:launch
+pnpm run smoke:pty
+pnpm run smoke:sessions
 ```

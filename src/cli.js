@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 import { initHyperWiki } from "./init.js";
+import { launchHyperWiki } from "./launch.js";
 import { startDevServer } from "./server.js";
 
-const command = process.argv[2] ?? "help";
-const args = process.argv.slice(3);
+const rawCommand = process.argv[2];
+const command = !rawCommand || rawCommand.startsWith("--") ? "launch" : rawCommand;
+const args = process.argv.slice(command === rawCommand ? 3 : 2);
 
 try {
   if (command === "init") {
     await initHyperWiki(process.cwd(), parseArgs(args));
+  } else if (command === "launch") {
+    await launchHyperWiki(process.cwd(), launchOptions(parseArgs(args)));
   } else if (command === "dev") {
     await startDevServer(process.cwd(), parseArgs(args));
   } else if (command === "help" || command === "--help" || command === "-h") {
@@ -44,6 +48,13 @@ function parseArgs(args) {
   return parsed;
 }
 
+function launchOptions(options) {
+  return {
+    ...options,
+    open: options.open === false || options.open === "false" || options.no_open ? false : true
+  };
+}
+
 function printHelp() {
   console.log(`HyperWiki
 
@@ -51,9 +62,11 @@ Usage:
   npx hyperwiki
   npx hyperwiki init [--yes] [--project-name NAME] [--summary TEXT] [--overwrite]
   npx hyperwiki dev [--host 127.0.0.1] [--port 4177]
+  npx hyperwiki launch [--host 127.0.0.1] [--port 4177] [--no-open]
 
 Commands:
-  init   Scaffold an HTML-first repo-local wiki and HyperWiki config.
-  dev    Start the local-only HyperWiki workspace with wiki and terminal panels.
+  init     Scaffold an HTML-first repo-local wiki and HyperWiki config.
+  dev      Start the local-only HyperWiki workspace with wiki and terminal panels.
+  launch   Start or attach to HyperWiki, open the browser workspace, and restore wterm panels.
 `);
 }

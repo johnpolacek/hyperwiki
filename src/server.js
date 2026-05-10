@@ -49,8 +49,16 @@ export async function startDevServer(root, options = {}) {
     });
   });
 
-  await new Promise((resolve) => server.listen(port, host, resolve));
-  console.log(`HyperWiki dev server running at http://${host}:${port}`);
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, host, () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const url = `http://${host}:${port}`;
+  console.log(`HyperWiki dev server running at ${url}`);
+  return { server, host, port, url, workspaceUrl: `${url}/workspace/` };
 }
 
 async function handleRequest(root, request, response, sessionRegistry, config) {
@@ -66,6 +74,15 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
     }
     if (url.pathname === "/api/wiki") {
       await sendJson(response, await listWikiPages(root));
+      return;
+    }
+    if (url.pathname === "/api/health") {
+      await sendJson(response, {
+        ok: true,
+        app: "hyperwiki",
+        root,
+        workspace: "/workspace/"
+      });
       return;
     }
     if (url.pathname === "/api/workspace") {
@@ -133,6 +150,7 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
 }
 
 async function workspaceSummary(root, config) {
+  const packageManager = await packageManagerForRoot(root);
   const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
@@ -151,12 +169,28 @@ async function workspaceSummary(root, config) {
       briefs: sourceBriefs
     },
     verification: [
-      { label: "Syntax checks", command: "npm run check" },
-      { label: "Browser workspace smoke", command: "npm run smoke:browser" },
-      { label: "Local dev server", command: "npx hyperwiki dev" }
+      { label: "Syntax checks", command: `${packageManager} run check` },
+      { label: "Browser workspace smoke", command: `${packageManager} run smoke:browser` },
+      { label: "One-command launch smoke", command: `${packageManager} run smoke:launch` },
+      { label: "Local workspace launch", command: "npx hyperwiki launch" }
     ],
     layout: layoutConfig(config)
   };
+}
+
+async function packageManagerForRoot(root) {
+  try {
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    if (typeof pkg.packageManager === "string") {
+      return pkg.packageManager.split("@")[0];
+    }
+  } catch {
+    // Fall through to lockfile checks.
+  }
+  if (existsSync(path.join(root, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(path.join(root, "yarn.lock"))) return "yarn";
+  if (existsSync(path.join(root, "bun.lockb")) || existsSync(path.join(root, "bun.lock"))) return "bun";
+  return "npm";
 }
 
 function guardrailSummary(root) {

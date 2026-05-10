@@ -22,11 +22,11 @@
 <section class="summary">
   <h2>Summary</h2>
   <ul>
-    <li>Status: active</li>
-    <li>Current unit: Unit 01 - One-command Local Launch</li>
-    <li>Next action: implement and verify a launch command that starts the local server, opens the browser workspace, and prepares the default wterm session.</li>
+    <li>Status: complete</li>
+    <li>Current unit: none</li>
+    <li>Next action: define the next MVP stage for structured MCP integration.</li>
     <li>Blockers: none</li>
-    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, launch smoke covering server readiness, browser open intent, and terminal session creation.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
   </ul>
 </section>
 <h2>Intent</h2>
@@ -42,24 +42,27 @@
     <li>The command should start the local server, wait until the workspace is reachable, open the browser to the workspace URL, and ensure the default wterm operating session is created or visible.</li>
     <li>Keep the command local-first and repo-root aware. It must preserve ignored runtime state under <code>.hyperwiki/</code> and avoid writing terminal runtime data into canonical wiki files.</li>
     <li>Acceptance: a user can run one documented command from the repository root and immediately land in a browser workspace with the default terminal workflow available.</li>
+    <li>Implemented: <code>hyperwiki launch</code> and bare <code>hyperwiki</code> start or attach to the local server, wait for workspace readiness, open the browser workspace, and print the workspace URL.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 02 - Launch Reliability And Ergonomics</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: complete</li>
     <li>Handle common local startup cases: port selection or conflict reporting, server readiness, browser-open failures, clean shutdown, and repeated invocation while a server is already running.</li>
     <li>Document the command in the development workflow and generated project guidance so new users can discover it before reading source code.</li>
     <li>Acceptance: repeated dogfood launches are predictable, failures are actionable, and the command output includes the workspace URL.</li>
+    <li>Implemented: launch attaches to an existing HyperWiki server on the selected port when <code>/api/health</code> identifies it, and supports dry-run opener behavior for CI.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 03 - Smoke Coverage</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: complete</li>
     <li>Add automated coverage for the launch path without depending on a real desktop browser in CI. Browser-open behavior can be asserted through an injectable opener or dry-run mode.</li>
     <li>Verify the launched workspace exposes the expected server APIs and default terminal/session state.</li>
     <li>Acceptance: launch behavior is covered by package scripts and can be validated during dogfood work before code commits.</li>
+    <li>Implemented: <code>pnpm run smoke:launch</code> verifies readiness, dry-run browser open intent, health response, browser workspace load, and active shell session creation.</li>
   </ul>
 </section>
 <h2>Non-goals</h2>
@@ -69,7 +72,7 @@
   <li>Do not make runtime terminal transcripts canonical project knowledge by default.</li>
 </ul>
 <h2>Verification</h2>
-<p>Record launch validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>
+<p>Launch validation is recorded in <a href="/wiki/log.html">log.html</a>.</p>
   </main>
 </body>
 </html>

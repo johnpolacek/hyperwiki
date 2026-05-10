@@ -12,7 +12,8 @@ await writeFile(
     scripts: {
       dev: "vite",
       test: "vitest"
-    }
+    },
+    packageManager: "pnpm@10.33.3"
   }, null, 2)}\n`
 );
 await writeFile(path.join(root, "README.md"), "# Sample Product\n");
@@ -29,7 +30,7 @@ if (!index.includes("<h1>sample-product</h1>")) {
 if (!index.includes("Sample product for generated wiki verification.")) {
   throw new Error("Generated index did not use the package description.");
 }
-if (!dev.includes("npm run dev") || !dev.includes("npm run test")) {
+if (!dev.includes("pnpm run dev") || !dev.includes("pnpm run test")) {
   throw new Error("Generated dev page did not include package scripts.");
 }
 if (prd.includes("HyperWiki turns repo-local project docs")) {

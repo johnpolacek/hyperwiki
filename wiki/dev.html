@@ -20,17 +20,18 @@
   <main class="wiki-page">
     <h1>Development</h1>
 <h2>Commands</h2>
-<pre><code>npm install
-npm run check
-npm run smoke:browser
-npm run dev
+<pre><code>pnpm install
+pnpm run check
+pnpm run smoke:browser
+pnpm run smoke:launch
+pnpm run dev
 npx hyperwiki init
-npx hyperwiki dev</code></pre>
+npx hyperwiki launch</code></pre>
 <h2>Published Package Smoke Test</h2>
 <pre><code>tmp=$(mktemp -d)
 cd "$tmp"
 npm_config_yes=true npx hyperwiki init --yes
-npm_config_yes=true npx hyperwiki dev --host 127.0.0.1 --port 4188</code></pre>
+HYPERWIKI_OPEN_DRY_RUN=1 npm_config_yes=true npx hyperwiki launch --host 127.0.0.1 --port 4188</code></pre>
 <h2>Workflow</h2>
 <p>Plan meaningful work in <a href="/wiki/plans/index.html">plans</a>, keep source truth in repo files and Git, and use the dev workspace to inspect wiki pages and terminal sessions.</p>
   </main>

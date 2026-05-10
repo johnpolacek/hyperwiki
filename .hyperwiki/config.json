@@ -15,12 +15,12 @@
       {
         "name": "checks",
         "role": "checks",
-        "command": "npm run check"
+        "command": "pnpm run check"
       },
       {
         "name": "dev-server",
         "role": "dev-server",
-        "command": "npm run dev"
+        "command": "pnpm run dev"
       },
       {
         "name": "git",

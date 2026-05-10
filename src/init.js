@@ -45,7 +45,7 @@ export async function initHyperWiki(root, options = {}) {
   }
 
   console.log(`Initialized HyperWiki for ${context.projectName}`);
-  console.log("Run: npx hyperwiki dev");
+  console.log("Run: npx hyperwiki launch");
 }
 
 function defaultPanels(context) {
@@ -54,12 +54,12 @@ function defaultPanels(context) {
     { name: "git", role: "git", command: "git status --short --branch" }
   ];
   if (context.scripts.includes("check")) {
-    panels.splice(1, 0, { name: "checks", role: "checks", command: "npm run check" });
+    panels.splice(1, 0, { name: "checks", role: "checks", command: packageRun(context, "check") });
   } else if (context.scripts.includes("test")) {
-    panels.splice(1, 0, { name: "tests", role: "checks", command: "npm run test" });
+    panels.splice(1, 0, { name: "tests", role: "checks", command: packageRun(context, "test") });
   }
   if (context.scripts.includes("dev")) {
-    panels.splice(-1, 0, { name: "dev-server", role: "dev-server", command: "npm run dev" });
+    panels.splice(-1, 0, { name: "dev-server", role: "dev-server", command: packageRun(context, "dev") });
   }
   panels.push({ name: "agent", role: "agent", command: null });
   return panels;
@@ -89,6 +89,7 @@ async function inspectProject(root, options) {
     scripts,
     readme,
     hasPackageJson: Boolean(packageJson),
+    packageManager: detectPackageManager(root, packageJson),
     git: {
       root: gitRoot.ok ? gitRoot.stdout : null,
       branch: gitBranch.ok && gitBranch.stdout ? gitBranch.stdout : null,
@@ -96,6 +97,19 @@ async function inspectProject(root, options) {
       status: gitStatus.ok ? gitStatus.stdout.split("\n").filter(Boolean) : []
     }
   };
+}
+
+function detectPackageManager(root, packageJson) {
+  const declared = typeof packageJson?.packageManager === "string" ? packageJson.packageManager.split("@")[0] : null;
+  if (declared) return declared;
+  if (existsSync(path.join(root, "pnpm-lock.yaml"))) return "pnpm";
+  if (existsSync(path.join(root, "yarn.lock"))) return "yarn";
+  if (existsSync(path.join(root, "bun.lockb")) || existsSync(path.join(root, "bun.lock"))) return "bun";
+  return "npm";
+}
+
+function packageRun(context, script) {
+  return `${context.packageManager} run ${script}`;
 }
 
 function git(root, args) {
@@ -233,13 +247,13 @@ function architecturePage(context) {
 
 function devPage(context) {
   const commands = context.scripts.length
-    ? context.scripts.map((script) => `npm run ${script}`)
+    ? context.scripts.map((script) => packageRun(context, script))
     : ["Project commands are unknown. Add setup, development, test, and verification commands here."];
   return layout(context, "Development", `<h1>Development</h1>
 <h2>Commands</h2>
 <pre><code>${commands.map(escapeHtml).join("\n")}</code></pre>
 <h2>HyperWiki</h2>
-<pre><code>npx hyperwiki dev</code></pre>
+<pre><code>npx hyperwiki launch</code></pre>
 <h2>Workflow</h2>
 <p>Plan meaningful work in <a href="/wiki/plans/index.html">plans</a>, keep source truth in repo files and Git, and use the dev workspace to inspect wiki pages and terminal sessions.</p>`);
 }

@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 implementation | one-command local launch</h2>
+  <ul>
+    <li>Added <code>hyperwiki launch</code> and made bare <code>hyperwiki</code> launch the workspace by default.</li>
+    <li>The launch flow starts or attaches to the local server, waits for workspace readiness, opens the browser workspace, and prints the workspace URL.</li>
+    <li>Added <code>/api/health</code> for readiness and repeated-launch detection, plus <code>pnpm run smoke:launch</code> coverage for browser-open intent and default wterm session creation.</li>
+    <li>Updated generated project guidance, repo docs, and workspace verification commands to use the detected package manager and <code>pnpm</code> in this repository.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 planning | one-command launch stage</h2>
   <ul>
     <li>Dogfood finding: first-use launch ambiguity is now the next MVP focus.</li>

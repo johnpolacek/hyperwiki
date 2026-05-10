@@ -139,7 +139,7 @@ await page.locator("#guardrail-summary").filter({ hasText: "Local-only" }).waitF
 await page.locator("#canonical-boundary").filter({ hasText: "wiki/" }).waitFor();
 await page.locator("#runtime-boundary").filter({ hasText: ".hyperwiki/sessions/" }).waitFor();
 await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
-await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
+await page.locator("#verification-summary").filter({ hasText: "pnpm run check" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
