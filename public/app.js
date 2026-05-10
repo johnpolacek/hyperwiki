@@ -89,15 +89,17 @@ pruneSessionsButton.addEventListener("click", async () => {
 });
 
 async function restoreTerminals() {
-  const data = await api("/api/sessions");
-  const reconnectable = data.sessions.filter((session) => session.reconnectable && session.retained).slice(-4);
-  const names = reconnectable.length > 0 ? reconnectable.map((session) => session.name) : ["shell", "checks"];
-  const uniqueNames = [...new Set(names)];
-  for (const name of uniqueNames) {
-    await createTerminal(name);
+  const [sessionData, layout] = await Promise.all([api("/api/sessions"), api("/api/layout")]);
+  const reconnectable = sessionData.sessions.filter((session) => session.reconnectable && session.retained).slice(-5);
+  const panels = [...layout.panels, ...reconnectable];
+  const seen = new Set();
+  for (const panel of panels) {
+    if (seen.has(panel.name)) continue;
+    seen.add(panel.name);
+    await createTerminal(panel.name, panel);
   }
   if (!terminalSessions.has("shell")) {
-    await createTerminal("shell");
+    await createTerminal("shell", { role: "shell", command: null });
   }
 }
 
@@ -202,7 +204,7 @@ function normalizeWikiPath(path) {
   return path;
 }
 
-async function createTerminal(name) {
+async function createTerminal(name, options = {}) {
   if (terminalSessions.has(name)) {
     return terminalSessions.get(name);
   }
@@ -222,7 +224,9 @@ async function createTerminal(name) {
   status.setAttribute("aria-hidden", "true");
   const label = document.createElement("span");
   label.textContent = name;
-  tab.append(status, label);
+  const role = document.createElement("small");
+  role.textContent = options.role || "shell";
+  tab.append(status, label, role);
   terminalTabs.append(tab);
   tab.addEventListener("click", () => activateTerminal(name));
 
@@ -238,7 +242,7 @@ async function createTerminal(name) {
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
-    url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`,
+    url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
     onData: (data) => term.write(data),
     onOpen: () => {
@@ -259,7 +263,7 @@ async function createTerminal(name) {
   transport.connect();
   term.onData = (data) => transport.send(data);
 
-  const session = { id, name, el, tab, label, term, transport };
+  const session = { id, name, role: options.role || "shell", command: options.command || null, el, tab, label, term, transport };
   terminalSessions.set(name, session);
   return session;
 }

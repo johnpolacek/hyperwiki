@@ -33,6 +33,8 @@ export class SessionRegistry {
       kind: updates.kind || existing.kind || "terminal",
       status: updates.status || existing.status || "active",
       mode: updates.mode || existing.mode || "unknown",
+      role: updates.role || existing.role || "shell",
+      command: updates.command ?? existing.command ?? null,
       shell: updates.shell || existing.shell || null,
       pid: updates.pid ?? existing.pid ?? null,
       cwd: updates.cwd || existing.cwd || this.root,

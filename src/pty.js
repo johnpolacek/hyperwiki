@@ -27,6 +27,8 @@ export function createPtySession(root, ws, metadata = {}) {
       name,
       status: "active",
       mode: "pty",
+      role: metadata.role || "shell",
+      command: metadata.command ?? null,
       shell,
       pid: terminal.pid,
       cwd: root
@@ -56,6 +58,9 @@ export function createPtySession(root, ws, metadata = {}) {
     }
     terminal.write(message);
   });
+  if (metadata.command) {
+    terminal.write(`${metadata.command}\r`);
+  }
 
   return {
     id,
@@ -90,6 +95,8 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
     name: metadata.name,
     status: "active",
     mode: "pipe-fallback",
+    role: metadata.role || "shell",
+    command: metadata.command ?? null,
     shell,
     pid: child.pid,
     cwd: root
@@ -119,6 +126,9 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
     }
     child.stdin.write(message);
   });
+  if (metadata.command) {
+    child.stdin.write(`${metadata.command}\n`);
+  }
 
   return {
     id: metadata.id,

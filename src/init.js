@@ -31,6 +31,9 @@ export async function initHyperWiki(root, options = {}) {
       projectName: context.projectName,
       canonicalWiki: "html",
       dev: { host: "127.0.0.1", port: 4177 },
+      layout: {
+        panels: defaultPanels(context)
+      },
       runtimeState: ".hyperwiki/state",
       sessions: ".hyperwiki/sessions"
     }, null, 2)}\n`,
@@ -43,6 +46,23 @@ export async function initHyperWiki(root, options = {}) {
 
   console.log(`Initialized HyperWiki for ${context.projectName}`);
   console.log("Run: npx hyperwiki dev");
+}
+
+function defaultPanels(context) {
+  const panels = [
+    { name: "shell", role: "shell", command: null },
+    { name: "git", role: "git", command: "git status --short --branch" }
+  ];
+  if (context.scripts.includes("check")) {
+    panels.splice(1, 0, { name: "checks", role: "checks", command: "npm run check" });
+  } else if (context.scripts.includes("test")) {
+    panels.splice(1, 0, { name: "tests", role: "checks", command: "npm run test" });
+  }
+  if (context.scripts.includes("dev")) {
+    panels.splice(-1, 0, { name: "dev-server", role: "dev-server", command: "npm run dev" });
+  }
+  panels.push({ name: "agent", role: "agent", command: null });
+  return panels;
 }
 
 async function inspectProject(root, options) {

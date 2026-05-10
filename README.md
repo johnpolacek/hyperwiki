@@ -53,7 +53,7 @@ The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwi
 
 ## Current Status
 
-The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, session metadata under `.hyperwiki/sessions/`, and WebSocket PTY transport for terminal panels. Refresh restores terminal tabs from retained metadata and starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; HyperWiki does not write terminal state into repo-visible wiki files automatically.
+The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, and WebSocket PTY transport for terminal panels. Refresh restores terminal tabs from retained metadata and required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; HyperWiki does not write terminal state into repo-visible wiki files automatically.
 
 Local verification:
 

@@ -25,9 +25,10 @@ export async function startDevServer(root, options = {}) {
   }
   const port = Number(options.port || 4177);
   const sessionRegistry = new SessionRegistry(root);
+  const config = await readConfig(root);
 
   const server = createServer((request, response) => {
-    void handleRequest(root, request, response, sessionRegistry);
+    void handleRequest(root, request, response, sessionRegistry, config);
   });
   const wss = new WebSocketServer({ noServer: true });
 
@@ -40,7 +41,9 @@ export async function startDevServer(root, options = {}) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       const id = url.searchParams.get("id") || randomUUID();
       const name = url.searchParams.get("name") || id;
-      const session = createPtySession(root, ws, { id, name, registry: sessionRegistry });
+      const role = url.searchParams.get("role") || "shell";
+      const command = url.searchParams.get("command") || null;
+      const session = createPtySession(root, ws, { id, name, role, command, registry: sessionRegistry });
       sessionRegistry.setCloser(id, () => ws.close());
       ws.on("close", () => session.close());
     });
@@ -50,7 +53,7 @@ export async function startDevServer(root, options = {}) {
   console.log(`HyperWiki dev server running at http://${host}:${port}`);
 }
 
-async function handleRequest(root, request, response, sessionRegistry) {
+async function handleRequest(root, request, response, sessionRegistry, config) {
   try {
     const url = new URL(request.url || "/", "http://localhost");
     if (url.pathname === "/") {
@@ -66,7 +69,11 @@ async function handleRequest(root, request, response, sessionRegistry) {
       return;
     }
     if (url.pathname === "/api/workspace") {
-      await sendJson(response, await workspaceSummary(root));
+      await sendJson(response, await workspaceSummary(root, config));
+      return;
+    }
+    if (url.pathname === "/api/layout") {
+      await sendJson(response, layoutConfig(config));
       return;
     }
     if (url.pathname === "/api/repo") {
@@ -121,7 +128,7 @@ async function handleRequest(root, request, response, sessionRegistry) {
   }
 }
 
-async function workspaceSummary(root) {
+async function workspaceSummary(root, config) {
   const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
@@ -143,7 +150,35 @@ async function workspaceSummary(root) {
       { label: "Syntax checks", command: "npm run check" },
       { label: "Browser workspace smoke", command: "npm run smoke:browser" },
       { label: "Local dev server", command: "npx hyperwiki dev" }
-    ]
+    ],
+    layout: layoutConfig(config)
+  };
+}
+
+async function readConfig(root) {
+  const configPath = path.join(root, ".hyperwiki", "config.json");
+  if (!existsSync(configPath)) {
+    return {};
+  }
+  return JSON.parse(await readFile(configPath, "utf8"));
+}
+
+function layoutConfig(config) {
+  const panels = Array.isArray(config.layout?.panels) && config.layout.panels.length > 0
+    ? config.layout.panels
+    : [
+        { name: "shell", role: "shell", command: null },
+        { name: "checks", role: "checks", command: null },
+        { name: "dev-server", role: "dev-server", command: null },
+        { name: "git", role: "git", command: "git status --short --branch" },
+        { name: "agent", role: "agent", command: null }
+      ];
+  return {
+    panels: panels.map((panel) => ({
+      name: String(panel.name),
+      role: String(panel.role || panel.name),
+      command: panel.command ? String(panel.command) : null
+    }))
   };
 }
 

@@ -241,6 +241,11 @@ body {
   gap: 7px;
 }
 
+.terminal-tab small {
+  color: #9da79f;
+  font-size: 11px;
+}
+
 .terminal-tab.active {
   border-color: #7f9186;
   background: #2a312c;

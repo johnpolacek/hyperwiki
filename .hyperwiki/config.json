@@ -5,6 +5,35 @@
     "host": "127.0.0.1",
     "port": 4177
   },
+  "layout": {
+    "panels": [
+      {
+        "name": "shell",
+        "role": "shell",
+        "command": null
+      },
+      {
+        "name": "checks",
+        "role": "checks",
+        "command": "npm run check"
+      },
+      {
+        "name": "dev-server",
+        "role": "dev-server",
+        "command": "npm run dev"
+      },
+      {
+        "name": "git",
+        "role": "git",
+        "command": "git status --short --branch"
+      },
+      {
+        "name": "agent",
+        "role": "agent",
+        "command": null
+      }
+    ]
+  },
   "runtimeState": ".hyperwiki/state",
   "sessions": ".hyperwiki/sessions"
 }

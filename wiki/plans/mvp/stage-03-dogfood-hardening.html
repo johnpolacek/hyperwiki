@@ -23,8 +23,8 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: Unit 03 - Dogfood Operating Layout</li>
-    <li>Next action: create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
+    <li>Current unit: Unit 04 - Guardrails And Auditability</li>
+    <li>Next action: make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
     <li>Blockers: none</li>
   </ul>
 </section>
@@ -52,16 +52,16 @@
 <section>
   <h3>Unit 03 - Dogfood Operating Layout</h3>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
     <li>Represent panels as transparent local sessions that can be inspected, restarted, and closed.</li>
-    <li>Verification: manual dogfood session plus browser smoke coverage for saved/restored panel metadata.</li>
+    <li>Verification: <code>/api/layout</code> smoke, <code>npm run smoke:browser</code>, real PTY/session smoke.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 04 - Guardrails And Auditability</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: active</li>
     <li>Make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
     <li>Document which state is canonical repo truth and which state is ignored local runtime data.</li>
     <li>Verification: browser review and wiki/source brief update before considering the stage complete.</li>

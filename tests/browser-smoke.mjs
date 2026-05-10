@@ -16,6 +16,13 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
+const initialTabs = await page.locator(".terminal-tab").allTextContents();
+for (const expected of ["shell", "checks", "dev-server", "git", "agent"]) {
+  if (!initialTabs.some((tab) => tab.includes(expected))) {
+    throw new Error(`Expected dogfood layout tab ${expected}`);
+  }
+}
+
 await page.locator("#wiki-nav a").filter({ hasText: "Plans" }).click();
 await page.waitForURL("**/workspace/#/wiki/plans/index.html");
 
@@ -50,6 +57,9 @@ if (workspaceData.plan.summary.length === 0) {
 }
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);
+}
+if (!workspaceData.layout.panels.some((panel) => panel.name === "dev-server")) {
+  throw new Error("Expected workspace layout to include dev-server panel");
 }
 
 const sessionResponse = await fetch(`${origin}/api/sessions`);
