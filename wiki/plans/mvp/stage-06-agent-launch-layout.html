@@ -37,9 +37,10 @@
   <ul>
     <li>Status: complete</li>
     <li>Store the per-project setting at <code>agent.launchCommand</code>.</li>
-    <li>When initializing a new project, prefill the setting from the most recently registered project that has one.</li>
+    <li>Fresh initialization leaves the setting empty unless the user passes <code>--agent-launch-command</code>.</li>
     <li>This repository uses <code>codex --yolo</code> for dogfooding.</li>
     <li>Implemented as <code>agent.launchCommand</code> in <code>.hyperwiki/config.json</code>.</li>
+    <li>Corrected after dogfooding: do not inherit another project's agent command into fresh projects.</li>
   </ul>
 </section>
 <section>

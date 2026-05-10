@@ -2,7 +2,6 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { ProjectRegistry } from "./projects.js";
 
 const pages = new Map([
   ["wiki/index.html", indexPage],
@@ -89,7 +88,7 @@ async function inspectProject(root, options) {
     readme,
     hasPackageJson: Boolean(packageJson),
     packageManager: detectPackageManager(root, packageJson),
-    agentLaunchCommand: String(options.agent_launch_command || await inheritedAgentLaunchCommand()),
+    agentLaunchCommand: String(options.agent_launch_command || ""),
     git: {
       root: gitRoot.ok ? gitRoot.stdout : null,
       branch: gitBranch.ok && gitBranch.stdout ? gitBranch.stdout : null,
@@ -97,10 +96,6 @@ async function inspectProject(root, options) {
       status: gitStatus.ok ? gitStatus.stdout.split("\n").filter(Boolean) : []
     }
   };
-}
-
-async function inheritedAgentLaunchCommand() {
-  return (await new ProjectRegistry().latestAgentLaunchCommand()) || "";
 }
 
 function detectPackageManager(root, packageJson) {
