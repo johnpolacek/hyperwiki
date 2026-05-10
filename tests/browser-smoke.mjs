@@ -77,8 +77,26 @@ if (scrollMetrics.overflowY !== "auto") {
 }
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
-  return terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < 8;
+  return terminal.scrollHeight > terminal.clientHeight &&
+    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < 8;
 });
+const beforeTypingAtBottom = await page.evaluate(() => {
+  const terminal = document.querySelector(".terminal.active");
+  return terminal.scrollTop;
+});
+await page.keyboard.type("echo HYPERWIKI_BOTTOM_STABILITY_OK");
+await page.waitForTimeout(150);
+const afterTypingAtBottom = await page.evaluate(() => {
+  const terminal = document.querySelector(".terminal.active");
+  return terminal.scrollTop;
+});
+if (Math.abs(afterTypingAtBottom - beforeTypingAtBottom) > 24) {
+  throw new Error(`Expected typing at terminal bottom to stay stable, got ${beforeTypingAtBottom} -> ${afterTypingAtBottom}`);
+}
+await page.keyboard.press("Enter");
+await page.waitForFunction(() =>
+  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_BOTTOM_STABILITY_OK")
+);
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();

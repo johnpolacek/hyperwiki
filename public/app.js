@@ -281,8 +281,11 @@ async function createTerminal(name, options = {}) {
     url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
     onData: (data) => {
+      const shouldFollowOutput = isTerminalNearBottom(el);
       term.write(data);
-      scheduleTerminalScrollToBottom(el);
+      if (shouldFollowOutput) {
+        scheduleTerminalScrollToBottom(el);
+      }
     },
     onOpen: () => {
       tab.classList.add("connected");
@@ -333,9 +336,9 @@ function updateActiveSessionBoundary(session) {
 }
 
 function scheduleTerminalScrollToBottom(el) {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => scrollTerminalToBottom(el));
-  });
+  setTimeout(() => scrollTerminalToBottom(el), 0);
+  setTimeout(() => scrollTerminalToBottom(el), 32);
+  setTimeout(() => scrollTerminalToBottom(el), 96);
 }
 
 function scrollTerminalToBottom(el) {
@@ -343,6 +346,10 @@ function scrollTerminalToBottom(el) {
   if (maxScroll > 0) {
     el.scrollTop = maxScroll;
   }
+}
+
+function isTerminalNearBottom(el) {
+  return el.scrollHeight - el.clientHeight - el.scrollTop < 24;
 }
 
 function closeTerminal(name) {

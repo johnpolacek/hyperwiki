@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 fix | terminal bottom typing stability</h2>
+  <ul>
+    <li>Made terminal follow mode conditional on already being near the bottom before new PTY output arrives.</li>
+    <li>Delayed follow scrolling across WTerm's render cycle so typing after long output does not trigger a stale scroll jump.</li>
+    <li>Tightened browser smoke coverage to wait for real scrollback before checking bottom typing stability.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 implementation | guardrails and auditability</h2>
   <ul>
     <li>Added a local guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, command history boundaries, and terminal export/prune actions.</li>
