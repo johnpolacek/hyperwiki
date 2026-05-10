@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -54,6 +54,10 @@ async function handleRequest(root, request, response) {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
       return;
     }
+    if (url.pathname === "/api/wiki") {
+      await sendJson(response, await listWikiPages(root));
+      return;
+    }
     if (url.pathname.startsWith("/assets/")) {
       await sendFile(response, path.join(publicRoot, url.pathname.replace("/assets/", "")), publicRoot);
       return;
@@ -76,6 +80,51 @@ async function handleRequest(root, request, response) {
     response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
     response.end(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function listWikiPages(root) {
+  const wikiRoot = path.join(root, "wiki");
+  if (!existsSync(wikiRoot)) {
+    return { pages: [] };
+  }
+  const pages = [];
+  await walkWiki(wikiRoot, wikiRoot, pages);
+  pages.sort((a, b) => a.path.localeCompare(b.path));
+  return { pages };
+}
+
+async function walkWiki(baseRoot, directory, pages) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await walkWiki(baseRoot, fullPath, pages);
+      continue;
+    }
+    if (!entry.isFile() || path.extname(entry.name) !== ".html") {
+      continue;
+    }
+    const relativePath = path.relative(baseRoot, fullPath).split(path.sep).join("/");
+    pages.push({
+      title: titleFromWikiPath(relativePath),
+      path: `/wiki/${relativePath}`
+    });
+  }
+}
+
+function titleFromWikiPath(relativePath) {
+  const withoutExtension = relativePath.replace(/\.html$/, "");
+  const segments = withoutExtension.split("/");
+  const leaf = segments.at(-1) === "index" && segments.length > 1 ? segments.at(-2) : segments.at(-1);
+  return leaf
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function sendJson(response, value) {
+  response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+  response.end(`${JSON.stringify(value)}\n`);
 }
 
 async function sendFile(response, filePath, allowedRoot) {

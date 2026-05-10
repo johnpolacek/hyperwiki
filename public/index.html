@@ -17,21 +17,28 @@
 <body>
   <main class="workspace">
     <aside class="sidebar">
-      <h1>HyperWiki</h1>
-      <a href="/wiki/index.html" target="wiki-frame">Home</a>
-      <a href="/wiki/architecture.html" target="wiki-frame">Architecture</a>
-      <a href="/wiki/dev.html" target="wiki-frame">Dev</a>
-      <a href="/wiki/plans/index.html" target="wiki-frame">Plans</a>
-      <a href="/wiki/log.html" target="wiki-frame">Log</a>
-      <a href="/wiki/sources.html" target="wiki-frame">Sources</a>
+      <div class="brand">
+        <h1>HyperWiki</h1>
+        <span id="server-status">Local</span>
+      </div>
+      <nav id="wiki-nav" class="wiki-nav" aria-label="Wiki pages">
+        <a href="/wiki/index.html" target="wiki-frame" data-wiki-link>Home</a>
+      </nav>
     </aside>
     <section class="wiki-pane">
-      <iframe name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
+      <header class="pane-header">
+        <div>
+          <p>Wiki</p>
+          <strong id="current-page">/wiki/index.html</strong>
+        </div>
+        <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer">Open</a>
+      </header>
+      <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
     </section>
     <section class="terminal-pane">
       <div class="terminal-toolbar">
-        <button type="button" data-terminal="shell">Shell</button>
-        <button type="button" data-terminal="checks">Checks</button>
+        <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>
+        <button type="button" id="new-terminal">New</button>
       </div>
       <div id="terminals" class="terminals"></div>
     </section>

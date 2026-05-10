@@ -30,6 +30,24 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-10 implementation | workspace navigation and terminal panel hardening</h2>
+  <ul>
+    <li>Added a server-side <code>/api/wiki</code> index so the workspace discovers repo-local HTML wiki pages instead of hard-coding only top-level links.</li>
+    <li>Added hash-backed wiki navigation, current-page display, an open-page action, and stale iframe-load protection.</li>
+    <li>Reworked terminal panels into active tabs with visible connection status and a <code>New</code> action for additional sessions.</li>
+    <li>Added a repeatable Playwright browser smoke test for workspace navigation and terminal tab creation.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 validation | public npm smoke test</h2>
+  <ul>
+    <li>Verified <code>npx hyperwiki init --yes</code> from the published <code>hyperwiki@0.1.0</code> package in a clean temporary directory.</li>
+    <li>Verified <code>npx hyperwiki dev</code> from the same directory serves the workspace, wiki pages, static assets, and wterm vendor files.</li>
+    <li>Verified the terminal WebSocket transport can execute a command from the published package runtime.</li>
+    <li>Updated the active plan state: Stage 01 is complete; Stage 02 workspace hardening is the next active unit.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 validation | dev workspace smoke tests</h2>
   <ul>
     <li>Verified CLI syntax checks with <code>npm run check</code>.</li>

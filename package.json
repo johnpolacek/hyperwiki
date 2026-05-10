@@ -1,14 +1,15 @@
 {
   "name": "hyperwiki",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Repo-local HTML workspace for docs-driven agentic development.",
   "type": "module",
   "bin": {
-    "hyperwiki": "./src/cli.js"
+    "hyperwiki": "src/cli.js"
   },
   "scripts": {
     "dev": "node src/cli.js dev",
-    "check": "node --check src/cli.js && node --check src/server.js && node --check src/init.js && node --check src/pty.js && node --check public/app.js"
+    "check": "node --check src/cli.js && node --check src/server.js && node --check src/init.js && node --check src/pty.js && node --check public/app.js && node --check tests/browser-smoke.mjs",
+    "smoke:browser": "node tests/browser-smoke.mjs"
   },
   "dependencies": {
     "@wterm/dom": "^0.3.0",
@@ -19,5 +20,8 @@
     "node": ">=20"
   },
   "license": "MIT",
-  "private": false
+  "private": false,
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
 }
