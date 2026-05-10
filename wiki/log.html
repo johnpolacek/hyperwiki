@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 implementation | guardrails and auditability</h2>
+  <ul>
+    <li>Added a local guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, command history boundaries, and terminal export/prune actions.</li>
+    <li>Made active terminal session metadata visible in the terminal pane and preserved accurate role/command metadata in the pipe fallback path.</li>
+    <li>Updated the technical brief and architecture page to document canonical repo truth versus ignored local runtime data.</li>
+    <li>Completed Stage 03 Unit 04 and Stage 03 after verification with <code>pnpm run check</code> and browser smoke testing.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 fix | terminal output follow mode</h2>
   <ul>
     <li>Added app-level follow behavior so terminal output scrolls to the bottom as new PTY data arrives.</li>

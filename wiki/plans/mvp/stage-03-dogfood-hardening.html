@@ -22,9 +22,9 @@
 <section class="summary">
   <h2>Summary</h2>
   <ul>
-    <li>Status: active</li>
-    <li>Current unit: Unit 04 - Guardrails And Auditability</li>
-    <li>Next action: make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
+    <li>Status: complete</li>
+    <li>Current unit: none</li>
+    <li>Next action: define the next MVP stage for structured MCP integration.</li>
     <li>Blockers: none</li>
   </ul>
 </section>
@@ -61,10 +61,11 @@
 <section>
   <h3>Unit 04 - Guardrails And Auditability</h3>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
     <li>Document which state is canonical repo truth and which state is ignored local runtime data.</li>
-    <li>Verification: browser review and wiki/source brief update before considering the stage complete.</li>
+    <li>Implemented a guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, active session metadata, command history boundaries, and terminal lifecycle/export actions.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4189/workspace/ pnpm run smoke:browser</code>.</li>
   </ul>
 </section>
 <h2>Verification</h2>

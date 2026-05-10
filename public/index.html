@@ -27,6 +27,8 @@
       <section class="workspace-summary" aria-label="Workspace summary">
         <h2>Plan</h2>
         <ul id="plan-summary"></ul>
+        <h2>Guardrails</h2>
+        <ul id="guardrail-summary"></ul>
         <h2>Recent Log</h2>
         <ul id="log-summary"></ul>
         <h2>Verification</h2>
@@ -60,6 +62,24 @@
         <button type="button" id="export-terminal">Export</button>
         <button type="button" id="prune-sessions">Prune</button>
       </div>
+      <section class="terminal-guardrails" aria-label="Terminal guardrails">
+        <div>
+          <span>Mode</span>
+          <strong id="guardrail-mode">Local-only</strong>
+        </div>
+        <div>
+          <span>Canonical</span>
+          <strong id="canonical-boundary">wiki/ and Git</strong>
+        </div>
+        <div>
+          <span>Runtime</span>
+          <strong id="runtime-boundary">.hyperwiki/state/ and .hyperwiki/sessions/</strong>
+        </div>
+        <div>
+          <span>Active Session</span>
+          <strong id="active-session-boundary">No active session</strong>
+        </div>
+      </section>
       <div id="terminals" class="terminals"></div>
     </section>
   </main>

@@ -168,7 +168,7 @@ body {
 
 .terminal-pane {
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
+  grid-template-rows: auto auto auto auto 1fr;
   background: #111312;
   border-right: 0;
 }
@@ -207,6 +207,37 @@ body {
   gap: 6px;
   padding: 8px;
   border-bottom: 1px solid #2c302d;
+}
+
+.terminal-guardrails {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border-bottom: 1px solid #2c302d;
+  background: #2c302d;
+}
+
+.terminal-guardrails div {
+  min-width: 0;
+  padding: 8px 10px;
+  background: #171a18;
+}
+
+.terminal-guardrails span {
+  display: block;
+  margin-bottom: 2px;
+  color: #8f9a91;
+  font-size: 11px;
+}
+
+.terminal-guardrails strong {
+  display: block;
+  overflow: hidden;
+  color: #eef2ec;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .terminal-tabs {
@@ -314,5 +345,9 @@ body {
 
   .workspace-summary {
     display: none;
+  }
+
+  .terminal-guardrails {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

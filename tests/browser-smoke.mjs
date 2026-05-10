@@ -82,6 +82,10 @@ await page.waitForFunction(() => {
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
+await page.locator("#guardrail-summary").filter({ hasText: "Local-only" }).waitFor();
+await page.locator("#canonical-boundary").filter({ hasText: "wiki/" }).waitFor();
+await page.locator("#runtime-boundary").filter({ hasText: ".hyperwiki/sessions/" }).waitFor();
+await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
@@ -93,6 +97,20 @@ if (workspaceData.sources.briefs.length < 3) {
 }
 if (!workspaceData.layout.panels.some((panel) => panel.name === "dev-server")) {
   throw new Error("Expected workspace layout to include dev-server panel");
+}
+const guardrailResponse = await fetch(`${origin}/api/guardrails`);
+const guardrailData = await guardrailResponse.json();
+if (guardrailData.mode.label !== "Local-only") {
+  throw new Error(`Expected local-only guardrail mode, got ${guardrailData.mode.label}`);
+}
+if (!guardrailData.canonical.some((item) => item.path === "wiki/")) {
+  throw new Error("Expected guardrails to identify wiki/ as canonical repo truth");
+}
+if (!guardrailData.runtime.some((item) => item.path === ".hyperwiki/sessions/")) {
+  throw new Error("Expected guardrails to identify local session metadata");
+}
+if (!guardrailData.commandHistory.detail.includes("unless the user exports")) {
+  throw new Error("Expected guardrails to document command history export boundary");
 }
 
 const sessionResponse = await fetch(`${origin}/api/sessions`);

@@ -72,6 +72,10 @@ async function handleRequest(root, request, response, sessionRegistry, config) {
       await sendJson(response, await workspaceSummary(root, config));
       return;
     }
+    if (url.pathname === "/api/guardrails") {
+      await sendJson(response, guardrailSummary(root));
+      return;
+    }
     if (url.pathname === "/api/layout") {
       await sendJson(response, layoutConfig(config));
       return;
@@ -152,6 +156,35 @@ async function workspaceSummary(root, config) {
       { label: "Local dev server", command: "npx hyperwiki dev" }
     ],
     layout: layoutConfig(config)
+  };
+}
+
+function guardrailSummary(root) {
+  return {
+    mode: {
+      label: "Local-only",
+      value: "Dev server binds to localhost addresses and serves repo-local files."
+    },
+    canonical: [
+      { label: "Wiki truth", path: "wiki/", detail: "Repo-visible HTML docs, plans, source briefs, and project log." },
+      { label: "Git truth", path: ".git", detail: "Durable implementation history and reviewable changes." }
+    ],
+    runtime: [
+      { label: "Runtime state", path: ".hyperwiki/state/", detail: "Ignored local workspace state." },
+      { label: "Session metadata", path: ".hyperwiki/sessions/", detail: "Ignored retained terminal metadata for restore, export, and pruning." }
+    ],
+    commandHistory: {
+      label: "Command history boundary",
+      detail: "HyperWiki stores session metadata and terminal lifecycle state. Shell history and scrollback are runtime data unless the user exports or records them in wiki files."
+    },
+    actions: [
+      { label: "Rename", detail: "Updates retained local session metadata." },
+      { label: "Restart", detail: "Closes the current PTY and opens a fresh local session with the same panel name." },
+      { label: "Close", detail: "Marks the session closed and keeps bounded retained metadata for auditability." },
+      { label: "Export", detail: "Returns a runtime-only session export to the caller; it does not write repo-visible wiki files." },
+      { label: "Prune", detail: "Removes old closed retained session metadata beyond the local retention limit." }
+    ],
+    root
   };
 }
 

@@ -34,7 +34,13 @@ export function createPtySession(root, ws, metadata = {}) {
       cwd: root
     });
   } catch (error) {
-    return createPipeSession(root, shell, ws, error, { id, name, registry });
+    return createPipeSession(root, shell, ws, error, {
+      id,
+      name,
+      registry,
+      role: metadata.role || "shell",
+      command: metadata.command ?? null
+    });
   }
 
   terminal.onData((data) => {

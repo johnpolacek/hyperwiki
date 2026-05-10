@@ -33,6 +33,8 @@
   <li>@wterm/dom for terminal rendering and node-pty plus WebSocket for local PTY sessions.</li>
   <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
   <li>Local-only server binding by default.</li>
+  <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
+  <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
 </ul>
   </main>
 </body>

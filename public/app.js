@@ -15,16 +15,23 @@ const pruneSessionsButton = document.getElementById("prune-sessions");
 const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
 const planSummary = document.getElementById("plan-summary");
+const guardrailSummary = document.getElementById("guardrail-summary");
 const logSummary = document.getElementById("log-summary");
 const verificationSummary = document.getElementById("verification-summary");
+const guardrailMode = document.getElementById("guardrail-mode");
+const canonicalBoundary = document.getElementById("canonical-boundary");
+const runtimeBoundary = document.getElementById("runtime-boundary");
+const activeSessionBoundary = document.getElementById("active-session-boundary");
 const terminalSessions = new Map();
 let terminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
+let guardrails = null;
 
 await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
+await loadGuardrails();
 activateWikiPage(pageFromHash());
 await restoreTerminals();
 activateTerminal("shell");
@@ -147,6 +154,26 @@ async function loadWorkspaceSummary() {
     );
   } catch {
     renderList(planSummary, ["Workspace summary unavailable"]);
+  }
+}
+
+async function loadGuardrails() {
+  try {
+    guardrails = await api("/api/guardrails");
+    guardrailMode.textContent = guardrails.mode.label;
+    guardrailMode.title = guardrails.mode.value;
+    canonicalBoundary.textContent = guardrails.canonical.map((item) => item.path).join(" + ");
+    canonicalBoundary.title = guardrails.canonical.map((item) => `${item.path}: ${item.detail}`).join("\n");
+    runtimeBoundary.textContent = guardrails.runtime.map((item) => item.path).join(" + ");
+    runtimeBoundary.title = guardrails.runtime.map((item) => `${item.path}: ${item.detail}`).join("\n");
+    renderList(guardrailSummary, [
+      `<strong>${escapeHtml(guardrails.mode.label)}</strong>: ${escapeHtml(guardrails.mode.value)}`,
+      `<strong>Canonical</strong>: ${escapeHtml(guardrails.canonical.map((item) => item.path).join(", "))}`,
+      `<strong>Runtime</strong>: ${escapeHtml(guardrails.runtime.map((item) => item.path).join(", "))}`,
+      `<strong>${escapeHtml(guardrails.commandHistory.label)}</strong>: ${escapeHtml(guardrails.commandHistory.detail)}`
+    ]);
+  } catch {
+    renderList(guardrailSummary, ["Guardrail summary unavailable"]);
   }
 }
 
@@ -289,11 +316,20 @@ function activateTerminal(name) {
   });
   const session = terminalSessions.get(name);
   if (session) {
+    updateActiveSessionBoundary(session);
     requestAnimationFrame(() => {
       session.term.focus();
       scrollTerminalToBottom(session.el);
     });
   }
+}
+
+function updateActiveSessionBoundary(session) {
+  const command = session.command ? ` preset: ${session.command}` : " interactive shell";
+  activeSessionBoundary.textContent = `${session.role}; ${session.id.slice(0, 8)};${command}`;
+  activeSessionBoundary.title = guardrails
+    ? `${guardrails.commandHistory.detail}\nSession metadata is retained locally under .hyperwiki/sessions/.`
+    : "Session metadata is retained locally under .hyperwiki/sessions/.";
 }
 
 function scheduleTerminalScrollToBottom(el) {
