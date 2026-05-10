@@ -1,0 +1,59 @@
+#!/usr/bin/env node
+import { initHyperWiki } from "./init.js";
+import { startDevServer } from "./server.js";
+
+const command = process.argv[2] ?? "help";
+const args = process.argv.slice(3);
+
+try {
+  if (command === "init") {
+    await initHyperWiki(process.cwd(), parseArgs(args));
+  } else if (command === "dev") {
+    await startDevServer(process.cwd(), parseArgs(args));
+  } else if (command === "help" || command === "--help" || command === "-h") {
+    printHelp();
+  } else {
+    console.error(`Unknown command: ${command}`);
+    printHelp();
+    process.exitCode = 1;
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+}
+
+function parseArgs(args) {
+  const parsed = { _: [] };
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (!arg.startsWith("--")) {
+      parsed._.push(arg);
+      continue;
+    }
+    const [rawKey, inlineValue] = arg.slice(2).split("=", 2);
+    const key = rawKey.replaceAll("-", "_");
+    if (inlineValue !== undefined) {
+      parsed[key] = inlineValue;
+    } else if (args[index + 1] && !args[index + 1].startsWith("--")) {
+      parsed[key] = args[index + 1];
+      index += 1;
+    } else {
+      parsed[key] = true;
+    }
+  }
+  return parsed;
+}
+
+function printHelp() {
+  console.log(`HyperWiki
+
+Usage:
+  npx hyperwiki
+  npx hyperwiki init [--yes] [--project-name NAME] [--summary TEXT] [--overwrite]
+  npx hyperwiki dev [--host 127.0.0.1] [--port 4177]
+
+Commands:
+  init   Scaffold an HTML-first repo-local wiki and HyperWiki config.
+  dev    Start the local-only HyperWiki workspace with wiki and terminal panels.
+`);
+}

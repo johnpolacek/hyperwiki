@@ -1,0 +1,10 @@
+{
+  "projectName": "HyperWiki",
+  "canonicalWiki": "html",
+  "dev": {
+    "host": "127.0.0.1",
+    "port": 4177
+  },
+  "runtimeState": ".hyperwiki/state",
+  "sessions": ".hyperwiki/sessions"
+}

@@ -1,0 +1,8 @@
+node_modules/
+npm-debug.log*
+
+.hyperwiki/state/
+.hyperwiki/sessions/
+.hyperwiki/*.log
+
+.DS_Store

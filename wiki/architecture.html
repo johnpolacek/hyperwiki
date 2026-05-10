@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Architecture</h1>
+<p>HyperWiki is a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
+<h2>Boundaries</h2>
+<ul>
+  <li>The CLI performs repeatable filesystem operations and starts the dev runtime.</li>
+  <li>The wiki is canonical repo-visible HTML.</li>
+  <li>The dev runtime renders the wiki and terminal workspace but is not a hidden source of truth.</li>
+  <li>Runtime state is ignored under <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code>.</li>
+</ul>
+  </main>
+</body>
+</html>

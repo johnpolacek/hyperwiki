@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HyperWiki Workspace</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/vendor/@wterm/dom/src/terminal.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "@wterm/core": "/vendor/@wterm/core/dist/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="workspace">
+    <aside class="sidebar">
+      <h1>HyperWiki</h1>
+      <a href="/wiki/index.html" target="wiki-frame">Home</a>
+      <a href="/wiki/architecture.html" target="wiki-frame">Architecture</a>
+      <a href="/wiki/dev.html" target="wiki-frame">Dev</a>
+      <a href="/wiki/plans/index.html" target="wiki-frame">Plans</a>
+      <a href="/wiki/log.html" target="wiki-frame">Log</a>
+      <a href="/wiki/sources.html" target="wiki-frame">Sources</a>
+    </aside>
+    <section class="wiki-pane">
+      <iframe name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
+    </section>
+    <section class="terminal-pane">
+      <div class="terminal-toolbar">
+        <button type="button" data-terminal="shell">Shell</button>
+        <button type="button" data-terminal="checks">Checks</button>
+      </div>
+      <div id="terminals" class="terminals"></div>
+    </section>
+  </main>
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>

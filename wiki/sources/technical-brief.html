@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Technical Brief - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Technical Brief</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: 2026-05-10</li>
+  <li>Evidence basis: user prompt, npm package checks, and implementation plan</li>
+  <li>Confidence: medium</li>
+</ul>
+<h2>Defaults</h2>
+<ul>
+  <li>Single Node npm package.</li>
+  <li>HTML canonical wiki files.</li>
+  <li>Vanilla browser JS workspace.</li>
+  <li>@wterm/dom for terminal rendering and node-pty plus WebSocket for local PTY sessions.</li>
+  <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
+  <li>Local-only server binding by default.</li>
+</ul>
+  </main>
+</body>
+</html>

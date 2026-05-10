@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Project Log</h1>
+<p>Git owns routine implementation history. This log owns durable project-context history.</p>
+<article>
+  <h2>2026-05-10 bootstrap | initialize HTML-first project wiki</h2>
+  <ul>
+    <li>Mode: bootstrap_new.</li>
+    <li>Canonical wiki format: HTML.</li>
+    <li>Planning workflow: project-wiki conventions adapted to HTML files.</li>
+    <li>Source briefs: PRD, technical brief, and design brief created for MVP planning.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 validation | dev workspace smoke tests</h2>
+  <ul>
+    <li>Verified CLI syntax checks with <code>npm run check</code>.</li>
+    <li>Verified <code>hyperwiki init</code> creates the expected HTML wiki and config in a temporary directory.</li>
+    <li>Verified the dev server serves the workspace, wiki pages, static assets, and wterm vendor modules on <code>127.0.0.1:4177</code>.</li>
+    <li>Verified terminal WebSocket transport can execute a shell command through the fallback pipe session.</li>
+    <li>Known issue: <code>node-pty</code> spawn currently fails in this environment with <code>posix_spawnp failed</code>; the server reports the failure and falls back without crashing.</li>
+  </ul>
+</article>
+  </main>
+</body>
+</html>
