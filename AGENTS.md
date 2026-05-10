@@ -2,6 +2,8 @@
 
 Prefer to commit and pull whenever confident that the code is good and there are no questions about implementation.
 
+Always use `pnpm` for package management and package scripts in this repository.
+
 <!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
 ## HyperWiki Agent Guide
 

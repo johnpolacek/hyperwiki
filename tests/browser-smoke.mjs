@@ -75,6 +75,10 @@ if (scrollMetrics.scrollHeight <= scrollMetrics.clientHeight) {
 if (scrollMetrics.overflowY !== "auto") {
   throw new Error(`Expected terminal overflow-y auto, got ${scrollMetrics.overflowY}`);
 }
+await page.waitForFunction(() => {
+  const terminal = document.querySelector(".terminal.active");
+  return terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < 8;
+});
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();

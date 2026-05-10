@@ -253,7 +253,10 @@ async function createTerminal(name, options = {}) {
   transport = new WebSocketTransport({
     url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
-    onData: (data) => term.write(data),
+    onData: (data) => {
+      term.write(data);
+      scheduleTerminalScrollToBottom(el);
+    },
     onOpen: () => {
       tab.classList.add("connected");
       tab.classList.remove("closed", "error");
@@ -286,7 +289,23 @@ function activateTerminal(name) {
   });
   const session = terminalSessions.get(name);
   if (session) {
-    requestAnimationFrame(() => session.term.focus());
+    requestAnimationFrame(() => {
+      session.term.focus();
+      scrollTerminalToBottom(session.el);
+    });
+  }
+}
+
+function scheduleTerminalScrollToBottom(el) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => scrollTerminalToBottom(el));
+  });
+}
+
+function scrollTerminalToBottom(el) {
+  const maxScroll = el.scrollHeight - el.clientHeight;
+  if (maxScroll > 0) {
+    el.scrollTop = maxScroll;
   }
 }
 
