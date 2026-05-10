@@ -30,6 +30,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-10 implementation | true PTY compatibility</h2>
+  <ul>
+    <li>Identified the local <code>node-pty</code> failure cause: the packaged macOS <code>spawn-helper</code> was installed without executable permissions.</li>
+    <li>Added a runtime guard that restores the executable bit for the macOS <code>node-pty</code> helper before spawning a PTY.</li>
+    <li>Added <code>npm run smoke:pty</code> to prove the real PTY path and fail if only fallback mode is used.</li>
+    <li>Verified the live dev server records terminal metadata with <code>mode: "pty"</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 implementation | init template quality and dogfood reset</h2>
   <ul>
     <li>Reworked <code>hyperwiki init</code> templates to use project-specific repository evidence instead of HyperWiki-specific product copy.</li>

@@ -23,9 +23,9 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: Unit 01 - True PTY Compatibility</li>
-    <li>Next action: investigate and fix <code>node-pty</code> spawning, or choose a replacement PTY backend if the failure is structural.</li>
-    <li>Blockers: true <code>node-pty</code> spawn currently fails in this environment with <code>posix_spawnp failed</code>.</li>
+    <li>Current unit: Unit 02 - Terminal Session Persistence And Retention</li>
+    <li>Next action: define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
+    <li>Blockers: none</li>
   </ul>
 </section>
 <h2>Intent</h2>
@@ -34,16 +34,16 @@
 <section>
   <h3>Unit 01 - True PTY Compatibility</h3>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Investigate and fix <code>node-pty</code> spawning on the local development runtime, or choose a replacement PTY backend if the failure is structural.</li>
     <li>Keep the existing pipe fallback as an explicit degraded mode, not the primary terminal path.</li>
-    <li>Verification: automated terminal smoke proves a true PTY path when available and reports fallback mode separately.</li>
+    <li>Verification: <code>npm run smoke:pty</code>, live dev server WebSocket smoke, browser smoke.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 02 - Terminal Session Persistence And Retention</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: active</li>
     <li>Define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
     <li>Keep retained runtime state ignored unless the user intentionally exports it into repo-visible wiki or log files.</li>
     <li>Verification: refresh/reconnect smoke test, cleanup test, ignored-state check.</li>

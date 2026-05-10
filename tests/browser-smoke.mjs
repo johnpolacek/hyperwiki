@@ -61,6 +61,9 @@ const renameTarget = sessionData.sessions.find((session) => session.name === "te
 if (!renameTarget) {
   throw new Error("Expected term-1 session metadata");
 }
+if (!["pty", "pipe-fallback"].includes(renameTarget.mode)) {
+  throw new Error(`Expected explicit terminal mode, got ${renameTarget.mode}`);
+}
 const renameResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}`, {
   method: "PATCH",
   headers: { "content-type": "application/json" },

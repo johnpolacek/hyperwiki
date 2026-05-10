@@ -1,7 +1,12 @@
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { chmodSync, constants, existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 import pty from "node-pty";
+
+const require = createRequire(import.meta.url);
 
 export function createPtySession(root, ws, metadata = {}) {
   const shell = process.env.SHELL || (os.platform() === "win32" ? "powershell.exe" : "bash");
@@ -10,6 +15,7 @@ export function createPtySession(root, ws, metadata = {}) {
   const registry = metadata.registry;
   let terminal;
   try {
+    ensureNodePtyHelperExecutable();
     terminal = pty.spawn(shell, [], {
       name: "xterm-256color",
       cols: 100,
@@ -58,6 +64,17 @@ export function createPtySession(root, ws, metadata = {}) {
       terminal.kill();
     }
   };
+}
+
+function ensureNodePtyHelperExecutable() {
+  if (os.platform() !== "darwin") {
+    return;
+  }
+  const packageRoot = path.dirname(require.resolve("node-pty/package.json"));
+  const helperPath = path.join(packageRoot, "prebuilds", `${os.platform()}-${os.arch()}`, "spawn-helper");
+  if (existsSync(helperPath)) {
+    chmodSync(helperPath, constants.S_IRUSR | constants.S_IWUSR | constants.S_IXUSR | constants.S_IRGRP | constants.S_IXGRP | constants.S_IROTH | constants.S_IXOTH);
+  }
 }
 
 function createPipeSession(root, shell, ws, spawnError, metadata) {

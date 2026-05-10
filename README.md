@@ -53,7 +53,7 @@ The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwi
 
 ## Current Status
 
-The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, session metadata under `.hyperwiki/sessions/`, and WebSocket shell transport for terminal panels. When `node-pty` cannot spawn in the current runtime, HyperWiki reports the failure and falls back to a pipe-backed shell session instead of crashing.
+The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, session metadata under `.hyperwiki/sessions/`, and WebSocket PTY transport for terminal panels. On macOS, HyperWiki repairs the packaged `node-pty` spawn helper executable bit before starting a PTY. When a true PTY still cannot spawn, HyperWiki reports the failure and falls back to a pipe-backed shell session instead of crashing.
 
 Local verification:
 
@@ -61,4 +61,5 @@ Local verification:
 npm run check
 npm run smoke:browser
 npm run smoke:init
+npm run smoke:pty
 ```
