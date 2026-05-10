@@ -23,8 +23,8 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: Unit 02 - Terminal Session Persistence And Retention</li>
-    <li>Next action: define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
+    <li>Current unit: Unit 03 - Dogfood Operating Layout</li>
+    <li>Next action: create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
     <li>Blockers: none</li>
   </ul>
 </section>
@@ -43,16 +43,16 @@
 <section>
   <h3>Unit 02 - Terminal Session Persistence And Retention</h3>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
     <li>Keep retained runtime state ignored unless the user intentionally exports it into repo-visible wiki or log files.</li>
-    <li>Verification: refresh/reconnect smoke test, cleanup test, ignored-state check.</li>
+    <li>Verification: <code>npm run smoke:sessions</code>, <code>npm run smoke:browser</code>, prune route smoke, ignored-state check.</li>
   </ul>
 </section>
 <section>
   <h3>Unit 03 - Dogfood Operating Layout</h3>
   <ul>
-    <li>Status: pending</li>
+    <li>Status: active</li>
     <li>Create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
     <li>Represent panels as transparent local sessions that can be inspected, restarted, and closed.</li>
     <li>Verification: manual dogfood session plus browser smoke coverage for saved/restored panel metadata.</li>

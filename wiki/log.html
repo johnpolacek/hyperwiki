@@ -30,6 +30,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-10 implementation | terminal session persistence and retention</h2>
+  <ul>
+    <li>Defined refresh behavior: the workspace restores terminal tabs from retained metadata and starts fresh PTYs on reconnect.</li>
+    <li>Added bounded local retention for closed terminal sessions under ignored <code>.hyperwiki/sessions/</code> metadata.</li>
+    <li>Added runtime-only session export and prune endpoints; exports are returned to the caller and are not written into repo-visible wiki files automatically.</li>
+    <li>Added <code>npm run smoke:sessions</code> and browser coverage for session policy, export, and prune behavior.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 implementation | true PTY compatibility</h2>
   <ul>
     <li>Identified the local <code>node-pty</code> failure cause: the packaged macOS <code>spawn-helper</code> was installed without executable permissions.</li>

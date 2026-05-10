@@ -29,8 +29,8 @@ await page.locator("#new-terminal").click();
 await page.locator(".terminal-tab").filter({ hasText: "term-1" }).waitFor();
 
 const terminalTabs = await page.locator(".terminal-tab").count();
-if (terminalTabs !== 3) {
-  throw new Error(`Expected 3 terminal tabs, got ${terminalTabs}`);
+if (terminalTabs < 3) {
+  throw new Error(`Expected at least 3 terminal tabs, got ${terminalTabs}`);
 }
 
 const activeTabs = await page.locator(".terminal-tab.active").count();
@@ -41,6 +41,7 @@ if (activeTabs !== 1) {
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
+await page.locator("#session-policy").filter({ hasText: "Refresh restores tabs" }).waitFor();
 
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
@@ -71,6 +72,17 @@ const renameResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}`, 
 });
 if (!renameResponse.ok) {
   throw new Error(`Expected session rename to succeed, got ${renameResponse.status}`);
+}
+
+const exportResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}/export`, { method: "POST" });
+const exportData = await exportResponse.json();
+if (exportData.boundary !== "runtime-only") {
+  throw new Error(`Expected runtime-only export boundary, got ${exportData.boundary}`);
+}
+
+const pruneResponse = await fetch(`${origin}/api/sessions/prune`, { method: "POST" });
+if (!pruneResponse.ok) {
+  throw new Error(`Expected session prune to succeed, got ${pruneResponse.status}`);
 }
 
 if (errors.length > 0) {

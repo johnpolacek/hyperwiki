@@ -10,6 +10,8 @@ const newTerminalButton = document.getElementById("new-terminal");
 const renameTerminalButton = document.getElementById("rename-terminal");
 const restartTerminalButton = document.getElementById("restart-terminal");
 const closeTerminalButton = document.getElementById("close-terminal");
+const exportTerminalButton = document.getElementById("export-terminal");
+const pruneSessionsButton = document.getElementById("prune-sessions");
 const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
 const planSummary = document.getElementById("plan-summary");
@@ -24,8 +26,7 @@ await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
 activateWikiPage(pageFromHash());
-await createTerminal("shell");
-await createTerminal("checks");
+await restoreTerminals();
 activateTerminal("shell");
 
 window.addEventListener("hashchange", () => {
@@ -75,6 +76,30 @@ closeTerminalButton.addEventListener("click", async () => {
   const [nextName] = terminalSessions.keys();
   activateTerminal(nextName);
 });
+
+exportTerminalButton.addEventListener("click", async () => {
+  const session = terminalSessions.get(activeTerminalName);
+  if (!session) return;
+  const exported = await api(`/api/sessions/${session.id}/export`, { method: "POST" });
+  window.alert(`Session export boundary: ${exported.boundary}\\n${exported.note}`);
+});
+
+pruneSessionsButton.addEventListener("click", async () => {
+  await api("/api/sessions/prune", { method: "POST" });
+});
+
+async function restoreTerminals() {
+  const data = await api("/api/sessions");
+  const reconnectable = data.sessions.filter((session) => session.reconnectable && session.retained).slice(-4);
+  const names = reconnectable.length > 0 ? reconnectable.map((session) => session.name) : ["shell", "checks"];
+  const uniqueNames = [...new Set(names)];
+  for (const name of uniqueNames) {
+    await createTerminal(name);
+  }
+  if (!terminalSessions.has("shell")) {
+    await createTerminal("shell");
+  }
+}
 
 async function loadRepoContext() {
   try {

@@ -77,7 +77,17 @@ async function handleRequest(root, request, response, sessionRegistry) {
       await sendJson(response, { sessions: await sessionRegistry.list() });
       return;
     }
+    if (url.pathname === "/api/sessions/prune" && request.method === "POST") {
+      await sessionRegistry.prune();
+      await sendJson(response, { sessions: await sessionRegistry.list({ prune: false }) });
+      return;
+    }
     const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+    const exportMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/export$/);
+    if (exportMatch && request.method === "POST") {
+      await sendJson(response, await sessionRegistry.export(exportMatch[1]));
+      return;
+    }
     if (sessionMatch && request.method === "PATCH") {
       const body = await readJsonBody(request);
       await sendJson(response, { session: await sessionRegistry.rename(sessionMatch[1], body.name) });

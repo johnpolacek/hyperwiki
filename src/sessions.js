@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -10,8 +10,11 @@ export class SessionRegistry {
     this.closers = new Map();
   }
 
-  async list() {
+  async list(options = {}) {
     await this.#ensureDir();
+    if (options.prune !== false) {
+      await this.prune();
+    }
     const persisted = await this.#readPersisted();
     const merged = new Map(persisted.map((session) => [session.id, session]));
     for (const [id, session] of this.sessions) {
@@ -33,6 +36,9 @@ export class SessionRegistry {
       shell: updates.shell || existing.shell || null,
       pid: updates.pid ?? existing.pid ?? null,
       cwd: updates.cwd || existing.cwd || this.root,
+      retained: updates.retained ?? existing.retained ?? true,
+      reconnectable: updates.reconnectable ?? existing.reconnectable ?? true,
+      exportedAt: updates.exportedAt ?? existing.exportedAt ?? null,
       createdAt: existing.createdAt || now,
       updatedAt: now,
       closedAt: updates.status === "closed" ? now : existing.closedAt || null
@@ -65,6 +71,35 @@ export class SessionRegistry {
       this.closers.delete(id);
     }
     return this.upsert(id, { status: "closed" });
+  }
+
+  async export(id) {
+    const session = this.sessions.get(id) || (await this.#readOne(id));
+    if (!session) {
+      throw new Error("Session not found.");
+    }
+    await this.upsert(id, { exportedAt: new Date().toISOString() });
+    return {
+      exportedAt: new Date().toISOString(),
+      boundary: "runtime-only",
+      note: "This export is returned to the caller. HyperWiki does not write terminal runtime state into repo-visible wiki files automatically.",
+      session
+    };
+  }
+
+  async prune() {
+    await this.#ensureDir();
+    const sessions = await this.#readPersisted();
+    const closed = sessions
+      .filter((session) => session.status === "closed")
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const keepClosed = new Set(closed.slice(0, 25).map((session) => session.id));
+    for (const session of sessions) {
+      if (session.status === "closed" && !keepClosed.has(session.id)) {
+        await rm(path.join(this.sessionsDir, `${safeId(session.id)}.json`), { force: true });
+        this.sessions.delete(session.id);
+      }
+    }
   }
 
   async #ensureDir() {
