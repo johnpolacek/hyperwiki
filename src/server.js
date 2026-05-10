@@ -380,7 +380,10 @@ async function sendFile(response, filePath, allowedRoot) {
     notFound(response);
     return;
   }
-  response.writeHead(200, { "content-type": contentType(resolved) });
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-type": contentType(resolved)
+  });
   createReadStream(resolved).pipe(response);
 }
 
