@@ -21,6 +21,23 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 implementation | agent-first launch layout</h2>
+  <ul>
+    <li>Added per-project <code>agent.launchCommand</code> and configured this repo to launch <code>codex --yolo</code>.</li>
+    <li>Changed generated/default terminal layout to agent first when configured, dev second when a dev script exists, and a single CLI shell always.</li>
+    <li>New project initialization inherits the most recently registered project's agent launch command when one exists.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | agent-first launch layout</h2>
+  <ul>
+    <li>Added Stage 06 for per-project <code>agent.launchCommand</code> and a simplified startup terminal layout.</li>
+    <li>Decision: the default launch panel order is agent, dev, CLI; missing agent or dev commands remove those panels.</li>
+    <li>Decision: this repo dogfoods <code>codex --yolo</code> as the configured agent launch command.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 polish | workspace chrome reduction</h2>
   <ul>
     <li>Defaulted the workspace to the current plan dashboard instead of the last deep wiki page.</li>

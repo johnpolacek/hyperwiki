@@ -27,7 +27,7 @@ if (!guardrailsCollapsed) {
 }
 
 const initialTabs = await page.locator(".terminal-tab").allTextContents();
-for (const expected of ["shell", "checks", "dev-server", "git", "agent"]) {
+for (const expected of ["agent", "dev", "cli"]) {
   if (!initialTabs.some((tab) => tab.includes(expected))) {
     throw new Error(`Expected dogfood layout tab ${expected}`);
   }
@@ -55,7 +55,7 @@ if (activeTabs !== 1) {
   throw new Error(`Expected 1 active terminal tab, got ${activeTabs}`);
 }
 
-await page.locator(".terminal-tab[data-name=\"shell\"]").click();
+await page.locator(".terminal-tab[data-name=\"cli\"]").click();
 await page.locator(".terminal.active").click();
 await page.keyboard.type("printf HYPERWIKI_UI_INPUT_OK");
 await page.keyboard.press("Enter");
@@ -156,8 +156,11 @@ if (workspaceData.plan.summary.length === 0) {
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);
 }
-if (!workspaceData.layout.panels.some((panel) => panel.name === "dev-server")) {
-  throw new Error("Expected workspace layout to include dev-server panel");
+if (!workspaceData.layout.panels.some((panel) => panel.name === "dev")) {
+  throw new Error("Expected workspace layout to include dev panel");
+}
+if (!workspaceData.layout.panels.some((panel) => panel.name === "agent" && panel.command)) {
+  throw new Error("Expected workspace layout to include configured agent panel");
 }
 const guardrailResponse = await fetch(`${origin}/api/guardrails`);
 const guardrailData = await guardrailResponse.json();

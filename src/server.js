@@ -287,20 +287,25 @@ async function readConfig(root) {
 function layoutConfig(config) {
   const panels = Array.isArray(config.layout?.panels) && config.layout.panels.length > 0
     ? config.layout.panels
-    : [
-        { name: "shell", role: "shell", command: null },
-        { name: "checks", role: "checks", command: null },
-        { name: "dev-server", role: "dev-server", command: null },
-        { name: "git", role: "git", command: "git status --short --branch" },
-        { name: "agent", role: "agent", command: null }
-      ];
+    : fallbackPanels(config);
   return {
     panels: panels.map((panel) => ({
       name: String(panel.name),
       role: String(panel.role || panel.name),
-      command: panel.command ? String(panel.command) : null
+      command: panel.role === "agent" && process.env.HYPERWIKI_AGENT_DRY_RUN === "1"
+        ? "printf HYPERWIKI_AGENT_DRY_RUN\\n"
+        : panel.command ? String(panel.command) : null
     }))
   };
+}
+
+function fallbackPanels(config) {
+  const panels = [];
+  if (config.agent?.launchCommand) {
+    panels.push({ name: "agent", role: "agent", command: String(config.agent.launchCommand) });
+  }
+  panels.push({ name: "cli", role: "shell", command: null });
+  return panels;
 }
 
 async function sourceBriefSummary(root) {

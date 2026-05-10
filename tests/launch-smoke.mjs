@@ -57,15 +57,15 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(workspaceUrl, { waitUntil: "networkidle" });
-  await page.locator(".terminal-tab[data-name=\"shell\"]").waitFor();
+  await page.locator(".terminal-tab[data-name=\"cli\"]").waitFor();
   const singleProjectSidebar = await page.locator("#project-sidebar").evaluate((element) => element.hidden);
   if (!singleProjectSidebar) {
     throw new Error("Expected project sidebar to stay hidden for a single registered project.");
   }
 
   const sessions = await fetch(`http://127.0.0.1:${port}/api/sessions`).then((response) => response.json());
-  if (!sessions.sessions.some((session) => session.name === "shell" && session.status === "active")) {
-    throw new Error(`Expected launch to prepare shell wterm session, got ${JSON.stringify(sessions)}`);
+  if (!sessions.sessions.some((session) => session.name === "cli" && session.status === "active")) {
+    throw new Error(`Expected launch to prepare cli wterm session, got ${JSON.stringify(sessions)}`);
   }
 
   const secondOutput = await runCli(["launch", "--port", String(port)], {

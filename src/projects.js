@@ -45,6 +45,16 @@ export class ProjectRegistry {
     return { projects, activeProjectId: activeId };
   }
 
+  async latestAgentLaunchCommand() {
+    const registry = await this.#read();
+    const projects = [...registry.projects].sort((a, b) => String(b.lastOpenedAt || "").localeCompare(String(a.lastOpenedAt || "")));
+    for (const item of projects) {
+      const command = await agentLaunchCommandForRoot(item.root);
+      if (command) return command;
+    }
+    return null;
+  }
+
   async resolve(id, fallbackRoot = null) {
     const registry = await this.#read();
     const fallback = fallbackRoot ? registry.projects.find((item) => samePath(item.root, fallbackRoot)) : null;
@@ -78,6 +88,19 @@ export class ProjectRegistry {
   async #write(registry) {
     await mkdir(this.home, { recursive: true });
     await writeFile(this.filePath, `${JSON.stringify(registry, null, 2)}\n`, "utf8");
+  }
+}
+
+export async function agentLaunchCommandForRoot(root) {
+  const configPath = path.join(path.resolve(root), ".hyperwiki", "config.json");
+  if (!existsSync(configPath)) {
+    return null;
+  }
+  try {
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    return config.agent?.launchCommand ? String(config.agent.launchCommand) : null;
+  } catch {
+    return null;
   }
 }
 

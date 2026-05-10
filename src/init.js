@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { ProjectRegistry } from "./projects.js";
 
 const pages = new Map([
   ["wiki/index.html", indexPage],
@@ -31,6 +32,9 @@ export async function initHyperWiki(root, options = {}) {
       projectName: context.projectName,
       canonicalWiki: "html",
       dev: { host: "127.0.0.1", port: 4177 },
+      agent: {
+        launchCommand: context.agentLaunchCommand
+      },
       layout: {
         panels: defaultPanels(context)
       },
@@ -49,19 +53,14 @@ export async function initHyperWiki(root, options = {}) {
 }
 
 function defaultPanels(context) {
-  const panels = [
-    { name: "shell", role: "shell", command: null },
-    { name: "git", role: "git", command: "git status --short --branch" }
-  ];
-  if (context.scripts.includes("check")) {
-    panels.splice(1, 0, { name: "checks", role: "checks", command: packageRun(context, "check") });
-  } else if (context.scripts.includes("test")) {
-    panels.splice(1, 0, { name: "tests", role: "checks", command: packageRun(context, "test") });
+  const panels = [];
+  if (context.agentLaunchCommand) {
+    panels.push({ name: "agent", role: "agent", command: context.agentLaunchCommand });
   }
   if (context.scripts.includes("dev")) {
-    panels.splice(-1, 0, { name: "dev-server", role: "dev-server", command: packageRun(context, "dev") });
+    panels.push({ name: "dev", role: "dev", command: packageRun(context, "dev") });
   }
-  panels.push({ name: "agent", role: "agent", command: null });
+  panels.push({ name: "cli", role: "shell", command: null });
   return panels;
 }
 
@@ -90,6 +89,7 @@ async function inspectProject(root, options) {
     readme,
     hasPackageJson: Boolean(packageJson),
     packageManager: detectPackageManager(root, packageJson),
+    agentLaunchCommand: String(options.agent_launch_command || await inheritedAgentLaunchCommand()),
     git: {
       root: gitRoot.ok ? gitRoot.stdout : null,
       branch: gitBranch.ok && gitBranch.stdout ? gitBranch.stdout : null,
@@ -97,6 +97,10 @@ async function inspectProject(root, options) {
       status: gitStatus.ok ? gitStatus.stdout.split("\n").filter(Boolean) : []
     }
   };
+}
+
+async function inheritedAgentLaunchCommand() {
+  return (await new ProjectRegistry().latestAgentLaunchCommand()) || "";
 }
 
 function detectPackageManager(root, packageJson) {

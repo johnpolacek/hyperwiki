@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 06 - Agent-first Launch Layout - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Stage 06 - Agent-first Launch Layout</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Current unit: none</li>
+    <li>Next action: dogfood the agent-first launch layout, then define structured MCP integration.</li>
+    <li>Blockers: none</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</section>
+<h2>Intent</h2>
+<p>Make HyperWiki launch into the actual working set: an agent first when configured, a dev command when present, and a single CLI shell.</p>
+<h2>Execution Units</h2>
+<section>
+  <h3>Unit 01 - Agent Launch Setting</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Store the per-project setting at <code>agent.launchCommand</code>.</li>
+    <li>When initializing a new project, prefill the setting from the most recently registered project that has one.</li>
+    <li>This repository uses <code>codex --yolo</code> for dogfooding.</li>
+    <li>Implemented as <code>agent.launchCommand</code> in <code>.hyperwiki/config.json</code>.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 02 - Three-panel Startup Contract</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Panel order: agent first when configured, dev second when a dev script exists, CLI shell always.</li>
+    <li>Do not show empty agent or dev panels.</li>
+    <li>Remove checks and git from generated default layouts.</li>
+    <li>Implemented with a smoke-test dry-run path for agent commands.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

@@ -44,7 +44,7 @@ await loadWorkspaceSummary();
 await loadGuardrails();
 activateWikiPage(pageFromHash() || currentPlanPath);
 await restoreTerminals();
-activateTerminal("shell");
+activateDefaultTerminal();
 
 window.addEventListener("hashchange", () => {
   activateWikiPage(pageFromHash());
@@ -124,8 +124,8 @@ async function restoreTerminals() {
     seen.add(panel.name);
     await createTerminal(panel.name, panel);
   }
-  if (!terminalSessions.has("shell")) {
-    await createTerminal("shell", { role: "shell", command: null });
+  if (!terminalSessions.has("cli")) {
+    await createTerminal("cli", { role: "shell", command: null });
   }
 }
 
@@ -232,7 +232,16 @@ async function switchProject(projectId) {
   await loadGuardrails();
   activateWikiPage(currentPlanPath);
   await restoreTerminals();
-  activateTerminal("shell");
+  activateDefaultTerminal();
+}
+
+function activateDefaultTerminal() {
+  for (const name of ["agent", "dev", "cli", "shell"]) {
+    if (terminalSessions.has(name)) {
+      activateTerminal(name);
+      return;
+    }
+  }
 }
 
 function updatePrimaryLinks(pages) {
