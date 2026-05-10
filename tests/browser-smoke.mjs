@@ -77,9 +77,11 @@ if (scrollMetrics.overflowY !== "auto") {
 }
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
-  const rowHeight = Number.parseFloat(getComputedStyle(terminal).getPropertyValue("--term-row-height")) || 17;
+  const style = getComputedStyle(terminal);
+  const rowHeight = Number.parseFloat(style.getPropertyValue("--term-row-height")) || 17;
+  const gutter = Number.parseFloat(style.paddingBottom) || 0;
   return terminal.scrollHeight > terminal.clientHeight &&
-    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 4;
+    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < gutter + rowHeight * 2;
 });
 await page.waitForTimeout(450);
 const beforeTypingAtBottom = await page.evaluate(() => {

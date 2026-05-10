@@ -261,31 +261,31 @@ async function createTerminal(name, options = {}) {
   tab.addEventListener("click", () => activateTerminal(name));
 
   let transport;
-  let followOutput = true;
   let lastLocalInputAt = 0;
+  let lastLocalInputWasEnter = false;
   const term = new WTerm(el, {
     cols: 100,
     rows: 24,
     cursorBlink: true,
     onData(data) {
       lastLocalInputAt = performance.now();
+      lastLocalInputWasEnter = data === "\r" || data === "\n";
       transport?.send(data);
     },
     onResize(cols, rows) {
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
     }
   });
-  term._scrollToBottom = () => scrollTerminalToBottom(el);
+  term._scrollToBottom = () => {
+    if (!isRecentLocalInput(lastLocalInputAt)) {
+      scrollTerminalToBottom(el);
+    }
+  };
   el.addEventListener("pointerdown", () => {
     requestAnimationFrame(() => term.focus());
   });
   el.addEventListener("keydown", () => {
-    if (followOutput) {
-      scrollTerminalToBottom(el);
-    }
-  });
-  el.addEventListener("scroll", () => {
-    followOutput = isTerminalNearBottom(el);
+    lastLocalInputAt = performance.now();
   });
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -293,17 +293,14 @@ async function createTerminal(name, options = {}) {
     url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
     onData: (data) => {
-      const shouldFollowOutput = followOutput || isTerminalNearBottom(el);
-      const shouldHoldForLocalEcho = isRecentLocalEcho(data, lastLocalInputAt);
+      const shouldFollowOutput = isTerminalNearBottom(el);
+      const shouldHoldForLocalEcho = isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter);
       const scrollTopBeforeEcho = el.scrollTop;
       term.write(data);
       if (shouldHoldForLocalEcho) {
         scheduleTerminalScrollRestore(el, scrollTopBeforeEcho);
       } else if (shouldFollowOutput) {
-        followOutput = true;
-        scheduleTerminalScrollToBottom(el, () => {
-          followOutput = isTerminalNearBottom(el);
-        });
+        scheduleTerminalScrollToBottom(el);
       }
     },
     onOpen: () => {
@@ -354,12 +351,9 @@ function updateActiveSessionBoundary(session) {
     : "Session metadata is retained locally under .hyperwiki/sessions/.";
 }
 
-function scheduleTerminalScrollToBottom(el, afterScroll) {
+function scheduleTerminalScrollToBottom(el) {
   for (const delay of [0, 32, 96, 180, 320]) {
-    setTimeout(() => {
-      scrollTerminalToBottom(el);
-      afterScroll?.();
-    }, delay);
+    setTimeout(() => scrollTerminalToBottom(el), delay);
   }
 }
 
@@ -374,23 +368,26 @@ function scheduleTerminalScrollRestore(el, scrollTop) {
 function scrollTerminalToBottom(el) {
   const maxScroll = el.scrollHeight - el.clientHeight;
   if (maxScroll > 0) {
-    const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || 17;
-    const rowAlignedBottom = Math.floor(maxScroll / rowHeight) * rowHeight;
-    el.scrollTop = Math.max(0, rowAlignedBottom - rowHeight * 2);
+    const gutter = getTerminalBottomGutter(el);
+    el.scrollTop = Math.max(0, maxScroll - gutter);
   }
 }
 
 function isTerminalNearBottom(el) {
   const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || 17;
-  return el.scrollHeight - el.clientHeight - el.scrollTop < rowHeight * 4;
+  return el.scrollHeight - el.clientHeight - el.scrollTop < getTerminalBottomGutter(el) + rowHeight * 2;
 }
 
-function isRecentLocalEcho(data, lastLocalInputAt) {
-  if (performance.now() - lastLocalInputAt > 250) {
-    return false;
-  }
-  const text = typeof data === "string" ? data : new TextDecoder().decode(data);
-  return !text.includes("\n") && !text.includes("\r");
+function isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter) {
+  return !lastLocalInputWasEnter && isRecentLocalInput(lastLocalInputAt);
+}
+
+function isRecentLocalInput(lastLocalInputAt) {
+  return performance.now() - lastLocalInputAt < 1000;
+}
+
+function getTerminalBottomGutter(el) {
+  return Number.parseFloat(getComputedStyle(el).paddingBottom) || 0;
 }
 
 function closeTerminal(name) {

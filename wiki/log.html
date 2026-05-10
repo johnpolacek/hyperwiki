@@ -24,9 +24,9 @@
   <h2>2026-05-10 fix | terminal bottom typing stability</h2>
   <ul>
     <li>Made terminal follow mode conditional on already being near the bottom before new PTY output arrives.</li>
-    <li>Delayed follow scrolling across WTerm's render cycle so typing after long output does not trigger a stale scroll jump.</li>
-    <li>Added bottom breathing room and held scroll position during recent local echo so typing does not shift the terminal viewport.</li>
-    <li>Tightened browser smoke coverage to wait for real scrollback before checking bottom typing stability.</li>
+    <li>Added a bottom gutter and scroll target so prompts sit above the pane edge instead of at the absolute scroll maximum.</li>
+    <li>Held scroll position during recent local echo so typed input can use the gutter without shifting the terminal viewport.</li>
+    <li>Tightened browser smoke coverage to verify bottom typing stability with the guttered scroll position.</li>
   </ul>
 </article>
 <article>
