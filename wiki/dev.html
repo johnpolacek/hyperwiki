@@ -24,8 +24,11 @@
 pnpm run check
 pnpm run smoke:browser
 pnpm run smoke:launch
+pnpm run smoke:reset
 pnpm run dev
 npx hyperwiki init
+npx hyperwiki reset --dry-run
+npx hyperwiki reset
 npx hyperwiki</code></pre>
 <h2>Published Package Smoke Test</h2>
 <pre><code>tmp=$(mktemp -d)

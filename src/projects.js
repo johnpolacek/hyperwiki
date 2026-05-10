@@ -73,6 +73,10 @@ export class ProjectRegistry {
     return { ...record, name: project.name, available: true };
   }
 
+  async readRaw() {
+    return this.#read();
+  }
+
   async #read() {
     if (!existsSync(this.filePath)) {
       return { version: 1, projects: [] };

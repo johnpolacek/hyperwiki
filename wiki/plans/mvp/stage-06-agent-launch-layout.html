@@ -24,9 +24,9 @@
   <ul>
     <li>Status: complete</li>
     <li>Current unit: none</li>
-    <li>Next action: dogfood the agent-first launch layout, then define structured MCP integration.</li>
+    <li>Next action: dogfood reset plus launch from a cleared registry, then define structured MCP integration.</li>
     <li>Blockers: none</li>
-    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:reset</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
   </ul>
 </section>
 <h2>Intent</h2>
@@ -50,6 +50,17 @@
     <li>Do not show empty agent or dev panels.</li>
     <li>Remove checks and git from generated default layouts.</li>
     <li>Implemented with a smoke-test dry-run path for agent commands.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 03 - Repeatable Fresh-launch Reset</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Add a safe command for dogfooding first-launch behavior repeatedly on the same computer.</li>
+    <li>Clear the user-level project registry and ignored per-project runtime state.</li>
+    <li>Do not remove canonical project files such as <code>wiki/</code> or <code>.hyperwiki/config.json</code>.</li>
+    <li>Support <code>--dry-run</code> so reset scope can be inspected before deletion.</li>
+    <li>Implemented as <code>npx hyperwiki reset</code> with <code>npx hyperwiki reset --dry-run</code>.</li>
   </ul>
 </section>
   </main>
