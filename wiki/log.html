@@ -25,6 +25,7 @@
   <ul>
     <li>Made terminal follow mode conditional on already being near the bottom before new PTY output arrives.</li>
     <li>Delayed follow scrolling across WTerm's render cycle so typing after long output does not trigger a stale scroll jump.</li>
+    <li>Added bottom breathing room and held scroll position during recent local echo so typing does not shift the terminal viewport.</li>
     <li>Tightened browser smoke coverage to wait for real scrollback before checking bottom typing stability.</li>
   </ul>
 </article>

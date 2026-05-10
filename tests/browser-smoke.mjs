@@ -77,9 +77,11 @@ if (scrollMetrics.overflowY !== "auto") {
 }
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
+  const rowHeight = Number.parseFloat(getComputedStyle(terminal).getPropertyValue("--term-row-height")) || 17;
   return terminal.scrollHeight > terminal.clientHeight &&
-    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < 8;
+    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 4;
 });
+await page.waitForTimeout(450);
 const beforeTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
   return terminal.scrollTop;
@@ -90,7 +92,7 @@ const afterTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
   return terminal.scrollTop;
 });
-if (Math.abs(afterTypingAtBottom - beforeTypingAtBottom) > 24) {
+if (Math.abs(afterTypingAtBottom - beforeTypingAtBottom) > 2) {
   throw new Error(`Expected typing at terminal bottom to stay stable, got ${beforeTypingAtBottom} -> ${afterTypingAtBottom}`);
 }
 await page.keyboard.press("Enter");
