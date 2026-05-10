@@ -90,7 +90,9 @@ pruneSessionsButton.addEventListener("click", async () => {
 
 async function restoreTerminals() {
   const [sessionData, layout] = await Promise.all([api("/api/sessions"), api("/api/layout")]);
-  const reconnectable = sessionData.sessions.filter((session) => session.reconnectable && session.retained).slice(-5);
+  const reconnectable = sessionData.sessions
+    .filter((session) => session.status !== "closed" && session.reconnectable && session.retained)
+    .slice(-5);
   const panels = [...layout.panels, ...reconnectable];
   const seen = new Set();
   for (const panel of panels) {
