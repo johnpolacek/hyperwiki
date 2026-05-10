@@ -19,10 +19,54 @@
   </header>
   <main class="wiki-page">
     <h1>Stage 03 - wterm Dogfood and Hardening</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: pending</li>
+    <li>Current unit: none</li>
+    <li>Next action: start after Stage 02 has durable session metadata and repo context.</li>
+    <li>Blockers: true <code>node-pty</code> spawn currently fails in this environment with <code>posix_spawnp failed</code>.</li>
+  </ul>
+</section>
 <h2>Intent</h2>
 <p>Connect @wterm/dom to a local WebSocket PTY backend.</p>
 <h2>Execution Units</h2>
-<ul><li>Connect @wterm/dom to a local WebSocket PTY backend.</li><li>Support multiple named terminal panels.</li><li>Persist transparent session metadata under ignored state.</li><li>Use this repository as the first HyperWiki dogfood target.</li></ul>
+<section>
+  <h3>Unit 01 - True PTY Compatibility</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Investigate and fix <code>node-pty</code> spawning on the local development runtime, or choose a replacement PTY backend if the failure is structural.</li>
+    <li>Keep the existing pipe fallback as an explicit degraded mode, not the primary terminal path.</li>
+    <li>Verification: automated terminal smoke proves a true PTY path when available and reports fallback mode separately.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 02 - Terminal Session Persistence And Retention</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
+    <li>Keep retained runtime state ignored unless the user intentionally exports it into repo-visible wiki or log files.</li>
+    <li>Verification: refresh/reconnect smoke test, cleanup test, ignored-state check.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 03 - Dogfood Operating Layout</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
+    <li>Represent panels as transparent local sessions that can be inspected, restarted, and closed.</li>
+    <li>Verification: manual dogfood session plus browser smoke coverage for saved/restored panel metadata.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 04 - Guardrails And Auditability</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
+    <li>Document which state is canonical repo truth and which state is ignored local runtime data.</li>
+    <li>Verification: browser review and wiki/source brief update before considering the stage complete.</li>
+  </ul>
+</section>
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>
   </main>

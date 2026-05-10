@@ -23,7 +23,7 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: workspace hardening and dogfood usability</li>
+    <li>Current unit: Unit 02 - Session Metadata And Repo Context</li>
     <li>Next action: add durable session metadata, terminal lifecycle controls, and stronger file/worktree context.</li>
     <li>Blockers: none</li>
     <li>Validation: <code>npm run check</code>, <code>npm run smoke:browser</code>, HTTP/API smoke tests, terminal transport smoke test</li>
@@ -32,7 +32,43 @@
 <h2>Intent</h2>
 <p>Serve static assets and canonical wiki files from the CLI dev server.</p>
 <h2>Execution Units</h2>
-<ul><li>Serve static assets and canonical wiki files from the CLI dev server.</li><li>Render navigation, plans, log, source, and architecture views.</li><li>Keep the workspace a viewer and controller, not a hidden source of truth.</li><li>Verify local-only serving and path traversal protection.</li></ul>
+<section>
+  <h3>Unit 01 - Workspace Shell And Wiki Navigation</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Delivered local static workspace serving, wiki iframe rendering, <code>/api/wiki</code>, dynamic HTML page navigation, hash-backed page state, current-page display, terminal tabs, and a <code>New</code> terminal action.</li>
+    <li>Verification: <code>npm run check</code>, <code>npm run smoke:browser</code>, HTTP/API smoke tests, terminal transport smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 02 - Session Metadata And Repo Context</h3>
+  <ul>
+    <li>Status: active</li>
+    <li>Persist transparent terminal/session metadata under <code>.hyperwiki/sessions/</code> without treating it as canonical project truth.</li>
+    <li>Add terminal lifecycle controls for close, restart, rename, and status reporting.</li>
+    <li>Add visible repo context: root path, branch, dirty status, and whether the workspace is running in a Git worktree.</li>
+    <li>Expose this context through local-only JSON endpoints used by the workspace UI.</li>
+    <li>Verification: syntax checks, browser smoke update, session metadata smoke test, repo context endpoint smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 03 - Workspace File And Verification Views</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Add read-only views for key wiki pages, source briefs, plan status, recent log entries, and verification commands/results.</li>
+    <li>Keep repo files and Git canonical; do not add hidden browser-only project state.</li>
+    <li>Verification: browser smoke coverage for navigation between plan, log, sources, and verification views.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 04 - Init Template Quality And Dogfood Reset</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Improve generated HTML wiki templates so new projects get useful plans, source pages, and project-specific language instead of HyperWiki-specific defaults.</li>
+    <li>Run <code>hyperwiki init</code> in a clean sample repo and compare the output against the dogfood wiki.</li>
+    <li>Verification: temp init snapshot review, no overwrite behavior check, browser smoke against a generated temp wiki.</li>
+  </ul>
+</section>
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>
   </main>
