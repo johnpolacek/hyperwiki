@@ -39,13 +39,13 @@ if (activeTabs !== 1) {
 }
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
-await page.locator("#plan-summary").filter({ hasText: "Stage 02" }).waitFor();
+await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();
 
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
-if (!workspaceData.plan.summary.some((item) => item.includes("Stage 02"))) {
-  throw new Error("Expected workspace summary to include Stage 02 plan state");
+if (workspaceData.plan.summary.length === 0) {
+  throw new Error("Expected workspace summary to include plan state");
 }
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);

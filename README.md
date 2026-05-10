@@ -60,4 +60,5 @@ Local verification:
 ```bash
 npm run check
 npm run smoke:browser
+npm run smoke:init
 ```
