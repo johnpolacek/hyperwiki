@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 fix | terminal visual gutter</h2>
+  <ul>
+    <li>Moved the terminal bottom padding outside the wterm scroll container into a same-background gutter.</li>
+    <li>Restored normal wterm bottom scrolling while keeping visible empty space below the prompt.</li>
+    <li>Updated browser smoke coverage to verify the visual gutter remains stable while typing.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 fix | dev asset freshness</h2>
   <ul>
     <li>Verified terminal gutter and typing behavior with <code>agent-browser</code> against the local workspace.</li>

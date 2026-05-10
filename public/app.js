@@ -261,31 +261,19 @@ async function createTerminal(name, options = {}) {
   tab.addEventListener("click", () => activateTerminal(name));
 
   let transport;
-  let lastLocalInputAt = 0;
-  let lastLocalInputWasEnter = false;
   const term = new WTerm(el, {
     cols: 100,
     rows: 24,
     cursorBlink: true,
     onData(data) {
-      lastLocalInputAt = performance.now();
-      lastLocalInputWasEnter = data === "\r" || data === "\n";
       transport?.send(data);
     },
     onResize(cols, rows) {
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
     }
   });
-  term._scrollToBottom = () => {
-    if (!isRecentLocalInput(lastLocalInputAt)) {
-      scrollTerminalToBottom(el);
-    }
-  };
   el.addEventListener("pointerdown", () => {
     requestAnimationFrame(() => term.focus());
-  });
-  el.addEventListener("keydown", () => {
-    lastLocalInputAt = performance.now();
   });
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -294,12 +282,8 @@ async function createTerminal(name, options = {}) {
     reconnect: false,
     onData: (data) => {
       const shouldFollowOutput = isTerminalNearBottom(el);
-      const shouldHoldForLocalEcho = isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter);
-      const scrollTopBeforeEcho = el.scrollTop;
       term.write(data);
-      if (shouldHoldForLocalEcho) {
-        scheduleTerminalScrollRestore(el, scrollTopBeforeEcho);
-      } else if (shouldFollowOutput) {
+      if (shouldFollowOutput) {
         scheduleTerminalScrollToBottom(el);
       }
     },
@@ -357,37 +341,16 @@ function scheduleTerminalScrollToBottom(el) {
   }
 }
 
-function scheduleTerminalScrollRestore(el, scrollTop) {
-  for (const delay of [0, 32, 96]) {
-    setTimeout(() => {
-      el.scrollTop = scrollTop;
-    }, delay);
-  }
-}
-
 function scrollTerminalToBottom(el) {
   const maxScroll = el.scrollHeight - el.clientHeight;
   if (maxScroll > 0) {
-    const gutter = getTerminalBottomGutter(el);
-    el.scrollTop = Math.max(0, maxScroll - gutter);
+    el.scrollTop = maxScroll;
   }
 }
 
 function isTerminalNearBottom(el) {
   const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || 17;
-  return el.scrollHeight - el.clientHeight - el.scrollTop < getTerminalBottomGutter(el) + rowHeight * 2;
-}
-
-function isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter) {
-  return !lastLocalInputWasEnter && isRecentLocalInput(lastLocalInputAt);
-}
-
-function isRecentLocalInput(lastLocalInputAt) {
-  return performance.now() - lastLocalInputAt < 1000;
-}
-
-function getTerminalBottomGutter(el) {
-  return Number.parseFloat(getComputedStyle(el).paddingBottom) || 0;
+  return el.scrollHeight - el.clientHeight - el.scrollTop < rowHeight * 2;
 }
 
 function closeTerminal(name) {

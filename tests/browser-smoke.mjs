@@ -58,11 +58,14 @@ await page.keyboard.press("Enter");
 await page.waitForFunction(() => document.querySelector(".terminal.active")?.classList.contains("has-scrollback"));
 const scrollMetrics = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
+  const terminalRect = terminal.getBoundingClientRect();
+  const parentRect = terminal.parentElement.getBoundingClientRect();
   return {
     clientHeight: terminal.clientHeight,
     scrollHeight: terminal.scrollHeight,
     offsetHeight: terminal.offsetHeight,
     parentHeight: terminal.parentElement.clientHeight,
+    visualGutter: parentRect.bottom - terminalRect.bottom,
     overflowY: getComputedStyle(terminal).overflowY
   };
 });
@@ -75,27 +78,32 @@ if (scrollMetrics.scrollHeight <= scrollMetrics.clientHeight) {
 if (scrollMetrics.overflowY !== "auto") {
   throw new Error(`Expected terminal overflow-y auto, got ${scrollMetrics.overflowY}`);
 }
+if (scrollMetrics.visualGutter < 48) {
+  throw new Error(`Expected terminal visual gutter, got ${scrollMetrics.visualGutter}`);
+}
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
-  const style = getComputedStyle(terminal);
-  const rowHeight = Number.parseFloat(style.getPropertyValue("--term-row-height")) || 17;
-  const gutter = Number.parseFloat(style.paddingBottom) || 0;
+  const rowHeight = Number.parseFloat(getComputedStyle(terminal).getPropertyValue("--term-row-height")) || 17;
   return terminal.scrollHeight > terminal.clientHeight &&
-    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < gutter + rowHeight * 2;
+    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 2;
 });
 await page.waitForTimeout(450);
 const beforeTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
-  return terminal.scrollTop;
+  const terminalRect = terminal.getBoundingClientRect();
+  const parentRect = terminal.parentElement.getBoundingClientRect();
+  return parentRect.bottom - terminalRect.bottom;
 });
 await page.keyboard.type("echo HYPERWIKI_BOTTOM_STABILITY_OK");
 await page.waitForTimeout(150);
 const afterTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
-  return terminal.scrollTop;
+  const terminalRect = terminal.getBoundingClientRect();
+  const parentRect = terminal.parentElement.getBoundingClientRect();
+  return parentRect.bottom - terminalRect.bottom;
 });
 if (Math.abs(afterTypingAtBottom - beforeTypingAtBottom) > 2) {
-  throw new Error(`Expected typing at terminal bottom to stay stable, got ${beforeTypingAtBottom} -> ${afterTypingAtBottom}`);
+  throw new Error(`Expected typing to preserve visual gutter, got ${beforeTypingAtBottom} -> ${afterTypingAtBottom}`);
 }
 await page.keyboard.press("Enter");
 await page.waitForFunction(() =>

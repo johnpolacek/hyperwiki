@@ -292,6 +292,8 @@ body {
 }
 
 .terminals {
+  --terminal-bottom-gutter: 72px;
+  background: #272822;
   min-height: 0;
   overflow: hidden;
   position: relative;
@@ -308,11 +310,9 @@ body {
 
 .terminal.wterm {
   position: absolute;
-  inset: 0;
+  inset: 0 0 var(--terminal-bottom-gutter);
   width: 100%;
-  height: 100%;
   overflow-anchor: none;
-  padding-bottom: 72px;
 }
 
 .terminal.active,
