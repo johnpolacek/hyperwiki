@@ -36,9 +36,19 @@
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
     </section>
     <section class="terminal-pane">
+      <div class="repo-context" id="repo-context">
+        <span>Repo</span>
+        <strong id="repo-branch">Unknown</strong>
+        <span id="repo-dirty">Checking</span>
+      </div>
       <div class="terminal-toolbar">
         <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>
         <button type="button" id="new-terminal">New</button>
+      </div>
+      <div class="terminal-actions">
+        <button type="button" id="rename-terminal">Rename</button>
+        <button type="button" id="restart-terminal">Restart</button>
+        <button type="button" id="close-terminal">Close</button>
       </div>
       <div id="terminals" class="terminals"></div>
     </section>

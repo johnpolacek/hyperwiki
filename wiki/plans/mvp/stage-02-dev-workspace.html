@@ -23,8 +23,8 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Current unit: Unit 02 - Session Metadata And Repo Context</li>
-    <li>Next action: add durable session metadata, terminal lifecycle controls, and stronger file/worktree context.</li>
+    <li>Current unit: Unit 03 - Workspace File And Verification Views</li>
+    <li>Next action: add read-only workspace views for key wiki files, source briefs, plan status, recent log entries, and verification commands/results.</li>
     <li>Blockers: none</li>
     <li>Validation: <code>npm run check</code>, <code>npm run smoke:browser</code>, HTTP/API smoke tests, terminal transport smoke test</li>
   </ul>
@@ -43,12 +43,12 @@
 <section>
   <h3>Unit 02 - Session Metadata And Repo Context</h3>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Persist transparent terminal/session metadata under <code>.hyperwiki/sessions/</code> without treating it as canonical project truth.</li>
     <li>Add terminal lifecycle controls for close, restart, rename, and status reporting.</li>
     <li>Add visible repo context: root path, branch, dirty status, and whether the workspace is running in a Git worktree.</li>
     <li>Expose this context through local-only JSON endpoints used by the workspace UI.</li>
-    <li>Verification: syntax checks, browser smoke update, session metadata smoke test, repo context endpoint smoke test.</li>
+    <li>Verification: <code>npm run check</code>, <code>npm run smoke:browser</code>, repo context endpoint smoke test, session metadata endpoint smoke test, direct WebSocket session metadata smoke test.</li>
   </ul>
 </section>
 <section>

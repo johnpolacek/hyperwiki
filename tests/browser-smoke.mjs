@@ -1,6 +1,7 @@
 import { chromium } from "playwright";
 
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
+const origin = new URL(url).origin;
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -35,6 +36,27 @@ if (terminalTabs !== 3) {
 const activeTabs = await page.locator(".terminal-tab.active").count();
 if (activeTabs !== 1) {
   throw new Error(`Expected 1 active terminal tab, got ${activeTabs}`);
+}
+
+await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
+
+const sessionResponse = await fetch(`${origin}/api/sessions`);
+const sessionData = await sessionResponse.json();
+if (sessionData.sessions.length < 3) {
+  throw new Error(`Expected at least 3 recorded sessions, got ${sessionData.sessions.length}`);
+}
+
+const renameTarget = sessionData.sessions.find((session) => session.name === "term-1");
+if (!renameTarget) {
+  throw new Error("Expected term-1 session metadata");
+}
+const renameResponse = await fetch(`${origin}/api/sessions/${renameTarget.id}`, {
+  method: "PATCH",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ name: "renamed-smoke" })
+});
+if (!renameResponse.ok) {
+  throw new Error(`Expected session rename to succeed, got ${renameResponse.status}`);
 }
 
 if (errors.length > 0) {

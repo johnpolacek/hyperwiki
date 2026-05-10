@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
@@ -6,6 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { createPtySession } from "./pty.js";
+import { SessionRegistry } from "./sessions.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.resolve(here, "..", "public");
@@ -21,9 +24,10 @@ export async function startDevServer(root, options = {}) {
     throw new Error("HyperWiki dev server only binds to localhost addresses.");
   }
   const port = Number(options.port || 4177);
+  const sessionRegistry = new SessionRegistry(root);
 
   const server = createServer((request, response) => {
-    void handleRequest(root, request, response);
+    void handleRequest(root, request, response, sessionRegistry);
   });
   const wss = new WebSocketServer({ noServer: true });
 
@@ -34,7 +38,10 @@ export async function startDevServer(root, options = {}) {
       return;
     }
     wss.handleUpgrade(request, socket, head, (ws) => {
-      const session = createPtySession(root, ws);
+      const id = url.searchParams.get("id") || randomUUID();
+      const name = url.searchParams.get("name") || id;
+      const session = createPtySession(root, ws, { id, name, registry: sessionRegistry });
+      sessionRegistry.setCloser(id, () => ws.close());
       ws.on("close", () => session.close());
     });
   });
@@ -43,7 +50,7 @@ export async function startDevServer(root, options = {}) {
   console.log(`HyperWiki dev server running at http://${host}:${port}`);
 }
 
-async function handleRequest(root, request, response) {
+async function handleRequest(root, request, response, sessionRegistry) {
   try {
     const url = new URL(request.url || "/", "http://localhost");
     if (url.pathname === "/") {
@@ -56,6 +63,24 @@ async function handleRequest(root, request, response) {
     }
     if (url.pathname === "/api/wiki") {
       await sendJson(response, await listWikiPages(root));
+      return;
+    }
+    if (url.pathname === "/api/repo") {
+      await sendJson(response, await repoContext(root));
+      return;
+    }
+    if (url.pathname === "/api/sessions") {
+      await sendJson(response, { sessions: await sessionRegistry.list() });
+      return;
+    }
+    const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+    if (sessionMatch && request.method === "PATCH") {
+      const body = await readJsonBody(request);
+      await sendJson(response, { session: await sessionRegistry.rename(sessionMatch[1], body.name) });
+      return;
+    }
+    if (sessionMatch && request.method === "DELETE") {
+      await sendJson(response, { session: await sessionRegistry.close(sessionMatch[1]) });
       return;
     }
     if (url.pathname.startsWith("/assets/")) {
@@ -80,6 +105,45 @@ async function handleRequest(root, request, response) {
     response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
     response.end(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function repoContext(root) {
+  const [gitRoot, branch, status, commonDir] = await Promise.all([
+    git(root, ["rev-parse", "--show-toplevel"]),
+    git(root, ["branch", "--show-current"]),
+    git(root, ["status", "--short"]),
+    git(root, ["rev-parse", "--git-common-dir"])
+  ]);
+  return {
+    root,
+    git: {
+      root: gitRoot.ok ? gitRoot.stdout : null,
+      branch: branch.ok && branch.stdout ? branch.stdout : "detached",
+      dirty: status.ok ? status.stdout.length > 0 : null,
+      status: status.ok ? status.stdout.split("\n").filter(Boolean) : [],
+      isWorktree: commonDir.ok ? ![".git", path.join(root, ".git")].includes(commonDir.stdout) : null
+    }
+  };
+}
+
+function git(root, args) {
+  return new Promise((resolve) => {
+    execFile("git", args, { cwd: root }, (error, stdout, stderr) => {
+      resolve({
+        ok: !error,
+        stdout: stdout.trim(),
+        stderr: stderr.trim()
+      });
+    });
+  });
+}
+
+async function readJsonBody(request) {
+  let raw = "";
+  for await (const chunk of request) {
+    raw += chunk;
+  }
+  return raw ? JSON.parse(raw) : {};
 }
 
 async function listWikiPages(root) {

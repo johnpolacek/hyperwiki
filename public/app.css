@@ -134,15 +134,42 @@ body {
 
 .terminal-pane {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto auto 1fr;
   background: #111312;
   border-right: 0;
+}
+
+.repo-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2c302d;
+  color: #cbd2ca;
+  font-size: 12px;
+}
+
+.repo-context span {
+  color: #8f9a91;
+}
+
+.repo-context strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .terminal-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #2c302d;
+}
+
+.terminal-actions {
+  display: flex;
+  gap: 6px;
   padding: 8px;
   border-bottom: 1px solid #2c302d;
 }
@@ -155,6 +182,7 @@ body {
 }
 
 .terminal-toolbar button,
+.terminal-actions button,
 .terminal-tab {
   border: 1px solid #3d443f;
   border-radius: 6px;

@@ -30,6 +30,16 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-10 implementation | session metadata and repo context</h2>
+  <ul>
+    <li>Added local-only <code>/api/repo</code> and <code>/api/sessions</code> endpoints for workspace context.</li>
+    <li>Persisted transparent terminal session metadata under ignored <code>.hyperwiki/sessions/</code> JSON files.</li>
+    <li>Added workspace repo status display for branch, dirty state, and root-path tooltip.</li>
+    <li>Added terminal lifecycle controls for rename, restart, and close, with session metadata updates.</li>
+    <li>Extended browser smoke coverage for repo context and session metadata; verified direct WebSocket session metadata creation.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 planning | split MVP stages into execution units</h2>
   <ul>
     <li>Split Stage 02 into explicit units for workspace shell/navigation, session metadata and repo context, file/verification views, and init template quality.</li>

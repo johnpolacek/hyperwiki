@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "node src/cli.js dev",
-    "check": "node --check src/cli.js && node --check src/server.js && node --check src/init.js && node --check src/pty.js && node --check public/app.js && node --check tests/browser-smoke.mjs",
+    "check": "node --check src/cli.js && node --check src/server.js && node --check src/init.js && node --check src/pty.js && node --check src/sessions.js && node --check public/app.js && node --check tests/browser-smoke.mjs",
     "smoke:browser": "node tests/browser-smoke.mjs"
   },
   "dependencies": {

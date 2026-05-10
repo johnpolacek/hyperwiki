@@ -7,10 +7,17 @@ const openPage = document.getElementById("open-page");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
 const newTerminalButton = document.getElementById("new-terminal");
+const renameTerminalButton = document.getElementById("rename-terminal");
+const restartTerminalButton = document.getElementById("restart-terminal");
+const closeTerminalButton = document.getElementById("close-terminal");
+const repoBranch = document.getElementById("repo-branch");
+const repoDirty = document.getElementById("repo-dirty");
 const terminalSessions = new Map();
 let terminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
+let activeTerminalName = null;
 
+await loadRepoContext();
 await loadWikiNav();
 activateWikiPage(pageFromHash());
 await createTerminal("shell");
@@ -31,6 +38,52 @@ newTerminalButton.addEventListener("click", async () => {
   await createTerminal(name);
   activateTerminal(name);
 });
+
+renameTerminalButton.addEventListener("click", async () => {
+  const session = terminalSessions.get(activeTerminalName);
+  if (!session) return;
+  const nextName = window.prompt("Terminal name", session.name);
+  if (!nextName || nextName.trim() === session.name) return;
+  await api(`/api/sessions/${session.id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: nextName.trim() })
+  });
+  terminalSessions.delete(session.name);
+  session.name = nextName.trim();
+  session.tab.dataset.name = session.name;
+  session.el.dataset.name = session.name;
+  session.label.textContent = session.name;
+  terminalSessions.set(session.name, session);
+  activeTerminalName = session.name;
+});
+
+restartTerminalButton.addEventListener("click", async () => {
+  const session = terminalSessions.get(activeTerminalName);
+  if (!session) return;
+  closeTerminal(session.name);
+  await createTerminal(session.name);
+  activateTerminal(session.name);
+});
+
+closeTerminalButton.addEventListener("click", async () => {
+  if (terminalSessions.size <= 1 || !activeTerminalName) return;
+  closeTerminal(activeTerminalName);
+  const [nextName] = terminalSessions.keys();
+  activateTerminal(nextName);
+});
+
+async function loadRepoContext() {
+  try {
+    const repo = await api("/api/repo");
+    repoBranch.textContent = repo.git.branch || "detached";
+    repoDirty.textContent = repo.git.dirty ? "Dirty" : "Clean";
+    repoDirty.title = repo.git.status.join("\n") || "No git changes";
+    document.getElementById("server-status").title = repo.root;
+  } catch {
+    repoBranch.textContent = "Unavailable";
+    repoDirty.textContent = "Unknown";
+  }
+}
 
 async function loadWikiNav() {
   try {
@@ -101,6 +154,7 @@ async function createTerminal(name) {
     return terminalSessions.get(name);
   }
 
+  const id = crypto.randomUUID();
   const el = document.createElement("div");
   el.className = "terminal theme-monokai";
   el.dataset.name = name;
@@ -110,7 +164,12 @@ async function createTerminal(name) {
   tab.type = "button";
   tab.className = "terminal-tab";
   tab.dataset.name = name;
-  tab.innerHTML = `<span class="status" aria-hidden="true"></span><span>${name}</span>`;
+  const status = document.createElement("span");
+  status.className = "status";
+  status.setAttribute("aria-hidden", "true");
+  const label = document.createElement("span");
+  label.textContent = name;
+  tab.append(status, label);
   terminalTabs.append(tab);
   tab.addEventListener("click", () => activateTerminal(name));
 
@@ -126,21 +185,34 @@ async function createTerminal(name) {
 
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
-    url: `${protocol}//${location.host}/pty?name=${encodeURIComponent(name)}`,
-    onData: (data) => term.write(data)
+    url: `${protocol}//${location.host}/pty?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`,
+    reconnect: false,
+    onData: (data) => term.write(data),
+    onOpen: () => {
+      tab.classList.add("connected");
+      tab.classList.remove("closed", "error");
+    },
+    onClose: () => {
+      tab.classList.remove("connected");
+      tab.classList.add("closed");
+    },
+    onError: () => {
+      tab.classList.remove("connected");
+      tab.classList.add("error");
+    }
   });
 
   await term.init();
   transport.connect();
-  tab.classList.add("connected");
   term.onData = (data) => transport.send(data);
 
-  const session = { el, tab, term, transport };
+  const session = { id, name, el, tab, label, term, transport };
   terminalSessions.set(name, session);
   return session;
 }
 
 function activateTerminal(name) {
+  activeTerminalName = name;
   terminalSessions.forEach((session, sessionName) => {
     const active = sessionName === name;
     session.el.classList.toggle("active", active);
@@ -148,4 +220,26 @@ function activateTerminal(name) {
     session.tab.setAttribute("aria-selected", String(active));
   });
   terminalSessions.get(name)?.term.focus();
+}
+
+function closeTerminal(name) {
+  const session = terminalSessions.get(name);
+  if (!session) return;
+  session.transport.close();
+  session.term.destroy();
+  session.el.remove();
+  session.tab.remove();
+  terminalSessions.delete(name);
+  void api(`/api/sessions/${session.id}`, { method: "DELETE" });
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "content-type": "application/json" },
+    ...options
+  });
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+  return response.json();
 }
