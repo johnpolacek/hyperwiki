@@ -105,19 +105,29 @@ const beforeTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
   const terminalRect = terminal.getBoundingClientRect();
   const parentRect = terminal.parentElement.getBoundingClientRect();
-  return parentRect.bottom - terminalRect.bottom;
+  return {
+    scrollTop: terminal.scrollTop,
+    visualGutter: parentRect.bottom - terminalRect.bottom
+  };
 });
-await page.keyboard.type("echo HYPERWIKI_BOTTOM_STABILITY_OK");
+await page.keyboard.type("e");
 await page.waitForTimeout(150);
 const afterTypingAtBottom = await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
   const terminalRect = terminal.getBoundingClientRect();
   const parentRect = terminal.parentElement.getBoundingClientRect();
-  return parentRect.bottom - terminalRect.bottom;
+  return {
+    scrollTop: terminal.scrollTop,
+    visualGutter: parentRect.bottom - terminalRect.bottom
+  };
 });
-if (Math.abs(afterTypingAtBottom - beforeTypingAtBottom) > 2) {
-  throw new Error(`Expected typing to preserve visual gutter, got ${beforeTypingAtBottom} -> ${afterTypingAtBottom}`);
+if (Math.abs(afterTypingAtBottom.visualGutter - beforeTypingAtBottom.visualGutter) > 2) {
+  throw new Error(`Expected typing to preserve visual gutter, got ${beforeTypingAtBottom.visualGutter} -> ${afterTypingAtBottom.visualGutter}`);
 }
+if (Math.abs(afterTypingAtBottom.scrollTop - beforeTypingAtBottom.scrollTop) > 2) {
+  throw new Error(`Expected typing to preserve terminal scrollTop, got ${beforeTypingAtBottom.scrollTop} -> ${afterTypingAtBottom.scrollTop}`);
+}
+await page.keyboard.type("cho HYPERWIKI_BOTTOM_STABILITY_OK");
 await page.keyboard.press("Enter");
 await page.waitForFunction(() =>
   document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_BOTTOM_STABILITY_OK")

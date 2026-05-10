@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 fix | terminal local echo jitter</h2>
+  <ul>
+    <li>Suppressed wterm's internal bottom-scroll alignment during recent keyboard input so local echo does not nudge the viewport.</li>
+    <li>Restored local echo scroll preservation while keeping the external same-background gutter model.</li>
+    <li>Extended browser smoke coverage to verify both visual gutter and terminal scroll position stay stable after the first typed character.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 fix | terminal gutter polish</h2>
   <ul>
     <li>Made the wterm surface transparent over the terminal pane gutter background.</li>
