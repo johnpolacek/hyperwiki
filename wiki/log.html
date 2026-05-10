@@ -21,6 +21,13 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 fix | terminal scrollback viewport</h2>
+  <ul>
+    <li>Fixed wterm layout containment after initialization so terminal output scrolls inside the panel instead of growing beyond the workspace.</li>
+    <li>Added browser smoke coverage for scrollback overflow and terminal viewport sizing.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 fix | terminal input focus</h2>
   <ul>
     <li>Hardened wterm focus behavior so visible terminals receive keyboard input after activation and pointer focus.</li>

@@ -53,6 +53,29 @@ await page.waitForFunction(() =>
   document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_UI_INPUT_OK")
 );
 
+await page.keyboard.type("seq 1 120");
+await page.keyboard.press("Enter");
+await page.waitForFunction(() => document.querySelector(".terminal.active")?.classList.contains("has-scrollback"));
+const scrollMetrics = await page.evaluate(() => {
+  const terminal = document.querySelector(".terminal.active");
+  return {
+    clientHeight: terminal.clientHeight,
+    scrollHeight: terminal.scrollHeight,
+    offsetHeight: terminal.offsetHeight,
+    parentHeight: terminal.parentElement.clientHeight,
+    overflowY: getComputedStyle(terminal).overflowY
+  };
+});
+if (scrollMetrics.clientHeight > scrollMetrics.parentHeight + 2) {
+  throw new Error(`Expected terminal viewport to stay inside parent, got ${scrollMetrics.clientHeight}/${scrollMetrics.parentHeight}`);
+}
+if (scrollMetrics.scrollHeight <= scrollMetrics.clientHeight) {
+  throw new Error("Expected terminal to have scrollable output");
+}
+if (scrollMetrics.overflowY !== "auto") {
+  throw new Error(`Expected terminal overflow-y auto, got ${scrollMetrics.overflowY}`);
+}
+
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
 await page.locator("#verification-summary").filter({ hasText: "npm run check" }).waitFor();

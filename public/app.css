@@ -275,7 +275,15 @@ body {
   visibility: hidden;
 }
 
-.terminal.active {
+.terminal.wterm {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.terminal.active,
+.terminal.wterm.active {
   opacity: 1;
   pointer-events: auto;
   visibility: visible;
