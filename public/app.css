@@ -293,7 +293,8 @@ body {
 
 .terminals {
   --terminal-bottom-gutter: 72px;
-  background: #272822;
+  --terminal-bg: #272822;
+  background: var(--terminal-bg);
   min-height: 0;
   overflow: hidden;
   position: relative;
@@ -309,8 +310,12 @@ body {
 }
 
 .terminal.wterm {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
   position: absolute;
   inset: 0 0 var(--terminal-bottom-gutter);
+  scrollbar-gutter: stable;
   width: 100%;
   overflow-anchor: none;
 }

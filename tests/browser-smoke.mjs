@@ -66,7 +66,11 @@ const scrollMetrics = await page.evaluate(() => {
     offsetHeight: terminal.offsetHeight,
     parentHeight: terminal.parentElement.clientHeight,
     visualGutter: parentRect.bottom - terminalRect.bottom,
-    overflowY: getComputedStyle(terminal).overflowY
+    background: getComputedStyle(terminal).backgroundColor,
+    boxShadow: getComputedStyle(terminal).boxShadow,
+    borderRadius: getComputedStyle(terminal).borderRadius,
+    overflowY: getComputedStyle(terminal).overflowY,
+    parentBackground: getComputedStyle(terminal.parentElement).backgroundColor
   };
 });
 if (scrollMetrics.clientHeight > scrollMetrics.parentHeight + 2) {
@@ -80,6 +84,15 @@ if (scrollMetrics.overflowY !== "auto") {
 }
 if (scrollMetrics.visualGutter < 48) {
   throw new Error(`Expected terminal visual gutter, got ${scrollMetrics.visualGutter}`);
+}
+if (scrollMetrics.background !== "rgba(0, 0, 0, 0)") {
+  throw new Error(`Expected transparent terminal background, got ${scrollMetrics.background}`);
+}
+if (scrollMetrics.parentBackground !== "rgb(39, 40, 34)") {
+  throw new Error(`Expected gutter background to match terminal theme, got ${scrollMetrics.parentBackground}`);
+}
+if (scrollMetrics.boxShadow !== "none" || scrollMetrics.borderRadius !== "0px") {
+  throw new Error(`Expected terminal gutter edge without shadow/radius, got ${scrollMetrics.boxShadow}/${scrollMetrics.borderRadius}`);
 }
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
