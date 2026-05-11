@@ -24,19 +24,16 @@ await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   }
 });
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
-const sessionControlsHidden = await page.locator(".terminal-actions").evaluate((element) => !element.open);
-if (!sessionControlsHidden) {
-  throw new Error("Expected terminal session controls to be collapsed by default");
-}
-const guardrailsCollapsed = await page.locator(".terminal-guardrails").evaluate((element) => !element.open);
-if (!guardrailsCollapsed) {
-  throw new Error("Expected terminal guardrails to be collapsed by default");
-}
-
-const initialTabs = await page.locator(".terminal-tab").allTextContents();
+await page.locator(".terminal-toolbar").evaluate((toolbar) => {
+  const text = toolbar.textContent || "";
+  if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("new agent") || !text.includes("new cli")) {
+    throw new Error(`Expected compact terminal toolbar, got ${text}`);
+  }
+});
+const initialTabs = await page.locator(".terminal-panel-header").allTextContents();
 for (const expected of ["agent", "cli"]) {
   if (!initialTabs.some((tab) => tab.includes(expected))) {
-    throw new Error(`Expected dogfood layout tab ${expected}`);
+    throw new Error(`Expected dogfood layout terminal ${expected}`);
   }
 }
 if (initialTabs.some((tab) => tab.includes("dev"))) {
@@ -101,8 +98,45 @@ await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
   if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
-await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage 07" }).waitFor();
+await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
 await page.locator("#wiki-nav a.current-unit").filter({ hasText: "Unit 01" }).waitFor();
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).waitFor();
+await page.locator(".workspace").evaluate((workspaceElement) => {
+  const sidebar = document.querySelector(".sidebar");
+  const directPlanLink = document.querySelector(".plan-tree > a");
+  const nestedPlanGroup = document.querySelector(".plan-tree .plan-subtree .plan-subtree");
+  if (!sidebar || !directPlanLink || !nestedPlanGroup) {
+    throw new Error("Expected sidebar plan navigation elements");
+  }
+  const gridColumns = getComputedStyle(workspaceElement).gridTemplateColumns;
+  if (!gridColumns.startsWith("300px ")) {
+    throw new Error(`Expected 300px sidebar column, got ${gridColumns}`);
+  }
+  if (getComputedStyle(sidebar).paddingLeft !== "7px") {
+    throw new Error(`Expected 7px sidebar left padding, got ${getComputedStyle(sidebar).paddingLeft}`);
+  }
+  if (getComputedStyle(directPlanLink).marginLeft !== "0px") {
+    throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
+  }
+  const planLeft = Math.round(directPlanLink.getBoundingClientRect().left);
+  const nestedLeft = Math.round(nestedPlanGroup.getBoundingClientRect().left);
+  if (planLeft !== nestedLeft) {
+    throw new Error(`Expected nested plan border to align with plan titles, got ${nestedLeft}/${planLeft}`);
+  }
+  const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
+  const stageOneLabel = navLabels.find((label) => label.textContent.includes("Stage-01"));
+  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
+  const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit 03"));
+  if (!stageOneLabel || !stageSevenLabel || !longUnitLabel) {
+    throw new Error("Expected stage and unit labels in plan navigation");
+  }
+  if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
+    throw new Error("Expected Stage 01 to appear before Stage 07 in plan navigation");
+  }
+  if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
+    throw new Error("Expected plan navigation labels to use text overflow ellipses");
+  }
+});
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();
 if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
@@ -116,20 +150,20 @@ await page.waitForFunction(() => document.querySelector("#current-page")?.textCo
 await page.locator("#wiki-nav a").filter({ hasText: "Planning Dashboard" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 
-await page.locator("#new-terminal").click();
-await page.locator(".terminal-tab").filter({ hasText: "term-1" }).waitFor();
+await page.locator("#new-cli-terminal").click();
+await page.locator(".terminal-panel-header").filter({ hasText: "cli-1" }).waitFor();
 
-const terminalTabs = await page.locator(".terminal-tab").count();
-if (terminalTabs < 3) {
-  throw new Error(`Expected at least 3 terminal tabs, got ${terminalTabs}`);
+const terminalPanels = await page.locator(".terminal-panel").count();
+if (terminalPanels < 3) {
+  throw new Error(`Expected at least 3 terminal panels, got ${terminalPanels}`);
 }
 
-const activeTabs = await page.locator(".terminal-tab.active").count();
-if (activeTabs !== 1) {
-  throw new Error(`Expected 1 active terminal tab, got ${activeTabs}`);
+const activePanels = await page.locator(".terminal-panel.active").count();
+if (activePanels !== 1) {
+  throw new Error(`Expected 1 active terminal panel, got ${activePanels}`);
 }
 
-await page.locator(".terminal-tab[data-name=\"cli\"]").click();
+await page.locator(".terminal-panel-header[data-name=\"cli\"]").click();
 await page.locator(".terminal.active").click();
 await page.keyboard.type("printf HYPERWIKI_UI_INPUT_OK");
 await page.keyboard.press("Enter");
@@ -148,7 +182,7 @@ if (optionArrowLeak) {
   throw new Error("Expected Option+Arrow to navigate instead of leaking [D/[C into the terminal.");
 }
 
-await page.locator(".terminal-tab[data-name=\"agent\"]").click();
+await page.locator(".terminal-panel-header[data-name=\"agent\"]").click();
 await page.locator(".terminal[data-name=\"cli\"]").click();
 await page.keyboard.type("printf HYPERWIKI_DIRECT_PANE_INPUT_OK");
 await page.keyboard.press("Enter");
@@ -295,8 +329,6 @@ await page.locator("#up-next-button").evaluate((element) => {
     throw new Error("Expected Up Next button to expose collapsed state");
   }
 });
-await page.locator("#guardrail-mode").filter({ hasText: "Local-only" }).waitFor();
-await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
@@ -335,9 +367,9 @@ if (sessionData.sessions.length < 3) {
   throw new Error(`Expected at least 3 recorded sessions, got ${sessionData.sessions.length}`);
 }
 
-const renameTarget = sessionData.sessions.find((session) => session.name === "term-1");
+const renameTarget = sessionData.sessions.find((session) => session.name === "cli-1");
 if (!renameTarget) {
-  throw new Error("Expected term-1 session metadata");
+  throw new Error("Expected cli-1 session metadata");
 }
 if (!["pty", "pipe-fallback"].includes(renameTarget.mode)) {
   throw new Error(`Expected explicit terminal mode, got ${renameTarget.mode}`);
@@ -362,6 +394,15 @@ if (exportData.boundary !== "runtime-only") {
 const pruneResponse = await fetch(`${origin}/api/sessions/prune${projectSuffix}`, { method: "POST" });
 if (!pruneResponse.ok) {
   throw new Error(`Expected session prune to succeed, got ${pruneResponse.status}`);
+}
+
+await page.locator(".terminal-panel[data-name=\"cli-1\"] .terminal-close").click();
+await page.locator(".terminal-panel[data-name=\"cli-1\"]").waitFor({ state: "detached" });
+await page.locator(".terminal-panel[data-name=\"agent\"] .terminal-close").click();
+await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor({ state: "detached" });
+const finalCloseDisabled = await page.locator(".terminal-panel[data-name=\"cli\"] .terminal-close").evaluate((button) => button.disabled);
+if (!finalCloseDisabled) {
+  throw new Error("Expected the last remaining terminal close button to be disabled.");
 }
 
 if (errors.length > 0) {

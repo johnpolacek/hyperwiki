@@ -63,7 +63,7 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(workspaceUrl, { waitUntil: "networkidle" });
-  await page.locator(".terminal-tab[data-name=\"cli\"]").waitFor();
+  await page.locator(".terminal-panel[data-name=\"cli\"]").waitFor();
   const singleProjectToggle = await page.locator("#project-toggle").evaluate((element) => element.hidden);
   if (!singleProjectToggle) {
     throw new Error("Expected project topbar action to stay hidden for a single registered project.");

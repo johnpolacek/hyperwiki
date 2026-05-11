@@ -119,36 +119,22 @@
       </form>
     </section>
     <section class="terminal-pane">
-      <div class="repo-context" id="repo-context">
-        <span>Repo</span>
-        <strong id="repo-branch">Unknown</strong>
-        <span id="repo-dirty">Checking</span>
-      </div>
       <div class="terminal-toolbar">
-        <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>
-        <button type="button" id="new-terminal">New</button>
+        <div class="terminal-branch" id="repo-context">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <line x1="6" y1="3" x2="6" y2="15"></line>
+            <circle cx="18" cy="6" r="3"></circle>
+            <circle cx="6" cy="18" r="3"></circle>
+            <path d="M18 9a9 9 0 0 1-9 9"></path>
+          </svg>
+          <strong id="repo-branch">Unknown</strong>
+        </div>
+        <div class="terminal-actions">
+          <button type="button" id="new-agent-terminal">+ new agent</button>
+          <button type="button" id="new-cli-terminal">+ new cli</button>
+        </div>
       </div>
-      <details class="terminal-actions">
-        <summary>Session</summary>
-        <button type="button" id="rename-terminal">Rename</button>
-        <button type="button" id="restart-terminal">Restart</button>
-        <button type="button" id="close-terminal">Close</button>
-        <button type="button" id="export-terminal">Export</button>
-        <button type="button" id="prune-sessions">Prune</button>
-      </details>
-      <details class="terminal-guardrails" aria-label="Terminal guardrails">
-        <summary><span id="guardrail-mode">Local-only</span><strong id="active-session-boundary">Session details</strong></summary>
-        <dl>
-          <div>
-            <dt>Canonical</dt>
-            <dd id="canonical-boundary">wiki/ and Git</dd>
-          </div>
-          <div>
-            <dt>Runtime</dt>
-            <dd id="runtime-boundary">.hyperwiki/state/ and .hyperwiki/sessions/</dd>
-          </div>
-        </dl>
-      </details>
+      <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>
       <div id="terminals" class="terminals"></div>
     </section>
   </main>

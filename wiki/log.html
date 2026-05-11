@@ -21,6 +21,22 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 correction | sidebar plan tree</h2>
+  <ul>
+    <li>Dogfood finding: Stage 07 appeared above earlier MVP stages because the sidebar sort key promoted the current stage.</li>
+    <li>Changed plan navigation sorting to keep MVP stages in chronological path order while retaining the current plan, stage, and unit markers.</li>
+    <li>Wrapped nav labels in a dedicated truncation span so long plan, stage, and unit labels use text overflow ellipses.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | terminal header simplification</h2>
+  <ul>
+    <li>Removed the terminal pane's Clean/Dirty, Local-only, guardrail, and session action chrome from the visible workspace.</li>
+    <li>Changed the terminal header to one small mono line with branch context on the left and New Agent / New CLI actions on the right.</li>
+    <li>Added per-terminal close buttons and preserved the rule that at least one terminal must remain open.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 correction | terminal file drops</h2>
   <ul>
     <li>Dogfood finding: dropping an image onto a wterm opened the browser's default file navigation instead of adding the image to the terminal prompt context.</li>

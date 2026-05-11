@@ -6,14 +6,9 @@ const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
-const newTerminalButton = document.getElementById("new-terminal");
-const renameTerminalButton = document.getElementById("rename-terminal");
-const restartTerminalButton = document.getElementById("restart-terminal");
-const closeTerminalButton = document.getElementById("close-terminal");
-const exportTerminalButton = document.getElementById("export-terminal");
-const pruneSessionsButton = document.getElementById("prune-sessions");
+const newAgentTerminalButton = document.getElementById("new-agent-terminal");
+const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
-const repoDirty = document.getElementById("repo-dirty");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
 const settingsButton = document.getElementById("settings-button");
@@ -21,10 +16,6 @@ const settingsPanel = document.getElementById("settings-panel");
 const upNextCompleted = document.getElementById("up-next-completed");
 const upNextCurrent = document.getElementById("up-next-current");
 const upNextNext = document.getElementById("up-next-next");
-const guardrailMode = document.getElementById("guardrail-mode");
-const canonicalBoundary = document.getElementById("canonical-boundary");
-const runtimeBoundary = document.getElementById("runtime-boundary");
-const activeSessionBoundary = document.getElementById("active-session-boundary");
 const planPrompt = document.getElementById("plan-prompt");
 const planPromptInput = document.getElementById("plan-prompt-input");
 const planPromptStatus = document.getElementById("plan-prompt-status");
@@ -34,10 +25,12 @@ const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
 const terminalSessions = new Map();
 const wikiPageTitles = new Map();
-let terminalCount = 0;
+let agentTerminalCount = 0;
+let cliTerminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
+let terminalLayout = [];
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
@@ -60,58 +53,18 @@ activateWikiPage(pageFromHash() || currentPlanPath);
 await restoreTerminals();
 activateDefaultTerminal();
 
-newTerminalButton.addEventListener("click", async () => {
-  terminalCount += 1;
-  const name = `term-${terminalCount}`;
-  await createTerminal(name);
+newAgentTerminalButton.addEventListener("click", async () => {
+  const template = terminalTemplate("agent");
+  const name = nextTerminalName("agent");
+  await createTerminal(name, { ...template, name });
   activateTerminal(name);
 });
 
-renameTerminalButton.addEventListener("click", async () => {
-  const session = terminalSessions.get(activeTerminalName);
-  if (!session) return;
-  const nextName = window.prompt("Terminal name", session.name);
-  if (!nextName || nextName.trim() === session.name) return;
-  await api(projectPath(`/api/sessions/${session.id}`), {
-    method: "PATCH",
-    body: JSON.stringify({ name: nextName.trim() })
-  });
-  terminalSessions.delete(session.name);
-  session.name = nextName.trim();
-  session.tab.dataset.name = session.name;
-  session.panel.dataset.name = session.name;
-  session.header.dataset.name = session.name;
-  session.el.dataset.name = session.name;
-  session.label.textContent = session.name;
-  session.headerTitle.textContent = session.name;
-  terminalSessions.set(session.name, session);
-  activeTerminalName = session.name;
-});
-
-restartTerminalButton.addEventListener("click", async () => {
-  const session = terminalSessions.get(activeTerminalName);
-  if (!session) return;
-  closeTerminal(session.name);
-  await createTerminal(session.name);
-  activateTerminal(session.name);
-});
-
-closeTerminalButton.addEventListener("click", async () => {
-  if (terminalSessions.size <= 1 || !activeTerminalName) return;
-  closeTerminal(activeTerminalName);
-  const [nextName] = terminalSessions.keys();
-  activateTerminal(nextName);
-});
-
-exportTerminalButton.addEventListener("click", async () => {
-  const session = terminalSessions.get(activeTerminalName);
-  if (!session) return;
-  const exported = await api(projectPath(`/api/sessions/${session.id}/export`), { method: "POST" });
-  window.alert(`Session export boundary: ${exported.boundary}\\n${exported.note}`);
-});
-
-pruneSessionsButton.addEventListener("click", async () => {
-  await api(projectPath("/api/sessions/prune"), { method: "POST" });
+newCliTerminalButton.addEventListener("click", async () => {
+  const template = terminalTemplate("cli");
+  const name = nextTerminalName("cli");
+  await createTerminal(name, { ...template, name });
+  activateTerminal(name);
 });
 
 planPromptInput.addEventListener("input", resizePlanPromptInput);
@@ -191,6 +144,7 @@ document.addEventListener("keydown", (event) => {
 
 async function restoreTerminals() {
   const [sessionData, layout] = await Promise.all([api(projectPath("/api/sessions")), api(projectPath("/api/layout"))]);
+  terminalLayout = layout.panels;
   const layoutNames = new Set(layout.panels.map((panel) => panel.name));
   const reconnectable = sessionData.sessions
     .filter((session) => session.status !== "closed" && session.reconnectable && session.retained && layoutNames.has(session.name))
@@ -212,12 +166,9 @@ async function loadRepoContext() {
   try {
     const repo = await api(projectPath("/api/repo"));
     repoBranch.textContent = repo.git.branch || "detached";
-    repoDirty.textContent = repo.git.dirty ? "Dirty" : "Clean";
-    repoDirty.title = repo.git.status.join("\n") || "No git changes";
     document.getElementById("server-status").title = repo.root;
   } catch {
     repoBranch.textContent = "Unavailable";
-    repoDirty.textContent = "Unknown";
   }
 }
 
@@ -281,14 +232,8 @@ function closeTopbarPanels() {
 async function loadGuardrails() {
   try {
     guardrails = await api(projectPath("/api/guardrails"));
-    guardrailMode.textContent = guardrails.mode.label;
-    guardrailMode.title = guardrails.mode.value;
-    canonicalBoundary.textContent = guardrails.canonical.map((item) => item.path).join(" + ");
-    canonicalBoundary.title = guardrails.canonical.map((item) => `${item.path}: ${item.detail}`).join("\n");
-    runtimeBoundary.textContent = guardrails.runtime.map((item) => item.path).join(" + ");
-    runtimeBoundary.title = guardrails.runtime.map((item) => `${item.path}: ${item.detail}`).join("\n");
   } catch {
-    guardrailMode.textContent = "Unavailable";
+    guardrails = null;
   }
 }
 
@@ -360,6 +305,28 @@ function activateDefaultTerminal() {
 
 function updatePlanPromptVisibility() {
   planPrompt.hidden = !terminalSessions.has("agent");
+}
+
+function terminalTemplate(name) {
+  const template = terminalLayout.find((panel) => panel.name === name || panel.role === name);
+  if (template) return template;
+  if (name === "agent") return { role: "agent", command: null };
+  return { role: "shell", command: null };
+}
+
+function nextTerminalName(kind) {
+  if (kind === "agent") {
+    if (!terminalSessions.has("agent")) return "agent";
+    do {
+      agentTerminalCount += 1;
+    } while (terminalSessions.has(`agent-${agentTerminalCount}`));
+    return `agent-${agentTerminalCount}`;
+  }
+  if (!terminalSessions.has("cli")) return "cli";
+  do {
+    cliTerminalCount += 1;
+  } while (terminalSessions.has(`cli-${cliTerminalCount}`));
+  return `cli-${cliTerminalCount}`;
 }
 
 function groupWikiPages(pages) {
@@ -446,12 +413,9 @@ function isImmediateChildPlanPage(parent, candidate) {
 function planSortKey(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/index.html")) return "00";
-  if (path.endsWith("/wiki/plans/plan-unit-navigation.html")) return "01";
-  if (path.endsWith("/wiki/plans/mvp/index.html")) return "02";
-  if (path.includes("/wiki/plans/mvp/stage-07")) return "03";
-  if (path.includes("/wiki/plans/soul")) return "04";
-  if (path.includes("/wiki/plans/memory")) return "05";
-  return `99-${path}`;
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
+  if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
+  return `02-${path}`;
 }
 
 function currentPlanState(page) {
@@ -469,7 +433,12 @@ function hasCurrentDescendant(page, pages) {
 function renderWikiLink(page, state = "") {
   const link = document.createElement("a");
   link.href = `#${page.path}`;
-  link.textContent = cleanPageTitle(page);
+  const label = cleanPageTitle(page);
+  const labelElement = document.createElement("span");
+  labelElement.className = "wiki-nav-label";
+  labelElement.textContent = label;
+  link.append(labelElement);
+  link.title = label;
   link.dataset.path = displayWikiPath(page.path);
   if (state) {
     link.classList.add(state);
@@ -482,7 +451,7 @@ function cleanPageTitle(page) {
   if (page.path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
   if (page.path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
   if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, "Unit $1 · ");
-  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage $1 · ");
+  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage-$1 ");
   if (page.title.toLowerCase() === "prd") return "PRD";
   if (displayWikiPath(page.path).includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;
@@ -582,15 +551,19 @@ async function createTerminal(name, options = {}) {
   const panel = document.createElement("section");
   panel.className = "terminal-panel";
   panel.dataset.name = name;
-  const header = document.createElement("button");
-  header.type = "button";
+  const header = document.createElement("div");
   header.className = "terminal-panel-header";
   header.dataset.name = name;
   const headerTitle = document.createElement("strong");
   headerTitle.textContent = name;
   const headerCommand = document.createElement("span");
   headerCommand.textContent = terminalCommandLabel(options);
-  header.append(headerTitle, headerCommand);
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "terminal-close";
+  closeButton.setAttribute("aria-label", `Close ${name} terminal`);
+  closeButton.textContent = "x";
+  header.append(headerTitle, headerCommand, closeButton);
   const el = document.createElement("div");
   el.className = "terminal theme-monokai";
   el.dataset.name = name;
@@ -598,6 +571,10 @@ async function createTerminal(name, options = {}) {
   panel.append(header, el);
   terminals.append(panel);
   header.addEventListener("click", () => activateTerminal(name));
+  closeButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closeTerminal(name);
+  });
 
   const tab = document.createElement("button");
   tab.type = "button";
@@ -686,8 +663,9 @@ async function createTerminal(name, options = {}) {
   await term.init();
   transport.connect();
 
-  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, el, tab, label, term, transport };
+  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, closeButton, el, tab, label, term, transport };
   terminalSessions.set(name, session);
+  updateTerminalCloseButtons();
   return session;
 }
 
@@ -708,20 +686,11 @@ function activateTerminal(name) {
   });
   const session = terminalSessions.get(name);
   if (session) {
-    updateActiveSessionBoundary(session);
     requestAnimationFrame(() => {
       session.term.focus();
       scrollTerminalToBottom(session.el);
     });
   }
-}
-
-function updateActiveSessionBoundary(session) {
-  const command = session.command ? `Command: ${session.command}` : "Interactive shell";
-  activeSessionBoundary.textContent = `${session.name} · ${command} · ${session.id.slice(0, 8)}`;
-  activeSessionBoundary.title = guardrails
-    ? `${guardrails.commandHistory.detail}\nSession metadata is retained locally under .hyperwiki/sessions/.`
-    : "Session metadata is retained locally under .hyperwiki/sessions/.";
 }
 
 function terminalCommandLabel(options = {}) {
@@ -819,14 +788,28 @@ function isRecentLocalInput(lastLocalInputAt) {
 
 function closeTerminal(name) {
   const session = terminalSessions.get(name);
-  if (!session) return;
+  if (!session || terminalSessions.size <= 1) return;
   session.transport.close();
   session.term.destroy();
   session.panel.remove();
   session.tab.remove();
   terminalSessions.delete(name);
+  if (activeTerminalName === name) {
+    const [nextName] = terminalSessions.keys();
+    activeTerminalName = null;
+    if (nextName) activateTerminal(nextName);
+  }
   updatePlanPromptVisibility();
+  updateTerminalCloseButtons();
   void api(projectPath(`/api/sessions/${session.id}`), { method: "DELETE" });
+}
+
+function updateTerminalCloseButtons() {
+  const canClose = terminalSessions.size > 1;
+  terminalSessions.forEach((session) => {
+    session.closeButton.disabled = !canClose;
+    session.closeButton.title = canClose ? "Close terminal" : "At least one terminal must stay open";
+  });
 }
 
 function closeAllTerminals() {
