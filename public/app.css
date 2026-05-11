@@ -311,6 +311,31 @@ body {
   min-width: 0;
 }
 
+.wiki-nav a.current-plan,
+.wiki-nav a.current-stage,
+.wiki-nav a.current-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wiki-nav a.current-plan::before,
+.wiki-nav a.current-stage::before,
+.wiki-nav a.current-unit::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #25a244;
+  box-shadow: 0 0 0 2px rgba(37, 162, 68, 0.14);
+}
+
+.wiki-nav a.current-unit::before {
+  width: 7px;
+  height: 7px;
+}
+
 .plan-tree > a,
 .plan-subtree > a {
   margin-left: 12px;

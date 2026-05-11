@@ -347,14 +347,15 @@ function renderPlanTree(pages) {
 
 function renderPlanNode(page, pages) {
   const children = childPlanPages(page, pages);
+  const state = currentPlanState(page);
   if (children.length === 0) {
-    return renderWikiLink(page);
+    return renderWikiLink(page, state);
   }
   const group = document.createElement("details");
-  group.className = "wiki-nav-group plan-subtree";
-  group.open = isCurrentPlanFamily(page);
+  group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}`;
+  group.open = state || children.some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
   const summary = document.createElement("summary");
-  summary.append(renderWikiLink(page));
+  summary.append(renderWikiLink(page, state));
   group.append(summary, ...children.map((child) => renderPlanNode(child, pages)));
   return group;
 }
@@ -396,13 +397,6 @@ function isImmediateChildPlanPage(parent, candidate) {
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
 }
 
-function isCurrentPlanFamily(page) {
-  const path = displayWikiPath(page.path);
-  return path.endsWith("/wiki/plans/mvp/index.html") ||
-    path.includes("plan-unit-navigation") ||
-    path.includes("stage-07-agent-native-verification");
-}
-
 function planSortKey(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/index.html")) return "00";
@@ -414,11 +408,26 @@ function planSortKey(page) {
   return `99-${path}`;
 }
 
-function renderWikiLink(page) {
+function currentPlanState(page) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "current-plan";
+  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification.html")) return "current-stage";
+  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html")) return "current-unit";
+  return "";
+}
+
+function hasCurrentDescendant(page, pages) {
+  return childPlanPages(page, pages).some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
+}
+
+function renderWikiLink(page, state = "") {
   const link = document.createElement("a");
   link.href = `#${page.path}`;
   link.textContent = cleanPageTitle(page);
   link.dataset.path = displayWikiPath(page.path);
+  if (state) {
+    link.classList.add(state);
+  }
   link.addEventListener("click", () => setUpNextOpen(false));
   return link;
 }

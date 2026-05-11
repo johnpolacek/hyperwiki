@@ -76,6 +76,13 @@ if (currentPage !== "Planning Dashboard") {
 await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
   if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
 });
+await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
+await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage 07" }).waitFor();
+await page.locator("#wiki-nav a.current-unit").filter({ hasText: "Unit 01" }).waitFor();
+const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();
+if (stageOneUnitLinks !== 1) {
+  throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
+}
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
 });
