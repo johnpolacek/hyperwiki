@@ -474,6 +474,10 @@ body {
   margin-left: 0;
 }
 
+.plan-subtree > a {
+  margin-left: 12px;
+}
+
 .plan-tree .wiki-nav-group {
   margin-left: 0;
 }

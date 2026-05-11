@@ -97,7 +97,6 @@ await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
 await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
-await page.locator("#wiki-nav a.current-unit").filter({ hasText: "Unit 01" }).waitFor();
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).waitFor();
 await page.locator(".workspace").evaluate((workspaceElement) => {
   const sidebar = document.querySelector(".sidebar");
@@ -143,14 +142,42 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (Math.round(stageOneLabel.getBoundingClientRect().left) !== Math.round(stageSevenLabel.getBoundingClientRect().left)) {
     throw new Error("Expected active and inactive stage labels to align");
   }
+  const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || stageSevenGroup.open) {
+    throw new Error("Expected stage unit branches to stay collapsed until a stage is selected");
+  }
   if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
     throw new Error("Expected plan navigation labels to use text overflow ellipses");
+  }
+});
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
+await page.locator("#wiki-nav").evaluate(() => {
+  const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
+  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
+  const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Verification Loop Model"));
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  if (!stageSevenGroup?.open) {
+    throw new Error("Expected selected Stage 07 to expand");
+  }
+  if (!currentUnitLabel || currentUnitLabel.getBoundingClientRect().left <= stageSevenLabel.getBoundingClientRect().left) {
+    throw new Error("Expected unit labels to be indented under their stage");
   }
 });
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();
 if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 01 - CLI and Repository Foundation");
+await page.locator("#wiki-nav").evaluate(() => {
+  const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  if (!stageOneGroup?.open || stageSevenGroup?.open) {
+    throw new Error("Expected selected Stage 01 to expand and Stage 07 to collapse");
+  }
+});
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
 });

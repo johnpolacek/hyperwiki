@@ -362,6 +362,7 @@ function renderPlanNode(page, pages) {
   }
   const group = document.createElement("details");
   group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}`;
+  group.dataset.path = displayWikiPath(page.path);
   group.open = state || children.some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
   const summary = document.createElement("summary");
   summary.append(renderWikiLink(page, state));
@@ -463,9 +464,39 @@ function activateWikiPage(path) {
   wikiNav.querySelectorAll("a").forEach((link) => {
     link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
   });
+  syncPlanTreeOpenState(nextPath);
   if (location.hash !== `#${nextPath}`) {
     history.replaceState(null, "", `#${nextPath}`);
   }
+}
+
+function syncPlanTreeOpenState(selectedPath) {
+  const selected = displayWikiPath(selectedPath);
+  const planTree = wikiNav.querySelector("details.plan-tree");
+  if (planTree) planTree.open = true;
+  wikiNav.querySelectorAll("details.plan-subtree").forEach((group) => {
+    const groupPath = group.dataset.path;
+    if (!groupPath) return;
+    if (isStagePlanPath(groupPath)) {
+      group.open = pathContainsSelectedPage(groupPath, selected);
+      return;
+    }
+    group.open = pathContainsSelectedPage(groupPath, selected) || group.querySelector("details[open]");
+  });
+}
+
+function isStagePlanPath(path) {
+  return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(displayWikiPath(path));
+}
+
+function pathContainsSelectedPage(path, selectedPath) {
+  const normalizedPath = displayWikiPath(path);
+  const normalizedSelected = displayWikiPath(selectedPath);
+  if (normalizedSelected === normalizedPath) return true;
+  const basePath = normalizedPath.endsWith("/index.html")
+    ? normalizedPath.slice(0, -"/index.html".length)
+    : normalizedPath.replace(/\.html$/, "");
+  return normalizedSelected.startsWith(`${basePath}/`);
 }
 
 function syncFrameLocation() {
