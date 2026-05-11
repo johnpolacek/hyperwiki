@@ -129,6 +129,17 @@ await page.keyboard.press("Enter");
 await page.waitForFunction(() =>
   document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_UI_INPUT_OK")
 );
+await page.keyboard.type("printf HYPERWIKI_OPTION_LEFT_OK");
+await page.keyboard.press("Alt+ArrowLeft");
+await page.keyboard.press("Alt+ArrowRight");
+await page.keyboard.press("Enter");
+await page.waitForFunction(() =>
+  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_OPTION_LEFT_OK")
+);
+const optionArrowLeak = await page.locator(".terminal.active").evaluate((terminal) => terminal.innerText.includes("[D") || terminal.innerText.includes("[C"));
+if (optionArrowLeak) {
+  throw new Error("Expected Option+Arrow to navigate instead of leaking [D/[C into the terminal.");
+}
 
 await page.keyboard.type("seq 1 120");
 await page.keyboard.press("Enter");
@@ -171,6 +182,21 @@ if (scrollMetrics.parentBackground !== "rgb(39, 40, 34)") {
 if (scrollMetrics.boxShadow !== "none" || scrollMetrics.borderRadius !== "0px") {
   throw new Error(`Expected terminal gutter edge without shadow/radius, got ${scrollMetrics.boxShadow}/${scrollMetrics.borderRadius}`);
 }
+const firstTerminalRow = await page.locator(".terminal.active .term-row").filter({ hasText: "HYPERWIKI_UI_INPUT_OK" }).first().boundingBox();
+if (!firstTerminalRow) {
+  throw new Error("Expected terminal row for selection test.");
+}
+await page.evaluate(() => window.getSelection()?.removeAllRanges());
+await page.mouse.move(firstTerminalRow.x + 4, firstTerminalRow.y + firstTerminalRow.height / 2);
+await page.mouse.down();
+await page.mouse.move(firstTerminalRow.x + 160, firstTerminalRow.y + firstTerminalRow.height / 2, { steps: 8 });
+await page.mouse.up();
+const selectionText = await page.evaluate(() => window.getSelection()?.toString() || "");
+if (!selectionText.trim()) {
+  throw new Error("Expected terminal text to be selectable with pointer drag.");
+}
+await page.evaluate(() => window.getSelection()?.removeAllRanges());
+await page.locator(".terminal.active").click();
 await page.evaluate(() => {
   const terminal = document.querySelector(".terminal.active");
   terminal.scrollTop = terminal.scrollHeight;

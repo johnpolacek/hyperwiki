@@ -762,6 +762,8 @@ body {
   min-height: 0;
   font-family: var(--mono-font);
   position: relative;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .terminal.wterm {
@@ -773,6 +775,14 @@ body {
   scrollbar-gutter: stable;
   width: 100%;
   overflow-anchor: none;
+}
+
+.terminal .term-grid,
+.terminal .term-row,
+.terminal .term-row > span {
+  contain: layout style;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .terminal.active,

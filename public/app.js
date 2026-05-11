@@ -589,9 +589,10 @@ async function createTerminal(name, options = {}) {
     rows: 24,
     cursorBlink: true,
     onData(data) {
+      const normalized = normalizeTerminalInput(data);
       lastLocalInputAt = performance.now();
-      lastLocalInputWasEnter = data === "\r" || data === "\n";
-      transport?.send(data);
+      lastLocalInputWasEnter = normalized === "\r" || normalized === "\n";
+      transport?.send(normalized);
     },
     onResize(cols, rows) {
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
@@ -602,10 +603,6 @@ async function createTerminal(name, options = {}) {
       scrollTerminalToBottom(el);
     }
   };
-  el.addEventListener("pointerdown", () => {
-    requestAnimationFrame(() => term.focus());
-  });
-
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
     url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
@@ -641,6 +638,12 @@ async function createTerminal(name, options = {}) {
   const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, el, tab, label, term, transport };
   terminalSessions.set(name, session);
   return session;
+}
+
+function normalizeTerminalInput(data) {
+  if (data === "\x1b\x1b[D") return "\x1bb";
+  if (data === "\x1b\x1b[C") return "\x1bf";
+  return data;
 }
 
 function activateTerminal(name) {
