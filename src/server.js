@@ -276,12 +276,14 @@ async function workspaceSummary(root, config) {
   const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
+  const status = workspaceStatus(planDashboard.summary, logEntries);
   return {
     plan: {
       title: planDashboard.title || "Plans",
       path: "/wiki/plans/index.html",
       summary: planDashboard.summary
     },
+    status,
     log: {
       path: "/wiki/log.html",
       entries: logEntries
@@ -298,6 +300,25 @@ async function workspaceSummary(root, config) {
     ],
     layout: layoutConfig(config)
   };
+}
+
+function workspaceStatus(planSummary, logEntries) {
+  return {
+    completed: completedStatus(planSummary, logEntries),
+    current: summaryValue(planSummary, "Current unit") || summaryValue(planSummary, "Current stage") || summaryValue(planSummary, "Status") || "Unknown",
+    next: summaryValue(planSummary, "Next action") || "Unknown"
+  };
+}
+
+function completedStatus(planSummary, logEntries) {
+  const recent = planSummary.find((item) => /completed|implemented|mapped|added/i.test(item));
+  return recent || logEntries[0] || "No completed work found";
+}
+
+function summaryValue(items, label) {
+  const prefix = `${label}:`;
+  const item = items.find((entry) => entry.startsWith(prefix));
+  return item ? item.slice(prefix.length).trim() : "";
 }
 
 async function packageManagerForRoot(root) {
@@ -507,8 +528,9 @@ async function walkWiki(baseRoot, directory, pages, projectId) {
       continue;
     }
     const relativePath = path.relative(baseRoot, fullPath).split(path.sep).join("/");
+    const html = await readFile(fullPath, "utf8");
     pages.push({
-      title: titleFromWikiPath(relativePath),
+      title: firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(relativePath),
       path: projectId ? `/projects/${projectId}/wiki/${relativePath}` : `/wiki/${relativePath}`
     });
   }

@@ -73,6 +73,17 @@ const currentPage = await page.locator("#current-page").innerText();
 if (currentPage !== "Planning Dashboard") {
   throw new Error(`Expected Planning Dashboard, got ${currentPage}`);
 }
+await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
+  if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
+});
+await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
+  if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
+});
+await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
+await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.locator("#wiki-nav a").filter({ hasText: "Planning Dashboard" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 
 await page.locator("#new-terminal").click();
 await page.locator(".terminal-tab").filter({ hasText: "term-1" }).waitFor();
@@ -179,13 +190,25 @@ await page.waitForFunction(() =>
 );
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
-await page.locator("#plan-summary li").first().waitFor();
+await page.locator("#up-next-button").click();
+await page.locator("#up-next-popover").evaluate((element) => {
+  if (element.hidden) throw new Error("Expected Up Next popover to open");
+});
+await page.locator("#up-next-current").filter({ hasText: /Stage 07|active/i }).waitFor();
+await page.locator("#up-next-next").filter({ hasText: /define|split|next/i }).waitFor();
+await page.keyboard.press("Escape");
+await page.locator("#up-next-popover").evaluate((element) => {
+  if (!element.hidden) throw new Error("Expected Up Next popover to close on Escape");
+});
 await page.locator("#guardrail-mode").filter({ hasText: "Local-only" }).waitFor();
 await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
   throw new Error("Expected workspace summary to include plan state");
+}
+if (!workspaceData.status?.current || !workspaceData.status?.next || !workspaceData.status?.completed) {
+  throw new Error(`Expected structured Up Next status, got ${JSON.stringify(workspaceData.status)}`);
 }
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);

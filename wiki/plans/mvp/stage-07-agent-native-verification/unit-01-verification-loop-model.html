@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 07 - Agent-native Verification - Unit 01 - Verification Loop Model - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Unit 01 - Verification Loop Model</h1>
+<p><a href="/wiki/plans/mvp/stage-07-agent-native-verification.html">Stage 07 - Agent-native Verification</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: active</li>
+    <li>Define the repo-local shape for verification loops: command, scope, trigger, status, last run, evidence, and whether the result is automated or manual.</li>
+    <li>Expose verification loops through a local API that can be consumed by the browser workspace and future MCP tools.</li>
+    <li>Keep recorded verification state separate from canonical claims unless a human or agent intentionally records the outcome into the wiki.</li>
+    <li>Verification: <code>pnpm run check</code> plus targeted API smoke coverage for reading configured verification loops.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

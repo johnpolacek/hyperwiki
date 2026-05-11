@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 06 - Agent-first Launch Layout - Unit 02 - Three-panel Startup Contract - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Unit 02 - Three-panel Startup Contract</h1>
+<p><a href="/wiki/plans/mvp/stage-06-agent-launch-layout.html">Stage 06 - Agent-first Launch Layout</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Panel order: agent first when configured, dev second when a dev script exists, CLI shell always.</li>
+    <li>Do not show empty agent or dev panels.</li>
+    <li>Remove checks and git from generated default layouts.</li>
+    <li>Implemented with a smoke-test dry-run path for agent commands.</li>
+    <li>Corrected after dogfooding: launch sessions are visible as separate terminal panes instead of being hidden behind tabs.</li>
+    <li>Corrected after dogfooding: the HyperWiki repo omits its dev panel because <code>npx hyperwiki</code> already starts the same local server.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

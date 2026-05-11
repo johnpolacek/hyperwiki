@@ -18,6 +18,7 @@
     "smoke:sessions": "node tests/session-retention-smoke.mjs"
   },
   "dependencies": {
+    "@wterm/core": "^0.3.0",
     "@wterm/dom": "^0.3.0",
     "node-pty": "^1.1.0",
     "ws": "^8.18.0"

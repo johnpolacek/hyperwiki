@@ -14,7 +14,11 @@ const exportTerminalButton = document.getElementById("export-terminal");
 const pruneSessionsButton = document.getElementById("prune-sessions");
 const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
-const planSummary = document.getElementById("plan-summary");
+const upNextButton = document.getElementById("up-next-button");
+const upNextPopover = document.getElementById("up-next-popover");
+const upNextCompleted = document.getElementById("up-next-completed");
+const upNextCurrent = document.getElementById("up-next-current");
+const upNextNext = document.getElementById("up-next-next");
 const guardrailMode = document.getElementById("guardrail-mode");
 const canonicalBoundary = document.getElementById("canonical-boundary");
 const runtimeBoundary = document.getElementById("runtime-boundary");
@@ -146,6 +150,25 @@ projectToggle.addEventListener("click", () => {
   projectToggle.setAttribute("aria-expanded", String(!collapsed));
 });
 
+upNextButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setUpNextOpen(upNextPopover.hidden);
+});
+
+upNextPopover.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+document.addEventListener("click", () => {
+  setUpNextOpen(false);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setUpNextOpen(false);
+  }
+});
+
 async function restoreTerminals() {
   const [sessionData, layout] = await Promise.all([api(projectPath("/api/sessions")), api(projectPath("/api/layout"))]);
   const layoutNames = new Set(layout.panels.map((panel) => panel.name));
@@ -197,10 +220,25 @@ async function loadWikiNav() {
 async function loadWorkspaceSummary() {
   try {
     const summary = await api(projectPath("/api/workspace"));
-    renderList(planSummary, compactPlanSummary(summary.plan.summary));
+    renderUpNext(summary.status);
   } catch {
-    renderList(planSummary, ["Workspace summary unavailable"]);
+    renderUpNext({
+      completed: "Workspace summary unavailable",
+      current: "Unknown",
+      next: "Unknown"
+    });
   }
+}
+
+function renderUpNext(status = {}) {
+  upNextCompleted.textContent = status.completed || "No completed work found";
+  upNextCurrent.textContent = status.current || "No current plan found";
+  upNextNext.textContent = status.next || "No next action found";
+}
+
+function setUpNextOpen(open) {
+  upNextPopover.hidden = !open;
+  upNextButton.setAttribute("aria-expanded", String(open));
 }
 
 async function loadGuardrails() {
@@ -279,57 +317,119 @@ function updatePlanPromptVisibility() {
 }
 
 function groupWikiPages(pages) {
+  const planTree = renderPlanTree(pages.filter((page) => page.path.includes("/wiki/plans/")));
   const groups = [
-    { title: "Plans", pages: pages.filter((page) => page.path.includes("/wiki/plans/") && !page.path.includes("/stage-")) },
-    { title: "Project", pages: pages.filter((page) => ["/wiki/index.html", "/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))) },
-    { title: "Completed Stages", pages: pages.filter((page) => page.path.includes("/wiki/plans/mvp/stage-")) },
-    { title: "Sources", pages: pages.filter((page) => page.path.includes("/wiki/sources/")) },
-    { title: "Log", pages: pages.filter((page) => page.path.endsWith("/wiki/log.html")) }
+    planTree,
+    renderNavGroup("Project", pages.filter((page) =>
+      ["/wiki/index.html", "/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))
+    ), false),
+    renderNavGroup("Sources", pages.filter((page) => page.path.includes("/wiki/sources/")), false),
+    renderNavGroup("Log", pages.filter((page) => page.path.endsWith("/wiki/log.html")), false)
   ];
-  return groups
-    .filter((group) => group.pages.length > 0)
-    .map((group) => {
-      const details = document.createElement("details");
-      details.className = "wiki-nav-group";
-      details.open = group.title === "Plans";
-      const summary = document.createElement("summary");
-      summary.textContent = group.title;
-      details.append(summary, ...group.pages.map(renderWikiLink));
-      return details;
-    });
+  return groups.filter(Boolean);
+}
+
+function renderPlanTree(pages) {
+  const details = document.createElement("details");
+  details.className = "wiki-nav-group plan-tree";
+  details.open = true;
+  const summary = document.createElement("summary");
+  summary.textContent = "Plans";
+  details.append(summary);
+
+  const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const topLevel = sorted.filter((page) => isTopLevelPlanPage(page));
+  for (const page of topLevel) {
+    details.append(renderPlanNode(page, sorted));
+  }
+  return details;
+}
+
+function renderPlanNode(page, pages) {
+  const children = childPlanPages(page, pages);
+  if (children.length === 0) {
+    return renderWikiLink(page);
+  }
+  const group = document.createElement("details");
+  group.className = "wiki-nav-group plan-subtree";
+  group.open = isCurrentPlanFamily(page);
+  const summary = document.createElement("summary");
+  summary.append(renderWikiLink(page));
+  group.append(summary, ...children.map((child) => renderPlanNode(child, pages)));
+  return group;
+}
+
+function renderNavGroup(title, pages, open) {
+  if (pages.length === 0) return null;
+  const details = document.createElement("details");
+  details.className = "wiki-nav-group";
+  details.open = open;
+  const summary = document.createElement("summary");
+  summary.textContent = title;
+  details.append(summary, ...pages.map(renderWikiLink));
+  return details;
+}
+
+function isTopLevelPlanPage(page) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/index.html")) return true;
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
+  return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
+}
+
+function isUnitPage(page) {
+  return /\/unit-\d+-[^/]+\.html$/.test(displayWikiPath(page.path));
+}
+
+function childPlanPages(parent, pages) {
+  return pages.filter((candidate) => isImmediateChildPlanPage(parent, candidate));
+}
+
+function isImmediateChildPlanPage(parent, candidate) {
+  const parentPath = displayWikiPath(parent.path);
+  const candidatePath = displayWikiPath(candidate.path);
+  if (parentPath === candidatePath) return false;
+  if (parentPath.endsWith("/wiki/plans/mvp/index.html")) {
+    return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
+  }
+  const parentBase = parentPath.replace(/\.html$/, "");
+  return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
+}
+
+function isCurrentPlanFamily(page) {
+  const path = displayWikiPath(page.path);
+  return path.endsWith("/wiki/plans/mvp/index.html") ||
+    path.includes("plan-unit-navigation") ||
+    path.includes("stage-07-agent-native-verification");
+}
+
+function planSortKey(page) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/index.html")) return "00";
+  if (path.endsWith("/wiki/plans/plan-unit-navigation.html")) return "01";
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "02";
+  if (path.includes("/wiki/plans/mvp/stage-07")) return "03";
+  if (path.includes("/wiki/plans/soul")) return "04";
+  if (path.includes("/wiki/plans/memory")) return "05";
+  return `99-${path}`;
 }
 
 function renderWikiLink(page) {
   const link = document.createElement("a");
   link.href = `#${page.path}`;
   link.textContent = cleanPageTitle(page);
-  link.dataset.path = page.path;
+  link.dataset.path = displayWikiPath(page.path);
+  link.addEventListener("click", () => setUpNextOpen(false));
   return link;
 }
 
 function cleanPageTitle(page) {
   if (page.path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
   if (page.path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
-  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) /, "Stage $1 · ");
+  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, "Unit $1 · ");
+  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage $1 · ");
   if (page.title.toLowerCase() === "prd") return "PRD";
   return page.title;
-}
-
-function compactPlanSummary(items) {
-  return items
-    .map((item) => item.replace(/^Next action:/, "Next:"))
-    .filter((item) => /^Next:/.test(item))
-    .slice(0, 1);
-}
-
-function renderList(target, items) {
-  target.replaceChildren(
-    ...items.map((item) => {
-      const li = document.createElement("li");
-      li.innerHTML = item;
-      return li;
-    })
-  );
 }
 
 function activateWikiPage(path) {

@@ -31,37 +31,13 @@
 </section>
 <h2>Intent</h2>
 <p>Let HyperWiki manage multiple local projects while preserving the existing single-project feel until more than one project exists.</p>
-<h2>Execution Units</h2>
 <section>
-  <h3>Unit 01 - Registry and Launch Foundation</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Add a user-level registry at <code>~/.hyperwiki/projects.json</code>.</li>
-    <li><code>npx hyperwiki</code> from a HyperWiki-initialized repo auto-registers that repo and opens it as the active project.</li>
-    <li>Only repos with <code>wiki/</code> and <code>.hyperwiki/config.json</code> are eligible.</li>
-    <li>Project names come from config <code>projectName</code>, then package name, then folder name.</li>
-    <li>Implemented with a user-level registry that can be isolated in tests through <code>HYPERWIKI_HOME</code>.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 02 - Project-scoped Server Runtime</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Add project-aware APIs and wiki routes that resolve roots through the registry.</li>
-    <li>Scope terminal WebSocket sessions and retained metadata to the selected project root.</li>
-    <li>Keep missing projects listed but disabled.</li>
-    <li>Implemented project-scoped API reads, wiki routes, and PTY session routing.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 03 - Multi-project UI</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Hide project switching UI when only one project is registered.</li>
-    <li>Show a collapsible project sidebar when two or more projects exist.</li>
-    <li>Switch projects in the same tab and reload wiki, repo, summary, guardrails, layout, and sessions.</li>
-    <li>Implemented and covered by launch smoke for hidden single-project UI and visible two-project switching.</li>
-  </ul>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-01-registry-and-launch-foundation.html">Unit 01 - Registry and Launch Foundation</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-02-project-scoped-server-runtime.html">Unit 02 - Project-scoped Server Runtime</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-03-multi-project-ui.html">Unit 03 - Multi-project UI</a> - complete</li>
+  </ol>
 </section>
 <h2>Non-goals</h2>
 <ul>

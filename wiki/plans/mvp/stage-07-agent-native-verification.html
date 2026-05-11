@@ -53,55 +53,15 @@
   <li>Do not build a full remote collaboration or hosted CI product in this stage.</li>
   <li>Do not make MCP integration depend on one agent vendor's private protocol when a local CLI/API contract can remain stable.</li>
 </ul>
-<h2>Execution Units</h2>
 <section>
-  <h3>Unit 01 - Verification Loop Model</h3>
-  <ul>
-    <li>Status: active</li>
-    <li>Define the repo-local shape for verification loops: command, scope, trigger, status, last run, evidence, and whether the result is automated or manual.</li>
-    <li>Expose verification loops through a local API that can be consumed by the browser workspace and future MCP tools.</li>
-    <li>Keep recorded verification state separate from canonical claims unless a human or agent intentionally records the outcome into the wiki.</li>
-    <li>Verification: <code>pnpm run check</code> plus targeted API smoke coverage for reading configured verification loops.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 02 - Machine-readable Project Contract</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Add a stable project contract endpoint or file that summarizes project facts, current plan state, source index metadata, verification commands, permission boundaries, and runtime-state boundaries.</li>
-    <li>Prefer deriving contract values from canonical wiki/config/Git state over duplicating maintained facts.</li>
-    <li>Make the contract copy-pasteable into agents and directly useful as MCP resource payloads.</li>
-    <li>Verification: contract smoke test plus manual inspection against <code>wiki/index.html</code>, <code>wiki/plans/index.html</code>, <code>wiki/sources.html</code>, and <code>.hyperwiki/config.json</code>.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 03 - Agent Review Workflows</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Add named review workflows for diff review, architecture consistency, security review, and test-gap review.</li>
-    <li>Route review prompts into the visible agent terminal with project contract and current plan context.</li>
-    <li>Represent review results as runtime evidence until intentionally recorded in the wiki or Git.</li>
-    <li>Verification: browser smoke coverage for workflow discovery and manual dogfood against an active agent session.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 04 - MCP Surface Definition</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Define the first MCP resources and tools around project contract, current plan, source index, verification loops, guardrails, and controlled prompt submission.</li>
-    <li>Keep MCP behavior local-first and aligned with existing permission boundaries.</li>
-    <li>Document the stable contract before adding broad implementation surface.</li>
-    <li>Verification: local contract tests or smoke coverage for MCP-adjacent handlers, plus manual review of permission boundaries.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 05 - Workspace Framing Update</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Update product copy and workspace labels from a terminal/wiki workspace toward a repo-local agent operating layer.</li>
-    <li>Keep the UI utilitarian: surface current context, verification loops, guardrails, and review workflows without creating a marketing page.</li>
-    <li>Verification: browser smoke coverage for visible current-plan and verification state, plus manual responsive review.</li>
-  </ul>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html">Unit 01 - Verification Loop Model</a> - active</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.html">Unit 02 - Machine-readable Project Contract</a> - pending</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.html">Unit 03 - Agent Review Workflows</a> - pending</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.html">Unit 04 - MCP Surface Definition</a> - pending</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-workspace-framing-update.html">Unit 05 - Workspace Framing Update</a> - pending</li>
+  </ol>
 </section>
   </main>
 </body>

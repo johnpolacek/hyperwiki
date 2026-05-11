@@ -23,6 +23,8 @@ await initHyperWiki(root, { yes: true });
 
 const index = await readFile(path.join(root, "wiki", "index.html"), "utf8");
 const dev = await readFile(path.join(root, "wiki", "dev.html"), "utf8");
+const generatedStage = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation.html"), "utf8");
+const generatedUnit = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation", "unit-01-confirm-project-direction.html"), "utf8");
 const prd = await readFile(path.join(root, "wiki", "sources", "prd.html"), "utf8");
 const config = JSON.parse(await readFile(path.join(root, ".hyperwiki", "config.json"), "utf8"));
 
@@ -37,6 +39,12 @@ if (!dev.includes("pnpm run dev") || !dev.includes("pnpm run test")) {
 }
 if (!dev.includes("npx hyperwiki")) {
   throw new Error("Generated dev page did not include the default HyperWiki launch command.");
+}
+if (!generatedStage.includes("unit-01-confirm-project-direction.html")) {
+  throw new Error("Generated stage page did not link to unit pages.");
+}
+if (!generatedUnit.includes("<h1>Unit 01 - Confirm Project Direction</h1>")) {
+  throw new Error("Generated unit page did not render its own HTML page.");
 }
 if (prd.includes("HyperWiki turns repo-local project docs")) {
   throw new Error("Generated PRD still contains HyperWiki-specific product copy.");

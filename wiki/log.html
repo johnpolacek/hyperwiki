@@ -21,6 +21,23 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 implementation | plan unit navigation</h2>
+  <ul>
+    <li>Split existing plan units into dedicated HTML pages and reduced stage/plan pages to overview indexes.</li>
+    <li>Changed the workspace sidebar to render a plans-first tree with active plan branches open and project/source/log groups collapsed.</li>
+    <li>Replaced the persistent sidebar status list with an Up Next popover backed by structured workspace status.</li>
+    <li>Updated generated init templates and smoke coverage for unit pages, plan navigation, and Up Next behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 planning | plan unit navigation</h2>
+  <ul>
+    <li>Added a feature plan for unit-specific plan pages, plans-first workspace navigation, and the Up Next popover.</li>
+    <li>Decision: all plan units should have dedicated HTML pages while plan and stage overview pages become compact indexes.</li>
+    <li>Decision: the workspace sidebar should focus on plan navigation, with project, source, log, and completed/history groups collapsed by default.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 correction | plan prompt input sizing</h2>
   <ul>
     <li>Changed the plan prompt input to grow and shrink between one and five text lines.</li>

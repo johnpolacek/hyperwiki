@@ -14,8 +14,20 @@ const pages = new Map([
   ["wiki/plans/index.html", plansIndexPage],
   ["wiki/plans/mvp/index.html", mvpIndexPage],
   ["wiki/plans/mvp/stage-01-foundation.html", stageOnePage],
+  ["wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 01 - Confirm Project Direction", "Confirm project goals, audience, non-goals, and success criteria.")],
+  ["wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 02 - Review Repository Setup", "Review repository setup and development commands.")],
+  ["wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 03 - Update Source Briefs", "Update source briefs and roadmap from real project evidence.")],
+  ["wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 04 - Define First Implementation Unit", "Define the first implementation unit and verification path.")],
   ["wiki/plans/mvp/stage-02-dev-workspace.html", stageTwoPage],
+  ["wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html", stageUnitPage("Stage 02 - First Implementation Track", "wiki/plans/mvp/stage-02-dev-workspace.html", "Unit 01 - Implement First Slice", "Implement the first approved feature or architecture slice.")],
+  ["wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html", stageUnitPage("Stage 02 - First Implementation Track", "wiki/plans/mvp/stage-02-dev-workspace.html", "Unit 02 - Sync Plan Status", "Keep plan status and source context synchronized with discoveries.")],
+  ["wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html", stageUnitPage("Stage 02 - First Implementation Track", "wiki/plans/mvp/stage-02-dev-workspace.html", "Unit 03 - Record Validation", "Record validation that changes project confidence or next steps.")],
+  ["wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html", stageUnitPage("Stage 02 - First Implementation Track", "wiki/plans/mvp/stage-02-dev-workspace.html", "Unit 04 - Preserve Canonical Truth", "Avoid hidden UI-only state; keep repo files and Git canonical.")],
   ["wiki/plans/mvp/stage-03-dogfood-hardening.html", stageThreePage],
+  ["wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html", stageUnitPage("Stage 03 - Hardening And Release Readiness", "wiki/plans/mvp/stage-03-dogfood-hardening.html", "Unit 01 - Close Verification Gaps", "Close gaps found during implementation and verification.")],
+  ["wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html", stageUnitPage("Stage 03 - Hardening And Release Readiness", "wiki/plans/mvp/stage-03-dogfood-hardening.html", "Unit 02 - Harden Workflows", "Harden setup, test, security, accessibility, or release workflows as relevant.")],
+  ["wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html", stageUnitPage("Stage 03 - Hardening And Release Readiness", "wiki/plans/mvp/stage-03-dogfood-hardening.html", "Unit 03 - Update Durable Docs", "Update durable docs and source briefs from final implementation evidence.")],
+  ["wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html", stageUnitPage("Stage 03 - Hardening And Release Readiness", "wiki/plans/mvp/stage-03-dogfood-hardening.html", "Unit 04 - Record Handoff Notes", "Record completion criteria and release or handoff notes.")],
   ["wiki/sources/prd.html", prdPage],
   ["wiki/sources/technical-brief.html", technicalBriefPage],
   ["wiki/sources/design-brief.html", designBriefPage]
@@ -285,39 +297,52 @@ function mvpIndexPage(context) {
 
 function stageOnePage(context) {
   return stagePage(context, "Stage 01 - Project Direction And Setup", [
-    "Confirm project goals, audience, non-goals, and success criteria.",
-    "Review repository setup and development commands.",
-    "Update source briefs and roadmap from real project evidence.",
-    "Define the first implementation unit and verification path."
-  ]);
+    ["Unit 01 - Confirm Project Direction", "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html"],
+    ["Unit 02 - Review Repository Setup", "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html"],
+    ["Unit 03 - Update Source Briefs", "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html"],
+    ["Unit 04 - Define First Implementation Unit", "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html"]
+  ], "Confirm project goals, audience, non-goals, and success criteria.");
 }
 
 function stageTwoPage(context) {
   return stagePage(context, "Stage 02 - First Implementation Track", [
-    "Implement the first approved feature or architecture slice.",
-    "Keep plan status and source context synchronized with discoveries.",
-    "Record validation that changes project confidence or next steps.",
-    "Avoid hidden UI-only state; keep repo files and Git canonical."
-  ]);
+    ["Unit 01 - Implement First Slice", "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html"],
+    ["Unit 02 - Sync Plan Status", "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html"],
+    ["Unit 03 - Record Validation", "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html"],
+    ["Unit 04 - Preserve Canonical Truth", "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html"]
+  ], "Implement the first approved feature or architecture slice.");
 }
 
 function stageThreePage(context) {
   return stagePage(context, "Stage 03 - Hardening And Release Readiness", [
-    "Close gaps found during implementation and verification.",
-    "Harden setup, test, security, accessibility, or release workflows as relevant.",
-    "Update durable docs and source briefs from final implementation evidence.",
-    "Record completion criteria and release or handoff notes."
-  ]);
+    ["Unit 01 - Close Verification Gaps", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html"],
+    ["Unit 02 - Harden Workflows", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html"],
+    ["Unit 03 - Update Durable Docs", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html"],
+    ["Unit 04 - Record Handoff Notes", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html"]
+  ], "Close gaps found during implementation and verification.");
 }
 
-function stagePage(context, title, items) {
+function stagePage(context, title, units, intent) {
   return layout(context, title, `<h1>${escapeHtml(title)}</h1>
 <h2>Intent</h2>
-<p>${escapeHtml(items[0])}</p>
+<p>${escapeHtml(intent)}</p>
 <h2>Execution Units</h2>
-<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+<ol>${units.map(([label, href]) => `<li><a href="/${href}">${escapeHtml(label)}</a></li>`).join("")}</ol>
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>`);
+}
+
+function stageUnitPage(stageTitle, stagePath, unitTitle, intent) {
+  return (context) => layout(context, unitTitle, `<h1>${escapeHtml(unitTitle)}</h1>
+<p><a href="/${stagePath}">${escapeHtml(stageTitle)}</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: pending</li>
+    <li>${escapeHtml(intent)}</li>
+    <li>Verification: record automated or manual validation in <a href="/wiki/log.html">log.html</a>.</li>
+  </ul>
+</section>`);
 }
 
 function prdPage(context) {
