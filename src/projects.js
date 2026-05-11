@@ -27,7 +27,7 @@ export class ProjectRegistry {
       available: true,
       lastOpenedAt: now
     };
-    registry.projects = withUniqueSlugs([record, ...registry.projects.filter((item) => item.id !== record.id)]);
+    registry.projects = pruneMissingWorktrees(withUniqueSlugs([record, ...registry.projects.filter((item) => item.id !== record.id)]));
     await this.#write(registry);
     return record;
   }
@@ -35,7 +35,7 @@ export class ProjectRegistry {
   async list(activeId = null) {
     const registry = await this.#read();
     const records = withUniqueSlugs(registry.projects);
-    const projectsToList = records.filter((item) => !missingWorktree(item));
+    const projectsToList = pruneMissingWorktrees(records);
     if (projectsToList.length !== records.length) {
       await this.#write({ version: 1, projects: projectsToList });
     }
@@ -179,6 +179,10 @@ function samePath(left, right) {
 
 function missingWorktree(project) {
   return project.worktreeSlug && project.worktreeSlug !== "main" && !existsSync(path.resolve(project.root));
+}
+
+function pruneMissingWorktrees(projects) {
+  return projects.filter((item) => !missingWorktree(item));
 }
 
 function withUniqueSlugs(projects) {

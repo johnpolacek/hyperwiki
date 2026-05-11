@@ -155,6 +155,26 @@ try {
   if (!missingMainProject || missingMainProject.available) {
     throw new Error(`Expected missing main project to remain unavailable, got ${JSON.stringify(withMissingMain)}`);
   }
+  registryAfterPrune.projects.push({
+    id: "duplicate-label-worktree",
+    root: path.join(workspaceRoot, "plan-unit-navigation"),
+    name: "plan-unit-navigation",
+    projectSlug: "plan-unit-navigation",
+    worktreeSlug: "plan-unit-navigation",
+    available: true,
+    lastOpenedAt: new Date().toISOString()
+  });
+  await mkdir(path.join(workspaceRoot, "plan-unit-navigation"));
+  await writeFile(path.join(workspaceRoot, "plan-unit-navigation", "package.json"), `${JSON.stringify({ name: "plan-unit-navigation" }, null, 2)}\n`);
+  await writeFile(path.join(workspaceRoot, "plan-unit-navigation", ".git"), `gitdir: ${path.join(workspaceRoot, ".git", "worktrees", "plan-unit-navigation-duplicate")}\n`);
+  await writeFile(path.join(home, "projects.json"), `${JSON.stringify(registryAfterPrune, null, 2)}\n`);
+  await runCli(["init", "--yes"], { cwd: path.join(workspaceRoot, "plan-unit-navigation"), env: { ...process.env, HYPERWIKI_HOME: home } });
+  await page.goto(workspaceUrl, { waitUntil: "networkidle" });
+  await page.locator("#project-toggle").click();
+  const duplicateLabelCount = await page.locator("#project-list button").filter({ hasText: /^plan-unit-navigation$/ }).count();
+  if (duplicateLabelCount !== 1) {
+    throw new Error(`Expected duplicate project/worktree label to collapse to one name, got ${duplicateLabelCount}`);
+  }
 } finally {
   if (browser) {
     await browser.close();

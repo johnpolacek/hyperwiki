@@ -262,7 +262,7 @@ async function loadProjects() {
       button.type = "button";
       button.dataset.projectId = project.id;
       button.dataset.worktreeSlug = project.worktreeSlug || "main";
-      button.textContent = `${project.name} · ${project.worktreeSlug || "main"}`;
+      button.textContent = projectLabel(project);
       button.title = project.available ? project.root : `${project.root} unavailable`;
       button.className = project.id === activeProjectId ? "active" : "";
       button.disabled = !project.available;
@@ -288,6 +288,21 @@ async function switchProject(project) {
   activateWikiPage(currentPlanPath);
   await restoreTerminals();
   activateDefaultTerminal();
+}
+
+function projectLabel(project) {
+  const worktree = project.worktreeSlug || "main";
+  return slugifyLabel(project.name) === slugifyLabel(worktree)
+    ? project.name
+    : `${project.name} · ${worktree}`;
+}
+
+function slugifyLabel(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function activateDefaultTerminal() {
