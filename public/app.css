@@ -434,7 +434,7 @@ body {
 }
 
 .plan-subtree > summary a.active::after {
-  left: -16px;
+  display: none;
 }
 
 .plan-subtree > a.active::after {
@@ -442,7 +442,18 @@ body {
 }
 
 .plan-subtree > summary:has(a.active) {
+  position: relative;
   background: #f0f0ed;
+}
+
+.plan-subtree > summary:has(a.active)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: #171916;
 }
 
 .plan-subtree > summary:has(a.active) a.active {
@@ -498,7 +509,7 @@ body {
 
 .plan-subtree > summary::before {
   content: "›";
-  flex: 0 0 16px;
+  flex: 0 0 19px;
   color: #8a8d88;
   font-size: 22px;
   line-height: 1;

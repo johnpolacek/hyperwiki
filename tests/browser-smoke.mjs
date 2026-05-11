@@ -121,7 +121,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(directPlanLink).marginLeft !== "0px") {
     throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
   }
-  if (getComputedStyle(directPlanLink.closest("summary"), "::before").width !== "16px") {
+  if (getComputedStyle(directPlanLink.closest("summary"), "::before").width !== "19px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
   const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
@@ -170,17 +170,18 @@ await page.locator("#wiki-nav").evaluate(() => {
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
   const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Verification Loop Model"));
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
-  const selectedRail = getComputedStyle(stageSevenLabel.closest("a"), "::after").backgroundColor;
-  const selectedRailLeft = Number.parseFloat(getComputedStyle(stageSevenLabel.closest("a"), "::after").left);
-  const selectedRailWidth = Number.parseFloat(getComputedStyle(stageSevenLabel.closest("a"), "::after").width);
-  const selectedSummaryBg = getComputedStyle(stageSevenLabel.closest("summary")).backgroundColor;
+  const selectedSummary = stageSevenLabel.closest("summary");
+  const selectedRail = getComputedStyle(selectedSummary, "::after").backgroundColor;
+  const selectedRailLeft = Number.parseFloat(getComputedStyle(selectedSummary, "::after").left);
+  const selectedRailWidth = Number.parseFloat(getComputedStyle(selectedSummary, "::after").width);
+  const selectedSummaryBg = getComputedStyle(selectedSummary).backgroundColor;
   if (!stageSevenGroup?.open) {
     throw new Error("Expected selected Stage 07 to expand");
   }
   if (selectedRail !== "rgb(23, 25, 22)") {
     throw new Error(`Expected selected stage to show a dark left rail, got ${selectedRail}`);
   }
-  if (selectedRailLeft !== -16 || selectedRailWidth !== 2) {
+  if (selectedRailLeft !== 0 || selectedRailWidth !== 2) {
     throw new Error(`Expected selected stage rail to reach the window edge, got ${selectedRailLeft}`);
   }
   if (selectedSummaryBg !== "rgb(240, 240, 237)") {
