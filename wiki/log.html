@@ -21,6 +21,13 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-10 correction | visible launch terminals</h2>
+  <ul>
+    <li>Dogfood finding: launch created agent/dev/CLI sessions, but the tab-only terminal UI made it look like only one wterm existed.</li>
+    <li>Changed the terminal area so sessions render as separate visible panes, with tabs retained as focus controls.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-10 correction | explicit agent command setup</h2>
   <ul>
     <li>Dogfood finding: after a reset, fresh project initialization could inherit this repo's <code>codex --yolo</code> command without explicit user choice.</li>

@@ -445,26 +445,23 @@ body {
   --terminal-bottom-gutter: 72px;
   --terminal-bg: #272822;
   background: var(--terminal-bg);
+  display: grid;
+  grid-auto-rows: minmax(180px, 1fr);
+  gap: 1px;
   min-height: 0;
-  overflow: hidden;
-  position: relative;
+  overflow: auto;
 }
 
 .terminal {
-  position: absolute;
-  inset: 0;
   min-height: 0;
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
+  position: relative;
 }
 
 .terminal.wterm {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
-  position: absolute;
-  inset: 0 0 var(--terminal-bottom-gutter);
+  height: 100%;
   scrollbar-gutter: stable;
   width: 100%;
   overflow-anchor: none;
@@ -472,9 +469,8 @@ body {
 
 .terminal.active,
 .terminal.wterm.active {
-  opacity: 1;
-  pointer-events: auto;
-  visibility: visible;
+  outline: 1px solid #7f9186;
+  outline-offset: -1px;
 }
 
 @media (max-width: 900px) {
