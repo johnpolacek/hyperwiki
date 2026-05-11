@@ -70,6 +70,9 @@ export function createPtySession(root, ws, metadata = {}) {
 
   return {
     id,
+    write(data) {
+      terminal.write(String(data));
+    },
     close() {
       void registry?.upsert(id, { status: "closed" });
       terminal.kill();
@@ -138,6 +141,9 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
 
   return {
     id: metadata.id,
+    write(data) {
+      child.stdin.write(String(data));
+    },
     close() {
       void metadata.registry?.upsert(metadata.id, { status: "closed" });
       child.kill();

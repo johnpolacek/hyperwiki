@@ -37,6 +37,12 @@
         <h2>Status</h2>
         <ul id="plan-summary"></ul>
       </section>
+      <form id="plan-prompt" class="plan-prompt" hidden>
+        <label for="plan-prompt-input">Plan prompt</label>
+        <textarea id="plan-prompt-input" rows="4" placeholder="Ask the agent to revise the plan..."></textarea>
+        <button type="submit">Send to Agent</button>
+        <p id="plan-prompt-status" role="status"></p>
+      </form>
     </aside>
     <section class="wiki-pane">
       <header class="pane-header">

@@ -22,6 +22,9 @@ const guardrailMode = document.getElementById("guardrail-mode");
 const canonicalBoundary = document.getElementById("canonical-boundary");
 const runtimeBoundary = document.getElementById("runtime-boundary");
 const activeSessionBoundary = document.getElementById("active-session-boundary");
+const planPrompt = document.getElementById("plan-prompt");
+const planPromptInput = document.getElementById("plan-prompt-input");
+const planPromptStatus = document.getElementById("plan-prompt-status");
 const workspace = document.querySelector(".workspace");
 const projectSidebar = document.getElementById("project-sidebar");
 const projectToggle = document.getElementById("project-toggle");
@@ -106,6 +109,27 @@ pruneSessionsButton.addEventListener("click", async () => {
   await api(projectPath("/api/sessions/prune"), { method: "POST" });
 });
 
+planPrompt.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const prompt = planPromptInput.value.trim();
+  if (!prompt) return;
+  planPromptStatus.textContent = "Sending...";
+  try {
+    await api(projectPath("/api/agent/prompt"), {
+      method: "POST",
+      body: JSON.stringify({
+        prompt,
+        currentPage: currentPage.title || requestedWikiPath
+      })
+    });
+    planPromptInput.value = "";
+    planPromptStatus.textContent = "Sent to agent.";
+    activateTerminal("agent");
+  } catch (error) {
+    planPromptStatus.textContent = error.message || "Agent unavailable.";
+  }
+});
+
 projectToggle.addEventListener("click", () => {
   const collapsed = !workspace.classList.contains("projects-collapsed");
   workspace.classList.toggle("projects-collapsed", collapsed);
@@ -128,6 +152,7 @@ async function restoreTerminals() {
   if (!terminalSessions.has("cli")) {
     await createTerminal("cli", { role: "shell", command: null });
   }
+  updatePlanPromptVisibility();
 }
 
 async function loadRepoContext() {
@@ -238,6 +263,10 @@ function activateDefaultTerminal() {
       return;
     }
   }
+}
+
+function updatePlanPromptVisibility() {
+  planPrompt.hidden = !terminalSessions.has("agent");
 }
 
 function updatePrimaryLinks(pages) {
@@ -563,6 +592,7 @@ function closeTerminal(name) {
   session.panel.remove();
   session.tab.remove();
   terminalSessions.delete(name);
+  updatePlanPromptVisibility();
   void api(projectPath(`/api/sessions/${session.id}`), { method: "DELETE" });
 }
 
@@ -575,6 +605,7 @@ function closeAllTerminals() {
     session?.tab.remove();
     terminalSessions.delete(name);
   }
+  updatePlanPromptVisibility();
   activeTerminalName = null;
 }
 

@@ -35,9 +35,10 @@ export async function startDevServer(root, options = {}) {
     }
   }
   const sessionRegistries = new Map();
+  const sessionInputs = new Map();
 
   const server = createServer((request, response) => {
-    void handleRequest(root, request, response, { projectRegistry, sessionRegistries, activeProjectId });
+    void handleRequest(root, request, response, { projectRegistry, sessionRegistries, sessionInputs, activeProjectId });
   });
   const wss = new WebSocketServer({ noServer: true });
 
@@ -51,13 +52,18 @@ export async function startDevServer(root, options = {}) {
       void (async () => {
         const project = await resolveProject(projectRegistry, url, activeProjectId, root);
         const sessionRegistry = sessionRegistryFor(sessionRegistries, project.root);
+        const inputs = sessionInputFor(sessionInputs, project.root);
         const id = url.searchParams.get("id") || randomUUID();
         const name = url.searchParams.get("name") || id;
         const role = url.searchParams.get("role") || "shell";
         const command = url.searchParams.get("command") || null;
         const session = createPtySession(project.root, ws, { id, name, role, command, registry: sessionRegistry });
+        inputs.set(id, session.write);
         sessionRegistry.setCloser(id, () => ws.close());
-        ws.on("close", () => session.close());
+        ws.on("close", () => {
+          inputs.delete(id);
+          session.close();
+        });
       })().catch(() => ws.close());
     });
   });
@@ -137,6 +143,15 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, { sessions: await sessionRegistry.list({ prune: false }) });
       return;
     }
+    if (url.pathname === "/api/agent/prompt" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
+      const inputs = sessionInputFor(context.sessionInputs, project.root);
+      const body = await readJsonBody(request);
+      const result = await sendAgentPrompt(project, sessionRegistry, inputs, body);
+      await sendJson(response, result);
+      return;
+    }
     const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
     const exportMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/export$/);
     if (exportMatch && request.method === "POST") {
@@ -205,6 +220,55 @@ function sessionRegistryFor(registries, root) {
     registries.set(key, new SessionRegistry(key));
   }
   return registries.get(key);
+}
+
+function sessionInputFor(inputsByRoot, root) {
+  const key = path.resolve(root);
+  if (!inputsByRoot.has(key)) {
+    inputsByRoot.set(key, new Map());
+  }
+  return inputsByRoot.get(key);
+}
+
+async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) {
+    const error = new Error("Prompt is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const sessions = await sessionRegistry.list({ prune: false });
+  const agentSession = [...sessions].reverse().find((session) =>
+    session.status === "active" &&
+    session.role === "agent" &&
+    inputs.has(session.id)
+  );
+  if (!agentSession) {
+    const error = new Error("No active agent session is available.");
+    error.statusCode = 409;
+    throw error;
+  }
+  const currentPage = typeof body.currentPage === "string" ? body.currentPage : "/wiki/plans/index.html";
+  const message = [
+    "",
+    "Please update the HyperWiki plan based on this request.",
+    "",
+    `Project: ${project.name}`,
+    `Repo root: ${project.root}`,
+    `Current wiki page: ${currentPage}`,
+    "Keep durable decisions in wiki/plans/ and wiki/log.html. Run relevant checks before finishing.",
+    "",
+    prompt,
+    ""
+  ].join("\n");
+  inputs.get(agentSession.id)(`${message}\n`);
+  return {
+    ok: true,
+    session: {
+      id: agentSession.id,
+      name: agentSession.name
+    }
+  };
 }
 
 async function workspaceSummary(root, config) {

@@ -37,6 +37,15 @@ if (initialTabs.some((tab) => tab.includes("dev"))) {
 }
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
+await page.locator("#plan-prompt").evaluate((element) => {
+  if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
+});
+await page.locator("#plan-prompt-input").fill("HYPERWIKI_PLAN_PROMPT_SMOKE");
+await page.locator("#plan-prompt button").click();
+await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
+await page.waitForFunction(() =>
+  document.querySelector(".terminal[data-name=\"agent\"]")?.innerText.includes("HYPERWIKI_PLAN_PROMPT_SMOKE")
+);
 
 await page.locator("#current-plan-link").click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
