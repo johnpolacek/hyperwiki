@@ -16,11 +16,6 @@
         "command": "codex --yolo"
       },
       {
-        "name": "dev",
-        "role": "dev",
-        "command": "pnpm run dev"
-      },
-      {
         "name": "cli",
         "role": "shell",
         "command": null

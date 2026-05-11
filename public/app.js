@@ -18,9 +18,6 @@ const pruneSessionsButton = document.getElementById("prune-sessions");
 const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
 const planSummary = document.getElementById("plan-summary");
-const guardrailSummary = document.getElementById("guardrail-summary");
-const logSummary = document.getElementById("log-summary");
-const verificationSummary = document.getElementById("verification-summary");
 const guardrailMode = document.getElementById("guardrail-mode");
 const canonicalBoundary = document.getElementById("canonical-boundary");
 const runtimeBoundary = document.getElementById("runtime-boundary");
@@ -30,12 +27,21 @@ const projectSidebar = document.getElementById("project-sidebar");
 const projectToggle = document.getElementById("project-toggle");
 const projectList = document.getElementById("project-list");
 const terminalSessions = new Map();
+const wikiPageTitles = new Map();
 let terminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let currentPlanPath = "/wiki/plans/index.html";
+
+window.addEventListener("hashchange", () => {
+  activateWikiPage(pageFromHash());
+});
+
+wikiFrame.addEventListener("load", () => {
+  syncFrameLocation();
+});
 
 await loadProjects();
 await loadRepoContext();
@@ -45,14 +51,6 @@ await loadGuardrails();
 activateWikiPage(pageFromHash() || currentPlanPath);
 await restoreTerminals();
 activateDefaultTerminal();
-
-window.addEventListener("hashchange", () => {
-  activateWikiPage(pageFromHash());
-});
-
-wikiFrame.addEventListener("load", () => {
-  syncFrameLocation();
-});
 
 newTerminalButton.addEventListener("click", async () => {
   terminalCount += 1;
@@ -66,15 +64,18 @@ renameTerminalButton.addEventListener("click", async () => {
   if (!session) return;
   const nextName = window.prompt("Terminal name", session.name);
   if (!nextName || nextName.trim() === session.name) return;
-  await api(`/api/sessions/${session.id}`, {
+  await api(projectPath(`/api/sessions/${session.id}`), {
     method: "PATCH",
     body: JSON.stringify({ name: nextName.trim() })
   });
   terminalSessions.delete(session.name);
   session.name = nextName.trim();
   session.tab.dataset.name = session.name;
+  session.panel.dataset.name = session.name;
+  session.header.dataset.name = session.name;
   session.el.dataset.name = session.name;
   session.label.textContent = session.name;
+  session.headerTitle.textContent = session.name;
   terminalSessions.set(session.name, session);
   activeTerminalName = session.name;
 });
@@ -97,7 +98,7 @@ closeTerminalButton.addEventListener("click", async () => {
 exportTerminalButton.addEventListener("click", async () => {
   const session = terminalSessions.get(activeTerminalName);
   if (!session) return;
-  const exported = await api(`/api/sessions/${session.id}/export`, { method: "POST" });
+  const exported = await api(projectPath(`/api/sessions/${session.id}/export`), { method: "POST" });
   window.alert(`Session export boundary: ${exported.boundary}\\n${exported.note}`);
 });
 
@@ -146,6 +147,11 @@ async function loadWikiNav() {
   try {
     const response = await fetch(projectPath("/api/wiki"));
     const data = await response.json();
+    wikiPageTitles.clear();
+    data.pages.forEach((page) => {
+      wikiPageTitles.set(page.path, cleanPageTitle(page));
+      wikiPageTitles.set(displayWikiPath(page.path), cleanPageTitle(page));
+    });
     currentPlanPath = data.pages.find((page) => page.path.endsWith("/wiki/plans/index.html"))?.path || currentPlanPath;
     updatePrimaryLinks(data.pages);
     wikiNav.replaceChildren(...groupWikiPages(data.pages));
@@ -158,11 +164,6 @@ async function loadWorkspaceSummary() {
   try {
     const summary = await api(projectPath("/api/workspace"));
     renderList(planSummary, compactPlanSummary(summary.plan.summary));
-    renderList(logSummary, summary.log.entries.slice(0, 4));
-    renderList(
-      verificationSummary,
-      summary.verification.map((item) => `<code>${escapeHtml(item.command)}</code>`)
-    );
   } catch {
     renderList(planSummary, ["Workspace summary unavailable"]);
   }
@@ -177,13 +178,8 @@ async function loadGuardrails() {
     canonicalBoundary.title = guardrails.canonical.map((item) => `${item.path}: ${item.detail}`).join("\n");
     runtimeBoundary.textContent = guardrails.runtime.map((item) => item.path).join(" + ");
     runtimeBoundary.title = guardrails.runtime.map((item) => `${item.path}: ${item.detail}`).join("\n");
-    renderList(guardrailSummary, [
-      `<strong>${escapeHtml(guardrails.mode.label)}</strong>`,
-      `<strong>Canonical</strong>: ${escapeHtml(guardrails.canonical.map((item) => item.path).join(", "))}`,
-      `<strong>Runtime</strong>: ${escapeHtml(guardrails.runtime.map((item) => item.path).join(", "))}`
-    ]);
   } catch {
-    renderList(guardrailSummary, ["Guardrail summary unavailable"]);
+    guardrailMode.textContent = "Unavailable";
   }
 }
 
@@ -290,9 +286,9 @@ function cleanPageTitle(page) {
 
 function compactPlanSummary(items) {
   return items
-    .map((item) => item.replace(/^Next action:/, "Next:").replace(/^Current unit:/, "Current:"))
-    .filter((item) => /^(Status:|Current:|Next:)/.test(item))
-    .slice(0, 3);
+    .map((item) => item.replace(/^Next action:/, "Next:"))
+    .filter((item) => /^Next:/.test(item))
+    .slice(0, 1);
 }
 
 function renderList(target, items) {
@@ -311,11 +307,11 @@ function activateWikiPage(path) {
   if (wikiFrame.getAttribute("src") !== nextPath) {
     wikiFrame.setAttribute("src", nextPath);
   }
-  currentPage.textContent = displayWikiPath(nextPath);
+  currentPage.textContent = titleForWikiPath(nextPath);
   currentPage.title = nextPath;
   openPage.href = nextPath;
   wikiNav.querySelectorAll("a").forEach((link) => {
-    link.classList.toggle("active", link.dataset.path === nextPath);
+    link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
   });
   if (location.hash !== `#${nextPath}`) {
     history.replaceState(null, "", `#${nextPath}`);
@@ -325,19 +321,42 @@ function activateWikiPage(path) {
 function syncFrameLocation() {
   try {
     const framePath = wikiFrame.contentWindow.location.pathname;
+    hideEmbeddedWikiHeader();
     if (!isWikiPath(framePath) || framePath !== requestedWikiPath) {
       return;
     }
-    currentPage.textContent = framePath;
+    currentPage.textContent = currentWikiTitle() || displayWikiPath(framePath);
+    currentPage.title = framePath;
     openPage.href = framePath;
     wikiNav.querySelectorAll("a").forEach((link) => {
-      link.classList.toggle("active", link.dataset.path === framePath);
+      link.classList.toggle("active", link.dataset.path === displayWikiPath(framePath));
     });
     if (location.hash !== `#${framePath}`) {
       history.replaceState(null, "", `#${framePath}`);
     }
   } catch {
     // Same-origin wiki pages should be readable; ignore if a browser policy blocks it.
+  }
+}
+
+function hideEmbeddedWikiHeader() {
+  const documentElement = wikiFrame.contentDocument;
+  if (!documentElement || documentElement.getElementById("hyperwiki-embedded-style")) return;
+  const style = documentElement.createElement("style");
+  style.id = "hyperwiki-embedded-style";
+  style.textContent = `
+    .wiki-header { display: none !important; }
+    .wiki-page { padding-top: 32px !important; }
+  `;
+  documentElement.head.append(style);
+}
+
+function currentWikiTitle() {
+  try {
+    const heading = wikiFrame.contentDocument?.querySelector("main h1");
+    return heading?.textContent?.trim() || "";
+  } catch {
+    return "";
   }
 }
 
@@ -363,17 +382,35 @@ function displayWikiPath(path) {
   return path.replace(/^\/projects\/[^/]+/, "");
 }
 
+function titleForWikiPath(path) {
+  return wikiPageTitles.get(displayWikiPath(path)) || displayWikiPath(path);
+}
+
 async function createTerminal(name, options = {}) {
   if (terminalSessions.has(name)) {
     return terminalSessions.get(name);
   }
 
   const id = crypto.randomUUID();
+  const panel = document.createElement("section");
+  panel.className = "terminal-panel";
+  panel.dataset.name = name;
+  const header = document.createElement("button");
+  header.type = "button";
+  header.className = "terminal-panel-header";
+  header.dataset.name = name;
+  const headerTitle = document.createElement("strong");
+  headerTitle.textContent = name;
+  const headerCommand = document.createElement("span");
+  headerCommand.textContent = terminalCommandLabel(options);
+  header.append(headerTitle, headerCommand);
   const el = document.createElement("div");
   el.className = "terminal theme-monokai";
   el.dataset.name = name;
   el.tabIndex = 0;
-  terminals.append(el);
+  panel.append(header, el);
+  terminals.append(panel);
+  header.addEventListener("click", () => activateTerminal(name));
 
   const tab = document.createElement("button");
   tab.type = "button";
@@ -447,7 +484,7 @@ async function createTerminal(name, options = {}) {
   await term.init();
   transport.connect();
 
-  const session = { id, name, role: options.role || "shell", command: options.command || null, el, tab, label, term, transport };
+  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, el, tab, label, term, transport };
   terminalSessions.set(name, session);
   return session;
 }
@@ -456,6 +493,7 @@ function activateTerminal(name) {
   activeTerminalName = name;
   terminalSessions.forEach((session, sessionName) => {
     const active = sessionName === name;
+    session.panel.classList.toggle("active", active);
     session.el.classList.toggle("active", active);
     session.tab.classList.toggle("active", active);
     session.tab.setAttribute("aria-selected", String(active));
@@ -471,11 +509,16 @@ function activateTerminal(name) {
 }
 
 function updateActiveSessionBoundary(session) {
-  const command = session.command ? ` preset: ${session.command}` : " interactive shell";
-  activeSessionBoundary.textContent = `${session.role}; ${session.id.slice(0, 8)};${command}`;
+  const command = session.command ? `Command: ${session.command}` : "Interactive shell";
+  activeSessionBoundary.textContent = `${session.name} · ${command} · ${session.id.slice(0, 8)}`;
   activeSessionBoundary.title = guardrails
     ? `${guardrails.commandHistory.detail}\nSession metadata is retained locally under .hyperwiki/sessions/.`
     : "Session metadata is retained locally under .hyperwiki/sessions/.";
+}
+
+function terminalCommandLabel(options = {}) {
+  if (options.command) return String(options.command);
+  return options.role === "shell" || !options.role ? "interactive shell" : String(options.role);
 }
 
 function scheduleTerminalScrollToBottom(el) {
@@ -517,7 +560,7 @@ function closeTerminal(name) {
   if (!session) return;
   session.transport.close();
   session.term.destroy();
-  session.el.remove();
+  session.panel.remove();
   session.tab.remove();
   terminalSessions.delete(name);
   void api(projectPath(`/api/sessions/${session.id}`), { method: "DELETE" });
@@ -528,7 +571,7 @@ function closeAllTerminals() {
     const session = terminalSessions.get(name);
     session?.transport.close();
     session?.term.destroy();
-    session?.el.remove();
+    session?.panel.remove();
     session?.tab.remove();
     terminalSessions.delete(name);
   }

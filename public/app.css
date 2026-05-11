@@ -21,7 +21,7 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: 180px minmax(360px, 1fr) minmax(360px, 0.9fr);
+  grid-template-columns: 180px minmax(360px, 1fr) minmax(380px, 0.95fr);
   height: 100vh;
   min-height: 560px;
 }
@@ -196,6 +196,10 @@ body {
   text-transform: uppercase;
 }
 
+.workspace-summary {
+  min-height: 54px;
+}
+
 .workspace-summary ul {
   display: grid;
   gap: 5px;
@@ -244,7 +248,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .pane-header a {
@@ -446,10 +450,49 @@ body {
   --terminal-bg: #272822;
   background: var(--terminal-bg);
   display: grid;
-  grid-auto-rows: minmax(180px, 1fr);
+  grid-auto-rows: minmax(220px, 1fr);
   gap: 1px;
   min-height: 0;
   overflow: auto;
+}
+
+.terminal-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  background: var(--terminal-bg);
+}
+
+.terminal-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #42483f;
+  padding: 7px 10px;
+  background: #1b1f1b;
+  color: #eef2ec;
+  cursor: pointer;
+  text-align: left;
+}
+
+.terminal-panel-header strong,
+.terminal-panel-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-panel-header strong {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.terminal-panel-header span {
+  color: #abb5ad;
+  font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .terminal {
@@ -469,6 +512,10 @@ body {
 
 .terminal.active,
 .terminal.wterm.active {
+  outline: 0;
+}
+
+.terminal-panel.active {
   outline: 1px solid #7f9186;
   outline-offset: -1px;
 }

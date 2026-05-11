@@ -16,7 +16,7 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
-await page.locator("#current-page").filter({ hasText: "/wiki/plans/index.html" }).waitFor();
+await page.locator("#current-page").filter({ hasText: "Planning Dashboard" }).waitFor();
 const sessionControlsHidden = await page.locator(".terminal-actions").evaluate((element) => !element.open);
 if (!sessionControlsHidden) {
   throw new Error("Expected terminal session controls to be collapsed by default");
@@ -27,19 +27,24 @@ if (!guardrailsCollapsed) {
 }
 
 const initialTabs = await page.locator(".terminal-tab").allTextContents();
-for (const expected of ["agent", "dev", "cli"]) {
+for (const expected of ["agent", "cli"]) {
   if (!initialTabs.some((tab) => tab.includes(expected))) {
     throw new Error(`Expected dogfood layout tab ${expected}`);
   }
 }
+if (initialTabs.some((tab) => tab.includes("dev"))) {
+  throw new Error("Expected HyperWiki dogfood layout to omit the conflicting dev panel");
+}
+await page.locator(".terminal-panel-header").filter({ hasText: "codex --yolo" }).waitFor();
+await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
 
 await page.locator("#current-plan-link").click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
 
-await page.locator("#current-page").filter({ hasText: /\/wiki\/plans\/index\.html$/ }).waitFor();
+await page.locator("#current-page").filter({ hasText: "Planning Dashboard" }).waitFor();
 const currentPage = await page.locator("#current-page").innerText();
-if (currentPage !== "/wiki/plans/index.html") {
-  throw new Error(`Expected /wiki/plans/index.html, got ${currentPage}`);
+if (currentPage !== "Planning Dashboard") {
+  throw new Error(`Expected Planning Dashboard, got ${currentPage}`);
 }
 
 await page.locator("#new-terminal").click();
@@ -92,8 +97,8 @@ if (scrollMetrics.scrollHeight <= scrollMetrics.clientHeight) {
 if (scrollMetrics.overflowY !== "auto") {
   throw new Error(`Expected terminal overflow-y auto, got ${scrollMetrics.overflowY}`);
 }
-if (scrollMetrics.visualGutter < 48) {
-  throw new Error(`Expected terminal visual gutter, got ${scrollMetrics.visualGutter}`);
+if (Math.abs(scrollMetrics.visualGutter) > 2) {
+  throw new Error(`Expected terminal to fill its visible pane, got gutter ${scrollMetrics.visualGutter}`);
 }
 if (scrollMetrics.background !== "rgba(0, 0, 0, 0)") {
   throw new Error(`Expected transparent terminal background, got ${scrollMetrics.background}`);
@@ -104,11 +109,14 @@ if (scrollMetrics.parentBackground !== "rgb(39, 40, 34)") {
 if (scrollMetrics.boxShadow !== "none" || scrollMetrics.borderRadius !== "0px") {
   throw new Error(`Expected terminal gutter edge without shadow/radius, got ${scrollMetrics.boxShadow}/${scrollMetrics.borderRadius}`);
 }
+await page.evaluate(() => {
+  const terminal = document.querySelector(".terminal.active");
+  terminal.scrollTop = terminal.scrollHeight;
+});
 await page.waitForFunction(() => {
   const terminal = document.querySelector(".terminal.active");
   const rowHeight = Number.parseFloat(getComputedStyle(terminal).getPropertyValue("--term-row-height")) || 17;
-  return terminal.scrollHeight > terminal.clientHeight &&
-    terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 2;
+  return terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 2;
 });
 await page.waitForTimeout(450);
 const beforeTypingAtBottom = await page.evaluate(() => {
@@ -132,7 +140,7 @@ const afterTypingAtBottom = await page.evaluate(() => {
   };
 });
 if (Math.abs(afterTypingAtBottom.visualGutter - beforeTypingAtBottom.visualGutter) > 2) {
-  throw new Error(`Expected typing to preserve visual gutter, got ${beforeTypingAtBottom.visualGutter} -> ${afterTypingAtBottom.visualGutter}`);
+  throw new Error(`Expected typing to preserve terminal pane geometry, got ${beforeTypingAtBottom.visualGutter} -> ${afterTypingAtBottom.visualGutter}`);
 }
 if (Math.abs(afterTypingAtBottom.scrollTop - beforeTypingAtBottom.scrollTop) > 2) {
   throw new Error(`Expected typing to preserve terminal scrollTop, got ${beforeTypingAtBottom.scrollTop} -> ${afterTypingAtBottom.scrollTop}`);
@@ -145,9 +153,8 @@ await page.waitForFunction(() =>
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#plan-summary li").first().waitFor();
-await page.locator("#guardrail-summary").filter({ hasText: "Local-only" }).waitFor();
+await page.locator("#guardrail-mode").filter({ hasText: "Local-only" }).waitFor();
 await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();
-await page.locator("#verification-summary").filter({ hasText: "pnpm run check" }).waitFor();
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
@@ -156,8 +163,8 @@ if (workspaceData.plan.summary.length === 0) {
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);
 }
-if (!workspaceData.layout.panels.some((panel) => panel.name === "dev")) {
-  throw new Error("Expected workspace layout to include dev panel");
+if (workspaceData.layout.panels.some((panel) => panel.name === "dev")) {
+  throw new Error("Expected HyperWiki dogfood layout to omit dev panel");
 }
 if (!workspaceData.layout.panels.some((panel) => panel.name === "agent" && panel.command)) {
   throw new Error("Expected workspace layout to include configured agent panel");
