@@ -262,12 +262,15 @@ body {
 
 .plan-prompt {
   display: grid;
-  grid-template-columns: auto minmax(240px, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label status"
+    "input button";
   align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
+  gap: 6px 10px;
+  padding: 10px 14px;
   border-top: 1px solid var(--border);
-  background: #f3f4ef;
+  background: #fbfbf8;
 }
 
 .plan-prompt[hidden] {
@@ -275,6 +278,7 @@ body {
 }
 
 .plan-prompt label {
+  grid-area: label;
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
@@ -282,6 +286,7 @@ body {
 }
 
 .plan-prompt textarea {
+  grid-area: input;
   width: 100%;
   min-width: 0;
   resize: none;
@@ -294,7 +299,9 @@ body {
 }
 
 .plan-prompt button {
-  justify-self: start;
+  grid-area: button;
+  align-self: stretch;
+  justify-self: end;
   border: 1px solid #c6c8c0;
   border-radius: 6px;
   padding: 6px 8px;
@@ -305,6 +312,8 @@ body {
 }
 
 .plan-prompt p {
+  grid-area: status;
+  justify-self: end;
   min-height: 16px;
   margin: 0;
   color: var(--muted);
@@ -313,7 +322,7 @@ body {
 
 .wiki-pane {
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .pane-header {
