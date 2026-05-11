@@ -42,9 +42,31 @@
       <nav id="wiki-nav" class="wiki-nav" aria-label="Wiki pages">
         <a href="/wiki/index.html" target="wiki-frame" data-wiki-link>Home</a>
       </nav>
-      <section class="workspace-summary" aria-label="Workspace summary">
-        <h2>Status</h2>
-        <ul id="plan-summary"></ul>
+      <section class="up-next" aria-label="Plan status">
+        <button type="button" id="up-next-button" aria-expanded="false" aria-controls="up-next-popover">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="m18 13-6 6-6-6"></path>
+            <path d="M5 5h14"></path>
+          </svg>
+          <span>Up Next</span>
+        </button>
+        <div id="up-next-popover" class="up-next-popover" role="dialog" aria-label="Up Next" hidden>
+          <dl>
+            <div>
+              <dt>Just completed</dt>
+              <dd id="up-next-completed">Loading</dd>
+            </div>
+            <div>
+              <dt>Current</dt>
+              <dd id="up-next-current">Loading</dd>
+            </div>
+            <div>
+              <dt>Next</dt>
+              <dd id="up-next-next">Loading</dd>
+            </div>
+          </dl>
+        </div>
       </section>
     </aside>
     <section class="wiki-pane">

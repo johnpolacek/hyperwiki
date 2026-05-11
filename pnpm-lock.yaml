@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@wterm/core':
+        specifier: ^0.3.0
+        version: 0.3.0
       '@wterm/dom':
         specifier: ^0.3.0
         version: 0.3.0

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 02 - HTML Wiki and Dev Workspace - Unit 02 - Session Metadata And Repo Context - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Unit 02 - Session Metadata And Repo Context</h1>
+<p><a href="/wiki/plans/mvp/stage-02-dev-workspace.html">Stage 02 - HTML Wiki and Dev Workspace</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Persist transparent terminal/session metadata under <code>.hyperwiki/sessions/</code> without treating it as canonical project truth.</li>
+    <li>Add terminal lifecycle controls for close, restart, rename, and status reporting.</li>
+    <li>Add visible repo context: root path, branch, dirty status, and whether the workspace is running in a Git worktree.</li>
+    <li>Expose this context through local-only JSON endpoints used by the workspace UI.</li>
+    <li>Verification: <code>npm run check</code>, <code>npm run smoke:browser</code>, repo context endpoint smoke test, session metadata endpoint smoke test, direct WebSocket session metadata smoke test.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

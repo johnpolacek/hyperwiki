@@ -53,55 +53,15 @@
   <li>Do not treat user-level memory as canonical project truth.</li>
   <li>Do not sync memory to a hosted service in this plan.</li>
 </ul>
-<h2>Execution Units</h2>
 <section>
-  <h3>Unit 01 - Memory Boundary Model</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Define where per-project memory, overall memory, and runtime memory live.</li>
-    <li>Define which memory is repo-visible, which is ignored local state, and which is user-level state.</li>
-    <li>Define consent and review rules before any durable memory write.</li>
-    <li>Verification: manual architecture review against existing <code>.hyperwiki/state/</code>, <code>.hyperwiki/sessions/</code>, <code>wiki/</code>, and <code>~/.hyperwiki/projects.json</code> boundaries.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 02 - Per-project Memory</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Add a repo-local memory surface for durable project facts, preferences, decisions, recurring warnings, and verification learnings.</li>
-    <li>Prefer human-readable wiki-backed memory first, with structured metadata derived from or linked to it.</li>
-    <li>Keep project memory scoped to the selected project root and visible in the workspace contract.</li>
-    <li>Verification: initialize/dogfood in one project, switch to another project, and confirm memory does not cross project roots unless explicitly promoted to overall memory.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 03 - Overall Memory</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Add a user-level memory surface for preferences and operating patterns that should follow the user across HyperWiki projects.</li>
-    <li>Separate user preferences from project facts, and require clear promotion from project memory to overall memory.</li>
-    <li>Expose user-level memory in a way agents can consume without receiving unrelated project secrets.</li>
-    <li>Verification: dogfood across at least two projects and inspect the context provided to each agent session.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 04 - Memory Review And Controls</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Add review, accept, reject, edit, export, prune, and delete flows for proposed and durable memories.</li>
-    <li>Make memory writes auditable and reversible.</li>
-    <li>Keep controls local-first and compatible with future MCP tools.</li>
-    <li>Verification: smoke tests for export/delete behavior and manual review of accidental-persistence risks.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 05 - Agent Memory Context</h3>
-  <ul>
-    <li>Status: pending</li>
-    <li>Include relevant per-project and overall memory in agent prompt wrappers and future MCP project contracts.</li>
-    <li>Label memory provenance clearly so agents know whether a fact is project-specific, user-level, or runtime-only.</li>
-    <li>Verification: dogfood prompt submission and inspect whether agent behavior uses memory while respecting project boundaries.</li>
-  </ul>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><a href="/wiki/plans/memory/unit-01-memory-boundary-model.html">Unit 01 - Memory Boundary Model</a> - pending</li>
+    <li><a href="/wiki/plans/memory/unit-02-per-project-memory.html">Unit 02 - Per-project Memory</a> - pending</li>
+    <li><a href="/wiki/plans/memory/unit-03-overall-memory.html">Unit 03 - Overall Memory</a> - pending</li>
+    <li><a href="/wiki/plans/memory/unit-04-memory-review-and-controls.html">Unit 04 - Memory Review And Controls</a> - pending</li>
+    <li><a href="/wiki/plans/memory/unit-05-agent-memory-context.html">Unit 05 - Agent Memory Context</a> - pending</li>
+  </ol>
 </section>
   </main>
 </body>

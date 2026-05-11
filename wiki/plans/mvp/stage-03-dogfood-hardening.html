@@ -30,43 +30,14 @@
 </section>
 <h2>Intent</h2>
 <p>Connect @wterm/dom to a local WebSocket PTY backend.</p>
-<h2>Execution Units</h2>
 <section>
-  <h3>Unit 01 - True PTY Compatibility</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Investigate and fix <code>node-pty</code> spawning on the local development runtime, or choose a replacement PTY backend if the failure is structural.</li>
-    <li>Keep the existing pipe fallback as an explicit degraded mode, not the primary terminal path.</li>
-    <li>Verification: <code>npm run smoke:pty</code>, live dev server WebSocket smoke, browser smoke.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 02 - Terminal Session Persistence And Retention</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Define and implement refresh behavior, session cleanup, local log retention, and export boundaries for terminal sessions.</li>
-    <li>Keep retained runtime state ignored unless the user intentionally exports it into repo-visible wiki or log files.</li>
-    <li>Verification: <code>npm run smoke:sessions</code>, <code>npm run smoke:browser</code>, prune route smoke, ignored-state check.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 03 - Dogfood Operating Layout</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Create a useful default layout for this repo: shell, checks, dev server, git, and agent terminals.</li>
-    <li>Represent panels as transparent local sessions that can be inspected, restarted, and closed.</li>
-    <li>Verification: <code>/api/layout</code> smoke, <code>npm run smoke:browser</code>, real PTY/session smoke.</li>
-  </ul>
-</section>
-<section>
-  <h3>Unit 04 - Guardrails And Auditability</h3>
-  <ul>
-    <li>Status: complete</li>
-    <li>Make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
-    <li>Document which state is canonical repo truth and which state is ignored local runtime data.</li>
-    <li>Implemented a guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, active session metadata, command history boundaries, and terminal lifecycle/export actions.</li>
-    <li>Verification: <code>pnpm run check</code> and <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4189/workspace/ pnpm run smoke:browser</code>.</li>
-  </ul>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-true-pty-compatibility.html">Unit 01 - True PTY Compatibility</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-terminal-session-persistence-and-retention.html">Unit 02 - Terminal Session Persistence And Retention</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-dogfood-operating-layout.html">Unit 03 - Dogfood Operating Layout</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-guardrails-and-auditability.html">Unit 04 - Guardrails And Auditability</a> - complete</li>
+  </ol>
 </section>
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>

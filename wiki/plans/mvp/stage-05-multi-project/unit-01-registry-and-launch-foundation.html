@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 05 - Multi-project Workspace - Unit 01 - Registry and Launch Foundation - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Unit 01 - Registry and Launch Foundation</h1>
+<p><a href="/wiki/plans/mvp/stage-05-multi-project.html">Stage 05 - Multi-project Workspace</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Add a user-level registry at <code>~/.hyperwiki/projects.json</code>.</li>
+    <li><code>npx hyperwiki</code> from a HyperWiki-initialized repo auto-registers that repo and opens it as the active project.</li>
+    <li>Only repos with <code>wiki/</code> and <code>.hyperwiki/config.json</code> are eligible.</li>
+    <li>Project names come from config <code>projectName</code>, then package name, then folder name.</li>
+    <li>Implemented with a user-level registry that can be isolated in tests through <code>HYPERWIKI_HOME</code>.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

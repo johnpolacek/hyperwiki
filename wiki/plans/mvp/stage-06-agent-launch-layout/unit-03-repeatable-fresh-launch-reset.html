@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stage 06 - Agent-first Launch Layout - Unit 03 - Repeatable Fresh-launch Reset - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Unit 03 - Repeatable Fresh-launch Reset</h1>
+<p><a href="/wiki/plans/mvp/stage-06-agent-launch-layout.html">Stage 06 - Agent-first Launch Layout</a></p>
+<section class="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Add a safe command for dogfooding first-launch behavior repeatedly on the same computer.</li>
+    <li>Clear the user-level project registry and ignored per-project runtime state.</li>
+    <li>Do not remove canonical project files such as <code>wiki/</code> or <code>.hyperwiki/config.json</code>.</li>
+    <li>Support <code>--dry-run</code> so reset scope can be inspected before deletion.</li>
+    <li>Implemented as <code>npx hyperwiki reset</code> with <code>npx hyperwiki reset --dry-run</code>.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>
