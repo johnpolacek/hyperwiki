@@ -8,7 +8,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { createPtySession } from "./pty.js";
-import { ProjectRegistry } from "./projects.js";
+import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -526,17 +526,19 @@ function stripHtml(value) {
 }
 
 async function repoContext(root) {
-  const [gitRoot, branch, status, commonDir] = await Promise.all([
+  const [gitRoot, branch, status, commonDir, worktree] = await Promise.all([
     git(root, ["rev-parse", "--show-toplevel"]),
     git(root, ["branch", "--show-current"]),
     git(root, ["status", "--short"]),
-    git(root, ["rev-parse", "--git-common-dir"])
+    git(root, ["rev-parse", "--git-common-dir"]),
+    worktreeSlug(root)
   ]);
   return {
     root,
     git: {
       root: gitRoot.ok ? gitRoot.stdout : null,
       branch: branch.ok && branch.stdout ? branch.stdout : "detached",
+      worktree,
       dirty: status.ok ? status.stdout.length > 0 : null,
       status: status.ok ? status.stdout.split("\n").filter(Boolean) : [],
       isWorktree: commonDir.ok ? ![".git", path.join(root, ".git")].includes(commonDir.stdout) : null

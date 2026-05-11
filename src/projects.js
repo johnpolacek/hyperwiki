@@ -58,8 +58,9 @@ export class ProjectRegistry {
       || projects.find((project) => project.available)
       || projects[0]
       || null;
+    const visibleProjects = groupedProjects(projects, activeProject?.id || null);
     return {
-      projects: projects.map((project) => ({
+      projects: visibleProjects.map((project) => ({
         ...project,
         active: project.id === activeProject?.id
       })),
@@ -185,6 +186,22 @@ function pruneMissingWorktrees(projects) {
   return projects.filter((item) => !missingWorktree(item));
 }
 
+function groupedProjects(projects, activeId) {
+  const groups = new Map();
+  for (const project of projects) {
+    const key = project.projectSlug || slugify(project.name);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key).push(project);
+  }
+  return [...groups.values()].map((group) =>
+    group.find((project) => project.id === activeId)
+    || group.find((project) => project.available)
+    || group[0]
+  );
+}
+
 function withUniqueSlugs(projects) {
   const pairs = new Map();
   return projects.map((item) => {
@@ -201,7 +218,7 @@ function withUniqueSlugs(projects) {
   });
 }
 
-async function worktreeSlug(root) {
+export async function worktreeSlug(root) {
   const gitPath = path.join(path.resolve(root), ".git");
   if (!existsSync(gitPath)) {
     return "main";

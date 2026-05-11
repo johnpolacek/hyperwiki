@@ -165,10 +165,12 @@ async function restoreTerminals() {
 async function loadRepoContext() {
   try {
     const repo = await api(projectPath("/api/repo"));
-    repoBranch.textContent = repo.git.branch || "detached";
+    repoBranch.textContent = repo.git.worktree || "main";
+    repoBranch.title = repo.root;
     document.getElementById("server-status").title = repo.root;
   } catch {
     repoBranch.textContent = "Unavailable";
+    repoBranch.title = "";
   }
 }
 
@@ -262,7 +264,7 @@ async function loadProjects() {
       button.type = "button";
       button.dataset.projectId = project.id;
       button.dataset.worktreeSlug = project.worktreeSlug || "main";
-      button.textContent = projectLabel(project);
+      button.textContent = project.name;
       button.title = project.available ? project.root : `${project.root} unavailable`;
       button.className = project.id === activeProjectId ? "active" : "";
       button.disabled = !project.available;
@@ -288,21 +290,6 @@ async function switchProject(project) {
   activateWikiPage(currentPlanPath);
   await restoreTerminals();
   activateDefaultTerminal();
-}
-
-function projectLabel(project) {
-  const worktree = project.worktreeSlug || "main";
-  return slugifyLabel(project.name) === slugifyLabel(worktree)
-    ? project.name
-    : `${project.name} · ${worktree}`;
-}
-
-function slugifyLabel(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function activateDefaultTerminal() {

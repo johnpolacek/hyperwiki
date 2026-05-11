@@ -90,42 +90,24 @@ try {
     throw new Error(`Expected pretty worktree workspace URL, got ${secondWorkspaceUrl}`);
   }
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
+  await page.locator("#repo-branch").filter({ hasText: "plan-unit-navigation" }).waitFor();
   await page.locator("#project-toggle").evaluate((element) => {
-    if (element.hidden) throw new Error("Expected project topbar action after registering two projects.");
+    if (!element.hidden) throw new Error("Expected worktrees to stay out of the Projects switcher.");
   });
-  await page.locator("#project-toggle").click();
-  await page.locator("#project-panel").evaluate((element) => {
-    if (element.hidden) throw new Error("Expected project panel to open.");
-  });
-  const projectLabels = await page.locator("#project-list button").allTextContents();
-  for (const expected of ["launch-smoke · main", "launch-smoke · plan-unit-navigation"]) {
-    if (!projectLabels.includes(expected)) {
-      throw new Error(`Expected single-line project label ${expected}, got ${JSON.stringify(projectLabels)}`);
-    }
+  const groupedProjects = await fetch(`http://127.0.0.1:${port}/api/projects?projectSlug=launch-smoke&worktreeSlug=plan-unit-navigation`).then((response) => response.json());
+  if (groupedProjects.projects.length !== 1 || groupedProjects.projects[0].name !== "launch-smoke") {
+    throw new Error(`Expected same-project worktrees to collapse to one project row, got ${JSON.stringify(groupedProjects)}`);
   }
-  await page.locator("#settings-button").click();
-  await page.locator("#settings-panel").evaluate((element) => {
-    if (element.hidden) throw new Error("Expected settings panel to open.");
-  });
-  await page.locator("#project-panel").evaluate((element) => {
-    if (!element.hidden) throw new Error("Expected settings panel to close project panel.");
-  });
-  await page.locator("#settings-button").click();
-  await page.locator("#project-toggle").click();
-  await page.locator("#project-list button[data-worktree-slug=\"main\"]").click();
-  await page.locator("#project-list button.active[data-worktree-slug=\"main\"]").waitFor();
-  if (!page.url().includes("/workspace/launch-smoke/main")) {
-    throw new Error(`Expected switch to update pretty workspace URL, got ${page.url()}`);
+  if (groupedProjects.activeProjectId !== groupedProjects.projects[0].id || groupedProjects.projects[0].worktreeSlug !== "plan-unit-navigation") {
+    throw new Error(`Expected active grouped project to preserve worktree runtime context, got ${JSON.stringify(groupedProjects)}`);
   }
-  await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
-  await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
-  await page.locator("#project-toggle").click();
-  await page.locator("#project-list button.active[data-worktree-slug=\"plan-unit-navigation\"]").waitFor();
+  await page.goto(workspaceUrl, { waitUntil: "networkidle" });
+  await page.locator("#repo-branch").filter({ hasText: "main" }).waitFor();
 
-  const registeredProjects = await fetch(`http://127.0.0.1:${port}/api/projects`).then((response) => response.json());
-  const worktreeProject = registeredProjects.projects.find((project) => project.worktreeSlug === "plan-unit-navigation");
+  const registryBeforePrune = JSON.parse(await readFile(path.join(home, "projects.json"), "utf8"));
+  const worktreeProject = registryBeforePrune.projects.find((project) => project.worktreeSlug === "plan-unit-navigation");
   if (!worktreeProject) {
-    throw new Error(`Expected worktree project before prune, got ${JSON.stringify(registeredProjects)}`);
+    throw new Error(`Expected worktree project before prune, got ${JSON.stringify(registryBeforePrune)}`);
   }
   await rm(secondRoot, { recursive: true, force: true });
   const prunedProjects = await fetch(`http://127.0.0.1:${port}/api/projects?project=${encodeURIComponent(worktreeProject.id)}`).then((response) => response.json());
@@ -155,25 +137,8 @@ try {
   if (!missingMainProject || missingMainProject.available) {
     throw new Error(`Expected missing main project to remain unavailable, got ${JSON.stringify(withMissingMain)}`);
   }
-  registryAfterPrune.projects.push({
-    id: "duplicate-label-worktree",
-    root: path.join(workspaceRoot, "plan-unit-navigation"),
-    name: "plan-unit-navigation",
-    projectSlug: "plan-unit-navigation",
-    worktreeSlug: "plan-unit-navigation",
-    available: true,
-    lastOpenedAt: new Date().toISOString()
-  });
-  await mkdir(path.join(workspaceRoot, "plan-unit-navigation"));
-  await writeFile(path.join(workspaceRoot, "plan-unit-navigation", "package.json"), `${JSON.stringify({ name: "plan-unit-navigation" }, null, 2)}\n`);
-  await writeFile(path.join(workspaceRoot, "plan-unit-navigation", ".git"), `gitdir: ${path.join(workspaceRoot, ".git", "worktrees", "plan-unit-navigation-duplicate")}\n`);
-  await writeFile(path.join(home, "projects.json"), `${JSON.stringify(registryAfterPrune, null, 2)}\n`);
-  await runCli(["init", "--yes"], { cwd: path.join(workspaceRoot, "plan-unit-navigation"), env: { ...process.env, HYPERWIKI_HOME: home } });
-  await page.goto(workspaceUrl, { waitUntil: "networkidle" });
-  await page.locator("#project-toggle").click();
-  const duplicateLabelCount = await page.locator("#project-list button").filter({ hasText: /^plan-unit-navigation$/ }).count();
-  if (duplicateLabelCount !== 1) {
-    throw new Error(`Expected duplicate project/worktree label to collapse to one name, got ${duplicateLabelCount}`);
+  if (withMissingMain.projects.some((project) => project.name.includes(" · "))) {
+    throw new Error(`Expected Projects labels to omit worktree suffixes, got ${JSON.stringify(withMissingMain)}`);
   }
 } finally {
   if (browser) {
