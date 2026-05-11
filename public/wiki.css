@@ -113,6 +113,7 @@ pre {
   background: var(--code);
   border-radius: 6px;
   font-family: var(--mono-font);
+  font-size: 0.86em;
 }
 
 code {
@@ -122,6 +123,11 @@ code {
 pre {
   overflow: auto;
   padding: 14px;
+  line-height: 1.5;
+}
+
+pre code {
+  font-size: 1em;
 }
 
 .summary {
