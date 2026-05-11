@@ -160,6 +160,9 @@ body {
 }
 
 .brand h1 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin: 0 8px;
   color: var(--muted);
   font-size: 10px;
@@ -167,6 +170,61 @@ body {
   letter-spacing: 0;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.brand-dots {
+  display: grid;
+  grid-template-columns: repeat(3, 3px);
+  gap: 2px;
+  width: 13px;
+  height: 13px;
+}
+
+.brand-dots span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #879189;
+  opacity: 0.34;
+  animation: brand-dot-pulse 3.6s ease-in-out infinite;
+}
+
+.brand-dots span:nth-child(2),
+.brand-dots span:nth-child(4) {
+  animation-delay: 0.22s;
+}
+
+.brand-dots span:nth-child(3),
+.brand-dots span:nth-child(5),
+.brand-dots span:nth-child(7) {
+  animation-delay: 0.44s;
+}
+
+.brand-dots span:nth-child(6),
+.brand-dots span:nth-child(8) {
+  animation-delay: 0.66s;
+}
+
+.brand-dots span:nth-child(9) {
+  animation-delay: 0.88s;
+}
+
+@keyframes brand-dot-pulse {
+  0%,
+  100% {
+    background: #879189;
+    opacity: 0.28;
+  }
+
+  42% {
+    background: var(--accent);
+    opacity: 0.86;
+  }
+
+  68% {
+    background: #5f7668;
+    opacity: 0.5;
+  }
 }
 
 .wiki-nav {
@@ -659,5 +717,11 @@ body {
 
   .terminal-guardrails dl {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-dots span {
+    animation: none;
   }
 }
