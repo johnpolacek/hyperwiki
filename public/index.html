@@ -50,7 +50,13 @@
       <form id="plan-prompt" class="plan-prompt" hidden>
         <label for="plan-prompt-input">Plan prompt</label>
         <textarea id="plan-prompt-input" rows="1" placeholder="Ask the agent to revise this plan..."></textarea>
-        <button type="submit">Send to Agent</button>
+        <button type="submit" aria-label="Send prompt to agent">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 14-7-4 14-3-6-7-1Z"></path>
+            <path d="m12 13 7-8"></path>
+          </svg>
+          <span>Send</span>
+        </button>
         <p id="plan-prompt-status" role="status"></p>
       </form>
     </section>
