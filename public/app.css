@@ -275,8 +275,8 @@ body {
 .sidebar {
   grid-column: 1;
   grid-row: 2;
-  padding: 14px 8px 14px 7px;
-  background: #efefea;
+  padding: 18px 20px;
+  background: #fbfbfa;
   font-family: var(--sidebar-font);
   overflow: auto;
 }
@@ -387,17 +387,18 @@ body {
 
 .primary-nav,
 .wiki-nav {
-  padding-inline: 4px;
+  padding-inline: 0;
 }
 
 .primary-nav a,
 .wiki-nav a {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 7px 0;
-  border-radius: 6px;
+  padding: 8px 9px;
+  border-radius: 0;
   color: var(--text);
   font-size: 13px;
   text-decoration: none;
@@ -417,6 +418,17 @@ body {
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
+.wiki-nav a.active::after,
+.primary-nav a.active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: #171916;
+}
+
 .primary-nav a {
   font-size: 14px;
   font-weight: 700;
@@ -431,20 +443,26 @@ body {
 
 .wiki-nav-group {
   display: grid;
-  gap: 2px;
+  gap: 0;
 }
 
 .wiki-nav-group .wiki-nav-group {
-  margin-left: 6px;
+  margin-left: 0;
 }
 
 .wiki-nav-group summary {
-  padding: 4px 0;
-  color: var(--muted);
+  padding: 5px 0 9px;
+  color: #8a8d88;
   cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  list-style: none;
   text-transform: uppercase;
+}
+
+.wiki-nav-group summary::-webkit-details-marker {
+  display: none;
 }
 
 .plan-subtree > summary {
@@ -456,6 +474,20 @@ body {
   font-size: 13px;
   font-weight: 400;
   text-transform: none;
+}
+
+.plan-subtree > summary::before {
+  content: "›";
+  flex: 0 0 18px;
+  color: #8a8d88;
+  font-size: 22px;
+  line-height: 1;
+  transform: translateY(-1px);
+  transition: transform 160ms ease;
+}
+
+.plan-subtree[open] > summary::before {
+  transform: translateY(-1px) rotate(90deg);
 }
 
 .plan-subtree > summary a {
@@ -475,7 +507,7 @@ body {
 }
 
 .plan-subtree > a {
-  margin-left: 12px;
+  margin-left: 32px;
 }
 
 .plan-tree .wiki-nav-group {
@@ -483,17 +515,11 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree {
-  position: relative;
   padding-left: 0;
 }
 
 .plan-tree .plan-subtree .plan-subtree::before {
-  content: "";
-  position: absolute;
-  top: 9px;
-  bottom: 6px;
-  left: 3px;
-  border-left: 1px dotted #c6c8c0;
+  content: none;
 }
 
 .plan-tree .plan-subtree .plan-subtree > summary,
@@ -503,14 +529,14 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree > .wiki-nav-group {
-  margin-left: 12px;
+  margin-left: 22px;
 }
 
 .wiki-nav a:hover,
 .wiki-nav a.active,
 .primary-nav a:hover,
 .primary-nav a.active {
-  background: #e1e4dd;
+  background: #f0f0ed;
 }
 
 .up-next-popover dl {
