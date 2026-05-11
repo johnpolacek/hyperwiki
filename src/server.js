@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -153,6 +153,12 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, result);
       return;
     }
+    if (url.pathname === "/api/terminal/drop" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const body = await readJsonBody(request);
+      await sendJson(response, await saveDroppedFiles(project.root, body));
+      return;
+    }
     const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
     const exportMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)\/export$/);
     if (exportMatch && request.method === "POST") {
@@ -283,6 +289,30 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
       name: agentSession.name
     }
   };
+}
+
+async function saveDroppedFiles(root, body) {
+  const files = Array.isArray(body.files) ? body.files : [];
+  const saved = [];
+  const dropRoot = path.join(root, ".hyperwiki", "state", "drops");
+  await mkdir(dropRoot, { recursive: true });
+  for (const file of files) {
+    const name = safeDropName(file?.name);
+    const content = typeof file?.content === "string" ? file.content : "";
+    if (!content) {
+      continue;
+    }
+    const prefix = new Date().toISOString().replace(/[:.]/g, "-");
+    const filePath = path.join(dropRoot, `${prefix}-${randomUUID().slice(0, 8)}-${name}`);
+    await writeFile(filePath, Buffer.from(content, "base64"));
+    saved.push({ name, path: filePath });
+  }
+  return { files: saved };
+}
+
+function safeDropName(name) {
+  const fallback = "dropped-file";
+  return path.basename(String(name || fallback)).replace(/[^a-zA-Z0-9._-]/g, "-") || fallback;
 }
 
 async function workspaceSummary(root, config) {

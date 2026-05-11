@@ -257,6 +257,22 @@ await page.keyboard.press("Enter");
 await page.waitForFunction(() =>
   document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_BOTTOM_STABILITY_OK")
 );
+const urlBeforeDrop = page.url();
+await page.locator(".terminal[data-name=\"cli\"]").dispatchEvent("drop", {
+  dataTransfer: await page.evaluateHandle(() => {
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File(["fake image bytes"], "drop-test.png", { type: "image/png" }));
+    return dataTransfer;
+  })
+});
+await page.waitForFunction(() =>
+  document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes(".hyperwiki/state/drops/")
+  && document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("drop-test.png")
+);
+if (page.url() !== urlBeforeDrop) {
+  throw new Error(`Expected terminal file drop to stay on the workspace URL, got ${page.url()}`);
+}
+await page.keyboard.press(process.platform === "darwin" ? "Meta+Backspace" : "Control+U");
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#up-next-button").click();

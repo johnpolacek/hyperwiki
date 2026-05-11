@@ -646,6 +646,14 @@ async function createTerminal(name, options = {}) {
     activateTerminal(name);
     requestAnimationFrame(() => term.focus());
   });
+  el.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  });
+  el.addEventListener("drop", (event) => {
+    event.preventDefault();
+    void handleTerminalDrop(event, name, transport);
+  });
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
     url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
@@ -719,6 +727,60 @@ function updateActiveSessionBoundary(session) {
 function terminalCommandLabel(options = {}) {
   if (options.command) return String(options.command);
   return options.role === "shell" || !options.role ? "interactive shell" : String(options.role);
+}
+
+async function handleTerminalDrop(event, name, transport) {
+  activateTerminal(name);
+  const droppedPaths = filePathsFromDropText(event.dataTransfer);
+  const droppedFiles = [...event.dataTransfer.files];
+  const savedPaths = droppedFiles.length > 0
+    ? await saveDroppedFiles(droppedFiles)
+    : [];
+  const paths = [...droppedPaths, ...savedPaths];
+  if (paths.length === 0) {
+    return;
+  }
+  transport?.send(paths.map(shellQuote).join(" "));
+}
+
+function filePathsFromDropText(dataTransfer) {
+  const uriList = dataTransfer.getData("text/uri-list");
+  return uriList
+    .split(/\r?\n/)
+    .filter((line) => line && !line.startsWith("#"))
+    .filter((line) => line.startsWith("file://"))
+    .map((line) => decodeURIComponent(new URL(line).pathname));
+}
+
+async function saveDroppedFiles(files) {
+  const payload = {
+    files: await Promise.all(files.map(async (file) => ({
+      name: file.name,
+      type: file.type,
+      content: await fileToBase64(file)
+    })))
+  };
+  const result = await api(projectPath("/api/terminal/drop"), {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  return result.files.map((file) => file.path);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const result = String(reader.result || "");
+      resolve(result.slice(result.indexOf(",") + 1));
+    });
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
+}
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
 function scheduleTerminalScrollToBottom(el) {
