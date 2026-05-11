@@ -97,6 +97,15 @@ try {
   await page.locator("#project-panel").evaluate((element) => {
     if (element.hidden) throw new Error("Expected project panel to open.");
   });
+  await page.locator("#settings-button").click();
+  await page.locator("#settings-panel").evaluate((element) => {
+    if (element.hidden) throw new Error("Expected settings panel to open.");
+  });
+  await page.locator("#project-panel").evaluate((element) => {
+    if (!element.hidden) throw new Error("Expected settings panel to close project panel.");
+  });
+  await page.locator("#settings-button").click();
+  await page.locator("#project-toggle").click();
   await page.locator("#project-list button[data-worktree-slug=\"main\"]").click();
   await page.locator("#project-list button.active[data-worktree-slug=\"main\"]").waitFor();
   if (!page.url().includes("/workspace/launch-smoke/main")) {

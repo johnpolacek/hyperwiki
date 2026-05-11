@@ -16,6 +16,8 @@ const repoBranch = document.getElementById("repo-branch");
 const repoDirty = document.getElementById("repo-dirty");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
+const settingsButton = document.getElementById("settings-button");
+const settingsPanel = document.getElementById("settings-panel");
 const upNextCompleted = document.getElementById("up-next-completed");
 const upNextCurrent = document.getElementById("up-next-current");
 const upNextNext = document.getElementById("up-next-next");
@@ -160,11 +162,20 @@ upNextButton.addEventListener("click", (event) => {
   setTopbarPanelOpen("up-next", upNextPopover.hidden);
 });
 
+settingsButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setTopbarPanelOpen("settings", settingsPanel.hidden);
+});
+
 projectPanel.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 
 upNextPopover.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+settingsPanel.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 
@@ -246,24 +257,25 @@ function renderUpNext(status = {}) {
 }
 
 function setTopbarPanelOpen(panel, open) {
-  if (panel === "projects") {
-    projectPanel.hidden = !open;
-    projectToggle.setAttribute("aria-expanded", String(open));
-    upNextPopover.hidden = true;
-    upNextButton.setAttribute("aria-expanded", "false");
-    return;
-  }
-  upNextPopover.hidden = !open;
-  upNextButton.setAttribute("aria-expanded", String(open));
-  projectPanel.hidden = true;
-  projectToggle.setAttribute("aria-expanded", "false");
+  const panels = {
+    projects: { panel: projectPanel, button: projectToggle },
+    "up-next": { panel: upNextPopover, button: upNextButton },
+    settings: { panel: settingsPanel, button: settingsButton }
+  };
+  Object.entries(panels).forEach(([name, item]) => {
+    const isOpen = name === panel && open;
+    item.panel.hidden = !isOpen;
+    item.button.setAttribute("aria-expanded", String(isOpen));
+  });
 }
 
 function closeTopbarPanels() {
   projectPanel.hidden = true;
   upNextPopover.hidden = true;
+  settingsPanel.hidden = true;
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
+  settingsButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadGuardrails() {

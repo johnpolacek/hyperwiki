@@ -33,6 +33,12 @@
       </div>
       <div class="topbar-actions">
         <button type="button" id="project-toggle" class="topbar-button" aria-expanded="false" aria-controls="project-panel" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="8" cy="8" r="3"></circle>
+            <circle cx="16" cy="8" r="3"></circle>
+            <circle cx="8" cy="16" r="3"></circle>
+            <circle cx="16" cy="16" r="3"></circle>
+          </svg>
           <span>Projects</span>
         </button>
         <button type="button" id="up-next-button" class="topbar-button" aria-expanded="false" aria-controls="up-next-popover">
@@ -41,6 +47,13 @@
             <path d="M13 5v4H8v6h5v4l7-7Z"></path>
           </svg>
           <span>Up Next</span>
+        </button>
+        <button type="button" id="settings-button" class="topbar-button" aria-expanded="false" aria-controls="settings-panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .92V20.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-.92 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.92-1H3.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 .92-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.92V3.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 .92 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.43.7.92 1h.18a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1 .92Z"></path>
+          </svg>
+          <span>Settings</span>
         </button>
       </div>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
@@ -61,6 +74,22 @@
             <dd id="up-next-next">Loading</dd>
           </div>
         </dl>
+      </section>
+      <section id="settings-panel" class="topbar-panel settings-panel" role="dialog" aria-label="Settings" hidden>
+        <div class="settings-placeholder">
+          <h2>Settings</h2>
+          <p>Workspace preferences will live here.</p>
+          <dl>
+            <div>
+              <dt>Theme</dt>
+              <dd>System</dd>
+            </div>
+            <div>
+              <dt>Automation</dt>
+              <dd>Local only</dd>
+            </div>
+          </dl>
+        </div>
       </section>
     </header>
     <aside class="sidebar">
