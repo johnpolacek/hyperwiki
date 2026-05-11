@@ -386,7 +386,6 @@ function renderNavGroup(title, pages, open) {
 
 function isTopLevelPlanPage(page) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/index.html")) return true;
   if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
   return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
 }
@@ -412,7 +411,6 @@ function isImmediateChildPlanPage(parent, candidate) {
 
 function planSortKey(page) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/index.html")) return "00";
   if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
   if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
   return `02-${path}`;

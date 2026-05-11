@@ -295,14 +295,12 @@ body {
 }
 
 .brand {
-  margin: 0 0 10px;
+  margin: 0;
   padding: 0;
 }
 
 .brand::after {
-  content: "";
-  display: block;
-  border-top: 1px dotted #aeb3aa;
+  content: none;
 }
 
 .brand h1 {
@@ -421,6 +419,17 @@ body {
   white-space: nowrap;
 }
 
+.wiki-nav a::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: 0 0 0 2px transparent;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
 .primary-nav a {
   font-size: 14px;
   font-weight: 700;
@@ -467,21 +476,10 @@ body {
   min-width: 0;
 }
 
-.wiki-nav a.current-plan::before,
 .wiki-nav a.current-stage::before,
 .wiki-nav a.current-unit::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
   background: #25a244;
   box-shadow: 0 0 0 2px rgba(37, 162, 68, 0.14);
-}
-
-.wiki-nav a.current-unit::before {
-  width: 7px;
-  height: 7px;
 }
 
 .plan-tree > a,
@@ -494,8 +492,27 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree {
+  position: relative;
+  padding-left: 0;
+}
+
+.plan-tree .plan-subtree .plan-subtree::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  bottom: 6px;
+  left: 3px;
   border-left: 1px dotted #c6c8c0;
-  padding-left: 6px;
+}
+
+.plan-tree .plan-subtree .plan-subtree > summary,
+.plan-tree .plan-subtree .plan-subtree > a,
+.plan-tree .plan-subtree .plan-subtree > .wiki-nav-group {
+  position: relative;
+}
+
+.plan-tree .plan-subtree .plan-subtree > .wiki-nav-group {
+  margin-left: 12px;
 }
 
 .wiki-nav a:hover,

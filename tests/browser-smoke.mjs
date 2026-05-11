@@ -86,9 +86,6 @@ await page.waitForFunction(() =>
   document.querySelector(".terminal[data-name=\"agent\"]")?.innerText.includes("HYPERWIKI_PLAN_PROMPT_SMOKE")
 );
 
-await page.locator("#wiki-nav a").filter({ hasText: "Planning Dashboard" }).click();
-await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
-
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 const currentPage = await page.locator("#current-page").innerText();
 if (currentPage !== "Planning Dashboard") {
@@ -96,6 +93,7 @@ if (currentPage !== "Planning Dashboard") {
 }
 await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
   if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
+  if (element.textContent.includes("Planning Dashboard")) throw new Error("Expected plan navigation to omit Planning Dashboard");
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
 await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
@@ -103,7 +101,7 @@ await page.locator("#wiki-nav a.current-unit").filter({ hasText: "Unit 01" }).wa
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).waitFor();
 await page.locator(".workspace").evaluate((workspaceElement) => {
   const sidebar = document.querySelector(".sidebar");
-  const directPlanLink = document.querySelector(".plan-tree > a");
+  const directPlanLink = document.querySelector(".plan-tree > .plan-subtree > summary a");
   const nestedPlanGroup = document.querySelector(".plan-tree .plan-subtree .plan-subtree");
   if (!sidebar || !directPlanLink || !nestedPlanGroup) {
     throw new Error("Expected sidebar plan navigation elements");
@@ -118,10 +116,9 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(directPlanLink).marginLeft !== "0px") {
     throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
   }
-  const planLeft = Math.round(directPlanLink.getBoundingClientRect().left);
-  const nestedLeft = Math.round(nestedPlanGroup.getBoundingClientRect().left);
-  if (planLeft !== nestedLeft) {
-    throw new Error(`Expected nested plan border to align with plan titles, got ${nestedLeft}/${planLeft}`);
+  const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
+  if (brandRule !== "none") {
+    throw new Error(`Expected empty brand separator to be removed, got ${brandRule}`);
   }
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageOneLabel = navLabels.find((label) => label.textContent.includes("Stage-01"));
@@ -132,6 +129,19 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
     throw new Error("Expected Stage 01 to appear before Stage 07 in plan navigation");
+  }
+  const stageOneLink = stageOneLabel.closest("a");
+  const stageSevenLink = stageSevenLabel.closest("a");
+  const stageOneBefore = getComputedStyle(stageOneLink, "::before");
+  const stageSevenBefore = getComputedStyle(stageSevenLink, "::before");
+  if (stageOneBefore.backgroundColor !== "rgba(0, 0, 0, 0)") {
+    throw new Error(`Expected inactive stage dot to be transparent, got ${stageOneBefore.backgroundColor}`);
+  }
+  if (stageSevenBefore.backgroundColor !== "rgb(37, 162, 68)") {
+    throw new Error(`Expected current stage dot to be green, got ${stageSevenBefore.backgroundColor}`);
+  }
+  if (Math.round(stageOneLabel.getBoundingClientRect().left) !== Math.round(stageSevenLabel.getBoundingClientRect().left)) {
+    throw new Error("Expected active and inactive stage labels to align");
   }
   if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
     throw new Error("Expected plan navigation labels to use text overflow ellipses");
@@ -147,8 +157,8 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
-await page.locator("#wiki-nav a").filter({ hasText: "Planning Dashboard" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
+await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "MVP Plan");
 
 await page.locator("#new-cli-terminal").click();
 await page.locator(".terminal-panel-header").filter({ hasText: "cli-1" }).waitFor();
