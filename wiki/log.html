@@ -21,6 +21,13 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 correction | direct terminal pane input</h2>
+  <ul>
+    <li>Dogfood finding: clicking directly into a non-active terminal pane did not reliably activate that wterm for typing while another agent process was still producing output.</li>
+    <li>Changed terminal pane focus handling so direct pane clicks activate the target session without breaking existing text selection behavior.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 implementation | topbar settings placeholder</h2>
   <ul>
     <li>Added a compact Settings action to the TopBar with placeholder workspace preference UI.</li>

@@ -636,6 +636,16 @@ async function createTerminal(name, options = {}) {
       scrollTerminalToBottom(el);
     }
   };
+  el.addEventListener("focusin", () => {
+    if (activeTerminalName !== name) {
+      activateTerminal(name);
+    }
+  });
+  el.addEventListener("pointerdown", () => {
+    if (activeTerminalName === name) return;
+    activateTerminal(name);
+    requestAnimationFrame(() => term.focus());
+  });
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   transport = new WebSocketTransport({
     url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,

@@ -148,6 +148,18 @@ if (optionArrowLeak) {
   throw new Error("Expected Option+Arrow to navigate instead of leaking [D/[C into the terminal.");
 }
 
+await page.locator(".terminal-tab[data-name=\"agent\"]").click();
+await page.locator(".terminal[data-name=\"cli\"]").click();
+await page.keyboard.type("printf HYPERWIKI_DIRECT_PANE_INPUT_OK");
+await page.keyboard.press("Enter");
+await page.waitForFunction(() =>
+  document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("HYPERWIKI_DIRECT_PANE_INPUT_OK")
+);
+const directPaneActive = await page.locator(".terminal[data-name=\"cli\"]").evaluate((terminal) => terminal.classList.contains("active"));
+if (!directPaneActive) {
+  throw new Error("Expected clicking directly inside a terminal pane to activate it for input.");
+}
+
 await page.keyboard.type("seq 1 120");
 await page.keyboard.press("Enter");
 await page.waitForFunction(() => document.querySelector(".terminal.active")?.classList.contains("has-scrollback"));
