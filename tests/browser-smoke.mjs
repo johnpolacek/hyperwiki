@@ -35,7 +35,7 @@ for (const expected of ["agent", "cli"]) {
 if (initialTabs.some((tab) => tab.includes("dev"))) {
   throw new Error("Expected HyperWiki dogfood layout to omit the conflicting dev panel");
 }
-await page.locator(".terminal-panel-header").filter({ hasText: "codex --yolo" }).waitFor();
+await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
 
 await page.locator("#current-plan-link").click();

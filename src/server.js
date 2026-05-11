@@ -162,6 +162,10 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendFile(response, path.join(publicRoot, url.pathname.replace("/assets/", "")), publicRoot);
       return;
     }
+    if (url.pathname.startsWith("/vendor/fonts/")) {
+      await sendFile(response, path.join(publicRoot, url.pathname.slice(1)), publicRoot);
+      return;
+    }
     for (const [name, packageDistRoot] of vendorRoots) {
       const prefix = `/vendor/${name}/`;
       if (url.pathname.startsWith(prefix)) {
