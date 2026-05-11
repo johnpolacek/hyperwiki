@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory Plan - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Memory Plan</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: product-direction plan with per-project and overall memory tracks</li>
+    <li>Current unit: none</li>
+    <li>Next action: define memory boundaries, storage locations, consent rules, and promotion paths before implementation.</li>
+    <li>Blockers: needs privacy and retention decisions before any persistent memory write path.</li>
+    <li>Validation: storage-boundary review, export/delete tests, and dogfood review across at least two registered projects.</li>
+  </ul>
+</section>
+<h2>Intent</h2>
+<p>Add memory to HyperWiki without undermining repo-local truth. Memory should help agents and humans avoid rediscovery, preserve durable preferences and decisions, and separate project-specific knowledge from cross-project operating knowledge.</p>
+<h2>Memory Types</h2>
+<ul>
+  <li>Per-project memory: durable facts, preferences, decisions, verification history, and recurring context for one repository.</li>
+  <li>Overall memory: user-level preferences, repeated workflows, trusted commands, interface habits, and cross-project agent operating norms.</li>
+  <li>Runtime memory: temporary session and terminal state under ignored local storage; useful for continuity but not canonical by default.</li>
+</ul>
+<h2>Scope</h2>
+<ul>
+  <li>Define explicit storage boundaries for project memory under the repo and overall memory under user-level HyperWiki state.</li>
+  <li>Define promotion flows from runtime observations to proposed memory, and from proposed memory to accepted durable memory.</li>
+  <li>Expose memory to agents through copy-pasteable context, local APIs, and future MCP resources.</li>
+  <li>Support review, export, prune, and delete operations so memory remains auditable and user-controlled.</li>
+  <li>Prevent accidental leakage of one project's private context into another project's agent session.</li>
+</ul>
+<h2>Non-goals</h2>
+<ul>
+  <li>Do not silently persist terminal transcripts, prompts, secrets, or private repo details as durable memory.</li>
+  <li>Do not use vector storage as the first memory primitive unless a concrete retrieval problem requires it.</li>
+  <li>Do not treat user-level memory as canonical project truth.</li>
+  <li>Do not sync memory to a hosted service in this plan.</li>
+</ul>
+<h2>Execution Units</h2>
+<section>
+  <h3>Unit 01 - Memory Boundary Model</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Define where per-project memory, overall memory, and runtime memory live.</li>
+    <li>Define which memory is repo-visible, which is ignored local state, and which is user-level state.</li>
+    <li>Define consent and review rules before any durable memory write.</li>
+    <li>Verification: manual architecture review against existing <code>.hyperwiki/state/</code>, <code>.hyperwiki/sessions/</code>, <code>wiki/</code>, and <code>~/.hyperwiki/projects.json</code> boundaries.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 02 - Per-project Memory</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Add a repo-local memory surface for durable project facts, preferences, decisions, recurring warnings, and verification learnings.</li>
+    <li>Prefer human-readable wiki-backed memory first, with structured metadata derived from or linked to it.</li>
+    <li>Keep project memory scoped to the selected project root and visible in the workspace contract.</li>
+    <li>Verification: initialize/dogfood in one project, switch to another project, and confirm memory does not cross project roots unless explicitly promoted to overall memory.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 03 - Overall Memory</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Add a user-level memory surface for preferences and operating patterns that should follow the user across HyperWiki projects.</li>
+    <li>Separate user preferences from project facts, and require clear promotion from project memory to overall memory.</li>
+    <li>Expose user-level memory in a way agents can consume without receiving unrelated project secrets.</li>
+    <li>Verification: dogfood across at least two projects and inspect the context provided to each agent session.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 04 - Memory Review And Controls</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Add review, accept, reject, edit, export, prune, and delete flows for proposed and durable memories.</li>
+    <li>Make memory writes auditable and reversible.</li>
+    <li>Keep controls local-first and compatible with future MCP tools.</li>
+    <li>Verification: smoke tests for export/delete behavior and manual review of accidental-persistence risks.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 05 - Agent Memory Context</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Include relevant per-project and overall memory in agent prompt wrappers and future MCP project contracts.</li>
+    <li>Label memory provenance clearly so agents know whether a fact is project-specific, user-level, or runtime-only.</li>
+    <li>Verification: dogfood prompt submission and inspect whether agent behavior uses memory while respecting project boundaries.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

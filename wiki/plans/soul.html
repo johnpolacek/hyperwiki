@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product Soul Plan - HyperWiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">HyperWiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Product Soul Plan</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: product-direction plan</li>
+    <li>Current unit: none</li>
+    <li>Next action: define the durable product personality principles that should guide copy, defaults, interface behavior, and agent interactions.</li>
+    <li>Blockers: needs user taste calibration before implementation.</li>
+    <li>Validation: design review, dogfood review, and consistency checks across generated wiki pages, workspace UI, CLI output, and agent prompts.</li>
+  </ul>
+</section>
+<h2>Intent</h2>
+<p>Give HyperWiki a coherent soul: a recognizable product character that makes the local agent workspace feel purposeful, calm, durable, and alive without turning into a mascot, gimmick, or marketing surface.</p>
+<h2>Working Definition</h2>
+<p>Soul is the product's durable taste layer. It shows up in what HyperWiki chooses to make visible, what it refuses to hide, how it names actions, how it reacts to uncertainty, and how it helps humans and agents preserve understanding.</p>
+<h2>Scope</h2>
+<ul>
+  <li>Define product personality principles for language, visual tone, interaction defaults, empty states, status messages, and agent prompt framing.</li>
+  <li>Create a small set of reusable voice and behavior rules for generated wiki pages, CLI output, workspace chrome, guardrails, and review workflows.</li>
+  <li>Make the product feel locally grounded, trustworthy, and intentional while preserving the existing utilitarian workspace posture.</li>
+  <li>Clarify what HyperWiki should never become: noisy, anthropomorphic, patronizing, decorative-first, or a hidden source of truth.</li>
+</ul>
+<h2>Non-goals</h2>
+<ul>
+  <li>Do not add a mascot, novelty persona, or fictional character as the soul.</li>
+  <li>Do not create a public marketing page as part of this plan.</li>
+  <li>Do not make the interface sentimental at the expense of clarity or density.</li>
+  <li>Do not change agent autonomy, memory, or verification behavior here; those belong to dedicated plans.</li>
+</ul>
+<h2>Execution Units</h2>
+<section>
+  <h3>Unit 01 - Soul Principles</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Write the product's durable personality principles in a source brief or plan appendix.</li>
+    <li>Define language examples for calm status, uncertainty, risk, verification, and next actions.</li>
+    <li>Verification: manual review against the current workspace, CLI, generated wiki templates, and agent prompt copy.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 02 - Interface Expression</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Apply the principles to workspace labels, empty states, guardrail language, plan summaries, and generated wiki copy.</li>
+    <li>Keep copy compact and operational; no tutorial panels or feature explanations in primary workflows.</li>
+    <li>Verification: browser smoke coverage where copy affects visible workflow state, plus manual UI review.</li>
+  </ul>
+</section>
+<section>
+  <h3>Unit 03 - Agent Interaction Expression</h3>
+  <ul>
+    <li>Status: pending</li>
+    <li>Update agent prompt wrappers so they carry HyperWiki's expectations: preserve understanding, name uncertainty, verify work, and keep durable truth in repo files.</li>
+    <li>Make agent-facing instructions copy-pasteable and stable enough to reuse in MCP resources later.</li>
+    <li>Verification: dogfood prompt submission into an active agent session and inspect the resulting behavior.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>
