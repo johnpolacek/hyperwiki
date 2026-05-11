@@ -6,32 +6,24 @@
   --border: #ddd7c9;
   --link: #285f8f;
   --code: #efede4;
-  --serif-font: "Newsreader", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --serif-font: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --mono-font: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 @font-face {
-  font-family: "Newsreader";
+  font-family: "Instrument Serif";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("/vendor/fonts/newsreader/Newsreader-Regular.ttf") format("truetype");
+  src: url("/vendor/fonts/instrument-serif/InstrumentSerif-Regular.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: "Newsreader";
-  font-style: normal;
+  font-family: "Instrument Serif";
+  font-style: italic;
   font-weight: 600;
   font-display: swap;
-  src: url("/vendor/fonts/newsreader/Newsreader-SemiBold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Newsreader";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/vendor/fonts/newsreader/Newsreader-Bold.ttf") format("truetype");
+  src: url("/vendor/fonts/instrument-serif/InstrumentSerif-Italic.ttf") format("truetype");
 }
 
 @font-face {
@@ -98,18 +90,18 @@ h1,
 h2 {
   color: #1d1b16;
   font-family: var(--serif-font);
-  font-weight: 700;
-  line-height: 1.06;
+  font-weight: 400;
+  line-height: 1;
 }
 
 h1 {
   margin: 0 0 18px;
-  font-size: 34px;
+  font-size: 40px;
 }
 
 h2 {
   margin: 28px 0 8px;
-  font-size: 22px;
+  font-size: 27px;
 }
 
 a {
