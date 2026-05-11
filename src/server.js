@@ -270,6 +270,7 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
     `Repo root: ${project.root}`,
     `Current wiki page: ${currentPage}`,
     "Keep durable decisions in wiki/plans/ and wiki/log.html. Run relevant checks before finishing.",
+    "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
     "",
     prompt,
     ""

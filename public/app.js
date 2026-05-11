@@ -451,6 +451,7 @@ function cleanPageTitle(page) {
   if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, "Unit $1 · ");
   if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage $1 · ");
   if (page.title.toLowerCase() === "prd") return "PRD";
+  if (displayWikiPath(page.path).includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;
 }
 
