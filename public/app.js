@@ -4,7 +4,6 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
-const homeLink = document.getElementById("home-link");
 const currentPlanLink = document.getElementById("current-plan-link");
 const logLink = document.getElementById("log-link");
 const terminals = document.getElementById("terminals");
@@ -270,17 +269,15 @@ function updatePlanPromptVisibility() {
 }
 
 function updatePrimaryLinks(pages) {
-  const home = pages.find((page) => page.path.endsWith("/wiki/index.html"))?.path || "/wiki/index.html";
   const log = pages.find((page) => page.path.endsWith("/wiki/log.html"))?.path || "/wiki/log.html";
-  homeLink.href = `#${home}`;
   currentPlanLink.href = `#${currentPlanPath}`;
   logLink.href = `#${log}`;
 }
 
 function groupWikiPages(pages) {
   const groups = [
-    { title: "Core", pages: pages.filter((page) => ["/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))) },
     { title: "Plans", pages: pages.filter((page) => page.path.includes("/wiki/plans/") && !page.path.includes("/stage-")) },
+    { title: "Project", pages: pages.filter((page) => ["/wiki/index.html", "/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))) },
     { title: "Completed Stages", pages: pages.filter((page) => page.path.includes("/wiki/plans/mvp/stage-")) },
     { title: "Sources", pages: pages.filter((page) => page.path.includes("/wiki/sources/")) }
   ];

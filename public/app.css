@@ -176,7 +176,7 @@ body {
 .primary-nav {
   display: grid;
   gap: 2px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .primary-nav,
@@ -198,7 +198,8 @@ body {
 }
 
 .primary-nav a {
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .wiki-nav-group {
@@ -335,41 +336,7 @@ body {
 
 .wiki-pane {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
-
-.pane-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  background: #fbfbf8;
-}
-
-.pane-header p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.pane-header strong {
-  display: block;
-  max-width: 54vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-.pane-header a {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 5px 9px;
-  color: var(--text);
-  text-decoration: none;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .wiki-pane iframe {

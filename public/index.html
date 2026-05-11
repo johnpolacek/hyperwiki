@@ -26,7 +26,6 @@
         <span id="server-status" hidden>Local</span>
       </div>
       <nav class="primary-nav" aria-label="Primary workspace pages">
-        <a id="home-link" href="#/wiki/index.html">Home</a>
         <a id="current-plan-link" href="#/wiki/plans/index.html">Current Plan</a>
         <a id="log-link" href="#/wiki/log.html">Log</a>
       </nav>
@@ -39,13 +38,8 @@
       </section>
     </aside>
     <section class="wiki-pane">
-      <header class="pane-header">
-        <div>
-          <p>Wiki</p>
-          <strong id="current-page">/wiki/index.html</strong>
-        </div>
-        <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer">Open</a>
-      </header>
+      <strong id="current-page" hidden>/wiki/index.html</strong>
+      <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
       <form id="plan-prompt" class="plan-prompt" hidden>
         <label for="plan-prompt-input">Plan prompt</label>

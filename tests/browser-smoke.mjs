@@ -16,7 +16,7 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
-await page.locator("#current-page").filter({ hasText: "Planning Dashboard" }).waitFor();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 const sessionControlsHidden = await page.locator(".terminal-actions").evaluate((element) => !element.open);
 if (!sessionControlsHidden) {
   throw new Error("Expected terminal session controls to be collapsed by default");
@@ -50,7 +50,7 @@ await page.waitForFunction(() =>
 await page.locator("#current-plan-link").click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
 
-await page.locator("#current-page").filter({ hasText: "Planning Dashboard" }).waitFor();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 const currentPage = await page.locator("#current-page").innerText();
 if (currentPage !== "Planning Dashboard") {
   throw new Error(`Expected Planning Dashboard, got ${currentPage}`);
