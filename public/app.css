@@ -140,36 +140,32 @@ body {
 }
 
 .sidebar {
-  padding: 16px 12px;
+  padding: 14px 12px;
   background: #efefea;
   font-family: var(--sidebar-font);
   overflow: auto;
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 8px;
-  margin: 0 0 18px;
+  margin: 0 0 20px;
+  padding: 0 8px;
 }
 
-.brand h1 {
-  margin: 0 0 18px;
-  font-size: 17px;
-  letter-spacing: 0;
+.brand::before {
+  content: "";
+  border-top: 1px dotted #aeb3aa;
 }
 
 .brand h1 {
   margin: 0;
-}
-
-.brand span {
-  border: 1px solid #c6c8c0;
-  border-radius: 999px;
-  padding: 2px 7px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .wiki-nav {
@@ -183,10 +179,15 @@ body {
   margin-bottom: 16px;
 }
 
+.primary-nav,
+.wiki-nav {
+  padding-inline: 8px;
+}
+
 .primary-nav a,
 .wiki-nav a {
   display: block;
-  padding: 7px 8px;
+  padding: 7px 0;
   border-radius: 6px;
   color: var(--text);
   font-size: 13px;
@@ -206,7 +207,7 @@ body {
 }
 
 .wiki-nav-group summary {
-  padding: 4px 8px;
+  padding: 4px 0;
   color: var(--muted);
   cursor: pointer;
   font-size: 11px;
@@ -223,12 +224,12 @@ body {
 
 .workspace-summary {
   margin-top: 18px;
-  padding-top: 14px;
+  padding: 14px 8px 0;
   border-top: 1px solid #d8d8d0;
 }
 
 .workspace-summary h2 {
-  margin: 14px 0 6px;
+  margin: 0 0 6px;
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0;
