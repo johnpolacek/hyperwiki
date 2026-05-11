@@ -8,7 +8,7 @@ export async function launchHyperWiki(root, options = {}) {
   const registry = new ProjectRegistry();
   const project = await registry.register(root);
   const baseUrl = `http://${host}:${port}`;
-  const workspaceUrl = `${baseUrl}/workspace/?project=${encodeURIComponent(project.id)}`;
+  const workspaceUrl = `${baseUrl}${workspacePath(project)}`;
   const existing = await existingHyperWiki(baseUrl);
   const serverInfo = existing ? null : await startDevServer(root, { host, port, projectId: project.id });
 
@@ -30,6 +30,10 @@ export async function launchHyperWiki(root, options = {}) {
     opened,
     server: serverInfo?.server || null
   };
+}
+
+function workspacePath(project) {
+  return `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}`;
 }
 
 async function existingHyperWiki(baseUrl) {

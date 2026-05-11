@@ -22,10 +22,12 @@ export class ProjectRegistry {
       id: existing?.id || randomUUID(),
       root: project.root,
       name: project.name,
+      projectSlug: existing?.projectSlug || slugify(project.name),
+      worktreeSlug: await worktreeSlug(project.root),
       available: true,
       lastOpenedAt: now
     };
-    registry.projects = [record, ...registry.projects.filter((item) => item.id !== record.id)];
+    registry.projects = withUniqueSlugs([record, ...registry.projects.filter((item) => item.id !== record.id)]);
     await this.#write(registry);
     return record;
   }
@@ -33,13 +35,18 @@ export class ProjectRegistry {
   async list(activeId = null) {
     const registry = await this.#read();
     const projects = [];
-    for (const item of registry.projects) {
+    for (const item of withUniqueSlugs(registry.projects)) {
       const project = await projectFromRoot(item.root);
-      projects.push({
+      const record = {
         ...item,
         name: project.name || item.name,
-        available: project.available,
-        active: item.id === activeId
+        projectSlug: item.projectSlug || slugify(project.name || item.name),
+        worktreeSlug: item.worktreeSlug || await worktreeSlug(item.root),
+        available: project.available
+      };
+      projects.push({
+        ...record,
+        active: record.id === activeId
       });
     }
     return { projects, activeProjectId: activeId };
@@ -71,6 +78,21 @@ export class ProjectRegistry {
       throw error;
     }
     return { ...record, name: project.name, available: true };
+  }
+
+  async resolveBySlug(projectSlug, worktreeSlug = null, fallbackRoot = null) {
+    const registry = await this.#read();
+    const projects = withUniqueSlugs(registry.projects);
+    const candidates = projects.filter((item) => item.projectSlug === projectSlug);
+    const record = worktreeSlug
+      ? candidates.find((item) => item.worktreeSlug === worktreeSlug)
+      : candidates[0];
+    if (!record) {
+      const error = new Error("Project is unavailable.");
+      error.statusCode = 404;
+      throw error;
+    }
+    return this.resolve(record.id, fallbackRoot);
   }
 
   async readRaw() {
@@ -138,4 +160,44 @@ async function projectName(root, configPath) {
 
 function samePath(left, right) {
   return path.resolve(left) === path.resolve(right);
+}
+
+function withUniqueSlugs(projects) {
+  const pairs = new Map();
+  return projects.map((item) => {
+    const projectSlug = item.projectSlug || slugify(item.name || path.basename(item.root));
+    const worktreeBase = item.worktreeSlug || slugify(path.basename(item.root)) || "main";
+    const pair = `${projectSlug}/${worktreeBase}`;
+    const count = (pairs.get(pair) || 0) + 1;
+    pairs.set(pair, count);
+    return {
+      ...item,
+      projectSlug,
+      worktreeSlug: count === 1 ? worktreeBase : `${worktreeBase}-${count}`
+    };
+  });
+}
+
+async function worktreeSlug(root) {
+  const gitPath = path.join(path.resolve(root), ".git");
+  if (!existsSync(gitPath)) {
+    return "main";
+  }
+  try {
+    const marker = await readFile(gitPath, "utf8");
+    if (marker.startsWith("gitdir:")) {
+      return slugify(path.basename(root));
+    }
+  } catch {
+    // A directory .git marks the primary checkout.
+  }
+  return "main";
+}
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "project";
 }

@@ -33,6 +33,8 @@ let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
 let activeProjectId = new URLSearchParams(location.search).get("project");
+let activeProjectSlug = workspaceSlugs().projectSlug;
+let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let currentPlanPath = "/wiki/plans/index.html";
 
 window.addEventListener("hashchange", () => {
@@ -223,11 +225,13 @@ async function loadGuardrails() {
 
 async function loadProjects() {
   const data = await api(projectPath("/api/projects"));
-  activeProjectId = data.activeProjectId || data.projects.find((project) => project.available)?.id || activeProjectId;
-  if (activeProjectId && !new URLSearchParams(location.search).get("project")) {
-    const url = new URL(location.href);
-    url.searchParams.set("project", activeProjectId);
-    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  const activeProject = data.projects.find((project) => project.id === data.activeProjectId)
+    || data.projects.find((project) => project.available);
+  activeProjectId = activeProject?.id || activeProjectId;
+  activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
+  activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
+  if (activeProject && !prettyWorkspacePath(location.pathname)) {
+    history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
   if (data.projects.length <= 1) {
     projectSidebar.hidden = true;
@@ -240,24 +244,29 @@ async function loadProjects() {
     ...data.projects.map((project) => {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = project.name;
+      button.dataset.projectId = project.id;
+      button.dataset.worktreeSlug = project.worktreeSlug || "main";
+      const name = document.createElement("span");
+      name.textContent = project.name;
+      const worktree = document.createElement("small");
+      worktree.textContent = project.worktreeSlug || "main";
+      button.append(name, worktree);
       button.title = project.available ? project.root : `${project.root} unavailable`;
       button.className = project.id === activeProjectId ? "active" : "";
       button.disabled = !project.available;
-      button.addEventListener("click", () => switchProject(project.id));
+      button.addEventListener("click", () => switchProject(project));
       return button;
     })
   );
 }
 
-async function switchProject(projectId) {
-  if (projectId === activeProjectId) return;
+async function switchProject(project) {
+  if (project.id === activeProjectId) return;
   closeAllTerminals();
-  activeProjectId = projectId;
-  const url = new URL(location.href);
-  url.searchParams.set("project", projectId);
-  url.hash = "#/wiki/index.html";
-  history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  activeProjectId = project.id;
+  activeProjectSlug = project.projectSlug;
+  activeWorktreeSlug = project.worktreeSlug;
+  history.pushState(null, "", `${workspacePath(project)}#/wiki/index.html`);
   requestedWikiPath = "/wiki/index.html";
   await loadProjects();
   await loadRepoContext();
@@ -627,9 +636,33 @@ async function api(path, options = {}) {
 }
 
 function projectPath(path) {
-  if (!activeProjectId) return path;
+  const params = activeProjectId
+    ? { project: activeProjectId }
+    : activeProjectSlug
+      ? { projectSlug: activeProjectSlug }
+      : null;
+  if (!params) return path;
+  if (activeWorktreeSlug) {
+    params.worktreeSlug = activeWorktreeSlug;
+  }
   const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}project=${encodeURIComponent(activeProjectId)}`;
+  return `${path}${separator}${new URLSearchParams(params).toString()}`;
+}
+
+function workspaceSlugs() {
+  const match = location.pathname.match(/^\/workspace\/([^/]+)(?:\/([^/]+))?\/?$/);
+  return {
+    projectSlug: match ? decodeURIComponent(match[1]) : null,
+    worktreeSlug: match?.[2] ? decodeURIComponent(match[2]) : null
+  };
+}
+
+function workspacePath(project) {
+  return `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}`;
+}
+
+function prettyWorkspacePath(pathname) {
+  return /^\/workspace\/[^/]+\/[^/]+\/?$/.test(pathname);
 }
 
 function escapeHtml(value) {

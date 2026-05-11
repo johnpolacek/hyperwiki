@@ -110,11 +110,24 @@ body {
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  display: grid;
+  gap: 2px;
   font: inherit;
   overflow: hidden;
   text-align: left;
+}
+
+.project-list button span,
+.project-list button small {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.project-list button small {
+  color: #6a7069;
+  font-size: 11px;
 }
 
 .project-list button.active {

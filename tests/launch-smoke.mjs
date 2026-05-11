@@ -1,15 +1,18 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-launch-smoke-a-"));
-const secondRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-launch-smoke-b-"));
+const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-launch-worktrees-"));
+const secondRoot = path.join(workspaceRoot, "plan-unit-navigation");
 const home = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-home-smoke-"));
 const port = 4211;
 await writeFile(path.join(root, "package.json"), `${JSON.stringify({ name: "launch-smoke" }, null, 2)}\n`);
-await writeFile(path.join(secondRoot, "package.json"), `${JSON.stringify({ name: "second-smoke" }, null, 2)}\n`);
+await mkdir(secondRoot);
+await writeFile(path.join(secondRoot, "package.json"), `${JSON.stringify({ name: "launch-smoke" }, null, 2)}\n`);
+await writeFile(path.join(secondRoot, ".git"), `gitdir: ${path.join(workspaceRoot, ".git", "worktrees", "plan-unit-navigation")}\n`);
 let child = null;
 let browser = null;
 
@@ -39,6 +42,9 @@ try {
   const workspaceUrl = workspaceMatch?.[1];
   if (!workspaceUrl) {
     throw new Error(`Expected workspace URL output, got: ${output}`);
+  }
+  if (!workspaceUrl.endsWith("/workspace/launch-smoke/main")) {
+    throw new Error(`Expected pretty main workspace URL, got ${workspaceUrl}`);
   }
   if (!output.includes(`Would open ${workspaceUrl}`)) {
     throw new Error(`Expected dry-run opener output, got: ${output}`);
@@ -80,13 +86,21 @@ try {
   if (!secondWorkspaceUrl) {
     throw new Error(`Expected second workspace URL, got ${secondOutput}`);
   }
+  if (!secondWorkspaceUrl.endsWith("/workspace/launch-smoke/plan-unit-navigation")) {
+    throw new Error(`Expected pretty worktree workspace URL, got ${secondWorkspaceUrl}`);
+  }
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
   await page.locator("#project-sidebar").evaluate((element) => {
     if (element.hidden) throw new Error("Expected project sidebar after registering two projects.");
   });
-  await page.locator("#project-list button").filter({ hasText: "launch-smoke" }).click();
-  await page.locator("#project-list button.active").filter({ hasText: "launch-smoke" }).waitFor();
+  await page.locator("#project-list button[data-worktree-slug=\"main\"]").click();
+  await page.locator("#project-list button.active[data-worktree-slug=\"main\"]").waitFor();
+  if (!page.url().includes("/workspace/launch-smoke/main")) {
+    throw new Error(`Expected switch to update pretty workspace URL, got ${page.url()}`);
+  }
   await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
+  await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
+  await page.locator("#project-list button.active[data-worktree-slug=\"plan-unit-navigation\"]").waitFor();
 } finally {
   if (browser) {
     await browser.close();
@@ -96,7 +110,7 @@ try {
     await new Promise((resolve) => child.once("exit", resolve));
   }
   await rm(root, { recursive: true, force: true });
-  await rm(secondRoot, { recursive: true, force: true });
+  await rm(workspaceRoot, { recursive: true, force: true });
   await rm(home, { recursive: true, force: true });
 }
 

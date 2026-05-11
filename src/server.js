@@ -87,7 +87,7 @@ async function handleRequest(defaultRoot, request, response, context) {
       redirect(response, "/workspace/");
       return;
     }
-    if (url.pathname === "/workspace/") {
+    if (workspaceRoute(url.pathname)) {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
       return;
     }
@@ -107,7 +107,8 @@ async function handleRequest(defaultRoot, request, response, context) {
       return;
     }
     if (url.pathname === "/api/projects") {
-      await sendJson(response, await context.projectRegistry.list(url.searchParams.get("project") || context.activeProjectId));
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await context.projectRegistry.list(project.id));
       return;
     }
     if (url.pathname === "/api/workspace") {
@@ -211,7 +212,19 @@ async function handleRequest(defaultRoot, request, response, context) {
 }
 
 async function resolveProject(projectRegistry, url, activeProjectId, fallbackRoot) {
-  return projectRegistry.resolve(url.searchParams.get("project") || activeProjectId, fallbackRoot);
+  const projectId = url.searchParams.get("project");
+  if (projectId) {
+    return projectRegistry.resolve(projectId, fallbackRoot);
+  }
+  const projectSlug = url.searchParams.get("projectSlug");
+  if (projectSlug) {
+    return projectRegistry.resolveBySlug(projectSlug, url.searchParams.get("worktreeSlug"), fallbackRoot);
+  }
+  return projectRegistry.resolve(activeProjectId, fallbackRoot);
+}
+
+function workspaceRoute(pathname) {
+  return /^\/workspace(?:\/[^/]+(?:\/[^/]+)?)?\/?$/.test(pathname);
 }
 
 function sessionRegistryFor(registries, root) {

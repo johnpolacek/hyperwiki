@@ -21,6 +21,14 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 correction | worktree-aware project URLs</h2>
+  <ul>
+    <li>Decision: Git worktrees remain separate swappable project views instead of being hidden as duplicate projects.</li>
+    <li>Added readable project/worktree launch URLs such as <code>/workspace/hyperwiki/main</code> and <code>/workspace/hyperwiki/plan-unit-navigation</code>.</li>
+    <li>Kept root-based project IDs as the runtime source of truth while preserving legacy <code>?project=&lt;id&gt;</code> routes.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 correction | plan prompt input sizing</h2>
   <ul>
     <li>Changed the plan prompt input to grow and shrink between one and five text lines.</li>

@@ -63,6 +63,17 @@
     <li>Implemented and covered by launch smoke for hidden single-project UI and visible two-project switching.</li>
   </ul>
 </section>
+<section>
+  <h3>Unit 04 - Worktree-aware Pretty URLs</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Keep Git worktrees as separate swappable project views instead of deduplicating them by common repository.</li>
+    <li>Add readable project and worktree slugs so launch and switching can use URLs such as <code>/workspace/hyperwiki/main</code> and <code>/workspace/hyperwiki/plan-unit-navigation</code>.</li>
+    <li>Use root-based project IDs as the runtime source of truth while preserving legacy <code>?project=&lt;id&gt;</code> URLs.</li>
+    <li>Implemented with project/worktree slug routing, worktree labels in the project switcher, and legacy project ID URL compatibility.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, and isolated browser smoke with <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4317/workspace/hyperwiki/main pnpm run smoke:browser</code>.</li>
+  </ul>
+</section>
 <h2>Non-goals</h2>
 <ul>
   <li>No folder scanning or arbitrary non-HyperWiki project registration in v1.</li>
