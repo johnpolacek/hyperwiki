@@ -85,7 +85,7 @@ body {
   padding: 8px 12px;
   border-right: 0;
   border-bottom: 1px solid #c8cbc2;
-  background: #f2f2ed;
+  background: #fbfbfa;
   font-family: var(--sidebar-font);
 }
 
@@ -275,7 +275,7 @@ body {
 .sidebar {
   grid-column: 1;
   grid-row: 2;
-  padding: 18px 20px;
+  padding: 18px 20px 18px 0;
   background: #fbfbfa;
   font-family: var(--sidebar-font);
   overflow: auto;
@@ -429,6 +429,14 @@ body {
   background: #171916;
 }
 
+.plan-subtree > summary a.active::after {
+  left: -14px;
+}
+
+.plan-subtree > a.active::after {
+  left: -20px;
+}
+
 .primary-nav a {
   font-size: 14px;
   font-weight: 700;
@@ -451,7 +459,7 @@ body {
 }
 
 .wiki-nav-group summary {
-  padding: 5px 0 9px;
+  padding: 5px 20px 9px;
   color: #8a8d88;
   cursor: pointer;
   font-size: 12px;
@@ -478,7 +486,7 @@ body {
 
 .plan-subtree > summary::before {
   content: "›";
-  flex: 0 0 18px;
+  flex: 0 0 14px;
   color: #8a8d88;
   font-size: 22px;
   line-height: 1;
@@ -507,7 +515,7 @@ body {
 }
 
 .plan-subtree > a {
-  margin-left: 32px;
+  margin-left: 20px;
 }
 
 .plan-tree .wiki-nav-group {
@@ -529,7 +537,7 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree > .wiki-nav-group {
-  margin-left: 22px;
+  margin-left: 10px;
 }
 
 .wiki-nav a:hover,
