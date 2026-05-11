@@ -511,7 +511,7 @@ body {
   content: "›";
   box-sizing: border-box;
   position: relative;
-  left: 2px;
+  left: 4px;
   flex: 0 0 22px;
   padding-left: 3px;
   color: #8a8d88;

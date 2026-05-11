@@ -122,7 +122,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
   }
   const chevronStyle = getComputedStyle(directPlanLink.closest("summary"), "::before");
-  if (chevronStyle.width !== "22px" || chevronStyle.paddingLeft !== "3px" || chevronStyle.left !== "2px") {
+  if (chevronStyle.width !== "22px" || chevronStyle.paddingLeft !== "3px" || chevronStyle.left !== "4px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
   const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
