@@ -179,6 +179,10 @@ body {
   margin-bottom: 18px;
 }
 
+.primary-nav[hidden] {
+  display: none;
+}
+
 .primary-nav,
 .wiki-nav {
   padding-inline: 8px;

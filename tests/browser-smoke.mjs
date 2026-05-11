@@ -47,7 +47,7 @@ await page.waitForFunction(() =>
   document.querySelector(".terminal[data-name=\"agent\"]")?.innerText.includes("HYPERWIKI_PLAN_PROMPT_SMOKE")
 );
 
-await page.locator("#current-plan-link").click();
+await page.locator("#wiki-nav a").filter({ hasText: "Planning Dashboard" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html/);
 
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");

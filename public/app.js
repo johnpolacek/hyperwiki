@@ -4,8 +4,6 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
-const currentPlanLink = document.getElementById("current-plan-link");
-const logLink = document.getElementById("log-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
 const newTerminalButton = document.getElementById("new-terminal");
@@ -177,7 +175,6 @@ async function loadWikiNav() {
       wikiPageTitles.set(displayWikiPath(page.path), cleanPageTitle(page));
     });
     currentPlanPath = data.pages.find((page) => page.path.endsWith("/wiki/plans/index.html"))?.path || currentPlanPath;
-    updatePrimaryLinks(data.pages);
     wikiNav.replaceChildren(...groupWikiPages(data.pages));
   } catch {
     document.getElementById("server-status").textContent = "Offline";
@@ -268,18 +265,13 @@ function updatePlanPromptVisibility() {
   planPrompt.hidden = !terminalSessions.has("agent");
 }
 
-function updatePrimaryLinks(pages) {
-  const log = pages.find((page) => page.path.endsWith("/wiki/log.html"))?.path || "/wiki/log.html";
-  currentPlanLink.href = `#${currentPlanPath}`;
-  logLink.href = `#${log}`;
-}
-
 function groupWikiPages(pages) {
   const groups = [
     { title: "Plans", pages: pages.filter((page) => page.path.includes("/wiki/plans/") && !page.path.includes("/stage-")) },
     { title: "Project", pages: pages.filter((page) => ["/wiki/index.html", "/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))) },
     { title: "Completed Stages", pages: pages.filter((page) => page.path.includes("/wiki/plans/mvp/stage-")) },
-    { title: "Sources", pages: pages.filter((page) => page.path.includes("/wiki/sources/")) }
+    { title: "Sources", pages: pages.filter((page) => page.path.includes("/wiki/sources/")) },
+    { title: "Log", pages: pages.filter((page) => page.path.endsWith("/wiki/log.html")) }
   ];
   return groups
     .filter((group) => group.pages.length > 0)
