@@ -40,7 +40,42 @@ await page.locator(".terminal-panel-header").filter({ hasText: "interactive shel
 await page.locator("#plan-prompt").evaluate((element) => {
   if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
 });
-await page.locator("#plan-prompt-input").fill("HYPERWIKI_PLAN_PROMPT_SMOKE");
+const promptInput = page.locator("#plan-prompt-input");
+const initialPromptHeight = await promptInput.evaluate((element) => element.clientHeight);
+await promptInput.fill(["one", "two", "three", "four", "five", "six"].join("\n"));
+const expandedPromptMetrics = await promptInput.evaluate((element) => ({
+  clientHeight: element.clientHeight,
+  scrollHeight: element.scrollHeight,
+  overflowY: getComputedStyle(element).overflowY
+}));
+if (expandedPromptMetrics.clientHeight <= initialPromptHeight) {
+  throw new Error(`Expected plan prompt to expand, got ${expandedPromptMetrics.clientHeight}/${initialPromptHeight}`);
+}
+if (expandedPromptMetrics.clientHeight >= expandedPromptMetrics.scrollHeight || expandedPromptMetrics.overflowY !== "auto") {
+  throw new Error("Expected plan prompt to cap at five lines and scroll beyond that.");
+}
+const promptButtonMetrics = await page.locator("#plan-prompt button").evaluate((button) => {
+  const textarea = document.querySelector("#plan-prompt-input");
+  const buttonRect = button.getBoundingClientRect();
+  const textareaRect = textarea.getBoundingClientRect();
+  return {
+    buttonTop: buttonRect.top,
+    buttonHeight: buttonRect.height,
+    textareaTop: textareaRect.top,
+    textareaHeight: textareaRect.height
+  };
+});
+if (Math.abs(promptButtonMetrics.buttonTop - promptButtonMetrics.textareaTop) > 1) {
+  throw new Error(`Expected plan prompt button to align with textarea top, got ${promptButtonMetrics.buttonTop}/${promptButtonMetrics.textareaTop}`);
+}
+if (promptButtonMetrics.buttonHeight >= promptButtonMetrics.textareaHeight) {
+  throw new Error(`Expected plan prompt button to keep one-line height, got ${promptButtonMetrics.buttonHeight}/${promptButtonMetrics.textareaHeight}`);
+}
+await promptInput.fill("HYPERWIKI_PLAN_PROMPT_SMOKE");
+const contractedPromptHeight = await promptInput.evaluate((element) => element.clientHeight);
+if (contractedPromptHeight >= expandedPromptMetrics.clientHeight) {
+  throw new Error(`Expected plan prompt to contract, got ${contractedPromptHeight}/${expandedPromptMetrics.clientHeight}`);
+}
 await page.locator("#plan-prompt button").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
 await page.waitForFunction(() =>

@@ -106,6 +106,9 @@ pruneSessionsButton.addEventListener("click", async () => {
   await api(projectPath("/api/sessions/prune"), { method: "POST" });
 });
 
+planPromptInput.addEventListener("input", resizePlanPromptInput);
+resizePlanPromptInput();
+
 planPrompt.addEventListener("submit", async (event) => {
   event.preventDefault();
   const prompt = planPromptInput.value.trim();
@@ -120,12 +123,26 @@ planPrompt.addEventListener("submit", async (event) => {
       })
     });
     planPromptInput.value = "";
+    resizePlanPromptInput();
     planPromptStatus.textContent = "Sent to agent.";
     activateTerminal("agent");
   } catch (error) {
     planPromptStatus.textContent = error.message || "Agent unavailable.";
   }
 });
+
+function resizePlanPromptInput() {
+  planPromptInput.style.height = "auto";
+  const styles = window.getComputedStyle(planPromptInput);
+  const maxLines = Number.parseInt(styles.getPropertyValue("--plan-prompt-max-lines"), 10);
+  const lineHeight = Number.parseFloat(styles.lineHeight);
+  const verticalPadding = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
+  const verticalBorder = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
+  const maxHeight = maxLines * lineHeight + verticalPadding + verticalBorder;
+  const nextHeight = Math.min(planPromptInput.scrollHeight, maxHeight);
+  planPromptInput.style.height = `${nextHeight}px`;
+  planPromptInput.style.overflowY = planPromptInput.scrollHeight > nextHeight ? "auto" : "hidden";
+}
 
 projectToggle.addEventListener("click", () => {
   const collapsed = !workspace.classList.contains("projects-collapsed");

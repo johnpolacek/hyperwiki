@@ -364,23 +364,27 @@ body {
 .plan-prompt textarea {
   grid-area: input;
   width: 100%;
+  height: 31px;
+  --plan-prompt-max-lines: 5;
   min-width: 0;
+  overflow-y: hidden;
   resize: none;
   border: 1px solid #c6c8c0;
   border-radius: 6px;
   padding: 7px 8px;
   background: #fbfbf8;
   color: var(--text);
-  font: 12px/1.35 var(--sidebar-font);
+  font: 12px/1.55 var(--sidebar-font);
 }
 
 .plan-prompt button {
   grid-area: button;
   display: inline-flex;
   align-items: center;
-  align-self: stretch;
+  align-self: start;
   gap: 6px;
   justify-self: end;
+  min-height: 35px;
   border: 1px solid #c6c8c0;
   border-radius: 6px;
   padding: 6px 8px;
