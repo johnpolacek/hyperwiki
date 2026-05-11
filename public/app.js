@@ -286,7 +286,7 @@ function groupWikiPages(pages) {
     .map((group) => {
       const details = document.createElement("details");
       details.className = "wiki-nav-group";
-      details.open = group.title !== "Completed Stages";
+      details.open = group.title === "Plans";
       const summary = document.createElement("summary");
       summary.textContent = group.title;
       details.append(summary, ...group.pages.map(renderWikiLink));
