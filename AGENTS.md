@@ -4,6 +4,8 @@ Prefer to commit and pull whenever confident that the code is good and there are
 
 Always use `pnpm` for package management and package scripts in this repository.
 
+Prefer the `agent-browser` CLI for browser automation and visual checks before falling back to Playwright.
+
 <!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
 ## HyperWiki Agent Guide
 
