@@ -438,7 +438,7 @@ body {
 }
 
 .plan-subtree > a.active::after {
-  left: -20px;
+  left: 0;
 }
 
 .plan-subtree > summary:has(a.active) {
@@ -509,7 +509,9 @@ body {
 
 .plan-subtree > summary::before {
   content: "›";
-  flex: 0 0 19px;
+  box-sizing: border-box;
+  flex: 0 0 22px;
+  padding-left: 3px;
   color: #8a8d88;
   font-size: 22px;
   line-height: 1;
@@ -539,6 +541,15 @@ body {
 
 .plan-subtree > a {
   margin-left: 20px;
+}
+
+.plan-tree .plan-subtree .plan-subtree > a {
+  margin-left: 0;
+  padding-left: 49px;
+}
+
+.plan-tree .plan-subtree .plan-subtree > a.active {
+  background: #f0f0ed;
 }
 
 .plan-tree .wiki-nav-group {

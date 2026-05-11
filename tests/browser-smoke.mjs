@@ -121,7 +121,8 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(directPlanLink).marginLeft !== "0px") {
     throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
   }
-  if (getComputedStyle(directPlanLink.closest("summary"), "::before").width !== "19px") {
+  const chevronStyle = getComputedStyle(directPlanLink.closest("summary"), "::before");
+  if (chevronStyle.width !== "22px" || chevronStyle.paddingLeft !== "3px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
   const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
@@ -189,6 +190,21 @@ await page.locator("#wiki-nav").evaluate(() => {
   }
   if (!currentUnitLabel || currentUnitLabel.getBoundingClientRect().left <= stageSevenLabel.getBoundingClientRect().left) {
     throw new Error("Expected unit labels to be indented under their stage");
+  }
+});
+await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.locator("#wiki-nav").evaluate(() => {
+  const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
+    .find((label) => label.textContent.includes("Verification Loop Model"));
+  const unitLink = unitLabel.closest("a");
+  const unitBox = unitLink.getBoundingClientRect();
+  const unitRail = getComputedStyle(unitLink, "::after");
+  if (Math.round(unitBox.left) !== 0 || getComputedStyle(unitLink).backgroundColor !== "rgb(240, 240, 237)") {
+    throw new Error("Expected selected unit background to reach the window edge");
+  }
+  if (unitRail.backgroundColor !== "rgb(23, 25, 22)" || Number.parseFloat(unitRail.left) !== 0 || Number.parseFloat(unitRail.width) !== 2) {
+    throw new Error("Expected selected unit to show a 2px black left rail at the window edge");
   }
 });
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();
