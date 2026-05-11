@@ -6,7 +6,8 @@
   --text: #20231f;
   --muted: #62675f;
   --accent: #276ef1;
-  --sidebar-font: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mono-font: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --sidebar-font: var(--mono-font);
 }
 
 @font-face {
@@ -262,7 +263,7 @@ body {
 }
 
 .workspace-summary code {
-  font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 11px/1.3 var(--mono-font);
 }
 
 .plan-prompt {
@@ -560,6 +561,7 @@ body {
   color: #eef2ec;
   cursor: pointer;
   text-align: left;
+  font-family: var(--mono-font);
 }
 
 .terminal-panel-header strong,
@@ -576,11 +578,12 @@ body {
 
 .terminal-panel-header span {
   color: #abb5ad;
-  font: 11px/1.3 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font: 11px/1.3 var(--mono-font);
 }
 
 .terminal {
   min-height: 0;
+  font-family: var(--mono-font);
   position: relative;
 }
 
@@ -588,6 +591,7 @@ body {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
+  font-family: var(--mono-font);
   height: 100%;
   scrollbar-gutter: stable;
   width: 100%;
