@@ -108,6 +108,9 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(document.querySelector(".topbar")).backgroundColor !== "rgb(251, 251, 250)") {
     throw new Error("Expected topbar to use the white sidebar surface");
   }
+  if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(251, 251, 250)") {
+    throw new Error("Expected wiki pane to use the white sidebar surface");
+  }
   const gridColumns = getComputedStyle(workspaceElement).gridTemplateColumns;
   if (!gridColumns.startsWith("300px ")) {
     throw new Error(`Expected 300px sidebar column, got ${gridColumns}`);
@@ -118,7 +121,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(directPlanLink).marginLeft !== "0px") {
     throw new Error(`Expected direct plan links to have no left margin, got ${getComputedStyle(directPlanLink).marginLeft}`);
   }
-  if (getComputedStyle(directPlanLink.closest("summary"), "::before").width !== "14px") {
+  if (getComputedStyle(directPlanLink.closest("summary"), "::before").width !== "16px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
   const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
@@ -169,14 +172,19 @@ await page.locator("#wiki-nav").evaluate(() => {
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
   const selectedRail = getComputedStyle(stageSevenLabel.closest("a"), "::after").backgroundColor;
   const selectedRailLeft = Number.parseFloat(getComputedStyle(stageSevenLabel.closest("a"), "::after").left);
+  const selectedRailWidth = Number.parseFloat(getComputedStyle(stageSevenLabel.closest("a"), "::after").width);
+  const selectedSummaryBg = getComputedStyle(stageSevenLabel.closest("summary")).backgroundColor;
   if (!stageSevenGroup?.open) {
     throw new Error("Expected selected Stage 07 to expand");
   }
   if (selectedRail !== "rgb(23, 25, 22)") {
     throw new Error(`Expected selected stage to show a dark left rail, got ${selectedRail}`);
   }
-  if (selectedRailLeft !== -14) {
+  if (selectedRailLeft !== -16 || selectedRailWidth !== 2) {
     throw new Error(`Expected selected stage rail to reach the window edge, got ${selectedRailLeft}`);
+  }
+  if (selectedSummaryBg !== "rgb(240, 240, 237)") {
+    throw new Error(`Expected selected stage background to span the whole summary row, got ${selectedSummaryBg}`);
   }
   if (!currentUnitLabel || currentUnitLabel.getBoundingClientRect().left <= stageSevenLabel.getBoundingClientRect().left) {
     throw new Error("Expected unit labels to be indented under their stage");

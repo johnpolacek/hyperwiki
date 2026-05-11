@@ -89,6 +89,10 @@ body {
   font-family: var(--sidebar-font);
 }
 
+.wiki-pane {
+  background: #fbfbfa;
+}
+
 .topbar-brand {
   display: inline-flex;
   align-items: center;
@@ -425,16 +429,24 @@ body {
   top: 0;
   bottom: 0;
   left: 0;
-  width: 3px;
+  width: 2px;
   background: #171916;
 }
 
 .plan-subtree > summary a.active::after {
-  left: -14px;
+  left: -16px;
 }
 
 .plan-subtree > a.active::after {
   left: -20px;
+}
+
+.plan-subtree > summary:has(a.active) {
+  background: #f0f0ed;
+}
+
+.plan-subtree > summary:has(a.active) a.active {
+  background: transparent;
 }
 
 .primary-nav a {
@@ -486,7 +498,7 @@ body {
 
 .plan-subtree > summary::before {
   content: "›";
-  flex: 0 0 14px;
+  flex: 0 0 16px;
   color: #8a8d88;
   font-size: 22px;
   line-height: 1;
