@@ -27,8 +27,8 @@ const planPrompt = document.getElementById("plan-prompt");
 const planPromptInput = document.getElementById("plan-prompt-input");
 const planPromptStatus = document.getElementById("plan-prompt-status");
 const workspace = document.querySelector(".workspace");
-const projectSidebar = document.getElementById("project-sidebar");
 const projectToggle = document.getElementById("project-toggle");
+const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
 const terminalSessions = new Map();
 const wikiPageTitles = new Map();
@@ -150,15 +150,18 @@ function resizePlanPromptInput() {
   planPromptInput.style.overflowY = planPromptInput.scrollHeight > nextHeight ? "auto" : "hidden";
 }
 
-projectToggle.addEventListener("click", () => {
-  const collapsed = !workspace.classList.contains("projects-collapsed");
-  workspace.classList.toggle("projects-collapsed", collapsed);
-  projectToggle.setAttribute("aria-expanded", String(!collapsed));
+projectToggle.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setTopbarPanelOpen("projects", projectPanel.hidden);
 });
 
 upNextButton.addEventListener("click", (event) => {
   event.stopPropagation();
-  setUpNextOpen(upNextPopover.hidden);
+  setTopbarPanelOpen("up-next", upNextPopover.hidden);
+});
+
+projectPanel.addEventListener("click", (event) => {
+  event.stopPropagation();
 });
 
 upNextPopover.addEventListener("click", (event) => {
@@ -166,12 +169,12 @@ upNextPopover.addEventListener("click", (event) => {
 });
 
 document.addEventListener("click", () => {
-  setUpNextOpen(false);
+  closeTopbarPanels();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    setUpNextOpen(false);
+    closeTopbarPanels();
   }
 });
 
@@ -242,9 +245,25 @@ function renderUpNext(status = {}) {
   upNextNext.textContent = status.next || "No next action found";
 }
 
-function setUpNextOpen(open) {
+function setTopbarPanelOpen(panel, open) {
+  if (panel === "projects") {
+    projectPanel.hidden = !open;
+    projectToggle.setAttribute("aria-expanded", String(open));
+    upNextPopover.hidden = true;
+    upNextButton.setAttribute("aria-expanded", "false");
+    return;
+  }
   upNextPopover.hidden = !open;
   upNextButton.setAttribute("aria-expanded", String(open));
+  projectPanel.hidden = true;
+  projectToggle.setAttribute("aria-expanded", "false");
+}
+
+function closeTopbarPanels() {
+  projectPanel.hidden = true;
+  upNextPopover.hidden = true;
+  projectToggle.setAttribute("aria-expanded", "false");
+  upNextButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadGuardrails() {
@@ -272,11 +291,13 @@ async function loadProjects() {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
   if (data.projects.length <= 1) {
-    projectSidebar.hidden = true;
-    workspace.classList.remove("has-projects", "projects-collapsed");
+    projectToggle.hidden = true;
+    projectPanel.hidden = true;
+    workspace.classList.remove("has-projects");
+    projectToggle.setAttribute("aria-expanded", "false");
     return;
   }
-  projectSidebar.hidden = false;
+  projectToggle.hidden = false;
   workspace.classList.add("has-projects");
   projectList.replaceChildren(
     ...data.projects.map((project) => {
@@ -441,7 +462,7 @@ function renderWikiLink(page, state = "") {
   if (state) {
     link.classList.add(state);
   }
-  link.addEventListener("click", () => setUpNextOpen(false));
+  link.addEventListener("click", closeTopbarPanels);
   return link;
 }
 

@@ -16,6 +16,13 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
+await page.locator(".topbar-brand").filter({ hasText: "HyperWiki" }).waitFor();
+await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
+  const path = element.getAttribute("d") || "";
+  if (!path.includes("M13 5v4H8v6h5v4l7-7Z")) {
+    throw new Error(`Expected Up Next to use arrow-big-right-dash icon path, got ${path}`);
+  }
+});
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
 const sessionControlsHidden = await page.locator(".terminal-actions").evaluate((element) => !element.open);
 if (!sessionControlsHidden) {
@@ -244,11 +251,21 @@ await page.locator("#up-next-button").click();
 await page.locator("#up-next-popover").evaluate((element) => {
   if (element.hidden) throw new Error("Expected Up Next popover to open");
 });
+await page.locator("#up-next-button").evaluate((element) => {
+  if (element.getAttribute("aria-expanded") !== "true") {
+    throw new Error("Expected Up Next button to expose expanded state");
+  }
+});
 await page.locator("#up-next-current").filter({ hasText: /Stage 07|active/i }).waitFor();
 await page.locator("#up-next-next").filter({ hasText: /define|split|next/i }).waitFor();
 await page.keyboard.press("Escape");
 await page.locator("#up-next-popover").evaluate((element) => {
   if (!element.hidden) throw new Error("Expected Up Next popover to close on Escape");
+});
+await page.locator("#up-next-button").evaluate((element) => {
+  if (element.getAttribute("aria-expanded") !== "false") {
+    throw new Error("Expected Up Next button to expose collapsed state");
+  }
 });
 await page.locator("#guardrail-mode").filter({ hasText: "Local-only" }).waitFor();
 await page.locator("#active-session-boundary").filter({ hasText: "shell" }).waitFor();

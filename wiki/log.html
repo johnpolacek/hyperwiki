@@ -21,6 +21,14 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 implementation | topbar navigation panels</h2>
+  <ul>
+    <li>Moved the workspace brand, Projects switcher, and Up Next status into a persistent TopBar.</li>
+    <li>Replaced the project sidebar and Up Next sidebar popover with shared top-right panels that slide in from the top right and fade in their content.</li>
+    <li>Kept plan navigation as the sidebar's primary surface while preserving keyboard close behavior, focus visibility, and multi-project switching coverage.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 correction | worktree-aware project URLs</h2>
   <ul>
     <li>Decision: Git worktrees remain separate swappable project views instead of being hidden as duplicate projects.</li>

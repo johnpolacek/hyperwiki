@@ -16,58 +16,61 @@
 </head>
 <body>
   <main class="workspace">
-    <aside id="project-sidebar" class="project-sidebar" hidden>
-      <button type="button" id="project-toggle" class="project-toggle" aria-expanded="true">Projects</button>
-      <div id="project-list" class="project-list" aria-label="Projects"></div>
-    </aside>
+    <header class="topbar">
+      <div class="topbar-brand" aria-label="HyperWiki">
+        <span class="brand-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+        <span>HyperWiki</span>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="project-toggle" class="topbar-button" aria-expanded="false" aria-controls="project-panel" hidden>
+          <span>Projects</span>
+        </button>
+        <button type="button" id="up-next-button" class="topbar-button" aria-expanded="false" aria-controls="up-next-popover">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 9v6"></path>
+            <path d="M13 5v4H8v6h5v4l7-7Z"></path>
+          </svg>
+          <span>Up Next</span>
+        </button>
+      </div>
+      <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
+        <div id="project-list" class="project-list" aria-label="Projects"></div>
+      </section>
+      <section id="up-next-popover" class="topbar-panel up-next-popover" role="dialog" aria-label="Up Next" hidden>
+        <dl>
+          <div>
+            <dt>Just completed</dt>
+            <dd id="up-next-completed">Loading</dd>
+          </div>
+          <div>
+            <dt>Current</dt>
+            <dd id="up-next-current">Loading</dd>
+          </div>
+          <div>
+            <dt>Next</dt>
+            <dd id="up-next-next">Loading</dd>
+          </div>
+        </dl>
+      </section>
+    </header>
     <aside class="sidebar">
       <div class="brand">
-        <h1>
-          <span class="brand-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-          <span>HyperWiki</span>
-        </h1>
         <span id="server-status" hidden>Local</span>
       </div>
       <nav class="primary-nav" aria-label="Primary workspace pages" hidden></nav>
       <nav id="wiki-nav" class="wiki-nav" aria-label="Wiki pages">
         <a href="/wiki/index.html" target="wiki-frame" data-wiki-link>Home</a>
       </nav>
-      <section class="up-next" aria-label="Plan status">
-        <button type="button" id="up-next-button" aria-expanded="false" aria-controls="up-next-popover">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 5v14"></path>
-            <path d="m18 13-6 6-6-6"></path>
-            <path d="M5 5h14"></path>
-          </svg>
-          <span>Up Next</span>
-        </button>
-        <div id="up-next-popover" class="up-next-popover" role="dialog" aria-label="Up Next" hidden>
-          <dl>
-            <div>
-              <dt>Just completed</dt>
-              <dd id="up-next-completed">Loading</dd>
-            </div>
-            <div>
-              <dt>Current</dt>
-              <dd id="up-next-current">Loading</dd>
-            </div>
-            <div>
-              <dt>Next</dt>
-              <dd id="up-next-next">Loading</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
     </aside>
     <section class="wiki-pane">
       <strong id="current-page" hidden>/wiki/index.html</strong>

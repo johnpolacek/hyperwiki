@@ -64,9 +64,9 @@ try {
   const page = await browser.newPage();
   await page.goto(workspaceUrl, { waitUntil: "networkidle" });
   await page.locator(".terminal-tab[data-name=\"cli\"]").waitFor();
-  const singleProjectSidebar = await page.locator("#project-sidebar").evaluate((element) => element.hidden);
-  if (!singleProjectSidebar) {
-    throw new Error("Expected project sidebar to stay hidden for a single registered project.");
+  const singleProjectToggle = await page.locator("#project-toggle").evaluate((element) => element.hidden);
+  if (!singleProjectToggle) {
+    throw new Error("Expected project topbar action to stay hidden for a single registered project.");
   }
 
   const sessions = await fetch(`http://127.0.0.1:${port}/api/sessions`).then((response) => response.json());
@@ -90,8 +90,12 @@ try {
     throw new Error(`Expected pretty worktree workspace URL, got ${secondWorkspaceUrl}`);
   }
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
-  await page.locator("#project-sidebar").evaluate((element) => {
-    if (element.hidden) throw new Error("Expected project sidebar after registering two projects.");
+  await page.locator("#project-toggle").evaluate((element) => {
+    if (element.hidden) throw new Error("Expected project topbar action after registering two projects.");
+  });
+  await page.locator("#project-toggle").click();
+  await page.locator("#project-panel").evaluate((element) => {
+    if (element.hidden) throw new Error("Expected project panel to open.");
   });
   await page.locator("#project-list button[data-worktree-slug=\"main\"]").click();
   await page.locator("#project-list button.active[data-worktree-slug=\"main\"]").waitFor();
@@ -100,6 +104,7 @@ try {
   }
   await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
+  await page.locator("#project-toggle").click();
   await page.locator("#project-list button.active[data-worktree-slug=\"plan-unit-navigation\"]").waitFor();
 } finally {
   if (browser) {
