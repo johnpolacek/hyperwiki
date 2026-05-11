@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -97,6 +97,12 @@ try {
   await page.locator("#project-panel").evaluate((element) => {
     if (element.hidden) throw new Error("Expected project panel to open.");
   });
+  const projectLabels = await page.locator("#project-list button").allTextContents();
+  for (const expected of ["launch-smoke · main", "launch-smoke · plan-unit-navigation"]) {
+    if (!projectLabels.includes(expected)) {
+      throw new Error(`Expected single-line project label ${expected}, got ${JSON.stringify(projectLabels)}`);
+    }
+  }
   await page.locator("#settings-button").click();
   await page.locator("#settings-panel").evaluate((element) => {
     if (element.hidden) throw new Error("Expected settings panel to open.");
@@ -115,6 +121,40 @@ try {
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
   await page.locator("#project-toggle").click();
   await page.locator("#project-list button.active[data-worktree-slug=\"plan-unit-navigation\"]").waitFor();
+
+  const registeredProjects = await fetch(`http://127.0.0.1:${port}/api/projects`).then((response) => response.json());
+  const worktreeProject = registeredProjects.projects.find((project) => project.worktreeSlug === "plan-unit-navigation");
+  if (!worktreeProject) {
+    throw new Error(`Expected worktree project before prune, got ${JSON.stringify(registeredProjects)}`);
+  }
+  await rm(secondRoot, { recursive: true, force: true });
+  const prunedProjects = await fetch(`http://127.0.0.1:${port}/api/projects?project=${encodeURIComponent(worktreeProject.id)}`).then((response) => response.json());
+  if (prunedProjects.projects.some((project) => project.worktreeSlug === "plan-unit-navigation")) {
+    throw new Error(`Expected missing worktree to be pruned, got ${JSON.stringify(prunedProjects)}`);
+  }
+  if (prunedProjects.activeProjectId !== prunedProjects.projects.find((project) => project.available)?.id) {
+    throw new Error(`Expected pruned active project to fall back to an available project, got ${JSON.stringify(prunedProjects)}`);
+  }
+  const registryAfterPrune = JSON.parse(await readFile(path.join(home, "projects.json"), "utf8"));
+  if (registryAfterPrune.projects.some((project) => project.worktreeSlug === "plan-unit-navigation")) {
+    throw new Error(`Expected missing worktree to be removed from registry, got ${JSON.stringify(registryAfterPrune)}`);
+  }
+
+  registryAfterPrune.projects.push({
+    id: "missing-main-project",
+    root: path.join(workspaceRoot, "missing-main"),
+    name: "Missing Main",
+    projectSlug: "missing-main",
+    worktreeSlug: "main",
+    available: true,
+    lastOpenedAt: new Date().toISOString()
+  });
+  await writeFile(path.join(home, "projects.json"), `${JSON.stringify(registryAfterPrune, null, 2)}\n`);
+  const withMissingMain = await fetch(`http://127.0.0.1:${port}/api/projects`).then((response) => response.json());
+  const missingMainProject = withMissingMain.projects.find((project) => project.id === "missing-main-project");
+  if (!missingMainProject || missingMainProject.available) {
+    throw new Error(`Expected missing main project to remain unavailable, got ${JSON.stringify(withMissingMain)}`);
+  }
 } finally {
   if (browser) {
     await browser.close();

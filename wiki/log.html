@@ -21,6 +21,13 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-11 correction | missing worktree pruning</h2>
+  <ul>
+    <li>Changed the project registry list path to automatically remove registered non-<code>main</code> worktrees whose root path no longer exists.</li>
+    <li>Kept missing <code>main</code> projects visible as unavailable and changed Projects labels to one-line project/worktree text.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 correction | sidebar plan tree</h2>
   <ul>
     <li>Dogfood finding: Stage 07 appeared above earlier MVP stages because the sidebar sort key promoted the current stage.</li>

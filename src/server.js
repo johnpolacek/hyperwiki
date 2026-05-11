@@ -107,8 +107,7 @@ async function handleRequest(defaultRoot, request, response, context) {
       return;
     }
     if (url.pathname === "/api/projects") {
-      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
-      await sendJson(response, await context.projectRegistry.list(project.id));
+      await sendJson(response, await context.projectRegistry.list(await requestedProjectId(context.projectRegistry, url, context.activeProjectId, defaultRoot)));
       return;
     }
     if (url.pathname === "/api/workspace") {
@@ -227,6 +226,22 @@ async function resolveProject(projectRegistry, url, activeProjectId, fallbackRoo
     return projectRegistry.resolveBySlug(projectSlug, url.searchParams.get("worktreeSlug"), fallbackRoot);
   }
   return projectRegistry.resolve(activeProjectId, fallbackRoot);
+}
+
+async function requestedProjectId(projectRegistry, url, activeProjectId, fallbackRoot) {
+  const projectId = url.searchParams.get("project");
+  if (projectId) {
+    return projectId;
+  }
+  const projectSlug = url.searchParams.get("projectSlug");
+  if (projectSlug) {
+    try {
+      return (await projectRegistry.resolveBySlug(projectSlug, url.searchParams.get("worktreeSlug"), fallbackRoot)).id;
+    } catch {
+      return null;
+    }
+  }
+  return activeProjectId;
 }
 
 function workspaceRoute(pathname) {

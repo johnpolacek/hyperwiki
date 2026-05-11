@@ -34,12 +34,17 @@ export class ProjectRegistry {
 
   async list(activeId = null) {
     const registry = await this.#read();
+    const records = withUniqueSlugs(registry.projects);
+    const projectsToList = records.filter((item) => !missingWorktree(item));
+    if (projectsToList.length !== records.length) {
+      await this.#write({ version: 1, projects: projectsToList });
+    }
     const projects = [];
-    for (const item of withUniqueSlugs(registry.projects)) {
+    for (const item of projectsToList) {
       const project = await projectFromRoot(item.root);
       const record = {
         ...item,
-        name: project.name || item.name,
+        name: project.available ? project.name : item.name || project.name,
         projectSlug: item.projectSlug || slugify(project.name || item.name),
         worktreeSlug: item.worktreeSlug || await worktreeSlug(item.root),
         available: project.available
@@ -49,7 +54,17 @@ export class ProjectRegistry {
         active: record.id === activeId
       });
     }
-    return { projects, activeProjectId: activeId };
+    const activeProject = projects.find((project) => project.id === activeId && project.available)
+      || projects.find((project) => project.available)
+      || projects[0]
+      || null;
+    return {
+      projects: projects.map((project) => ({
+        ...project,
+        active: project.id === activeProject?.id
+      })),
+      activeProjectId: activeProject?.id || null
+    };
   }
 
   async latestAgentLaunchCommand() {
@@ -160,6 +175,10 @@ async function projectName(root, configPath) {
 
 function samePath(left, right) {
   return path.resolve(left) === path.resolve(right);
+}
+
+function missingWorktree(project) {
+  return project.worktreeSlug && project.worktreeSlug !== "main" && !existsSync(path.resolve(project.root));
 }
 
 function withUniqueSlugs(projects) {

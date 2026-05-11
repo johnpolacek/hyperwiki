@@ -50,6 +50,16 @@
     <li>Verification: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, and isolated browser smoke with <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4317/workspace/hyperwiki/main pnpm run smoke:browser</code>.</li>
   </ul>
 </section>
+<section>
+  <h3>Unit 05 - Missing Worktree Pruning</h3>
+  <ul>
+    <li>Status: complete</li>
+    <li>Automatically remove registered non-<code>main</code> worktree entries when their root path no longer exists.</li>
+    <li>Keep missing <code>main</code> or standalone project entries visible as unavailable so users can diagnose or restore them.</li>
+    <li>Changed the Projects panel to show project and worktree context in one line.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:launch</code>.</li>
+  </ul>
+</section>
 <h2>Non-goals</h2>
 <ul>
   <li>No folder scanning or arbitrary non-HyperWiki project registration in v1.</li>

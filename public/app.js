@@ -262,11 +262,7 @@ async function loadProjects() {
       button.type = "button";
       button.dataset.projectId = project.id;
       button.dataset.worktreeSlug = project.worktreeSlug || "main";
-      const name = document.createElement("span");
-      name.textContent = project.name;
-      const worktree = document.createElement("small");
-      worktree.textContent = project.worktreeSlug || "main";
-      button.append(name, worktree);
+      button.textContent = `${project.name} · ${project.worktreeSlug || "main"}`;
       button.title = project.available ? project.root : `${project.root} unavailable`;
       button.className = project.id === activeProjectId ? "active" : "";
       button.disabled = !project.available;
