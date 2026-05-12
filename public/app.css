@@ -822,8 +822,20 @@ body {
   display: none;
 }
 
-.plan-tree > summary {
-  padding-left: 13px;
+.plan-tree-heading {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 5px 20px 9px 13px;
+  color: #8a8d88;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .project-nav-group > summary {

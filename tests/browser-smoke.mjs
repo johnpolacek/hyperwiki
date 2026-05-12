@@ -122,12 +122,12 @@ const currentPage = await page.locator("#current-page").innerText();
 if (currentPage !== "Planning Dashboard") {
   throw new Error(`Expected Planning Dashboard, got ${currentPage}`);
 }
-await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
-  if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
+await page.locator("#wiki-nav .plan-tree").evaluate((element) => {
+  if (element.tagName === "DETAILS") throw new Error("Expected plan navigation heading not to be collapsible");
   if (element.textContent.includes("Planning Dashboard")) throw new Error("Expected plan navigation to omit Planning Dashboard");
   if (!element.textContent.includes("Completed Plans")) throw new Error("Expected completed plans archive in plan navigation");
   const topLevelLabels = [...element.children]
-    .filter((child) => child.tagName !== "SUMMARY")
+    .filter((child) => !child.classList.contains("plan-tree-heading"))
     .map((child) => child.querySelector(":scope > summary .wiki-nav-label, :scope > .wiki-nav-label")?.textContent || child.textContent || "");
   if (topLevelLabels.includes("Plan Unit Navigation")) {
     throw new Error(`Expected completed plans to move out of the active plan list, got ${topLevelLabels.join(", ")}`);
@@ -163,7 +163,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (chevronStyle.width !== "22px" || chevronStyle.paddingLeft !== "3px" || chevronStyle.left !== "4px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
-  const planHeading = document.querySelector(".plan-tree > summary");
+  const planHeading = document.querySelector(".plan-tree-heading");
   if (!planHeading) {
     throw new Error("Expected Plans heading");
   }
@@ -326,8 +326,8 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
   if (projectChevronStyle.width !== "22px" || projectChevronStyle.paddingRight !== "3px" || projectChevronStyle.textAlign !== "right") {
     throw new Error("Expected Project navigation chevron to sit on the right edge");
   }
-  const plansSummary = planTree.querySelector(":scope > summary");
-  if (Math.abs(projectSummary.getBoundingClientRect().left - plansSummary.getBoundingClientRect().left) > 1) {
+  const plansHeading = planTree.querySelector(":scope > .plan-tree-heading");
+  if (Math.abs(projectSummary.getBoundingClientRect().left - plansHeading.getBoundingClientRect().left) > 1) {
     throw new Error("Expected Project label to align with Plans label");
   }
   const planRect = planTree.getBoundingClientRect();
@@ -335,10 +335,10 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
     throw new Error("Expected project navigation to render after plan navigation");
   }
   const firstPlanItem = planTree.querySelector(":scope > .plan-subtree, :scope > a");
-  if (!plansSummary || !firstPlanItem) {
+  if (!plansHeading || !firstPlanItem) {
     throw new Error("Expected plans heading and first plan item");
   }
-  const plansGap = firstPlanItem.getBoundingClientRect().top - plansSummary.getBoundingClientRect().bottom;
+  const plansGap = firstPlanItem.getBoundingClientRect().top - plansHeading.getBoundingClientRect().bottom;
   if (plansGap > 16) {
     throw new Error(`Expected plan items directly below Plans heading, got ${plansGap}px gap`);
   }

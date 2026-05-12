@@ -786,19 +786,19 @@ function groupWikiPages(pages) {
 }
 
 function renderPlanTree(pages) {
-  const details = document.createElement("details");
-  details.className = "wiki-nav-group plan-tree";
-  details.open = true;
-  const summary = document.createElement("summary");
-  summary.textContent = "Plans";
-  details.append(summary);
+  const section = document.createElement("section");
+  section.className = "wiki-nav-group plan-tree";
+  const heading = document.createElement("div");
+  heading.className = "plan-tree-heading";
+  heading.textContent = "Plans";
+  section.append(heading);
 
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const topLevel = sorted.filter((page) => isTopLevelPlanPage(page));
   for (const page of topLevel) {
-    details.append(renderPlanNode(page, sorted));
+    section.append(renderPlanNode(page, sorted));
   }
-  return details;
+  return section;
 }
 
 function renderPlanNode(page, pages) {
@@ -934,8 +934,6 @@ function activateWikiPage(path) {
 
 function syncPlanTreeOpenState(selectedPath) {
   const selected = displayWikiPath(selectedPath);
-  const planTree = wikiNav.querySelector("details.plan-tree");
-  if (planTree) planTree.open = true;
   wikiNav.querySelectorAll("details.plan-subtree").forEach((group) => {
     const groupPath = group.dataset.path;
     if (!groupPath) return;
