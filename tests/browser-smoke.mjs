@@ -179,6 +179,9 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
     throw new Error("Expected plan navigation labels to use text overflow ellipses");
   }
+  if (getComputedStyle(longUnitLabel).flexGrow !== "1") {
+    throw new Error("Expected plan navigation labels to flex within their row for ellipses");
+  }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
@@ -203,6 +206,10 @@ await page.locator("#wiki-nav").evaluate(() => {
   }
   if (selectedSummaryBg !== "rgb(240, 240, 237)") {
     throw new Error(`Expected selected stage background to span the whole summary row, got ${selectedSummaryBg}`);
+  }
+  const containingPlanGroup = stageSevenGroup.closest(".plan-tree > .plan-subtree");
+  if (getComputedStyle(containingPlanGroup).borderBottomStyle !== "solid" || getComputedStyle(containingPlanGroup).paddingBottom !== "10px") {
+    throw new Error("Expected expanded plan branch to separate from following plan rows");
   }
   if (!currentUnitLabel || currentUnitLabel.getBoundingClientRect().left <= stageSevenLabel.getBoundingClientRect().left) {
     throw new Error("Expected unit labels to be indented under their stage");

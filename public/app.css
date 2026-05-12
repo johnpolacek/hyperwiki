@@ -543,6 +543,7 @@ body {
 }
 
 .wiki-nav-label {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -639,6 +640,13 @@ body {
 
 .plan-tree .wiki-nav-group {
   margin-left: 0;
+}
+
+.plan-tree > .plan-subtree[open],
+.plan-tree > .plan-subtree:has(.plan-subtree[open]) {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e3e3df;
+  margin-bottom: 10px;
 }
 
 .plan-tree .plan-subtree .plan-subtree {
