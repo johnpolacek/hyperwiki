@@ -177,30 +177,10 @@
           <section class="settings-section">
             <div class="settings-section-header">
               <h2>Theme</h2>
-              <button type="button" id="settings-reset-theme" class="dashboard-new-button">Reset Theme</button>
+              <button type="button" id="theme-edit" class="dashboard-new-button">Edit</button>
             </div>
-            <label class="settings-field">
-              <span>Preset</span>
-              <select id="theme-preset"></select>
-            </label>
-            <div class="settings-preview" aria-label="Theme preview">
-              <div>
-                <strong>UI</strong>
-                <span>Sidebar and workspace chrome</span>
-              </div>
-              <div>
-                <strong>Docs</strong>
-                <span>Planning and wiki pages</span>
-              </div>
-              <div>
-                <strong>Terminal</strong>
-                <span>Pane chrome and session frames</span>
-              </div>
-            </div>
-            <details class="settings-json-details">
-              <summary>Advanced JSON</summary>
-              <textarea id="theme-json" rows="18" spellcheck="false"></textarea>
-            </details>
+            <p id="theme-title" class="theme-title">Paper</p>
+            <div id="theme-summary" class="theme-summary" aria-label="Theme summary"></div>
           </section>
           <section class="settings-section">
             <div class="settings-section-header">
@@ -237,6 +217,45 @@
             </div>
           </section>
         </div>
+        <section id="theme-editor" class="theme-editor" aria-label="Edit Theme" hidden>
+          <header class="theme-editor-header">
+            <div>
+              <h2>Edit Theme</h2>
+              <p>Adjust a draft theme and preview it here. The workspace updates after Save.</p>
+            </div>
+            <div class="settings-actions">
+              <button type="button" id="theme-cancel" class="dashboard-new-button">Cancel</button>
+              <button type="button" id="theme-save" class="settings-primary-button">Save Theme</button>
+            </div>
+          </header>
+          <div class="theme-editor-layout">
+            <section class="settings-section">
+              <label class="settings-field">
+                <span>Preset</span>
+                <select id="theme-preset"></select>
+              </label>
+              <div id="theme-controls" class="theme-controls"></div>
+            </section>
+            <section class="theme-preview-pane" aria-label="Theme preview pane">
+              <div class="theme-preview-shell">
+                <aside>
+                  <strong>Plans</strong>
+                  <span>Stage-08 Settings, Soul, and Memory</span>
+                  <span>Unit 02 · Theme System</span>
+                </aside>
+                <main>
+                  <h3>Planning Preview</h3>
+                  <p>Docs keep their reading voice while the UI stays dense and scannable.</p>
+                  <code>wiki/plans/mvp/stage-08-settings-soul-memory.html</code>
+                </main>
+                <footer>
+                  <strong>agent</strong>
+                  <span>preview terminal chrome</span>
+                </footer>
+              </div>
+            </section>
+          </div>
+        </section>
       </section>
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
       <form id="plan-prompt" class="plan-prompt" hidden>

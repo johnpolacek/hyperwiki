@@ -526,6 +526,11 @@ body {
   margin-top: 18px;
 }
 
+.settings-layout[hidden],
+.theme-editor[hidden] {
+  display: none;
+}
+
 .settings-section {
   display: grid;
   align-content: start;
@@ -607,6 +612,240 @@ body {
 .settings-json-details textarea {
   margin-top: 10px;
   font-family: var(--mono-font);
+}
+
+.theme-title {
+  margin: 0;
+  color: var(--text);
+  font: 700 18px/1.2 var(--sidebar-font);
+}
+
+.theme-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.theme-summary-surface {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+  background: var(--bg);
+}
+
+.theme-summary-surface header,
+.theme-control-section header {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.theme-summary-surface strong,
+.theme-control-section strong {
+  color: var(--text);
+  font: 700 12px/1.25 var(--sidebar-font);
+}
+
+.theme-summary-surface header span,
+.theme-control-section header span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.theme-swatches span {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.theme-font-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.theme-font-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.theme-font-list dt,
+.theme-font-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-font-list dd {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.theme-editor {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.theme-editor-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+
+.theme-editor-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.theme-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.55fr) minmax(420px, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.theme-controls {
+  display: grid;
+  gap: 14px;
+}
+
+.theme-control-section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.theme-color-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.theme-font-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.theme-color-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font: 700 11px/1.2 var(--sidebar-font);
+}
+
+.theme-color-control input {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  background: var(--panel);
+}
+
+.theme-preview-pane {
+  min-width: 0;
+}
+
+.theme-preview-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: minmax(260px, 1fr) auto;
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.theme-preview-shell aside {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border-right: 1px solid var(--border);
+  padding: 18px;
+  background: var(--panel);
+  font-family: var(--sidebar-font);
+}
+
+.theme-preview-shell aside strong {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.theme-preview-shell aside span {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-preview-shell main {
+  padding: 26px;
+  background: var(--docs-bg);
+  color: var(--docs-text);
+  font-family: var(--docs-serif-font);
+}
+
+.theme-preview-shell main h3 {
+  margin: 0 0 10px;
+  color: var(--docs-text);
+  font: 400 32px/1 var(--docs-serif-font);
+}
+
+.theme-preview-shell main p {
+  max-width: 520px;
+  color: var(--docs-muted);
+  font-size: 18px;
+}
+
+.theme-preview-shell main code {
+  background: var(--docs-code);
+  color: var(--docs-text);
+  font-family: var(--docs-mono-font);
+}
+
+.theme-preview-shell footer {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--terminal-border);
+  padding: 10px 12px;
+  background: var(--terminal-header);
+  color: var(--terminal-text);
+  font-family: var(--mono-font);
+}
+
+.theme-preview-shell footer span {
+  color: var(--terminal-muted);
 }
 
 .settings-preview {

@@ -29,9 +29,15 @@ const upNextPopover = document.getElementById("up-next-popover");
 const settingsButton = document.getElementById("settings-button");
 const settingsPage = document.getElementById("settings-page");
 const settingsStatus = document.getElementById("settings-status");
+const settingsLayout = document.querySelector(".settings-layout");
+const themeTitle = document.getElementById("theme-title");
+const themeSummary = document.getElementById("theme-summary");
+const themeEdit = document.getElementById("theme-edit");
+const themeEditor = document.getElementById("theme-editor");
+const themeCancel = document.getElementById("theme-cancel");
+const themeSave = document.getElementById("theme-save");
 const themePreset = document.getElementById("theme-preset");
-const themeJson = document.getElementById("theme-json");
-const settingsResetTheme = document.getElementById("settings-reset-theme");
+const themeControls = document.getElementById("theme-controls");
 const settingsSave = document.getElementById("settings-save");
 const settingsSyncAgents = document.getElementById("settings-sync-agents");
 const soulPrinciples = document.getElementById("soul-principles");
@@ -64,6 +70,42 @@ let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
 let settingsState = null;
+let themeDraft = null;
+
+const themeSurfaces = [
+  {
+    key: "ui",
+    label: "UI",
+    description: "Sidebar and workspace chrome",
+    colorTokens: ["bg", "panel", "border", "text", "muted", "accent"],
+    fontTokens: ["sidebarFont"]
+  },
+  {
+    key: "docs",
+    label: "Docs",
+    description: "Planning and wiki pages",
+    colorTokens: ["bg", "panel", "border", "text", "muted", "link", "code"],
+    fontTokens: ["serifFont", "monoFont"]
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    description: "Pane chrome and session frames",
+    colorTokens: ["bg", "pane", "toolbar", "header", "border", "text", "muted", "accent"],
+    fontTokens: []
+  }
+];
+
+const fontOptions = [
+  { label: "Sometype Mono", value: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "" },
+  { label: "Instrument Serif", value: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif", google: "" },
+  { label: "Inter", value: "\"Inter\", ui-sans-serif, system-ui, sans-serif", google: "Inter:wght@400;500;600;700" },
+  { label: "IBM Plex Sans", value: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif", google: "IBM+Plex+Sans:wght@400;500;600;700" },
+  { label: "IBM Plex Mono", value: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "IBM+Plex+Mono:wght@400;500;600;700" },
+  { label: "Newsreader", value: "\"Newsreader\", ui-serif, Georgia, serif", google: "Newsreader:wght@400;600;700" },
+  { label: "Source Serif 4", value: "\"Source Serif 4\", ui-serif, Georgia, serif", google: "Source+Serif+4:wght@400;600;700" },
+  { label: "Space Mono", value: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Space+Mono:wght@400;700" }
+];
 
 window.addEventListener("hashchange", () => {
   activateWorkspaceLocation(workspaceLocation());
@@ -201,18 +243,23 @@ projectImportForm.addEventListener("submit", async (event) => {
 });
 
 themePreset.addEventListener("change", () => {
-  if (!settingsState) return;
-  settingsState.theme.activePreset = themePreset.value;
-  renderSettings(settingsState);
-  applyTheme(settingsState);
+  if (!settingsState || !themeDraft) return;
+  themeDraft.activePreset = themePreset.value;
+  themeDraft.customTokens = {};
+  renderThemeEditor();
+  applyThemePreview(effectiveTheme({ theme: themeDraft }));
 });
 
-settingsResetTheme.addEventListener("click", async () => {
-  setSettingsStatus("Resetting theme...");
-  settingsState = await api("/api/settings/reset-theme", { method: "POST" });
-  renderSettings(settingsState);
-  applyTheme(settingsState);
-  setSettingsStatus("Theme reset.");
+themeEdit.addEventListener("click", () => {
+  openThemeEditor();
+});
+
+themeCancel.addEventListener("click", () => {
+  closeThemeEditor();
+});
+
+themeSave.addEventListener("click", async () => {
+  await saveThemeDraft();
 });
 
 settingsSave.addEventListener("click", async () => {
@@ -520,19 +567,69 @@ async function loadSettings() {
 
 function renderSettings(settings) {
   if (!settings) return;
-  const presets = settings.theme?.presets || {};
-  themePreset.replaceChildren(...Object.entries(presets).map(([value, preset]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = preset.label || value;
-    return option;
-  }));
-  themePreset.value = settings.theme?.activePreset || "paper";
-  themeJson.value = JSON.stringify(settings.theme || {}, null, 2);
+  renderThemeSummary(settings);
   soulPrinciples.value = (settings.soul?.principles || []).join("\n");
   soulInterface.value = settings.soul?.interface || "";
   soulAgent.value = settings.soul?.agent || "";
   renderMemory(settings.memory?.entries || []);
+}
+
+function renderThemeSummary(settings) {
+  const theme = effectiveTheme(settings);
+  themeTitle.textContent = themeDisplayName(settings);
+  themeSummary.replaceChildren(...themeSurfaces.map((surface) => {
+    const tokens = theme.tokens[surface.key] || {};
+    const section = document.createElement("article");
+    section.className = "theme-summary-surface";
+    const heading = document.createElement("header");
+    const title = document.createElement("strong");
+    title.textContent = surface.label;
+    const description = document.createElement("span");
+    description.textContent = surface.description;
+    heading.append(title, description);
+    const swatches = document.createElement("div");
+    swatches.className = "theme-swatches";
+    surface.colorTokens.forEach((token) => {
+      const swatch = document.createElement("span");
+      swatch.title = `${token}: ${tokens[token] || ""}`;
+      swatch.style.background = tokens[token] || "transparent";
+      swatches.append(swatch);
+    });
+    const fonts = document.createElement("dl");
+    fonts.className = "theme-font-list";
+    surface.fontTokens.forEach((token) => {
+      const row = document.createElement("div");
+      const dt = document.createElement("dt");
+      dt.textContent = readableTokenName(token);
+      const dd = document.createElement("dd");
+      dd.textContent = fontLabelForValue(tokens[token]);
+      row.append(dt, dd);
+      fonts.append(row);
+    });
+    section.append(heading, swatches);
+    if (surface.fontTokens.length > 0) section.append(fonts);
+    return section;
+  }));
+}
+
+function themeDisplayName(settings) {
+  if (hasThemeOverrides(settings.theme)) return "Custom";
+  const preset = settings.theme?.presets?.[settings.theme?.activePreset || "paper"];
+  return preset?.label || "Custom";
+}
+
+function hasThemeOverrides(theme) {
+  return Object.keys(theme?.customTokens || {}).some((surface) =>
+    Object.keys(theme.customTokens?.[surface] || {}).length > 0
+  );
+}
+
+function fontLabelForValue(value = "") {
+  return fontOptions.find((font) => font.value === value)?.label || value.split(",")[0].replaceAll("\"", "") || "Default";
+}
+
+function readableTokenName(token) {
+  return token.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function renderMemory(entries) {
@@ -590,19 +687,8 @@ function memoryEntryRow(entry, index) {
 
 async function saveSettings() {
   if (!settingsState) return;
-  let parsedTheme;
-  try {
-    parsedTheme = JSON.parse(themeJson.value);
-  } catch (error) {
-    setSettingsStatus(`Theme JSON error: ${error.message}`);
-    return;
-  }
   const next = {
     ...settingsState,
-    theme: {
-      ...parsedTheme,
-      activePreset: themePreset.value || parsedTheme.activePreset
-    },
     soul: {
       principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
       interface: soulInterface.value.trim(),
@@ -628,6 +714,134 @@ async function saveSettings() {
   setSettingsStatus("Saved.");
 }
 
+function openThemeEditor() {
+  if (!settingsState) return;
+  themeDraft = structuredClone(settingsState.theme);
+  settingsLayout.hidden = true;
+  themeEditor.hidden = false;
+  settingsPage.classList.add("theme-editing");
+  renderThemeEditor();
+  applyThemePreview(effectiveTheme({ theme: themeDraft }));
+}
+
+function closeThemeEditor() {
+  themeDraft = null;
+  themeEditor.hidden = true;
+  settingsLayout.hidden = false;
+  settingsPage.classList.remove("theme-editing");
+  clearThemePreview();
+}
+
+function renderThemeEditor() {
+  const presets = themeDraft?.presets || {};
+  themePreset.replaceChildren(...Object.entries(presets).map(([value, preset]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = preset.label || value;
+    return option;
+  }));
+  themePreset.value = themeDraft?.activePreset || "paper";
+  const theme = effectiveTheme({ theme: themeDraft });
+  themeControls.replaceChildren(...themeSurfaces.map((surface) => themeControlSection(surface, theme.tokens[surface.key] || {})));
+  loadGoogleFontsForTheme(theme);
+}
+
+function themeControlSection(surface, tokens) {
+  const section = document.createElement("section");
+  section.className = "theme-control-section";
+  const heading = document.createElement("header");
+  const title = document.createElement("strong");
+  title.textContent = surface.label;
+  const description = document.createElement("span");
+  description.textContent = surface.description;
+  heading.append(title, description);
+  const colors = document.createElement("div");
+  colors.className = "theme-color-grid";
+  surface.colorTokens.forEach((token) => {
+    colors.append(colorControl(surface.key, token, tokens[token]));
+  });
+  section.append(heading, colors);
+  if (surface.fontTokens.length > 0) {
+    const fonts = document.createElement("div");
+    fonts.className = "theme-font-grid";
+    surface.fontTokens.forEach((token) => {
+      fonts.append(fontControl(surface.key, token, tokens[token]));
+    });
+    section.append(fonts);
+  }
+  return section;
+}
+
+function colorControl(surface, token, value) {
+  const label = document.createElement("label");
+  label.className = "theme-color-control";
+  const name = document.createElement("span");
+  name.textContent = readableTokenName(token);
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = normalizeColor(value);
+  input.addEventListener("input", () => {
+    setThemeDraftToken(surface, token, input.value);
+  });
+  label.append(input, name);
+  return label;
+}
+
+function fontControl(surface, token, value) {
+  const label = document.createElement("label");
+  label.className = "settings-field";
+  const name = document.createElement("span");
+  name.textContent = readableTokenName(token);
+  const select = document.createElement("select");
+  fontOptions.forEach((font) => {
+    const option = document.createElement("option");
+    option.value = font.value;
+    option.textContent = font.label;
+    select.append(option);
+  });
+  select.value = fontOptions.some((font) => font.value === value) ? value : fontOptions[0].value;
+  select.addEventListener("change", () => {
+    setThemeDraftToken(surface, token, select.value);
+  });
+  label.append(name, select);
+  return label;
+}
+
+function setThemeDraftToken(surface, token, value) {
+  if (!themeDraft) return;
+  themeDraft.customTokens ||= {};
+  themeDraft.customTokens[surface] ||= {};
+  const presetValue = themeDraft.presets?.[themeDraft.activePreset]?.tokens?.[surface]?.[token];
+  if (value === presetValue) {
+    delete themeDraft.customTokens[surface][token];
+    if (Object.keys(themeDraft.customTokens[surface]).length === 0) {
+      delete themeDraft.customTokens[surface];
+    }
+  } else {
+    themeDraft.customTokens[surface][token] = value;
+  }
+  const theme = effectiveTheme({ theme: themeDraft });
+  applyThemePreview(theme);
+  loadGoogleFontsForTheme(theme);
+}
+
+async function saveThemeDraft() {
+  if (!settingsState || !themeDraft) return;
+  setSettingsStatus("Saving theme...");
+  const next = {
+    ...settingsState,
+    theme: structuredClone(themeDraft)
+  };
+  settingsState = await api("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(next)
+  });
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+  closeThemeEditor();
+  setSettingsStatus("Theme saved.");
+}
+
 async function syncAgents() {
   await saveSettings();
   settingsSyncAgents.disabled = true;
@@ -648,6 +862,7 @@ function setSettingsStatus(message) {
 
 function applyTheme(settings) {
   const theme = effectiveTheme(settings);
+  loadGoogleFontsForTheme(theme);
   const root = document.documentElement;
   root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
   setVars(root, {
@@ -677,6 +892,71 @@ function applyTheme(settings) {
     "--terminal-accent": theme.tokens.terminal.accent
   });
   applyWikiFrameTheme(theme);
+}
+
+function applyThemePreview(theme) {
+  loadGoogleFontsForTheme(theme);
+  const preview = document.querySelector(".theme-preview-shell");
+  if (!preview) return;
+  preview.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  setVars(preview, {
+    "--bg": theme.tokens.ui.bg,
+    "--panel": theme.tokens.ui.panel,
+    "--border": theme.tokens.ui.border,
+    "--text": theme.tokens.ui.text,
+    "--muted": theme.tokens.ui.muted,
+    "--accent": theme.tokens.ui.accent,
+    "--sidebar-font": theme.tokens.ui.sidebarFont,
+    "--docs-bg": theme.tokens.docs.bg,
+    "--docs-panel": theme.tokens.docs.panel,
+    "--docs-border": theme.tokens.docs.border,
+    "--docs-text": theme.tokens.docs.text,
+    "--docs-muted": theme.tokens.docs.muted,
+    "--docs-link": theme.tokens.docs.link,
+    "--docs-code": theme.tokens.docs.code,
+    "--docs-serif-font": theme.tokens.docs.serifFont,
+    "--docs-mono-font": theme.tokens.docs.monoFont,
+    "--terminal-bg": theme.tokens.terminal.bg,
+    "--terminal-pane": theme.tokens.terminal.pane,
+    "--terminal-toolbar": theme.tokens.terminal.toolbar,
+    "--terminal-header": theme.tokens.terminal.header,
+    "--terminal-border": theme.tokens.terminal.border,
+    "--terminal-text": theme.tokens.terminal.text,
+    "--terminal-muted": theme.tokens.terminal.muted,
+    "--terminal-accent": theme.tokens.terminal.accent
+  });
+}
+
+function clearThemePreview() {
+  document.querySelector(".theme-preview-shell")?.removeAttribute("style");
+}
+
+function normalizeColor(value) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "#000000";
+}
+
+function loadGoogleFontsForTheme(theme) {
+  const values = [
+    theme.tokens.ui.sidebarFont,
+    theme.tokens.docs.serifFont,
+    theme.tokens.docs.monoFont
+  ];
+  const families = fontOptions
+    .filter((font) => font.google && values.includes(font.value))
+    .map((font) => font.google);
+  let link = document.getElementById("hyperwiki-google-fonts");
+  if (families.length === 0) {
+    link?.remove();
+    return;
+  }
+  if (!link) {
+    link = document.createElement("link");
+    link.id = "hyperwiki-google-fonts";
+    link.rel = "stylesheet";
+    document.head.append(link);
+  }
+  link.href = `https://fonts.googleapis.com/css2?${families.map((family) => `family=${family}`).join("&")}&display=swap`;
 }
 
 function effectiveTheme(settings) {
@@ -1038,7 +1318,7 @@ function activateDefaultTerminal() {
 }
 
 function updatePlanPromptVisibility() {
-  planPrompt.hidden = workspace.classList.contains("dashboard-mode") || !terminalSessions.has("agent");
+  planPrompt.hidden = workspace.classList.contains("dashboard-mode") || workspace.classList.contains("settings-mode") || !terminalSessions.has("agent");
 }
 
 function terminalTemplate(name) {
