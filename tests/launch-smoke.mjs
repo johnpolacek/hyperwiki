@@ -63,16 +63,22 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.goto(workspaceUrl, { waitUntil: "networkidle" });
-  await page.locator(".terminal-panel[data-name=\"cli\"]").waitFor();
+  const initialTerminals = await page.locator(".terminal-panel").count();
+  if (initialTerminals !== 0) {
+    throw new Error(`Expected launch to start with no terminals, got ${initialTerminals}`);
+  }
   const singleProjectToggle = await page.locator("#project-toggle").evaluate((element) => element.hidden);
   if (!singleProjectToggle) {
     throw new Error("Expected project topbar action to stay hidden for a single registered project.");
   }
 
   const sessions = await fetch(`http://127.0.0.1:${port}/api/sessions`).then((response) => response.json());
-  if (!sessions.sessions.some((session) => session.name === "cli" && session.status === "active")) {
-    throw new Error(`Expected launch to prepare cli wterm session, got ${JSON.stringify(sessions)}`);
+  if (sessions.sessions.some((session) => session.status === "active")) {
+    throw new Error(`Expected launch to avoid active terminal sessions before Execute, got ${JSON.stringify(sessions)}`);
   }
+  await page.locator("#execute-button").click();
+  await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
+  await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor();
 
   const secondOutput = await runCli(["launch", "--port", String(port)], {
     cwd: secondRoot,
@@ -90,7 +96,7 @@ try {
     throw new Error(`Expected pretty worktree workspace URL, got ${secondWorkspaceUrl}`);
   }
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
-  await page.locator("#repo-branch").filter({ hasText: "plan-unit-navigation" }).waitFor();
+  await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "plan-unit-navigation");
   await page.locator("#project-toggle").evaluate((element) => {
     if (!element.hidden) throw new Error("Expected worktrees to stay out of the Projects switcher.");
   });
@@ -102,7 +108,7 @@ try {
     throw new Error(`Expected active grouped project to preserve worktree runtime context, got ${JSON.stringify(groupedProjects)}`);
   }
   await page.goto(workspaceUrl, { waitUntil: "networkidle" });
-  await page.locator("#repo-branch").filter({ hasText: "main" }).waitFor();
+  await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "main");
 
   const registryBeforePrune = JSON.parse(await readFile(path.join(home, "projects.json"), "utf8"));
   const worktreeProject = registryBeforePrune.projects.find((project) => project.worktreeSlug === "plan-unit-navigation");

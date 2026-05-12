@@ -24,6 +24,9 @@ importers:
       playwright:
         specifier: ^1.59.1
         version: 1.59.1
+      portless:
+        specifier: ^0.13.0
+        version: 0.13.0
 
 packages:
 
@@ -52,6 +55,12 @@ packages:
   playwright@1.59.1:
     resolution: {integrity: sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==}
     engines: {node: '>=18'}
+    hasBin: true
+
+  portless@0.13.0:
+    resolution: {integrity: sha512-PxMZ5BHH+ZZi9rTq4T8m003aZxh56qI0aBdNsxLn7jrTtvNJYBWYD3lc5PuQrom/aVh6z8iLb+tKUI6b7QNYQw==}
+    engines: {node: '>=20'}
+    os: [darwin, linux, win32]
     hasBin: true
 
   ws@8.20.0:
@@ -90,5 +99,7 @@ snapshots:
       playwright-core: 1.59.1
     optionalDependencies:
       fsevents: 2.3.2
+
+  portless@0.13.0: {}
 
   ws@8.20.0: {}

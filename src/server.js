@@ -484,7 +484,15 @@ function layoutConfig(config) {
       command: panel.role === "agent" && process.env.HYPERWIKI_AGENT_DRY_RUN === "1"
         ? "printf HYPERWIKI_AGENT_DRY_RUN\\n"
         : panel.command ? String(panel.command) : null
-    }))
+    })),
+    dev: {
+      command: config.dev?.command ? String(config.dev.command) : "",
+      previewUrl: config.dev?.previewUrl ? String(config.dev.previewUrl) : ""
+    },
+    worktrees: {
+      workflow: config.worktrees?.workflow ? String(config.worktrees.workflow) : "parallel-dev-worktrees",
+      previewUrlPattern: config.worktrees?.previewUrlPattern ? String(config.worktrees.previewUrlPattern) : ""
+    }
   };
 }
 
@@ -492,6 +500,9 @@ function fallbackPanels(config) {
   const panels = [];
   if (config.agent?.launchCommand) {
     panels.push({ name: "agent", role: "agent", command: String(config.agent.launchCommand) });
+  }
+  if (config.dev?.command) {
+    panels.push({ name: "dev", role: "dev", command: String(config.dev.command) });
   }
   panels.push({ name: "cli", role: "shell", command: null });
   return panels;

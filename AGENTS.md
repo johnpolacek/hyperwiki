@@ -6,6 +6,10 @@ Always use `pnpm` for package management and package scripts in this repository.
 
 Prefer the `agent-browser` CLI for browser automation and visual checks before falling back to Playwright.
 
+Use Portless for local app previews and prefer named `.localhost` URLs over fixed ports when working across worktrees.
+
+Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree previews should use `https://<branch-slug>.hyperwiki.localhost`.
+
 <!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
 ## hyperwiki Agent Guide
 

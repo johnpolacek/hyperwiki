@@ -4,6 +4,9 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
+const executeButton = document.getElementById("execute-button");
+const executeMenu = document.getElementById("execute-menu");
+const previewLink = document.getElementById("preview-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
 const newAgentTerminalButton = document.getElementById("new-agent-terminal");
@@ -69,7 +72,6 @@ await loadWorkspaceSummary();
 await loadGuardrails();
 activateWorkspaceLocation(workspaceLocation() || currentPlanPath);
 await restoreTerminals();
-activateDefaultTerminal();
 
 newAgentTerminalButton.addEventListener("click", async () => {
   const template = terminalTemplate("agent");
@@ -83,6 +85,21 @@ newCliTerminalButton.addEventListener("click", async () => {
   const name = nextTerminalName("cli");
   await createTerminal(name, { ...template, name });
   activateTerminal(name);
+});
+
+executeButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const open = executeMenu.hidden;
+  executeMenu.hidden = !open;
+  executeButton.setAttribute("aria-expanded", String(open));
+});
+
+executeMenu.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-execute-target]");
+  if (!target) return;
+  executeMenu.hidden = true;
+  executeButton.setAttribute("aria-expanded", "false");
+  void executeTarget(target.dataset.executeTarget || "main");
 });
 
 planPromptInput.addEventListener("input", resizePlanPromptInput);
@@ -118,9 +135,11 @@ function resizePlanPromptInput() {
   const verticalPadding = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
   const verticalBorder = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
   const maxHeight = maxLines * lineHeight + verticalPadding + verticalBorder;
-  const nextHeight = Math.min(planPromptInput.scrollHeight, maxHeight);
+  const valueLines = planPromptInput.value.split("\n").length;
+  const contentHeight = Math.max(planPromptInput.scrollHeight, valueLines * lineHeight + verticalPadding + verticalBorder);
+  const nextHeight = Math.min(contentHeight, maxHeight);
   planPromptInput.style.height = `${nextHeight}px`;
-  planPromptInput.style.overflowY = planPromptInput.scrollHeight > nextHeight ? "auto" : "hidden";
+  planPromptInput.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
 }
 
 projectToggle.addEventListener("click", (event) => {
@@ -157,11 +176,13 @@ settingsPanel.addEventListener("click", (event) => {
 
 document.addEventListener("click", () => {
   closeTopbarPanels();
+  closeExecuteMenu();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeTopbarPanels();
+    closeExecuteMenu();
   }
 });
 
@@ -192,22 +213,9 @@ projectImportForm.addEventListener("submit", async (event) => {
 });
 
 async function restoreTerminals() {
-  const [sessionData, layout] = await Promise.all([api(projectPath("/api/sessions")), api(projectPath("/api/layout"))]);
+  const layout = await api(projectPath("/api/layout"));
   terminalLayout = layout.panels;
-  const layoutNames = new Set(layout.panels.map((panel) => panel.name));
-  const reconnectable = sessionData.sessions
-    .filter((session) => session.status !== "closed" && session.reconnectable && session.retained && layoutNames.has(session.name))
-    .slice(-5);
-  const panels = [...layout.panels, ...reconnectable];
-  const seen = new Set();
-  for (const panel of panels) {
-    if (seen.has(panel.name)) continue;
-    seen.add(panel.name);
-    await createTerminal(panel.name, panel);
-  }
-  if (!terminalSessions.has("cli")) {
-    await createTerminal("cli", { role: "shell", command: null });
-  }
+  workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
   updatePlanPromptVisibility();
 }
 
@@ -371,6 +379,11 @@ function closeTopbarPanels() {
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
   settingsButton.setAttribute("aria-expanded", "false");
+}
+
+function closeExecuteMenu() {
+  executeMenu.hidden = true;
+  executeButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadGuardrails() {
@@ -641,9 +654,64 @@ async function createProjectFromMarkdown() {
 async function handOffDashboardPrompt(prompt, currentPagePath) {
   dashboardAgentActive = true;
   workspace.classList.add("dashboard-agent-active");
+  await ensureDevLogTerminal();
   const agent = await ensureAgentTerminal();
   activateTerminal(agent.name);
   await postAgentPromptWithRetry(prompt, currentPagePath);
+}
+
+async function executeTarget(target) {
+  const pagePath = currentPage.title || requestedWikiPath;
+  const pageTitle = currentPage.textContent?.trim() || titleForWikiPath(pagePath);
+  const slug = slugify(pageTitle || "worktree");
+  workspace.dataset.executeTarget = target;
+  if (target === "worktree") {
+    workspace.dataset.executeWorkflow = "parallel-dev-worktrees";
+    showPreviewLink(previewUrl(slug), `Preview: ${slug}`);
+  } else {
+    workspace.dataset.executeWorkflow = "main";
+    showPreviewLink(previewUrl(activeProjectSlug || "hyperwiki"), "Preview: main");
+  }
+  await ensureDevLogTerminal();
+  const agent = await ensureAgentTerminal();
+  activateTerminal(agent.name);
+  await postAgentPromptWithRetry(executePrompt(target, pageTitle, pagePath, slug), pagePath);
+}
+
+function executePrompt(target, pageTitle, pagePath, slug) {
+  const lines = [
+    `Execute the current hyperwiki context on ${target === "worktree" ? "a worktree" : "main"}.`,
+    "",
+    `Current page: ${pageTitle}`,
+    `Current path: ${displayWikiPath(pagePath)}`,
+    ""
+  ];
+  if (target === "worktree") {
+    lines.push(
+      "Instructions:",
+      "- Use the parallel-dev-worktrees skill before changing files.",
+      `- Derive the branch/worktree slug from the current page as "${slug}" unless that would be ambiguous.`,
+      "- Ask a concise question only if the worktree or branch name is ambiguous.",
+      "- Use Portless for the dev preview URL.",
+      `- Expected preview URL: ${previewUrl(slug)}`,
+      "- Include the Preview URL in your final handoff."
+    );
+  } else {
+    lines.push(
+      "Instructions:",
+      "- Work in the current main checkout.",
+      "- Keep changes grounded in the current wiki page and repo state.",
+      "- Run the relevant checks before summarizing the result."
+    );
+  }
+  return lines.join("\n");
+}
+
+async function ensureDevLogTerminal() {
+  if (terminalSessions.has("dev")) return terminalSessions.get("dev");
+  const template = terminalTemplate("dev");
+  if (!template.command) return null;
+  return createTerminal("dev", { ...template, name: "dev", collapsed: true });
 }
 
 async function ensureAgentTerminal() {
@@ -708,6 +776,29 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "") || "idea";
 }
 
+function previewUrl(slug) {
+  const projectSlug = activeProjectSlug || "hyperwiki";
+  const normalizedSlug = slugify(slug || "main");
+  if (normalizedSlug === "main" || normalizedSlug === projectSlug) {
+    return `https://${projectSlug}.localhost`;
+  }
+  return `https://${normalizedSlug}.${projectSlug}.localhost`;
+}
+
+function showPreviewLink(url, label = "Open preview") {
+  previewLink.hidden = false;
+  previewLink.href = url;
+  previewLink.textContent = label;
+  previewLink.title = url;
+}
+
+function hidePreviewLink() {
+  previewLink.hidden = true;
+  previewLink.href = "#";
+  previewLink.textContent = "Open preview";
+  previewLink.title = "";
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -715,6 +806,7 @@ function delay(ms) {
 async function switchProject(project) {
   if (project.id === activeProjectId) return;
   closeAllTerminals();
+  hidePreviewLink();
   activeProjectId = project.id;
   activeProjectSlug = project.projectSlug;
   activeWorktreeSlug = project.worktreeSlug;
@@ -728,16 +820,6 @@ async function switchProject(project) {
   await loadGuardrails();
   activateWikiPage(currentPlanPath);
   await restoreTerminals();
-  activateDefaultTerminal();
-}
-
-function activateDefaultTerminal() {
-  for (const name of ["agent", "dev", "cli", "shell"]) {
-    if (terminalSessions.has(name)) {
-      activateTerminal(name);
-      return;
-    }
-  }
 }
 
 function updatePlanPromptVisibility() {
@@ -748,6 +830,7 @@ function terminalTemplate(name) {
   const template = terminalLayout.find((panel) => panel.name === name || panel.role === name);
   if (template) return template;
   if (name === "agent") return { role: "agent", command: null };
+  if (name === "dev") return { role: "dev", command: null };
   return { role: "shell", command: null };
 }
 
@@ -1097,12 +1180,17 @@ async function createTerminal(name, options = {}) {
   headerTitle.textContent = name;
   const headerCommand = document.createElement("span");
   headerCommand.textContent = terminalCommandLabel(options);
+  const collapseButton = document.createElement("button");
+  collapseButton.type = "button";
+  collapseButton.className = "terminal-collapse";
+  collapseButton.setAttribute("aria-label", `Toggle ${name} terminal`);
+  collapseButton.textContent = options.collapsed ? "expand" : "collapse";
   const closeButton = document.createElement("button");
   closeButton.type = "button";
   closeButton.className = "terminal-close";
   closeButton.setAttribute("aria-label", `Close ${name} terminal`);
   closeButton.textContent = "x";
-  header.append(headerTitle, headerCommand, closeButton);
+  header.append(headerTitle, headerCommand, collapseButton, closeButton);
   const el = document.createElement("div");
   el.className = "terminal theme-monokai";
   el.dataset.name = name;
@@ -1110,6 +1198,10 @@ async function createTerminal(name, options = {}) {
   panel.append(header, el);
   terminals.append(panel);
   header.addEventListener("click", () => activateTerminal(name));
+  collapseButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleTerminalCollapsed(name);
+  });
   closeButton.addEventListener("click", (event) => {
     event.stopPropagation();
     closeTerminal(name);
@@ -1202,8 +1294,10 @@ async function createTerminal(name, options = {}) {
   await term.init();
   transport.connect();
 
-  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, closeButton, el, tab, label, term, transport };
+  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport };
   terminalSessions.set(name, session);
+  workspace.classList.add("terminal-active");
+  setTerminalCollapsed(name, Boolean(options.collapsed));
   updateTerminalCloseButtons();
   return session;
 }
@@ -1230,6 +1324,20 @@ function activateTerminal(name) {
       scrollTerminalToBottom(session.el);
     });
   }
+}
+
+function toggleTerminalCollapsed(name) {
+  const session = terminalSessions.get(name);
+  if (!session) return;
+  setTerminalCollapsed(name, !session.panel.classList.contains("collapsed"));
+}
+
+function setTerminalCollapsed(name, collapsed) {
+  const session = terminalSessions.get(name);
+  if (!session) return;
+  session.panel.classList.toggle("collapsed", collapsed);
+  session.collapseButton.textContent = collapsed ? "expand" : "collapse";
+  session.collapseButton.setAttribute("aria-expanded", String(!collapsed));
 }
 
 function terminalCommandLabel(options = {}) {
@@ -1340,6 +1448,7 @@ function closeTerminal(name) {
   }
   updatePlanPromptVisibility();
   updateTerminalCloseButtons();
+  workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
   void api(projectPath(`/api/sessions/${session.id}`), { method: "DELETE" });
 }
 
@@ -1362,6 +1471,7 @@ function closeAllTerminals() {
   }
   updatePlanPromptVisibility();
   activeTerminalName = null;
+  workspace.classList.remove("terminal-active");
 }
 
 async function api(path, options = {}) {

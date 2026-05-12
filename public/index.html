@@ -111,8 +111,26 @@
       </nav>
     </aside>
     <section class="wiki-pane">
-      <strong id="current-page" hidden>/wiki/index.html</strong>
-      <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
+      <div class="wiki-command-bar">
+        <div class="wiki-command-page">
+          <span>Context</span>
+          <strong id="current-page">/wiki/index.html</strong>
+        </div>
+        <div class="execute-control">
+          <button type="button" id="execute-button" class="execute-button" aria-expanded="false" aria-controls="execute-menu">
+            <span>Execute</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+          </button>
+          <div id="execute-menu" class="execute-menu" role="menu" hidden>
+            <button type="button" data-execute-target="main" role="menuitem">on main</button>
+            <button type="button" data-execute-target="worktree" role="menuitem">on worktree</button>
+          </div>
+        </div>
+        <a id="preview-link" class="preview-link" href="#" target="_blank" rel="noreferrer" hidden>Open preview</a>
+        <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
+      </div>
       <section id="dashboard-page" class="dashboard-page" aria-label="hyperwiki Dashboard" hidden>
         <header class="dashboard-page-header">
           <div>

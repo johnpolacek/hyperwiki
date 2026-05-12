@@ -55,29 +55,48 @@ await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   }
 });
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
+await page.locator("#execute-button").filter({ hasText: "Execute" }).waitFor();
+const initialTerminalCount = await page.locator(".terminal-panel").count();
+if (initialTerminalCount !== 0) {
+  throw new Error(`Expected no terminals before Execute, got ${initialTerminalCount}`);
+}
+await page.locator(".terminal-pane").evaluate((pane) => {
+  if (getComputedStyle(pane).display !== "none") {
+    throw new Error("Expected terminal pane to stay hidden before Execute.");
+  }
+});
 await page.locator(".terminal-toolbar").evaluate((toolbar) => {
   const text = toolbar.textContent || "";
   if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("new agent") || !text.includes("new cli")) {
     throw new Error(`Expected compact terminal toolbar, got ${text}`);
   }
 });
-const initialTabs = await page.locator(".terminal-panel-header").allTextContents();
-for (const expected of ["agent", "cli"]) {
-  if (!initialTabs.some((tab) => tab.includes(expected))) {
-    throw new Error(`Expected dogfood layout terminal ${expected}`);
-  }
-}
-if (initialTabs.some((tab) => tab.includes("dev"))) {
+await page.locator("#execute-button").click();
+await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
+await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
+await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
+if (await page.locator(".terminal-panel-header[data-name=\"dev\"]").count()) {
   throw new Error("Expected hyperwiki dogfood layout to omit the conflicting dev panel");
 }
-await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
-await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
 await page.locator("#plan-prompt").evaluate((element) => {
   if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
+});
+await page.locator("#execute-button").click();
+await page.locator("#execute-menu [data-execute-target=\"worktree\"]").click();
+await page.locator("#preview-link").evaluate((link) => {
+  if (link.hidden || !link.href.includes(".hyperwiki.localhost")) {
+    throw new Error(`Expected worktree preview link, got ${link.href}`);
+  }
+});
+await page.locator(".workspace").evaluate((workspaceElement) => {
+  if (workspaceElement.dataset.executeTarget !== "worktree" || workspaceElement.dataset.executeWorkflow !== "parallel-dev-worktrees") {
+    throw new Error(`Expected worktree execution workflow, got ${workspaceElement.dataset.executeTarget}/${workspaceElement.dataset.executeWorkflow}`);
+  }
 });
 const promptInput = page.locator("#plan-prompt-input");
 const initialPromptHeight = await promptInput.evaluate((element) => element.clientHeight);
 await promptInput.fill(["one", "two", "three", "four", "five", "six"].join("\n"));
+await promptInput.evaluate((element) => element.dispatchEvent(new Event("input", { bubbles: true })));
 const expandedPromptMetrics = await promptInput.evaluate((element) => ({
   clientHeight: element.clientHeight,
   scrollHeight: element.scrollHeight,
@@ -360,6 +379,8 @@ await page.waitForFunction(() => document.querySelector("#current-page")?.textCo
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "MVP Plan");
 
+await page.locator("#new-cli-terminal").click();
+await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
 await page.locator("#new-cli-terminal").click();
 await page.locator(".terminal-panel-header").filter({ hasText: "cli-1" }).waitFor();
 

@@ -37,8 +37,9 @@
   <li><code>hyperwiki launch</code> is the primary startup command. Bare <code>hyperwiki</code> also launches the local workspace by default; <code>hyperwiki dev</code> remains the lower-level server-only command.</li>
   <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only hyperwiki-initialized repos are eligible in v1.</li>
   <li>The project switcher stays hidden until more than one project is registered.</li>
-  <li>Agent startup is project-configured through <code>agent.launchCommand</code>. When set, the agent terminal is first; when absent, no agent terminal is shown.</li>
-  <li>Default launch panels are agent, dev, and CLI, omitting unavailable agent/dev panels.</li>
+  <li>Agent startup is project-configured through <code>agent.launchCommand</code>, but workspace terminals are created lazily from the Execute control instead of opening on first load.</li>
+  <li>Execute targets include <code>on main</code> and <code>on worktree</code>; worktree execution instructs agents to use <code>parallel-dev-worktrees</code>.</li>
+  <li>Portless is the preferred dev preview surface, with worktree URLs shaped as <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
 </ul>

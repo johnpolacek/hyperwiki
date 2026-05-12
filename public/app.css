@@ -73,6 +73,14 @@ body {
   grid-template-columns: 300px minmax(360px, 1fr) minmax(360px, 0.9fr);
 }
 
+.workspace:not(.terminal-active) {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.workspace:not(.terminal-active) .terminal-pane {
+  display: none;
+}
+
 .topbar,
 .sidebar,
 .wiki-pane,
@@ -98,6 +106,7 @@ body {
 }
 
 .wiki-pane {
+  position: relative;
   background: #ffffff;
 }
 
@@ -258,7 +267,7 @@ body {
 }
 
 .dashboard-page {
-  grid-row: 1;
+  grid-row: 2;
   height: 100%;
   overflow: auto;
   padding: 28px 32px 36px;
@@ -1123,7 +1132,114 @@ body {
   grid-column: 2;
   grid-row: 2;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.wiki-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid #d8d8d0;
+  padding: 7px 10px;
+  background: #fbfbfa;
+  color: #3f473f;
+  font: 12px/1.2 var(--sidebar-font);
+}
+
+.wiki-command-page {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.wiki-command-page span {
+  color: #7b847b;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.wiki-command-page strong {
+  overflow: hidden;
+  color: #20231f;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.execute-control {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.execute-button,
+.execute-menu button,
+.preview-link {
+  min-height: 30px;
+  border: 1px solid #c6c8c0;
+  border-radius: 6px;
+  padding: 6px 9px;
+  background: #ffffff;
+  color: #20231f;
+  cursor: pointer;
+  font: 600 12px/1.2 var(--sidebar-font);
+  text-decoration: none;
+}
+
+.execute-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.execute-button svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.execute-menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  min-width: 145px;
+  border: 1px solid #c6c8c0;
+  border-radius: 7px;
+  padding: 5px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(23, 25, 22, 0.12);
+}
+
+.execute-menu[hidden],
+.preview-link[hidden] {
+  display: none;
+}
+
+.execute-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.execute-button:hover,
+.execute-button:focus-visible,
+.execute-menu button:hover,
+.execute-menu button:focus-visible,
+.preview-link:hover,
+.preview-link:focus-visible {
+  border-color: #8f9c90;
+  background: #f2f4ef;
 }
 
 .wiki-pane iframe {
@@ -1276,9 +1392,18 @@ body {
   background: var(--terminal-bg);
 }
 
+.terminal-panel.collapsed {
+  grid-template-rows: auto;
+  min-height: auto;
+}
+
+.terminal-panel.collapsed .terminal {
+  display: none;
+}
+
 .terminal-panel-header {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -1309,6 +1434,7 @@ body {
   font: 11px/1.3 var(--mono-font);
 }
 
+.terminal-collapse,
 .terminal-close {
   width: 18px;
   height: 18px;
@@ -1320,6 +1446,14 @@ body {
   font: 12px/1 var(--mono-font);
 }
 
+.terminal-collapse {
+  width: auto;
+  min-width: 48px;
+  font-size: 10px;
+}
+
+.terminal-collapse:hover,
+.terminal-collapse:focus-visible,
 .terminal-close:hover:not(:disabled),
 .terminal-close:focus-visible {
   background: #313831;

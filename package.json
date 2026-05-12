@@ -30,6 +30,7 @@
   "license": "MIT",
   "private": false,
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "portless": "^0.13.0"
   }
 }

@@ -36,6 +36,7 @@ const pages = new Map([
 
 export async function inithyperwiki(root, options = {}) {
   const context = await inspectProject(root, options);
+  await ensurePortlessPackage(root, context, options);
   await mkdir(path.join(root, ".hyperwiki", "state"), { recursive: true });
   await mkdir(path.join(root, ".hyperwiki", "sessions"), { recursive: true });
   await writeIfSafe(
@@ -43,7 +44,16 @@ export async function inithyperwiki(root, options = {}) {
     `${JSON.stringify({
       projectName: context.projectName,
       canonicalWiki: "html",
-      dev: { host: "127.0.0.1", port: 4177 },
+      dev: {
+        host: "127.0.0.1",
+        port: 4177,
+        command: context.scripts.includes("dev") ? "portless" : "",
+        previewUrl: `https://${slugify(context.projectName)}.localhost`
+      },
+      worktrees: {
+        previewUrlPattern: `https://<branch-slug>.${slugify(context.projectName)}.localhost`,
+        workflow: "parallel-dev-worktrees"
+      },
       agent: {
         launchCommand: context.agentLaunchCommand
       },
@@ -55,6 +65,8 @@ export async function inithyperwiki(root, options = {}) {
     }, null, 2)}\n`,
     options
   );
+
+  await writeIfSafe(path.join(root, "AGENTS.md"), agentsMarkdown(context), options);
 
   for (const [relativePath, render] of pages) {
     await writeIfSafe(path.join(root, relativePath), render(context), options);
@@ -70,7 +82,7 @@ function defaultPanels(context) {
     panels.push({ name: "agent", role: "agent", command: context.agentLaunchCommand });
   }
   if (context.scripts.includes("dev")) {
-    panels.push({ name: "dev", role: "dev", command: packageRun(context, "dev") });
+    panels.push({ name: "dev", role: "dev", command: "portless" });
   }
   panels.push({ name: "cli", role: "shell", command: null });
   return panels;
@@ -111,6 +123,31 @@ async function inspectProject(root, options) {
   };
 }
 
+async function ensurePortlessPackage(root, context, options) {
+  if (options.skip_portless || !context.hasPackageJson) return;
+  const packagePath = path.join(root, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  const hasPortless = Boolean(packageJson.dependencies?.portless || packageJson.devDependencies?.portless);
+  if (!hasPortless) {
+    packageJson.devDependencies = {
+      ...packageJson.devDependencies,
+      portless: "latest"
+    };
+  }
+  if (packageJson.scripts?.dev && packageJson.scripts.dev !== "portless" && !packageJson.scripts["dev:app"]) {
+    packageJson.scripts = {
+      ...packageJson.scripts,
+      "dev:app": packageJson.scripts.dev,
+      dev: "portless"
+    };
+    packageJson.portless = {
+      ...(packageJson.portless || {}),
+      script: "dev:app"
+    };
+  }
+  await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+}
+
 function detectPackageManager(root, packageJson) {
   const declared = typeof packageJson?.packageManager === "string" ? packageJson.packageManager.split("@")[0] : null;
   if (declared) return declared;
@@ -122,6 +159,30 @@ function detectPackageManager(root, packageJson) {
 
 function packageRun(context, script) {
   return `${context.packageManager} run ${script}`;
+}
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "project";
+}
+
+function agentsMarkdown(context) {
+  return `# AGENTS.md instructions for ${context.projectName}
+
+Read \`wiki/index.html\` before project-specific work and use \`wiki/sources.html\` as the source index.
+
+Use \`pnpm\` when this repository declares pnpm; otherwise follow the package manager in \`package.json\`.
+
+Use Portless for local dev previews. Prefer \`portless\` / \`${context.packageManager} run dev\` over fixed localhost ports so main and worktree previews get stable .localhost URLs.
+
+Use the \`parallel-dev-worktrees\` skill for worktree execution. Feature worktrees should use the preview pattern \`https://<branch-slug>.${slugify(context.projectName)}.localhost\`.
+
+Create or update \`wiki/plans/\` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
+`;
 }
 
 function git(root, args) {
@@ -197,6 +258,8 @@ function agentsPage(context) {
   <li>Read <a href="/wiki/index.html">index.html</a> before structural wiki changes.</li>
   <li>Use <a href="/wiki/sources.html">sources.html</a> as the source index.</li>
   <li>Use <a href="/wiki/plans/index.html">plans/index.html</a> before meaningful implementation work.</li>
+  <li>Use Portless for local dev previews and stable <code>.localhost</code> URLs.</li>
+  <li>Use the <code>parallel-dev-worktrees</code> workflow for worktree execution.</li>
   <li>Keep runtime state out of the wiki unless it is intentionally exported.</li>
 </ul>`);
 }
@@ -392,6 +455,8 @@ function technicalBriefPage(context) {
   <li>Package manifest present: <code>${context.hasPackageJson ? "yes" : "no"}</code>.</li>
   <li>Known scripts: <code>${escapeHtml(context.scripts.join(", ") || "Unknown")}</code>.</li>
   <li>Git branch at initialization: <code>${escapeHtml(context.git.branch || "Unknown")}</code>.</li>
+  <li>Dev preview command: <code>${context.scripts.includes("dev") ? "portless" : "Unknown"}</code>.</li>
+  <li>Worktree preview pattern: <code>https://&lt;branch-slug&gt;.${escapeHtml(slugify(context.projectName))}.localhost</code>.</li>
   <li>Canonical wiki files are HTML under <code>wiki/</code>.</li>
   <li>Local runtime state belongs under ignored <code>.hyperwiki/</code> paths.</li>
 </ul>`);
