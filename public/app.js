@@ -327,8 +327,7 @@ async function showDashboardPage(options = {}) {
   dashboardButton.classList.add("active");
   workspace.classList.add("dashboard-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
-  currentPage.textContent = "Dashboard";
-  currentPage.title = "/dashboard";
+  setCurrentPage("/dashboard", "Dashboard");
   openPage.href = "/dashboard";
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
   if (location.pathname !== "/dashboard") {
@@ -662,7 +661,7 @@ async function handOffDashboardPrompt(prompt, currentPagePath) {
 
 async function executeTarget(target) {
   const pagePath = currentPage.title || requestedWikiPath;
-  const pageTitle = currentPage.textContent?.trim() || titleForWikiPath(pagePath);
+  const pageTitle = currentPage.dataset.title || titleForWikiPath(pagePath);
   const slug = slugify(pageTitle || "worktree");
   workspace.dataset.executeTarget = target;
   if (target === "worktree") {
@@ -1002,8 +1001,7 @@ function activateWikiPage(path) {
   if (wikiFrame.getAttribute("src") !== nextPath) {
     wikiFrame.setAttribute("src", nextPath);
   }
-  currentPage.textContent = titleForWikiPath(nextPath);
-  currentPage.title = nextPath;
+  setCurrentPage(nextPath, titleForWikiPath(nextPath));
   openPage.href = nextPath;
   wikiNav.querySelectorAll("a").forEach((link) => {
     link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
@@ -1070,8 +1068,7 @@ function syncFrameLocation() {
     if (!isWikiPath(framePath) || framePath !== requestedWikiPath) {
       return;
     }
-    currentPage.textContent = currentWikiTitle() || displayWikiPath(framePath);
-    currentPage.title = framePath;
+    setCurrentPage(framePath, currentWikiTitle() || displayWikiPath(framePath));
     openPage.href = framePath;
     wikiNav.querySelectorAll("a").forEach((link) => {
       link.classList.toggle("active", link.dataset.path === displayWikiPath(framePath));
@@ -1092,6 +1089,7 @@ function hideEmbeddedWikiHeader() {
   style.textContent = `
     .wiki-header { display: none !important; }
     .wiki-page { padding-top: 32px !important; }
+    .wiki-page > h1 + p:has(a[href*="/wiki/plans/mvp/stage-"]) { display: none !important; }
   `;
   documentElement.head.append(style);
   renderIdeaActionInFrame(documentElement);
@@ -1162,6 +1160,69 @@ function displayWikiPath(path) {
 
 function titleForWikiPath(path) {
   return wikiPageTitles.get(displayWikiPath(path)) || displayWikiPath(path);
+}
+
+function setCurrentPage(path, title) {
+  currentPage.title = path;
+  currentPage.dataset.title = title || "";
+  currentPage.replaceChildren(...breadcrumbItems(path, title));
+}
+
+function breadcrumbItems(path, title) {
+  const displayPath = displayWikiPath(path);
+  const crumbs = planBreadcrumbs(displayPath, title);
+  if (crumbs.length === 0) {
+    crumbs.push({ label: title || displayPath, path: displayPath });
+  }
+  const items = [];
+  crumbs.forEach((crumb, index) => {
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "wiki-breadcrumb-separator";
+      separator.textContent = "|";
+      items.push(separator);
+    }
+    const isCurrent = index === crumbs.length - 1;
+    const element = isCurrent ? document.createElement("span") : document.createElement("a");
+    element.className = isCurrent ? "wiki-breadcrumb-current" : "wiki-breadcrumb-link";
+    element.textContent = crumb.label;
+    if (!isCurrent) {
+      element.href = `#${crumb.path}`;
+      element.addEventListener("click", (event) => {
+        event.preventDefault();
+        activateWorkspaceLocation(crumb.path);
+      });
+    }
+    items.push(element);
+  });
+  return items;
+}
+
+function planBreadcrumbs(path, title) {
+  if (path === "/dashboard") return [{ label: "Dashboard", path }];
+  if (path.endsWith("/wiki/plans/mvp/index.html")) {
+    return [{ label: "MVP Plan", path: "/wiki/plans/mvp/index.html" }];
+  }
+  const stageMatch = path.match(/^\/wiki\/plans\/mvp\/stage-(\d+)-[^/]+\.html$/);
+  if (stageMatch) {
+    return [
+      { label: "MVP Plan", path: "/wiki/plans/mvp/index.html" },
+      { label: `Stage ${stageMatch[1]}`, path }
+    ];
+  }
+  const unitMatch = path.match(/^\/wiki\/plans\/mvp\/stage-(\d+)-([^/]+)\/unit-(\d+)-[^/]+\.html$/);
+  if (unitMatch) {
+    const stagePath = `/wiki/plans/mvp/stage-${unitMatch[1]}-${unitMatch[2]}.html`;
+    return [
+      { label: "MVP Plan", path: "/wiki/plans/mvp/index.html" },
+      { label: `Stage ${unitMatch[1]}`, path: stagePath },
+      { label: `Unit ${unitMatch[3]}`, path }
+    ];
+  }
+  if (path.includes("/wiki/plans/")) {
+    return [{ label: title || titleForWikiPath(path), path }];
+  }
+  return [];
 }
 
 async function createTerminal(name, options = {}) {

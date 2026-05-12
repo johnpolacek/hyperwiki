@@ -54,7 +54,12 @@ await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
     throw new Error(`Expected Up Next to use arrow-big-right-dash icon path, got ${path}`);
   }
 });
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
+await page.locator("#current-page").evaluate((element) => {
+  if (!element.textContent.includes("Planning Dashboard")) {
+    throw new Error(`Expected current page breadcrumb for Planning Dashboard, got ${element.textContent}`);
+  }
+});
 await page.locator("#execute-button").filter({ hasText: "Execute" }).waitFor();
 const initialTerminalCount = await page.locator(".terminal-panel").count();
 if (initialTerminalCount !== 0) {
@@ -139,8 +144,8 @@ await page.waitForFunction(() =>
   document.querySelector(".terminal[data-name=\"agent\"]")?.innerText.includes("HYPERWIKI_PLAN_PROMPT_SMOKE")
 );
 
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Planning Dashboard");
-const currentPage = await page.locator("#current-page").innerText();
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
+const currentPage = await page.locator("#current-page").evaluate((element) => element.dataset.title);
 if (currentPage !== "Planning Dashboard") {
   throw new Error(`Expected Planning Dashboard, got ${currentPage}`);
 }
@@ -257,7 +262,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 07 - Agent-native Verification");
 await page.locator("#wiki-nav").evaluate(() => {
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
@@ -300,7 +305,16 @@ await page.locator("#wiki-nav").evaluate(() => {
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Verification Loop Model");
+await page.locator("#current-page").evaluate((element) => {
+  const text = element.textContent || "";
+  if (!text.includes("MVP Plan") || !text.includes("Stage 07") || !text.includes("Unit 01")) {
+    throw new Error(`Expected MVP/stage/unit breadcrumbs, got ${text}`);
+  }
+  if (element.querySelectorAll("a").length !== 2) {
+    throw new Error("Expected MVP Plan and Stage 07 breadcrumbs to be clickable links.");
+  }
+});
 await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
     .find((label) => label.textContent.includes("Verification Loop Model"));
@@ -319,7 +333,7 @@ if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 01 - CLI and Repository Foundation");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 01 - CLI and Repository Foundation");
 await page.locator("#wiki-nav").evaluate(() => {
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
@@ -375,12 +389,12 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
   element.open = false;
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 07 - Agent-native Verification");
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Verification Loop Model");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "MVP Plan");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "MVP Plan");
 
 await page.locator("#new-cli-terminal").click();
 await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();

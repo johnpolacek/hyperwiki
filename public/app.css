@@ -1135,27 +1135,44 @@ body {
   font: 12px/1.2 var(--sidebar-font);
 }
 
-.wiki-command-page {
+.wiki-breadcrumbs {
   display: flex;
   align-items: center;
   gap: 7px;
   min-width: 0;
   margin-right: auto;
-}
-
-.wiki-command-page span {
-  color: #7b847b;
-  font-size: 10px;
+  overflow: hidden;
+  color: #20231f;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.wiki-command-page strong {
+.wiki-breadcrumbs a,
+.wiki-breadcrumbs span {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
-  color: #20231f;
-  font-weight: 600;
+  color: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wiki-breadcrumbs a {
+  text-decoration: none;
+}
+
+.wiki-breadcrumbs a:hover,
+.wiki-breadcrumbs a:focus-visible {
+  color: var(--accent);
+}
+
+.wiki-breadcrumb-separator {
+  flex: 0 0 auto;
+  color: #7b847b;
+}
+
+.wiki-breadcrumb-current {
+  color: #20231f;
 }
 
 .execute-control {
