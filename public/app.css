@@ -622,6 +622,12 @@ body {
   margin-left: 20px;
 }
 
+.plan-tree > a,
+.plan-tree > .plan-subtree > a {
+  margin-left: 0;
+  padding-left: 31px;
+}
+
 .plan-tree .plan-subtree .plan-subtree > a {
   margin-left: 0;
   padding-left: 49px;

@@ -140,8 +140,10 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageOneLabel = navLabels.find((label) => label.textContent.includes("Stage-01"));
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
+  const ideaIncubationLabel = navLabels.find((label) => label.textContent.includes("Idea Incubation"));
+  const terminalHeaderLabel = navLabels.find((label) => label.textContent.includes("Terminal Header Simplification"));
   const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit 03"));
-  if (!stageOneLabel || !stageSevenLabel || !longUnitLabel) {
+  if (!stageOneLabel || !stageSevenLabel || !ideaIncubationLabel || !terminalHeaderLabel || !longUnitLabel) {
     throw new Error("Expected stage and unit labels in plan navigation");
   }
   if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
@@ -159,6 +161,12 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   if (Math.round(stageOneLabel.getBoundingClientRect().left) !== Math.round(stageSevenLabel.getBoundingClientRect().left)) {
     throw new Error("Expected active and inactive stage labels to align");
+  }
+  if (
+    Math.round(ideaIncubationLabel.getBoundingClientRect().left) !== Math.round(stageOneLabel.getBoundingClientRect().left)
+    || Math.round(terminalHeaderLabel.getBoundingClientRect().left) !== Math.round(stageOneLabel.getBoundingClientRect().left)
+  ) {
+    throw new Error("Expected non-expandable plan links to align with expandable plan labels");
   }
   if (getComputedStyle(stageSevenLink, "::after").backgroundColor !== "rgba(0, 0, 0, 0)") {
     throw new Error("Expected selected rail to be reserved for the active page, not the current-stage marker");
