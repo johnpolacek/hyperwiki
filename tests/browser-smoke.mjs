@@ -102,6 +102,13 @@ if (currentPage !== "Planning Dashboard") {
 await page.locator("#wiki-nav details.plan-tree").evaluate((element) => {
   if (!element.open) throw new Error("Expected plan navigation tree to be expanded by default");
   if (element.textContent.includes("Planning Dashboard")) throw new Error("Expected plan navigation to omit Planning Dashboard");
+  if (!element.textContent.includes("Completed Plans")) throw new Error("Expected completed plans archive in plan navigation");
+  const topLevelLabels = [...element.children]
+    .filter((child) => child.tagName !== "SUMMARY")
+    .map((child) => child.querySelector(":scope > summary .wiki-nav-label, :scope > .wiki-nav-label")?.textContent || child.textContent || "");
+  if (topLevelLabels.includes("Plan Unit Navigation")) {
+    throw new Error(`Expected completed plans to move out of the active plan list, got ${topLevelLabels.join(", ")}`);
+  }
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
 await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
@@ -245,6 +252,10 @@ await page.locator("#wiki-nav").evaluate(() => {
 });
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
+  const text = element.textContent || "";
+  if (!text.includes("Sources") || !text.includes("Log")) {
+    throw new Error(`Expected Sources and Log under Project, got ${text}`);
+  }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");

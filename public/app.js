@@ -466,14 +466,20 @@ function nextTerminalName(kind) {
 
 function groupWikiPages(pages) {
   const planTree = renderPlanTree(pages.filter((page) => page.path.includes("/wiki/plans/")));
+  const projectPages = pages.filter((page) =>
+    [
+      "/wiki/index.html",
+      "/wiki/architecture.html",
+      "/wiki/dev.html",
+      "/wiki/roadmap.html",
+      "/wiki/sources.html",
+      "/wiki/log.html"
+    ].some((suffix) => page.path.endsWith(suffix)) || page.path.includes("/wiki/sources/")
+  );
   const groups = [
     planTree,
     renderNavGroup("Ideas", pages.filter((page) => page.path.includes("/wiki/ideas/")), false),
-    renderNavGroup("Project", pages.filter((page) =>
-      ["/wiki/index.html", "/wiki/architecture.html", "/wiki/dev.html", "/wiki/roadmap.html"].some((suffix) => page.path.endsWith(suffix))
-    ), false),
-    renderNavGroup("Sources", pages.filter((page) => page.path.includes("/wiki/sources/")), false),
-    renderNavGroup("Log", pages.filter((page) => page.path.endsWith("/wiki/log.html")), false)
+    renderNavGroup("Project", projectPages, false)
   ];
   return groups.filter(Boolean);
 }
@@ -524,6 +530,7 @@ function renderNavGroup(title, pages, open) {
 function isTopLevelPlanPage(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return true;
   return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
 }
 
@@ -532,24 +539,36 @@ function isUnitPage(page) {
 }
 
 function childPlanPages(parent, pages) {
-  return pages.filter((candidate) => isImmediateChildPlanPage(parent, candidate));
+  return pages.filter((candidate) => isImmediateChildPlanPage(parent, candidate, pages));
 }
 
-function isImmediateChildPlanPage(parent, candidate) {
+function isImmediateChildPlanPage(parent, candidate, pages) {
   const parentPath = displayWikiPath(parent.path);
   const candidatePath = displayWikiPath(candidate.path);
   if (parentPath === candidatePath) return false;
   if (parentPath.endsWith("/wiki/plans/mvp/index.html")) {
     return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
   }
+  if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
+    return /^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
+      && !candidatePath.endsWith("/index.html")
+      && !completedPlanHasChildDirectory(candidatePath, pages);
+  }
   const parentBase = parentPath.replace(/\.html$/, "");
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
+}
+
+function completedPlanHasChildDirectory(planPath, pages) {
+  const planBase = planPath.replace(/\.html$/, "");
+  return pages.some((page) => displayWikiPath(page.path).startsWith(`${planBase}/`));
 }
 
 function planSortKey(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
   if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "99";
+  if (path.startsWith("/wiki/plans/zzz_completed/")) return `99-${path}`;
   return `02-${path}`;
 }
 
@@ -585,6 +604,7 @@ function renderWikiLink(page, state = "") {
 function cleanPageTitle(page) {
   if (page.path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
   if (page.path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
+  if (page.path.endsWith("/wiki/plans/zzz_completed/index.html")) return "Completed Plans";
   if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, "Unit $1 · ");
   if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage-$1 ");
   if (page.title.toLowerCase() === "prd") return "PRD";
