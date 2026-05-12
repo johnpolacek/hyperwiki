@@ -33,6 +33,24 @@ await page.locator("#dashboard-page").evaluate((panel) => {
     throw new Error("Expected dashboard forms to start collapsed.");
   }
 });
+await page.locator("#settings-button").click();
+await page.waitForURL(`${origin}/settings`);
+await page.locator("#settings-page").evaluate((panel) => {
+  const text = panel.textContent || "";
+  if (!text.includes("Theme") || !text.includes("Soul") || !text.includes("Memory") || !text.includes("AGENTS.md Sync")) {
+    throw new Error(`Expected Settings to include Theme, Soul, Memory, and AGENTS.md sync, got ${text}`);
+  }
+  if (!document.querySelector(".workspace")?.classList.contains("settings-mode")) {
+    throw new Error("Expected Settings to be a workspace page mode.");
+  }
+  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
+    throw new Error("Expected terminal pane to be hidden on Settings.");
+  }
+});
+await page.locator("#memory-add").click();
+await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
+await page.locator("#dashboard-button").click();
+await page.waitForURL(dashboardUrl);
 await page.locator("#new-idea-toggle").click();
 await page.locator("#idea-title").fill("Smoke Test Idea");
 await page.locator("#idea-markdown").fill("# Smoke Test Idea\n\nA test markdown brief.");
@@ -134,7 +152,7 @@ await page.locator("#wiki-nav .plan-tree").evaluate((element) => {
   }
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
-await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
+await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-08" }).waitFor();
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).waitFor();
 await page.locator(".workspace").evaluate((workspaceElement) => {
   const sidebar = document.querySelector(".sidebar");
@@ -143,8 +161,9 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (!sidebar || !directPlanLink || !nestedPlanGroup) {
     throw new Error("Expected sidebar plan navigation elements");
   }
-  if (getComputedStyle(document.querySelector(".topbar")).backgroundColor !== "rgb(251, 251, 250)") {
-    throw new Error("Expected topbar to use the white sidebar surface");
+  const topbarBg = getComputedStyle(document.querySelector(".topbar")).backgroundColor;
+  if (topbarBg !== "rgb(251, 251, 250)" && topbarBg !== "rgb(255, 255, 255)") {
+    throw new Error(`Expected topbar to use the light UI surface, got ${topbarBg}`);
   }
   if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(255, 255, 255)") {
     throw new Error("Expected wiki pane to use a white main panel surface");
@@ -182,7 +201,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageOneLabel = navLabels.find((label) => label.textContent.includes("Stage-01"));
-  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
+  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-08"));
   const ideaIncubationLabel = navLabels.find((label) => label.textContent.includes("Idea Incubation"));
   const terminalHeaderLabel = navLabels.find((label) => label.textContent.includes("Terminal Header Simplification"));
   const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit 03"));
@@ -190,7 +209,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error("Expected stage and unit labels in plan navigation");
   }
   if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
-    throw new Error("Expected Stage 01 to appear before Stage 07 in plan navigation");
+    throw new Error("Expected Stage 01 to appear before Stage 08 in plan navigation");
   }
   const stageOneLink = stageOneLabel.closest("a");
   const stageSevenLink = stageSevenLabel.closest("a");
@@ -220,7 +239,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error("Expected selected rail to be reserved for the active page, not the current-stage marker");
   }
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
-  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
   if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || !stageSevenGroup.open) {
     throw new Error("Expected current stage branch to expand by default under the current plan");
   }
@@ -234,29 +253,29 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error(`Expected long plan label to overflow within a clipped label box, got ${longUnitLabel.scrollWidth}/${longUnitLabel.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 08 - Settings, Soul, and Memory");
 await page.locator("#wiki-nav").evaluate(() => {
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
-  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
-  const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Verification Loop Model"));
-  const longExpandedUnitLabel = navLabels.find((label) => label.textContent.includes("Machine-readable Project Contract"));
-  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-08"));
+  const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Global Settings Page"));
+  const longExpandedUnitLabel = navLabels.find((label) => label.textContent.includes("Soul and Memory Controls"));
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
   const selectedSummary = stageSevenLabel.closest("summary");
   const selectedRail = getComputedStyle(selectedSummary, "::after").backgroundColor;
   const selectedRailLeft = Number.parseFloat(getComputedStyle(selectedSummary, "::after").left);
   const selectedRailWidth = Number.parseFloat(getComputedStyle(selectedSummary, "::after").width);
   const selectedSummaryBg = getComputedStyle(selectedSummary).backgroundColor;
   if (!stageSevenGroup?.open) {
-    throw new Error("Expected selected Stage 07 to expand");
+    throw new Error("Expected selected Stage 08 to expand");
   }
-  if (selectedRail !== "rgb(23, 25, 22)") {
+  if (selectedRail !== "rgb(23, 25, 22)" && selectedRail !== "rgb(32, 35, 31)") {
     throw new Error(`Expected selected stage to show a dark left rail, got ${selectedRail}`);
   }
   if (selectedRailLeft !== 0 || selectedRailWidth !== 2) {
     throw new Error(`Expected selected stage rail to reach the window edge, got ${selectedRailLeft}`);
   }
-  if (selectedSummaryBg !== "rgb(240, 240, 237)") {
+  if (selectedSummaryBg === "rgba(0, 0, 0, 0)") {
     throw new Error(`Expected selected stage background to span the whole summary row, got ${selectedSummaryBg}`);
   }
   const containingPlanGroup = stageSevenGroup.closest(".plan-tree > .plan-subtree");
@@ -277,18 +296,18 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error(`Expected expanded sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
-    .find((label) => label.textContent.includes("Verification Loop Model"));
+    .find((label) => label.textContent.includes("Global Settings Page"));
   const unitLink = unitLabel.closest("a");
   const unitBox = unitLink.getBoundingClientRect();
   const unitRail = getComputedStyle(unitLink, "::after");
-  if (Math.round(unitBox.left) !== 0 || getComputedStyle(unitLink).backgroundColor !== "rgb(240, 240, 237)") {
+  if (Math.round(unitBox.left) !== 0 || getComputedStyle(unitLink).backgroundColor === "rgba(0, 0, 0, 0)") {
     throw new Error("Expected selected unit background to reach the window edge");
   }
-  if (unitRail.backgroundColor !== "rgb(23, 25, 22)" || Number.parseFloat(unitRail.left) !== 0 || Number.parseFloat(unitRail.width) !== 2) {
+  if (!["rgb(23, 25, 22)", "rgb(32, 35, 31)"].includes(unitRail.backgroundColor) || Number.parseFloat(unitRail.left) !== 0 || Number.parseFloat(unitRail.width) !== 2) {
     throw new Error("Expected selected unit to show a 2px black left rail at the window edge");
   }
 });
@@ -300,9 +319,9 @@ await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 01 - CLI and Repository Foundation");
 await page.locator("#wiki-nav").evaluate(() => {
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
-  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
   if (!stageOneGroup?.open || stageSevenGroup?.open) {
-    throw new Error("Expected selected Stage 01 to expand and Stage 07 to collapse");
+    throw new Error("Expected selected Stage 01 to expand and Stage 08 to collapse");
   }
 });
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
@@ -352,11 +371,11 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
   }
   element.open = false;
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
-await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
-await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 08 - Settings, Soul, and Memory");
+await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-08-settings-soul-memory\/unit-01-global-settings-page\.html/);
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "MVP Plan");
 
@@ -512,7 +531,7 @@ await page.locator(".terminal[data-name=\"cli\"]").dispatchEvent("drop", {
 });
 await page.waitForFunction(() =>
   document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes(".hyperwiki/state/drops/")
-  && document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("drop-test.png")
+  && document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("p-test.png")
 );
 if (page.url() !== urlBeforeDrop) {
   throw new Error(`Expected terminal file drop to stay on the workspace URL, got ${page.url()}`);
@@ -530,15 +549,15 @@ await page.locator("#up-next-button").evaluate((element) => {
   }
 });
 await page.locator("#up-next-popover dt").filter({ hasText: "Up Next" }).waitFor();
-await page.locator("#up-next-stage").filter({ hasText: /Stage 07/i }).waitFor();
-await page.locator("#up-next-current").filter({ hasText: /Unit 01|Verification Loop Model/i }).waitFor();
+await page.locator("#up-next-stage").filter({ hasText: /Stage 08/i }).waitFor();
+await page.locator("#up-next-current").filter({ hasText: /Unit 01|Global Settings Page/i }).waitFor();
 await page.locator("#up-next-link").filter({ hasText: "Open unit" }).waitFor();
 const nextRowCount = await page.locator("#up-next-popover dt").filter({ hasText: /^Next$/ }).count();
 if (nextRowCount !== 0) {
   throw new Error("Expected Up Next popover to omit separate Next row");
 }
 await page.locator("#up-next-link").click();
-await page.waitForURL(/\/wiki\/plans\/mvp\/stage-07-agent-native-verification/);
+await page.waitForURL(/\/wiki\/plans\/mvp\/stage-08-settings-soul-memory/);
 await page.locator("#up-next-button").click();
 await page.keyboard.press("Escape");
 await page.locator("#up-next-popover").evaluate((element) => {

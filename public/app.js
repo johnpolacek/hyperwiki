@@ -27,7 +27,18 @@ const projectMarkdownFile = document.getElementById("project-markdown-file");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
 const settingsButton = document.getElementById("settings-button");
-const settingsPanel = document.getElementById("settings-panel");
+const settingsPage = document.getElementById("settings-page");
+const settingsStatus = document.getElementById("settings-status");
+const themePreset = document.getElementById("theme-preset");
+const themeJson = document.getElementById("theme-json");
+const settingsResetTheme = document.getElementById("settings-reset-theme");
+const settingsSave = document.getElementById("settings-save");
+const settingsSyncAgents = document.getElementById("settings-sync-agents");
+const soulPrinciples = document.getElementById("soul-principles");
+const soulInterface = document.getElementById("soul-interface");
+const soulAgent = document.getElementById("soul-agent");
+const memoryList = document.getElementById("memory-list");
+const memoryAdd = document.getElementById("memory-add");
 const upNextCompleted = document.getElementById("up-next-completed");
 const upNextStage = document.getElementById("up-next-stage");
 const upNextCurrent = document.getElementById("up-next-current");
@@ -52,6 +63,7 @@ let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
+let settingsState = null;
 
 window.addEventListener("hashchange", () => {
   activateWorkspaceLocation(workspaceLocation());
@@ -63,6 +75,7 @@ wikiFrame.addEventListener("load", () => {
 
 await loadProjects();
 await loadDashboard();
+await loadSettings();
 await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
@@ -140,7 +153,7 @@ upNextButton.addEventListener("click", (event) => {
 
 settingsButton.addEventListener("click", (event) => {
   event.stopPropagation();
-  setTopbarPanelOpen("settings", settingsPanel.hidden);
+  void showSettingsPage();
 });
 
 projectPanel.addEventListener("click", (event) => {
@@ -148,10 +161,6 @@ projectPanel.addEventListener("click", (event) => {
 });
 
 upNextPopover.addEventListener("click", (event) => {
-  event.stopPropagation();
-});
-
-settingsPanel.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 
@@ -189,6 +198,41 @@ ideaImportForm.addEventListener("submit", async (event) => {
 projectImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await createProjectFromMarkdown();
+});
+
+themePreset.addEventListener("change", () => {
+  if (!settingsState) return;
+  settingsState.theme.activePreset = themePreset.value;
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+});
+
+settingsResetTheme.addEventListener("click", async () => {
+  setSettingsStatus("Resetting theme...");
+  settingsState = await api("/api/settings/reset-theme", { method: "POST" });
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+  setSettingsStatus("Theme reset.");
+});
+
+settingsSave.addEventListener("click", async () => {
+  await saveSettings();
+});
+
+settingsSyncAgents.addEventListener("click", async () => {
+  await syncAgents();
+});
+
+memoryAdd.addEventListener("click", () => {
+  if (!settingsState) return;
+  settingsState.memory.entries.push({
+    id: crypto.randomUUID(),
+    title: "",
+    content: "",
+    enabled: true,
+    updatedAt: new Date().toISOString()
+  });
+  renderMemory(settingsState.memory.entries);
 });
 
 async function restoreTerminals() {
@@ -313,27 +357,53 @@ function displayPlanLabel(value = "") {
 async function showDashboardPage(options = {}) {
   closeTopbarPanels();
   await loadDashboard();
+  settingsPage.hidden = true;
   dashboardPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.add("active");
+  settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
+  workspace.classList.remove("settings-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
   currentPage.textContent = "Dashboard";
   currentPage.title = "/dashboard";
   openPage.href = "/dashboard";
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
-  if (location.pathname !== "/dashboard") {
+  if (`${location.pathname}${location.hash}` !== "/dashboard") {
     const method = options.replace ? "replaceState" : "pushState";
     history[method](null, "", "/dashboard");
   }
 }
 
+async function showSettingsPage(options = {}) {
+  closeTopbarPanels();
+  await loadSettings();
+  dashboardPage.hidden = true;
+  settingsPage.hidden = false;
+  wikiFrame.hidden = true;
+  planPrompt.hidden = true;
+  dashboardButton.classList.remove("active");
+  settingsButton.classList.add("active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
+  workspace.classList.add("settings-mode");
+  currentPage.textContent = "Settings";
+  currentPage.title = "/settings";
+  openPage.href = "/settings";
+  wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  if (`${location.pathname}${location.hash}` !== "/settings") {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method](null, "", "/settings");
+  }
+}
+
 function hideDashboardPage() {
   dashboardPage.hidden = true;
+  settingsPage.hidden = true;
   wikiFrame.hidden = false;
   dashboardButton.classList.remove("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
+  settingsButton.classList.remove("active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
 }
@@ -341,6 +411,10 @@ function hideDashboardPage() {
 function activateWorkspaceLocation(path) {
   if (isDashboardPath(path)) {
     void showDashboardPage({ replace: true });
+    return;
+  }
+  if (isSettingsPath(path)) {
+    void showSettingsPage({ replace: true });
     return;
   }
   hideDashboardPage();
@@ -351,11 +425,14 @@ function isDashboardPath(path) {
   return path === "/dashboard" || path === "dashboard";
 }
 
+function isSettingsPath(path) {
+  return path === "/settings" || path === "settings";
+}
+
 function setTopbarPanelOpen(panel, open) {
   const panels = {
     projects: { panel: projectPanel, button: projectToggle },
-    "up-next": { panel: upNextPopover, button: upNextButton },
-    settings: { panel: settingsPanel, button: settingsButton }
+    "up-next": { panel: upNextPopover, button: upNextButton }
   };
   Object.entries(panels).forEach(([name, item]) => {
     const isOpen = name === panel && open;
@@ -367,10 +444,8 @@ function setTopbarPanelOpen(panel, open) {
 function closeTopbarPanels() {
   projectPanel.hidden = true;
   upNextPopover.hidden = true;
-  settingsPanel.hidden = true;
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
-  settingsButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadGuardrails() {
@@ -388,7 +463,7 @@ async function loadProjects() {
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
-  if (activeProject && !prettyWorkspacePath(location.pathname) && location.pathname !== "/dashboard") {
+  if (activeProject && !prettyWorkspacePath(location.pathname) && location.pathname !== "/dashboard" && location.pathname !== "/settings") {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
   if (data.projects.length <= 1) {
@@ -431,6 +506,228 @@ async function loadDashboard() {
   } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
   }
+}
+
+async function loadSettings() {
+  try {
+    settingsState = await api("/api/settings");
+    renderSettings(settingsState);
+    applyTheme(settingsState);
+  } catch (error) {
+    setSettingsStatus(error.message || "Settings unavailable.");
+  }
+}
+
+function renderSettings(settings) {
+  if (!settings) return;
+  const presets = settings.theme?.presets || {};
+  themePreset.replaceChildren(...Object.entries(presets).map(([value, preset]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = preset.label || value;
+    return option;
+  }));
+  themePreset.value = settings.theme?.activePreset || "paper";
+  themeJson.value = JSON.stringify(settings.theme || {}, null, 2);
+  soulPrinciples.value = (settings.soul?.principles || []).join("\n");
+  soulInterface.value = settings.soul?.interface || "";
+  soulAgent.value = settings.soul?.agent || "";
+  renderMemory(settings.memory?.entries || []);
+}
+
+function renderMemory(entries) {
+  const normalized = Array.isArray(entries) ? entries : [];
+  if (normalized.length === 0) {
+    memoryList.replaceChildren(emptyMemoryItem());
+    return;
+  }
+  memoryList.replaceChildren(...normalized.map((entry, index) => memoryEntryRow(entry, index)));
+}
+
+function emptyMemoryItem() {
+  const item = document.createElement("p");
+  item.className = "memory-empty";
+  item.textContent = "No memory entries added yet...";
+  return item;
+}
+
+function memoryEntryRow(entry, index) {
+  const row = document.createElement("article");
+  row.className = "memory-entry";
+  const title = document.createElement("input");
+  title.value = entry.title || "";
+  title.placeholder = "Title";
+  title.addEventListener("input", () => {
+    settingsState.memory.entries[index].title = title.value;
+  });
+  const content = document.createElement("textarea");
+  content.rows = 3;
+  content.value = entry.content || "";
+  content.placeholder = "Memory";
+  content.addEventListener("input", () => {
+    settingsState.memory.entries[index].content = content.value;
+  });
+  const enabled = document.createElement("label");
+  enabled.className = "memory-enabled";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = entry.enabled !== false;
+  checkbox.addEventListener("change", () => {
+    settingsState.memory.entries[index].enabled = checkbox.checked;
+  });
+  enabled.append(checkbox, "Enabled");
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "memory-remove";
+  remove.textContent = "Remove";
+  remove.addEventListener("click", () => {
+    settingsState.memory.entries.splice(index, 1);
+    renderMemory(settingsState.memory.entries);
+  });
+  row.append(title, content, enabled, remove);
+  return row;
+}
+
+async function saveSettings() {
+  if (!settingsState) return;
+  let parsedTheme;
+  try {
+    parsedTheme = JSON.parse(themeJson.value);
+  } catch (error) {
+    setSettingsStatus(`Theme JSON error: ${error.message}`);
+    return;
+  }
+  const next = {
+    ...settingsState,
+    theme: {
+      ...parsedTheme,
+      activePreset: themePreset.value || parsedTheme.activePreset
+    },
+    soul: {
+      principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
+      interface: soulInterface.value.trim(),
+      agent: soulAgent.value.trim()
+    },
+    memory: {
+      entries: (settingsState.memory?.entries || []).map((entry) => ({
+        id: entry.id || crypto.randomUUID(),
+        title: String(entry.title || "").trim(),
+        content: String(entry.content || "").trim(),
+        enabled: entry.enabled !== false,
+        updatedAt: new Date().toISOString()
+      })).filter((entry) => entry.title || entry.content)
+    }
+  };
+  setSettingsStatus("Saving...");
+  settingsState = await api("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(next)
+  });
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+  setSettingsStatus("Saved.");
+}
+
+async function syncAgents() {
+  await saveSettings();
+  settingsSyncAgents.disabled = true;
+  setSettingsStatus("Syncing AGENTS.md...");
+  try {
+    const result = await api(projectPath("/api/settings/sync-agents"), { method: "POST" });
+    setSettingsStatus(`Synced ${result.memoryEntries} memory entries to ${result.path}`);
+  } catch (error) {
+    setSettingsStatus(error.message || "Could not sync AGENTS.md.");
+  } finally {
+    settingsSyncAgents.disabled = false;
+  }
+}
+
+function setSettingsStatus(message) {
+  settingsStatus.textContent = message;
+}
+
+function applyTheme(settings) {
+  const theme = effectiveTheme(settings);
+  const root = document.documentElement;
+  root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  setVars(root, {
+    "--bg": theme.tokens.ui.bg,
+    "--panel": theme.tokens.ui.panel,
+    "--border": theme.tokens.ui.border,
+    "--text": theme.tokens.ui.text,
+    "--muted": theme.tokens.ui.muted,
+    "--accent": theme.tokens.ui.accent,
+    "--sidebar-font": theme.tokens.ui.sidebarFont,
+    "--docs-bg": theme.tokens.docs.bg,
+    "--docs-panel": theme.tokens.docs.panel,
+    "--docs-border": theme.tokens.docs.border,
+    "--docs-text": theme.tokens.docs.text,
+    "--docs-muted": theme.tokens.docs.muted,
+    "--docs-link": theme.tokens.docs.link,
+    "--docs-code": theme.tokens.docs.code,
+    "--docs-serif-font": theme.tokens.docs.serifFont,
+    "--docs-mono-font": theme.tokens.docs.monoFont,
+    "--terminal-bg": theme.tokens.terminal.bg,
+    "--terminal-pane": theme.tokens.terminal.pane,
+    "--terminal-toolbar": theme.tokens.terminal.toolbar,
+    "--terminal-header": theme.tokens.terminal.header,
+    "--terminal-border": theme.tokens.terminal.border,
+    "--terminal-text": theme.tokens.terminal.text,
+    "--terminal-muted": theme.tokens.terminal.muted,
+    "--terminal-accent": theme.tokens.terminal.accent
+  });
+  applyWikiFrameTheme(theme);
+}
+
+function effectiveTheme(settings) {
+  const activePreset = settings.theme?.activePreset || "paper";
+  const preset = settings.theme?.presets?.[activePreset] || Object.values(settings.theme?.presets || {})[0] || {};
+  return deepMerge(preset, { tokens: settings.theme?.customTokens || {} });
+}
+
+function applyWikiFrameTheme(theme) {
+  try {
+    const doc = wikiFrame.contentDocument;
+    if (!doc) return;
+    let style = doc.getElementById("hyperwiki-theme-vars");
+    if (!style) {
+      style = doc.createElement("style");
+      style.id = "hyperwiki-theme-vars";
+      doc.head.append(style);
+    }
+    style.textContent = `:root {
+  color-scheme: ${theme.mode === "dark" ? "dark" : "light"};
+  --docs-bg: ${theme.tokens.docs.bg};
+  --docs-panel: ${theme.tokens.docs.panel};
+  --docs-border: ${theme.tokens.docs.border};
+  --docs-text: ${theme.tokens.docs.text};
+  --docs-muted: ${theme.tokens.docs.muted};
+  --docs-link: ${theme.tokens.docs.link};
+  --docs-code: ${theme.tokens.docs.code};
+  --docs-serif-font: ${theme.tokens.docs.serifFont};
+  --docs-mono-font: ${theme.tokens.docs.monoFont};
+}`;
+  } catch {
+    // Ignore frame timing and same-origin races.
+  }
+}
+
+function setVars(target, vars) {
+  Object.entries(vars).forEach(([name, value]) => {
+    if (value) target.style.setProperty(name, value);
+  });
+}
+
+function deepMerge(base, override) {
+  const next = structuredClone(base || {});
+  for (const [key, value] of Object.entries(override || {})) {
+    if (value && typeof value === "object" && !Array.isArray(value) && next[key] && typeof next[key] === "object" && !Array.isArray(next[key])) {
+      next[key] = deepMerge(next[key], value);
+    } else {
+      next[key] = structuredClone(value);
+    }
+  }
+  return next;
 }
 
 function renderDashboardIdeas(ideas) {
@@ -876,8 +1173,8 @@ function planSortKey(page) {
 function currentPlanState(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/mvp/index.html")) return "current-plan";
-  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification.html")) return "current-stage";
-  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html")) return "current-unit";
+  if (path.endsWith("/wiki/plans/mvp/stage-08-settings-soul-memory.html")) return "current-stage";
+  if (path.endsWith("/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html")) return "current-unit";
   return "";
 }
 
@@ -1003,14 +1300,17 @@ function syncFrameLocation() {
 
 function hideEmbeddedWikiHeader() {
   const documentElement = wikiFrame.contentDocument;
-  if (!documentElement || documentElement.getElementById("hyperwiki-embedded-style")) return;
-  const style = documentElement.createElement("style");
-  style.id = "hyperwiki-embedded-style";
-  style.textContent = `
-    .wiki-header { display: none !important; }
-    .wiki-page { padding-top: 32px !important; }
-  `;
-  documentElement.head.append(style);
+  if (!documentElement) return;
+  if (!documentElement.getElementById("hyperwiki-embedded-style")) {
+    const style = documentElement.createElement("style");
+    style.id = "hyperwiki-embedded-style";
+    style.textContent = `
+      .wiki-header { display: none !important; }
+      .wiki-page { padding-top: 32px !important; }
+    `;
+    documentElement.head.append(style);
+  }
+  if (settingsState) applyWikiFrameTheme(effectiveTheme(settingsState));
   renderIdeaActionInFrame(documentElement);
 }
 
@@ -1053,6 +1353,7 @@ function pageFromHash() {
 }
 
 function workspaceLocation() {
+  if (location.pathname === "/settings") return "/settings";
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
   if (location.pathname === "/dashboard") return "/dashboard";

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>hyperwiki</title>
   <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/vendor/@wterm/dom/src/terminal.css">
   <script type="importmap">
     {
@@ -57,7 +58,7 @@
           </svg>
           <span>Projects</span>
         </button>
-        <button type="button" id="settings-button" class="topbar-button" aria-expanded="false" aria-controls="settings-panel">
+        <button type="button" id="settings-button" class="topbar-button" aria-controls="settings-page">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
             <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .92V20.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-.92 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.92-1H3.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 .92-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.92V3.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 .92 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.43.7.92 1h.18a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1 .92Z"></path>
@@ -83,22 +84,6 @@
             </dd>
           </div>
         </dl>
-      </section>
-      <section id="settings-panel" class="topbar-panel settings-panel" role="dialog" aria-label="Settings" hidden>
-        <div class="settings-placeholder">
-          <h2>Settings</h2>
-          <p>Workspace preferences will live here.</p>
-          <dl>
-            <div>
-              <dt>Theme</dt>
-              <dd>System</dd>
-            </div>
-            <div>
-              <dt>Automation</dt>
-              <dd>Local only</dd>
-            </div>
-          </dl>
-        </div>
       </section>
     </header>
     <aside class="sidebar">
@@ -177,6 +162,79 @@
                 <button type="submit">Create and hand off</button>
               </div>
             </form>
+          </section>
+        </div>
+      </section>
+      <section id="settings-page" class="settings-page" aria-label="hyperwiki Settings" hidden>
+        <header class="dashboard-page-header settings-page-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Control global HyperWiki theme, Soul, Memory, and explicit AGENTS.md sync.</p>
+          </div>
+          <p id="settings-status" class="dashboard-status" role="status"></p>
+        </header>
+        <div class="settings-layout">
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <h2>Theme</h2>
+              <button type="button" id="settings-reset-theme" class="dashboard-new-button">Reset Theme</button>
+            </div>
+            <label class="settings-field">
+              <span>Preset</span>
+              <select id="theme-preset"></select>
+            </label>
+            <div class="settings-preview" aria-label="Theme preview">
+              <div>
+                <strong>UI</strong>
+                <span>Sidebar and workspace chrome</span>
+              </div>
+              <div>
+                <strong>Docs</strong>
+                <span>Planning and wiki pages</span>
+              </div>
+              <div>
+                <strong>Terminal</strong>
+                <span>Pane chrome and session frames</span>
+              </div>
+            </div>
+            <details class="settings-json-details">
+              <summary>Advanced JSON</summary>
+              <textarea id="theme-json" rows="18" spellcheck="false"></textarea>
+            </details>
+          </section>
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <h2>Soul</h2>
+            </div>
+            <label class="settings-field">
+              <span>Principles</span>
+              <textarea id="soul-principles" rows="6"></textarea>
+            </label>
+            <label class="settings-field">
+              <span>Interface Guidance</span>
+              <textarea id="soul-interface" rows="4"></textarea>
+            </label>
+            <label class="settings-field">
+              <span>Agent Guidance</span>
+              <textarea id="soul-agent" rows="4"></textarea>
+            </label>
+          </section>
+          <section class="settings-section settings-section-wide">
+            <div class="settings-section-header">
+              <h2>Memory</h2>
+              <button type="button" id="memory-add" class="dashboard-new-button">+ Memory</button>
+            </div>
+            <div id="memory-list" class="memory-list" aria-label="Memory entries"></div>
+          </section>
+          <section class="settings-section settings-section-wide settings-sync-section">
+            <div>
+              <h2>AGENTS.md Sync</h2>
+              <p>Soul and enabled Memory entries are written only when you sync. HyperWiki preserves content outside its managed block.</p>
+            </div>
+            <div class="settings-actions">
+              <button type="button" id="settings-save" class="settings-primary-button">Save Settings</button>
+              <button type="button" id="settings-sync-agents" class="dashboard-new-button">Sync Current Project AGENTS.md</button>
+            </div>
           </section>
         </div>
       </section>
