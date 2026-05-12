@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
 const origin = new URL(url).origin;
+const dashboardUrl = `${origin}/dashboard`;
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -18,13 +19,35 @@ await page.goto(url, { waitUntil: "networkidle" });
 
 await page.locator(".topbar-brand").filter({ hasText: "HyperWiki" }).waitFor();
 await page.locator("#dashboard-button").click();
-await page.locator("#dashboard-panel").evaluate((panel) => {
+await page.waitForURL(dashboardUrl);
+await page.locator("#dashboard-page").evaluate((panel) => {
   const text = panel.textContent || "";
-  if (!text.includes("Ideas") || !text.includes("Projects")) {
+  if (!text.includes("New Idea") || !text.includes("New Project") || !text.includes("Ideas") || !text.includes("Projects")) {
     throw new Error(`Expected dashboard to include ideas and projects, got ${text}`);
   }
+  const ideasHeader = panel.querySelector(".dashboard-section-header");
+  if (!ideasHeader || !ideasHeader.textContent.includes("Ideas") || !ideasHeader.textContent.includes("+ New Idea")) {
+    throw new Error("Expected Ideas section header with a New Idea button.");
+  }
+  if (!document.querySelector("#idea-import-form")?.hidden || !document.querySelector("#project-import-form")?.hidden) {
+    throw new Error("Expected dashboard forms to start collapsed.");
+  }
 });
-await page.keyboard.press("Escape");
+await page.locator("#new-idea-toggle").click();
+await page.locator("#idea-title").fill("Smoke Test Idea");
+await page.locator("#idea-markdown").fill("# Smoke Test Idea\n\nA test markdown brief.");
+await page.evaluate(() => {
+  if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
+    throw new Error("Expected Dashboard to be a workspace page mode.");
+  }
+  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
+    throw new Error("Expected terminal pane to be hidden before a Dashboard agent handoff.");
+  }
+});
+await page.evaluate(() => {
+  location.hash = "#/wiki/plans/index.html";
+});
+await page.waitForURL(/#\/wiki\/plans\/index\.html$/);
 await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   const path = element.getAttribute("d") || "";
   if (!path.includes("M13 5v4H8v6h5v4l7-7Z")) {
@@ -140,6 +163,19 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (chevronStyle.width !== "22px" || chevronStyle.paddingLeft !== "3px" || chevronStyle.left !== "4px") {
     throw new Error("Expected compact accordion chevron spacing");
   }
+  const planHeading = document.querySelector(".plan-tree > summary");
+  if (!planHeading) {
+    throw new Error("Expected Plans heading");
+  }
+  if (getComputedStyle(planHeading).paddingLeft !== "13px") {
+    throw new Error(`Expected Plans heading to align with plan chevrons, got ${getComputedStyle(planHeading).paddingLeft}`);
+  }
+  if (getComputedStyle(sidebar).paddingTop !== "6px") {
+    throw new Error(`Expected compact sidebar top padding, got ${getComputedStyle(sidebar).paddingTop}`);
+  }
+  if (sidebar.scrollWidth > sidebar.clientWidth + 1) {
+    throw new Error(`Expected sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
+  }
   const brandRule = getComputedStyle(document.querySelector(".brand"), "::after").content;
   if (brandRule !== "none") {
     throw new Error(`Expected empty brand separator to be removed, got ${brandRule}`);
@@ -158,10 +194,15 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   const stageOneLink = stageOneLabel.closest("a");
   const stageSevenLink = stageSevenLabel.closest("a");
+  const currentPlanLink = document.querySelector("#wiki-nav a.current-plan");
   const stageOneBefore = getComputedStyle(stageOneLink, "::before");
   const stageSevenBefore = getComputedStyle(stageSevenLink, "::before");
+  const currentPlanBefore = getComputedStyle(currentPlanLink, "::before");
   if (stageOneBefore.backgroundColor !== "rgba(0, 0, 0, 0)") {
     throw new Error(`Expected inactive stage dot to be transparent, got ${stageOneBefore.backgroundColor}`);
+  }
+  if (currentPlanBefore.backgroundColor !== "rgb(37, 162, 68)") {
+    throw new Error(`Expected current plan dot to be green, got ${currentPlanBefore.backgroundColor}`);
   }
   if (stageSevenBefore.backgroundColor !== "rgb(37, 162, 68)") {
     throw new Error(`Expected current stage dot to be green, got ${stageSevenBefore.backgroundColor}`);
@@ -180,14 +221,17 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
-  if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || stageSevenGroup.open) {
-    throw new Error("Expected stage unit branches to stay collapsed until a stage is selected");
+  if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || !stageSevenGroup.open) {
+    throw new Error("Expected current stage branch to expand by default under the current plan");
   }
   if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
     throw new Error("Expected plan navigation labels to use text overflow ellipses");
   }
   if (getComputedStyle(longUnitLabel).flexGrow !== "1") {
     throw new Error("Expected plan navigation labels to flex within their row for ellipses");
+  }
+  if (longUnitLabel.scrollWidth <= longUnitLabel.clientWidth) {
+    throw new Error(`Expected long plan label to overflow within a clipped label box, got ${longUnitLabel.scrollWidth}/${longUnitLabel.clientWidth}`);
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
@@ -196,6 +240,7 @@ await page.locator("#wiki-nav").evaluate(() => {
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
   const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Verification Loop Model"));
+  const longExpandedUnitLabel = navLabels.find((label) => label.textContent.includes("Machine-readable Project Contract"));
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
   const selectedSummary = stageSevenLabel.closest("summary");
   const selectedRail = getComputedStyle(selectedSummary, "::after").backgroundColor;
@@ -220,6 +265,16 @@ await page.locator("#wiki-nav").evaluate(() => {
   }
   if (!currentUnitLabel || currentUnitLabel.getBoundingClientRect().left <= stageSevenLabel.getBoundingClientRect().left) {
     throw new Error("Expected unit labels to be indented under their stage");
+  }
+  if (!longExpandedUnitLabel || getComputedStyle(longExpandedUnitLabel).textOverflow !== "ellipsis") {
+    throw new Error("Expected expanded unit labels to keep text-overflow ellipses");
+  }
+  if (longExpandedUnitLabel.scrollWidth <= longExpandedUnitLabel.clientWidth) {
+    throw new Error(`Expected expanded long unit label to overflow inside a clipped box, got ${longExpandedUnitLabel.scrollWidth}/${longExpandedUnitLabel.clientWidth}`);
+  }
+  const sidebar = document.querySelector(".sidebar");
+  if (sidebar.scrollWidth > sidebar.clientWidth + 1) {
+    throw new Error(`Expected expanded sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
@@ -252,10 +307,50 @@ await page.locator("#wiki-nav").evaluate(() => {
 });
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
+  if (!element.classList.contains("project-nav-group")) {
+    throw new Error("Expected project navigation to have bottom-pinned styling hook");
+  }
+  const sidebar = document.querySelector(".sidebar");
+  const nav = document.querySelector("#wiki-nav");
+  const planTree = document.querySelector("#wiki-nav .plan-tree");
+  if (!sidebar || !nav || !planTree) {
+    throw new Error("Expected sidebar navigation elements");
+  }
+  const elementRect = element.getBoundingClientRect();
+  const sidebarRect = sidebar.getBoundingClientRect();
+  if (Math.abs(elementRect.bottom - sidebarRect.bottom) > 3) {
+    throw new Error(`Expected project navigation pinned to sidebar bottom, got ${elementRect.bottom}/${sidebarRect.bottom}`);
+  }
+  const projectSummary = element.querySelector(":scope > summary");
+  const projectChevronStyle = getComputedStyle(projectSummary, "::after");
+  if (projectChevronStyle.width !== "22px" || projectChevronStyle.paddingRight !== "3px" || projectChevronStyle.textAlign !== "right") {
+    throw new Error("Expected Project navigation chevron to sit on the right edge");
+  }
+  const plansSummary = planTree.querySelector(":scope > summary");
+  if (Math.abs(projectSummary.getBoundingClientRect().left - plansSummary.getBoundingClientRect().left) > 1) {
+    throw new Error("Expected Project label to align with Plans label");
+  }
+  const planRect = planTree.getBoundingClientRect();
+  if (elementRect.top <= planRect.top) {
+    throw new Error("Expected project navigation to render after plan navigation");
+  }
+  const firstPlanItem = planTree.querySelector(":scope > .plan-subtree, :scope > a");
+  if (!plansSummary || !firstPlanItem) {
+    throw new Error("Expected plans heading and first plan item");
+  }
+  const plansGap = firstPlanItem.getBoundingClientRect().top - plansSummary.getBoundingClientRect().bottom;
+  if (plansGap > 16) {
+    throw new Error(`Expected plan items directly below Plans heading, got ${plansGap}px gap`);
+  }
   const text = element.textContent || "";
   if (!text.includes("Sources") || !text.includes("Log")) {
     throw new Error(`Expected Sources and Log under Project, got ${text}`);
   }
+  element.open = true;
+  if (Number(getComputedStyle(element).zIndex) <= Number(getComputedStyle(planTree).zIndex || 0)) {
+    throw new Error("Expected expanded project navigation to stack above plans");
+  }
+  element.open = false;
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
@@ -434,8 +529,17 @@ await page.locator("#up-next-button").evaluate((element) => {
     throw new Error("Expected Up Next button to expose expanded state");
   }
 });
-await page.locator("#up-next-current").filter({ hasText: /Stage 07|active/i }).waitFor();
-await page.locator("#up-next-next").filter({ hasText: /define|split|next/i }).waitFor();
+await page.locator("#up-next-popover dt").filter({ hasText: "Up Next" }).waitFor();
+await page.locator("#up-next-stage").filter({ hasText: /Stage 07/i }).waitFor();
+await page.locator("#up-next-current").filter({ hasText: /Unit 01|Verification Loop Model/i }).waitFor();
+await page.locator("#up-next-link").filter({ hasText: "Open unit" }).waitFor();
+const nextRowCount = await page.locator("#up-next-popover dt").filter({ hasText: /^Next$/ }).count();
+if (nextRowCount !== 0) {
+  throw new Error("Expected Up Next popover to omit separate Next row");
+}
+await page.locator("#up-next-link").click();
+await page.waitForURL(/\/wiki\/plans\/mvp\/stage-07-agent-native-verification/);
+await page.locator("#up-next-button").click();
 await page.keyboard.press("Escape");
 await page.locator("#up-next-popover").evaluate((element) => {
   if (!element.hidden) throw new Error("Expected Up Next popover to close on Escape");
@@ -450,7 +554,7 @@ const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
   throw new Error("Expected workspace summary to include plan state");
 }
-if (!workspaceData.status?.current || !workspaceData.status?.next || !workspaceData.status?.completed) {
+if (!workspaceData.status?.stage || !workspaceData.status?.current || !workspaceData.status?.currentPath || !workspaceData.status?.completed) {
   throw new Error(`Expected structured Up Next status, got ${JSON.stringify(workspaceData.status)}`);
 }
 if (workspaceData.sources.briefs.length < 3) {

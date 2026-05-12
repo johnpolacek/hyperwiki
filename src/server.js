@@ -91,7 +91,7 @@ async function handleRequest(defaultRoot, request, response, context) {
       redirect(response, "/workspace/");
       return;
     }
-    if (workspaceRoute(url.pathname)) {
+    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard") {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
       return;
     }
@@ -112,6 +112,11 @@ async function handleRequest(defaultRoot, request, response, context) {
     }
     if (url.pathname === "/api/projects") {
       await sendJson(response, await context.projectRegistry.list(await requestedProjectId(context.projectRegistry, url, context.activeProjectId, defaultRoot)));
+      return;
+    }
+    if (url.pathname === "/api/projects/create" && request.method === "POST") {
+      const body = await readJsonBody(request);
+      await sendJson(response, await createProjectFromDashboard(context.projectRegistry, body));
       return;
     }
     if (url.pathname === "/api/ideas") {
@@ -300,12 +305,12 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   const currentPage = typeof body.currentPage === "string" ? body.currentPage : "/wiki/plans/index.html";
   const message = [
     "",
-    "Please update the HyperWiki plan based on this request.",
+    "Please handle this HyperWiki workspace request.",
     "",
     `Project: ${project.name}`,
     `Repo root: ${project.root}`,
     `Current wiki page: ${currentPage}`,
-    "Keep durable decisions in wiki/plans/ and wiki/log.html. Run relevant checks before finishing.",
+    "Keep durable project knowledge in wiki/ HTML pages and Git-visible files. Run relevant checks before finishing.",
     "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
     "",
     prompt,
@@ -377,11 +382,32 @@ async function workspaceSummary(root, config) {
 }
 
 function workspaceStatus(planSummary, logEntries) {
+  const currentUnit = summaryValue(planSummary, "Current unit");
+  const currentStage = summaryValue(planSummary, "Current stage");
+  const current = currentUnit || currentUnitLabelForStage(currentStage) || currentStage || summaryValue(planSummary, "Status") || "Unknown";
   return {
     completed: completedStatus(planSummary, logEntries),
-    current: summaryValue(planSummary, "Current unit") || summaryValue(planSummary, "Current stage") || summaryValue(planSummary, "Status") || "Unknown",
-    next: summaryValue(planSummary, "Next action") || "Unknown"
+    stage: currentStage || "Unknown",
+    current,
+    currentPath: currentUnitPath(current)
   };
+}
+
+function currentUnitLabelForStage(stage) {
+  if (/stage\s*0?7|agent-native verification/i.test(stage || "")) {
+    return "Unit 01 - Verification Loop Model";
+  }
+  return "";
+}
+
+function currentUnitPath(current) {
+  if (/unit\s*0?1/i.test(current) || /verification loop/i.test(current)) {
+    return "/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html";
+  }
+  if (/stage\s*0?7|agent-native verification/i.test(current)) {
+    return "/wiki/plans/mvp/stage-07-agent-native-verification.html";
+  }
+  return "";
 }
 
 function completedStatus(planSummary, logEntries) {
@@ -562,6 +588,26 @@ async function promoteIdea(project, projectRegistry, body) {
   const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
   await writeFile(resolvedSource, promotedIdeaPage(project, title, summary, record, workspaceUrl), "utf8");
   return { idea: { title, path: `/wiki/ideas/${path.basename(relativePath)}`, promoted: true }, project: record, workspaceUrl };
+}
+
+async function createProjectFromDashboard(projectRegistry, body) {
+  const title = String(body?.title || "").trim();
+  if (!title) {
+    const error = new Error("Project title is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const summary = String(body?.summary || "").trim() || "Imported from Dashboard markdown.";
+  const projectRoot = await uniqueProjectRoot(title);
+  await mkdir(projectRoot, { recursive: true });
+  await initHyperWiki(projectRoot, {
+    yes: true,
+    project_name: title,
+    summary
+  });
+  const record = await projectRegistry.register(projectRoot);
+  const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
+  return { project: record, workspaceUrl };
 }
 
 function normalizeIdeaPath(value) {

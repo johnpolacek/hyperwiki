@@ -76,6 +76,22 @@ try {
   if (!after.ideas[0]?.promoted) {
     throw new Error("Expected promoted idea to be marked promoted in API output.");
   }
+
+  const dashboardProject = await json(`${url}/api/projects/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "Dashboard Markdown Project",
+      summary: "Created from markdown on the Dashboard."
+    })
+  });
+  if (!dashboardProject.project?.root.startsWith(projectsDir) || !dashboardProject.workspaceUrl.includes("/workspace/")) {
+    throw new Error(`Expected Dashboard-created project under test projects dir, got ${JSON.stringify(dashboardProject)}`);
+  }
+  const dashboardIndex = await readFile(path.join(dashboardProject.project.root, "wiki", "index.html"), "utf8");
+  if (!dashboardIndex.includes("Dashboard Markdown Project") || !dashboardIndex.includes("Created from markdown on the Dashboard.")) {
+    throw new Error("Expected Dashboard-created project to use the provided title and summary.");
+  }
 } finally {
   await new Promise((resolve) => server.close(resolve));
 }

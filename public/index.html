@@ -32,7 +32,14 @@
         <span>HyperWiki</span>
       </div>
       <div class="topbar-actions">
-        <button type="button" id="dashboard-button" class="topbar-button" aria-expanded="false" aria-controls="dashboard-panel">
+        <button type="button" id="up-next-button" class="topbar-button" aria-expanded="false" aria-controls="up-next-popover">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 9v6"></path>
+            <path d="M13 5v4H8v6h5v4l7-7Z"></path>
+          </svg>
+          <span>Up Next</span>
+        </button>
+        <button type="button" id="dashboard-button" class="topbar-button" aria-controls="dashboard-page">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <rect x="4" y="4" width="7" height="7"></rect>
             <rect x="13" y="4" width="7" height="7"></rect>
@@ -50,13 +57,6 @@
           </svg>
           <span>Projects</span>
         </button>
-        <button type="button" id="up-next-button" class="topbar-button" aria-expanded="false" aria-controls="up-next-popover">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5 9v6"></path>
-            <path d="M13 5v4H8v6h5v4l7-7Z"></path>
-          </svg>
-          <span>Up Next</span>
-        </button>
         <button type="button" id="settings-button" class="topbar-button" aria-expanded="false" aria-controls="settings-panel">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
@@ -65,20 +65,6 @@
           <span>Settings</span>
         </button>
       </div>
-      <section id="dashboard-panel" class="topbar-panel dashboard-panel" role="dialog" aria-label="Dashboard" hidden>
-        <header class="dashboard-header">
-          <h2>HyperWiki Dashboard</h2>
-          <p>Ideas and registered projects</p>
-        </header>
-        <div class="dashboard-column">
-          <h3>Ideas</h3>
-          <div id="dashboard-ideas" class="dashboard-list" aria-label="Ideas"></div>
-        </div>
-        <div class="dashboard-column">
-          <h3>Projects</h3>
-          <div id="dashboard-projects" class="dashboard-list" aria-label="Projects"></div>
-        </div>
-      </section>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
         <div id="project-list" class="project-list" aria-label="Projects"></div>
       </section>
@@ -89,12 +75,12 @@
             <dd id="up-next-completed">Loading</dd>
           </div>
           <div>
-            <dt>Current</dt>
-            <dd id="up-next-current">Loading</dd>
-          </div>
-          <div>
-            <dt>Next</dt>
-            <dd id="up-next-next">Loading</dd>
+            <dt>Up Next</dt>
+            <dd>
+              <span id="up-next-stage">Loading</span>
+              <span id="up-next-current">Loading</span>
+              <button type="button" id="up-next-link" class="up-next-link" hidden>Open unit</button>
+            </dd>
           </div>
         </dl>
       </section>
@@ -127,6 +113,73 @@
     <section class="wiki-pane">
       <strong id="current-page" hidden>/wiki/index.html</strong>
       <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
+      <section id="dashboard-page" class="dashboard-page" aria-label="HyperWiki Dashboard" hidden>
+        <header class="dashboard-page-header">
+          <div>
+            <h1>Dashboard</h1>
+            <p>Start ideas and projects from markdown, then hand the work to an agent.</p>
+          </div>
+          <p id="dashboard-status" class="dashboard-status" role="status"></p>
+        </header>
+        <div class="dashboard-inventory">
+          <section class="dashboard-section">
+            <div class="dashboard-section-header">
+              <h2>Ideas</h2>
+              <button type="button" id="new-idea-toggle" class="dashboard-new-button" aria-expanded="false" aria-controls="idea-import-form">+ New Idea</button>
+            </div>
+            <div id="dashboard-ideas" class="dashboard-list" aria-label="Ideas"></div>
+            <form id="idea-import-form" class="dashboard-action-form" hidden>
+              <header>
+                <h3>New Idea</h3>
+                <p>Create or import a markdown brief. The agent will turn it into a unique page under <code>wiki/ideas/</code>.</p>
+              </header>
+              <label>
+                <span>Title</span>
+                <input id="idea-title" name="title" autocomplete="off" required>
+              </label>
+              <label>
+                <span>Markdown</span>
+                <textarea id="idea-markdown" name="markdown" rows="9" required></textarea>
+              </label>
+              <div class="dashboard-file-row">
+                <label class="dashboard-file-input">
+                  <span>Import markdown</span>
+                  <input id="idea-markdown-file" type="file" accept=".md,.markdown,text/markdown,text/plain">
+                </label>
+                <button type="submit">Send to agent</button>
+              </div>
+            </form>
+          </section>
+          <section class="dashboard-section">
+            <div class="dashboard-section-header">
+              <h2>Projects</h2>
+              <button type="button" id="new-project-toggle" class="dashboard-new-button" aria-expanded="false" aria-controls="project-import-form">+ New Project</button>
+            </div>
+            <div id="dashboard-projects" class="dashboard-list" aria-label="Projects"></div>
+            <form id="project-import-form" class="dashboard-action-form" hidden>
+              <header>
+                <h3>New Project</h3>
+                <p>Initialize a fresh HyperWiki project, switch to it, and ask the agent to build the first wiki pages from markdown.</p>
+              </header>
+              <label>
+                <span>Project name</span>
+                <input id="project-title" name="title" autocomplete="off" required>
+              </label>
+              <label>
+                <span>Markdown</span>
+                <textarea id="project-markdown" name="markdown" rows="9" required></textarea>
+              </label>
+              <div class="dashboard-file-row">
+                <label class="dashboard-file-input">
+                  <span>Import markdown</span>
+                  <input id="project-markdown-file" type="file" accept=".md,.markdown,text/markdown,text/plain">
+                </label>
+                <button type="submit">Create and hand off</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </section>
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
       <form id="plan-prompt" class="plan-prompt" hidden>
         <label for="plan-prompt-input">Plan prompt</label>
