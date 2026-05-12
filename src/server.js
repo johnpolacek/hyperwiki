@@ -3,11 +3,13 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { createPtySession } from "./pty.js";
+import { initHyperWiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
 
@@ -24,7 +26,7 @@ export async function startDevServer(root, options = {}) {
   if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
     throw new Error("HyperWiki dev server only binds to localhost addresses.");
   }
-  const port = Number(options.port || 4177);
+  const port = options.port === 0 || options.port === "0" ? 0 : Number(options.port || 4177);
   const projectRegistry = new ProjectRegistry();
   let activeProjectId = options.projectId || null;
   if (!activeProjectId) {
@@ -75,9 +77,11 @@ export async function startDevServer(root, options = {}) {
       resolve();
     });
   });
-  const url = `http://${host}:${port}`;
+  const address = server.address();
+  const actualPort = typeof address === "object" && address ? address.port : port;
+  const url = `http://${host}:${actualPort}`;
   console.log(`HyperWiki dev server running at ${url}`);
-  return { server, host, port, url, workspaceUrl: `${url}/workspace/` };
+  return { server, host, port: actualPort, url, workspaceUrl: `${url}/workspace/` };
 }
 
 async function handleRequest(defaultRoot, request, response, context) {
@@ -108,6 +112,17 @@ async function handleRequest(defaultRoot, request, response, context) {
     }
     if (url.pathname === "/api/projects") {
       await sendJson(response, await context.projectRegistry.list(await requestedProjectId(context.projectRegistry, url, context.activeProjectId, defaultRoot)));
+      return;
+    }
+    if (url.pathname === "/api/ideas") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await listIdeas(project.root, project.id));
+      return;
+    }
+    if (url.pathname === "/api/ideas/promote" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const body = await readJsonBody(request);
+      await sendJson(response, await promoteIdea(project, context.projectRegistry, body));
       return;
     }
     if (url.pathname === "/api/workspace") {
@@ -476,6 +491,227 @@ async function sourceBriefSummary(root) {
     });
   }
   return briefs.sort((a, b) => a.title.localeCompare(b.title));
+}
+
+async function listIdeas(root, projectId = null) {
+  const ideasRoot = path.join(root, "wiki", "ideas");
+  if (!existsSync(ideasRoot)) {
+    return { ideas: [] };
+  }
+  const entries = await readdir(ideasRoot, { withFileTypes: true });
+  const ideas = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || path.extname(entry.name) !== ".html" || entry.name === "index.html") {
+      continue;
+    }
+    const relative = `wiki/ideas/${entry.name}`;
+    const html = await readRepoFile(root, relative);
+    const title = firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(`ideas/${entry.name}`);
+    ideas.push({
+      title,
+      path: projectId ? `/projects/${projectId}/wiki/ideas/${entry.name}` : `/wiki/ideas/${entry.name}`,
+      summary: ideaSummary(html),
+      promoted: isPromotedIdea(html),
+      targetRoot: await uniqueProjectRoot(title)
+    });
+  }
+  return { ideas: ideas.sort((a, b) => a.title.localeCompare(b.title)) };
+}
+
+async function promoteIdea(project, projectRegistry, body) {
+  const ideaPath = normalizeIdeaPath(body.ideaPath || body.path);
+  if (!ideaPath) {
+    const error = new Error("Idea path must point to a page under wiki/ideas/.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const relativePath = ideaPath.replace(/^\/wiki\//, "wiki/");
+  const sourceFile = path.join(project.root, relativePath);
+  const ideasRoot = path.join(project.root, "wiki", "ideas");
+  const resolvedSource = path.resolve(sourceFile);
+  if (!resolvedSource.startsWith(`${path.resolve(ideasRoot)}${path.sep}`) || !existsSync(resolvedSource)) {
+    const error = new Error("Idea page not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+  const html = await readFile(resolvedSource, "utf8");
+  if (isPromotedIdea(html)) {
+    const error = new Error("Idea has already been promoted.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const title = firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(relativePath);
+  const summary = ideaSummary(html) || "Promoted from a HyperWiki idea.";
+  const content = extractMainHtml(html);
+  const projectRoot = await uniqueProjectRoot(title);
+  await mkdir(projectRoot, { recursive: true });
+  await initHyperWiki(projectRoot, {
+    yes: true,
+    project_name: title,
+    summary
+  });
+  await writePromotedProjectPackage(projectRoot, {
+    title,
+    summary,
+    content,
+    originProject: project,
+    originPath: `/wiki/ideas/${path.basename(relativePath)}`
+  });
+  const record = await projectRegistry.register(projectRoot);
+  const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
+  await writeFile(resolvedSource, promotedIdeaPage(project, title, summary, record, workspaceUrl), "utf8");
+  return { idea: { title, path: `/wiki/ideas/${path.basename(relativePath)}`, promoted: true }, project: record, workspaceUrl };
+}
+
+function normalizeIdeaPath(value) {
+  const pathValue = String(value || "");
+  const projectMatch = pathValue.match(/^\/projects\/[^/]+\/wiki\/ideas\/([^/]+\.html)$/);
+  if (projectMatch && projectMatch[1] !== "index.html") return `/wiki/ideas/${projectMatch[1]}`;
+  const wikiMatch = pathValue.match(/^\/wiki\/ideas\/([^/]+\.html)$/);
+  if (wikiMatch && wikiMatch[1] !== "index.html") return `/wiki/ideas/${wikiMatch[1]}`;
+  return "";
+}
+
+function ideaSummary(html) {
+  const paragraphs = [...html.matchAll(/<p[^>]*>(.*?)<\/p>/gis)]
+    .map((match) => stripHtml(match[1]))
+    .filter(Boolean);
+  const summary = paragraphs.find((paragraph) => !/^promoted to /i.test(paragraph)) || paragraphs[0] || "";
+  return summary.length > 180 ? `${summary.slice(0, 177).trim()}...` : summary;
+}
+
+function isPromotedIdea(html) {
+  return /data-hyperwiki-promoted=["']true["']/i.test(html) || /<h1[^>]*>Promoted Idea<\/h1>/i.test(html);
+}
+
+function extractMainHtml(html) {
+  const match = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
+  return match ? match[1].trim() : html.trim();
+}
+
+async function uniqueProjectRoot(title) {
+  const baseDir = path.resolve(process.env.HYPERWIKI_PROJECTS_DIR || path.join(os.homedir(), "Projects"));
+  const baseSlug = slugify(title);
+  let candidate = path.join(baseDir, baseSlug);
+  let count = 2;
+  while (existsSync(candidate)) {
+    candidate = path.join(baseDir, `${baseSlug}-${count}`);
+    count += 1;
+  }
+  return candidate;
+}
+
+async function writePromotedProjectPackage(projectRoot, context) {
+  await writeFile(path.join(projectRoot, "wiki", "index.html"), wikiLayout(context.title, "Home", `<h1>${escapeHtml(context.title)}</h1>
+<p>${escapeHtml(context.summary)}</p>
+<section>
+  <h2>Origin</h2>
+  <p>Promoted from <code>${escapeHtml(context.originProject.name)}</code> idea <code>${escapeHtml(context.originPath)}</code>.</p>
+</section>
+<section>
+  <h2>Idea Snapshot</h2>
+  ${context.content}
+</section>`), "utf8");
+  await writeFile(path.join(projectRoot, "wiki", "sources", "idea-origin.html"), wikiLayout(context.title, "Idea Origin", `<h1>Idea Origin</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: ${new Date().toISOString().slice(0, 10)}</li>
+  <li>Evidence basis: promoted HyperWiki idea from <code>${escapeHtml(context.originProject.name)}</code>.</li>
+  <li>Confidence: medium</li>
+</ul>
+<h2>Origin</h2>
+<p>Source idea: <code>${escapeHtml(context.originPath)}</code>.</p>
+<h2>Promoted Content</h2>
+${context.content}`), "utf8");
+  await writeFile(path.join(projectRoot, "wiki", "sources.html"), wikiLayout(context.title, "Sources", `<h1>Sources</h1>
+<h2>Source Material</h2>
+<ul>
+  <li>Promoted idea from <code>${escapeHtml(context.originProject.name)}</code>: <code>${escapeHtml(context.originPath)}</code>.</li>
+</ul>
+<h2>Generated Source Briefs</h2>
+<ul>
+  <li><a href="/wiki/sources/idea-origin.html">Idea origin</a></li>
+  <li><a href="/wiki/sources/prd.html">Product brief</a></li>
+  <li><a href="/wiki/sources/technical-brief.html">Technical brief</a></li>
+  <li><a href="/wiki/sources/design-brief.html">Design brief</a></li>
+</ul>`), "utf8");
+  await writeFile(path.join(projectRoot, "wiki", "roadmap.html"), wikiLayout(context.title, "Roadmap", `<h1>Roadmap</h1>
+<ol>
+  <li>Refine the promoted idea into concrete product goals, non-goals, and acceptance criteria.</li>
+  <li>Turn the first useful slice into an implementation unit under <a href="/wiki/plans/index.html">plans</a>.</li>
+  <li>Record validation and durable decisions in <a href="/wiki/log.html">log</a>.</li>
+</ol>`), "utf8");
+  await writeFile(path.join(projectRoot, "wiki", "plans", "index.html"), wikiLayout(context.title, "Plans", `<h1>Planning Dashboard</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: active</li>
+    <li>Shape: promoted idea planning package</li>
+    <li>Current unit: none</li>
+    <li>Next action: refine the promoted idea into the first implementation unit.</li>
+    <li>Blockers: product scope and verification path need confirmation.</li>
+    <li>Validation: project-specific checks to be defined after scope is refined.</li>
+  </ul>
+</section>
+<p>Read the <a href="/wiki/sources/idea-origin.html">idea origin</a> before planning implementation.</p>`), "utf8");
+}
+
+function promotedIdeaPage(project, title, summary, record, workspaceUrl) {
+  return wikiLayout(project.name, "Promoted Idea", `<article data-hyperwiki-promoted="true">
+  <h1>Promoted Idea</h1>
+  <p><strong>${escapeHtml(title)}</strong> was initialized as a HyperWiki project.</p>
+  <ul>
+    <li>Project: <a href="${workspaceUrl}">${escapeHtml(record.name)}</a></li>
+    <li>Root: <code>${escapeHtml(record.root)}</code></li>
+    <li>Summary: ${escapeHtml(summary)}</li>
+  </ul>
+</article>`);
+}
+
+function wikiLayout(projectName, title, body) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(title)} - ${escapeHtml(projectName)}</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">${escapeHtml(projectName)}</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/ideas/index.html">Ideas</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    ${body}
+  </main>
+</body>
+</html>
+`;
+}
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "project";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 async function htmlSummary(root, relativePath) {

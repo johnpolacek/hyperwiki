@@ -1,0 +1,91 @@
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { initHyperWiki } from "../src/init.js";
+import { startDevServer } from "../src/server.js";
+
+const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-ideas-smoke-"));
+const home = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-ideas-home-"));
+const projectsDir = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-ideas-projects-"));
+process.env.HYPERWIKI_HOME = home;
+process.env.HYPERWIKI_PROJECTS_DIR = projectsDir;
+
+await initHyperWiki(root, { yes: true, project_name: "Ideas Origin", summary: "Origin project for idea promotion." });
+await writeFile(path.join(root, "wiki", "ideas", "portable-builder.html"), `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Portable Builder - Ideas Origin</title>
+</head>
+<body>
+  <main class="wiki-page">
+    <h1>Portable Builder</h1>
+    <p>A tiny local builder that starts as an idea and becomes a project.</p>
+    <h2>Notes</h2>
+    <p>Keep the first slice small.</p>
+  </main>
+</body>
+</html>
+`);
+
+const { server, url } = await startDevServer(root, { host: "127.0.0.1", port: 0 });
+try {
+  const ideas = await json(`${url}/api/ideas`);
+  if (ideas.ideas.length !== 1 || ideas.ideas[0].title !== "Portable Builder") {
+    throw new Error(`Expected one idea, got ${JSON.stringify(ideas)}`);
+  }
+  if (!ideas.ideas[0].summary.includes("tiny local builder")) {
+    throw new Error("Expected idea summary to come from the first paragraph.");
+  }
+  if (!ideas.ideas[0].targetRoot.startsWith(projectsDir)) {
+    throw new Error(`Expected idea target preview under test projects dir, got ${ideas.ideas[0].targetRoot}`);
+  }
+
+  const blocked = await fetch(`${url}/api/ideas/promote`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ideaPath: "/wiki/plans/index.html" })
+  });
+  if (blocked.status !== 400) {
+    throw new Error(`Expected outside idea path to be rejected, got ${blocked.status}`);
+  }
+
+  const promoted = await json(`${url}/api/ideas/promote`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ideaPath: "/wiki/ideas/portable-builder.html" })
+  });
+  if (!promoted.project?.root.startsWith(projectsDir) || !promoted.workspaceUrl.includes("/workspace/")) {
+    throw new Error(`Expected promoted project under test projects dir, got ${JSON.stringify(promoted)}`);
+  }
+
+  const promotedIndex = await readFile(path.join(promoted.project.root, "wiki", "index.html"), "utf8");
+  const promotedPlan = await readFile(path.join(promoted.project.root, "wiki", "plans", "index.html"), "utf8");
+  const originIdea = await readFile(path.join(root, "wiki", "ideas", "portable-builder.html"), "utf8");
+  if (!promotedIndex.includes("Idea Snapshot") || !promotedIndex.includes("tiny local builder")) {
+    throw new Error("Expected promoted project index to include the idea snapshot.");
+  }
+  if (!promotedPlan.includes("promoted idea planning package")) {
+    throw new Error("Expected promoted project to include a planning package.");
+  }
+  if (!originIdea.includes('data-hyperwiki-promoted="true"') || !originIdea.includes(promoted.project.root)) {
+    throw new Error("Expected origin idea page to be replaced with a promoted note.");
+  }
+
+  const after = await json(`${url}/api/ideas`);
+  if (!after.ideas[0]?.promoted) {
+    throw new Error("Expected promoted idea to be marked promoted in API output.");
+  }
+} finally {
+  await new Promise((resolve) => server.close(resolve));
+}
+
+console.log("ideas smoke test passed");
+
+async function json(url, options) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${await response.text()}`);
+  }
+  return response.json();
+}

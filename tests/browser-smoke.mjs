@@ -17,6 +17,14 @@ page.on("pageerror", (error) => errors.push(error.message));
 await page.goto(url, { waitUntil: "networkidle" });
 
 await page.locator(".topbar-brand").filter({ hasText: "HyperWiki" }).waitFor();
+await page.locator("#dashboard-button").click();
+await page.locator("#dashboard-panel").evaluate((panel) => {
+  const text = panel.textContent || "";
+  if (!text.includes("Ideas") || !text.includes("Projects")) {
+    throw new Error(`Expected dashboard to include ideas and projects, got ${text}`);
+  }
+});
+await page.keyboard.press("Escape");
 await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   const path = element.getAttribute("d") || "";
   if (!path.includes("M13 5v4H8v6h5v4l7-7Z")) {
@@ -108,8 +116,8 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (getComputedStyle(document.querySelector(".topbar")).backgroundColor !== "rgb(251, 251, 250)") {
     throw new Error("Expected topbar to use the white sidebar surface");
   }
-  if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(251, 251, 250)") {
-    throw new Error("Expected wiki pane to use the white sidebar surface");
+  if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(255, 255, 255)") {
+    throw new Error("Expected wiki pane to use a white main panel surface");
   }
   const gridColumns = getComputedStyle(workspaceElement).gridTemplateColumns;
   if (!gridColumns.startsWith("300px ")) {
@@ -223,6 +231,8 @@ await page.locator("#wiki-nav").evaluate(() => {
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
 });
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Stage 07 - Agent-native Verification");
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.textContent === "Unit 01 - Verification Loop Model");
@@ -371,6 +381,7 @@ await page.waitForFunction(() =>
   document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_BOTTOM_STABILITY_OK")
 );
 const urlBeforeDrop = page.url();
+await page.locator(".terminal-tab[data-name=\"cli\"]").evaluate((tab) => tab.click());
 await page.locator(".terminal[data-name=\"cli\"]").dispatchEvent("drop", {
   dataTransfer: await page.evaluateHandle(() => {
     const dataTransfer = new DataTransfer();

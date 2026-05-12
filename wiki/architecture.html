@@ -13,6 +13,7 @@
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
       <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/ideas/index.html">Ideas</a>
       <a href="/wiki/log.html">Log</a>
       <a href="/wiki/sources.html">Sources</a>
     </nav>
@@ -24,6 +25,7 @@
 <ul>
   <li>The CLI performs repeatable filesystem operations and starts the dev runtime.</li>
   <li>The wiki is canonical repo-visible HTML.</li>
+  <li>Ideas are canonical repo-visible HTML under <code>wiki/ideas/</code> until explicitly promoted into a registered HyperWiki project.</li>
   <li>The dev runtime renders the wiki and terminal workspace but is not a hidden source of truth.</li>
   <li>A user-level registry at <code>~/.hyperwiki/projects.json</code> tracks known local HyperWiki projects for switching.</li>
   <li>Runtime state is ignored under <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code>.</li>

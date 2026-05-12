@@ -90,7 +90,7 @@ body {
 }
 
 .wiki-pane {
-  background: #fbfbfa;
+  background: #ffffff;
 }
 
 .topbar-brand {
@@ -133,6 +133,8 @@ body {
 
 .topbar-button:focus-visible,
 .project-list button:focus-visible,
+.dashboard-list button:focus-visible,
+.dashboard-list a:focus-visible,
 .settings-panel button:focus-visible,
 .wiki-nav a:focus-visible,
 .primary-nav a:focus-visible {
@@ -228,6 +230,81 @@ body {
 .project-list button:disabled {
   color: #8b9088;
   cursor: not-allowed;
+}
+
+.dashboard-panel {
+  width: min(540px, calc(100vw - 24px));
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dashboard-panel h2 {
+  margin: 0 0 8px;
+  color: #252a25;
+  font-size: 12px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dashboard-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-item {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid #dedfd8;
+  border-radius: 7px;
+  padding: 9px;
+  background: #fff;
+}
+
+.dashboard-item a,
+.dashboard-item button {
+  width: fit-content;
+  max-width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #171916;
+  cursor: pointer;
+  font: 700 12px/1.25 var(--sidebar-font);
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-item p,
+.dashboard-empty {
+  margin: 0;
+  color: #596158;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-item .promote-idea-button {
+  width: auto;
+  border: 1px solid #171916;
+  border-radius: 5px;
+  padding: 5px 7px;
+  background: #171916;
+  color: #fff;
+  font-weight: 600;
+}
+
+.dashboard-badge {
+  width: fit-content;
+  border: 1px solid #c6c8c0;
+  border-radius: 999px;
+  padding: 3px 6px;
+  color: #596158;
+  font-size: 10px;
+  line-height: 1;
 }
 
 .settings-placeholder {
