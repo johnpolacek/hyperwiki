@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { createPtySession } from "./pty.js";
-import { initHyperWiki } from "./init.js";
+import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
 
@@ -24,7 +24,7 @@ const vendorRoots = new Map([
 export async function startDevServer(root, options = {}) {
   const host = String(options.host || "127.0.0.1");
   if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
-    throw new Error("HyperWiki dev server only binds to localhost addresses.");
+    throw new Error("hyperwiki dev server only binds to localhost addresses.");
   }
   const port = options.port === 0 || options.port === "0" ? 0 : Number(options.port || 4177);
   const projectRegistry = new ProjectRegistry();
@@ -80,7 +80,7 @@ export async function startDevServer(root, options = {}) {
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
   const url = `http://${host}:${actualPort}`;
-  console.log(`HyperWiki dev server running at ${url}`);
+  console.log(`hyperwiki dev server running at ${url}`);
   return { server, host, port: actualPort, url, workspaceUrl: `${url}/workspace/` };
 }
 
@@ -305,7 +305,7 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   const currentPage = typeof body.currentPage === "string" ? body.currentPage : "/wiki/plans/index.html";
   const message = [
     "",
-    "Please handle this HyperWiki workspace request.",
+    "Please handle this hyperwiki workspace request.",
     "",
     `Project: ${project.name}`,
     `Repo root: ${project.root}`,
@@ -452,7 +452,7 @@ function guardrailSummary(root) {
     ],
     commandHistory: {
       label: "Command history boundary",
-      detail: "HyperWiki stores session metadata and terminal lifecycle state. Shell history and scrollback are runtime data unless the user exports or records them in wiki files."
+      detail: "hyperwiki stores session metadata and terminal lifecycle state. Shell history and scrollback are runtime data unless the user exports or records them in wiki files."
     },
     actions: [
       { label: "Rename", detail: "Updates retained local session metadata." },
@@ -568,11 +568,11 @@ async function promoteIdea(project, projectRegistry, body) {
   }
 
   const title = firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(relativePath);
-  const summary = ideaSummary(html) || "Promoted from a HyperWiki idea.";
+  const summary = ideaSummary(html) || "Promoted from a hyperwiki idea.";
   const content = extractMainHtml(html);
   const projectRoot = await uniqueProjectRoot(title);
   await mkdir(projectRoot, { recursive: true });
-  await initHyperWiki(projectRoot, {
+  await inithyperwiki(projectRoot, {
     yes: true,
     project_name: title,
     summary
@@ -600,7 +600,7 @@ async function createProjectFromDashboard(projectRegistry, body) {
   const summary = String(body?.summary || "").trim() || "Imported from Dashboard markdown.";
   const projectRoot = await uniqueProjectRoot(title);
   await mkdir(projectRoot, { recursive: true });
-  await initHyperWiki(projectRoot, {
+  await inithyperwiki(projectRoot, {
     yes: true,
     project_name: title,
     summary
@@ -663,7 +663,7 @@ async function writePromotedProjectPackage(projectRoot, context) {
 <h2>Status</h2>
 <ul>
   <li>Last reviewed: ${new Date().toISOString().slice(0, 10)}</li>
-  <li>Evidence basis: promoted HyperWiki idea from <code>${escapeHtml(context.originProject.name)}</code>.</li>
+  <li>Evidence basis: promoted hyperwiki idea from <code>${escapeHtml(context.originProject.name)}</code>.</li>
   <li>Confidence: medium</li>
 </ul>
 <h2>Origin</h2>
@@ -706,7 +706,7 @@ ${context.content}`), "utf8");
 function promotedIdeaPage(project, title, summary, record, workspaceUrl) {
   return wikiLayout(project.name, "Promoted Idea", `<article data-hyperwiki-promoted="true">
   <h1>Promoted Idea</h1>
-  <p><strong>${escapeHtml(title)}</strong> was initialized as a HyperWiki project.</p>
+  <p><strong>${escapeHtml(title)}</strong> was initialized as a hyperwiki project.</p>
   <ul>
     <li>Project: <a href="${workspaceUrl}">${escapeHtml(record.name)}</a></li>
     <li>Root: <code>${escapeHtml(record.root)}</code></li>

@@ -37,8 +37,8 @@ try {
     output += chunk.toString();
   });
 
-  await waitForText(() => output, "HyperWiki workspace:");
-  const workspaceMatch = output.match(/HyperWiki workspace: (http:\/\/[^\s]+)/);
+  await waitForText(() => output, "hyperwiki workspace:");
+  const workspaceMatch = output.match(/hyperwiki workspace: (http:\/\/[^\s]+)/);
   const workspaceUrl = workspaceMatch?.[1];
   if (!workspaceUrl) {
     throw new Error(`Expected workspace URL output, got: ${output}`);
@@ -52,7 +52,7 @@ try {
 
   const health = await fetch(`http://127.0.0.1:${port}/api/health`).then((response) => response.json());
   if (health.app !== "hyperwiki") {
-    throw new Error(`Expected HyperWiki health response, got ${JSON.stringify(health)}`);
+    throw new Error(`Expected hyperwiki health response, got ${JSON.stringify(health)}`);
   }
 
   const projects = await fetch(`http://127.0.0.1:${port}/api/projects`).then((response) => response.json());
@@ -82,7 +82,7 @@ try {
       HYPERWIKI_OPEN_DRY_RUN: "1"
     }
   });
-  const secondWorkspaceUrl = secondOutput.match(/HyperWiki workspace: (http:\/\/[^\s]+)/)?.[1];
+  const secondWorkspaceUrl = secondOutput.match(/hyperwiki workspace: (http:\/\/[^\s]+)/)?.[1];
   if (!secondWorkspaceUrl) {
     throw new Error(`Expected second workspace URL, got ${secondOutput}`);
   }

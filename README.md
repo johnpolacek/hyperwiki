@@ -1,8 +1,8 @@
-# HyperWiki
+# hyperwiki
 
-HyperWiki is a repo-local HTML workspace for docs-driven agentic development. It turns project docs, plans, logs, source references, terminal panels, and verification status into a local development surface.
+hyperwiki is a repo-local HTML workspace for docs-driven agentic development. It turns project docs, plans, logs, source references, terminal panels, and verification status into a local development surface.
 
-HyperWiki is early and experimental. The current package is useful for trying the workflow and reserving the `npx hyperwiki` command, but the terminal and agent-integration surfaces are still MVP-grade.
+hyperwiki is early and experimental. The current package is useful for trying the workflow and reserving the `npx hyperwiki` command, but the terminal and agent-integration surfaces are still MVP-grade.
 
 ## Usage
 
@@ -12,13 +12,13 @@ Initialize a wiki in a project:
 npx hyperwiki init --yes
 ```
 
-Launch the local workspace from any HyperWiki project:
+Launch the local workspace from any hyperwiki project:
 
 ```bash
 npx hyperwiki
 ```
 
-The command registers the current HyperWiki-initialized project in your user-level project registry, starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
+The command registers the current hyperwiki-initialized project in your user-level project registry, starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
 
 ```text
 http://127.0.0.1:4177
@@ -55,7 +55,7 @@ Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` s
 
 ## Current Status
 
-The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, WebSocket PTY transport for terminal panels, and multi-project switching through a user-level registry. Refresh restores active retained terminal tabs plus required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; HyperWiki does not write terminal state into repo-visible wiki files automatically.
+The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, WebSocket PTY transport for terminal panels, and multi-project switching through a user-level registry. Refresh restores active retained terminal tabs plus required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; hyperwiki does not write terminal state into repo-visible wiki files automatically.
 
 Local verification:
 

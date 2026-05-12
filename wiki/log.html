@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Log - HyperWiki</title>
+  <title>Log - hyperwiki</title>
   <link rel="stylesheet" href="/assets/wiki.css">
 </head>
 <body>
   <header class="wiki-header">
-    <a href="/wiki/index.html">HyperWiki</a>
+    <a href="/wiki/index.html">hyperwiki</a>
     <nav>
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
@@ -42,8 +42,8 @@
   <h2>2026-05-11 implementation | idea incubation and promotion</h2>
   <ul>
     <li>Added <code>wiki/ideas/</code> as a free-form idea incubation area and added Ideas to wiki/workspace navigation.</li>
-    <li>Added a HyperWiki Dashboard that shows ideas and registered projects together.</li>
-    <li>Added local idea promotion: an idea can be initialized as a new HyperWiki project under <code>~/Projects</code>, seeded with a planning package, registered, and replaced by a promoted origin note.</li>
+    <li>Added a hyperwiki Dashboard that shows ideas and registered projects together.</li>
+    <li>Added local idea promotion: an idea can be initialized as a new hyperwiki project under <code>~/Projects</code>, seeded with a planning package, registered, and replaced by a promoted origin note.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:ideas</code>, <code>pnpm run smoke:launch</code>, and browser workspace smoke against an isolated dry-run server.</li>
   </ul>
 </article>
@@ -91,7 +91,7 @@
   <h2>2026-05-11 correction | terminal file drops</h2>
   <ul>
     <li>Dogfood finding: dropping an image onto a wterm opened the browser's default file navigation instead of adding the image to the terminal prompt context.</li>
-    <li>Changed terminal drops to stay inside HyperWiki, copy dropped files into ignored <code>.hyperwiki/state/drops/</code>, and insert the saved local path into the target terminal.</li>
+    <li>Changed terminal drops to stay inside hyperwiki, copy dropped files into ignored <code>.hyperwiki/state/drops/</code>, and insert the saved local path into the target terminal.</li>
   </ul>
 </article>
 <article>
@@ -154,7 +154,7 @@
 <article>
   <h2>2026-05-11 planning | product soul and memory</h2>
   <ul>
-    <li>Added separate non-MVP product direction plans for HyperWiki's overall soul and memory model.</li>
+    <li>Added separate non-MVP product direction plans for hyperwiki's overall soul and memory model.</li>
     <li>Decision: soul is an overall product taste layer for language, defaults, interface behavior, and agent interactions, not a mascot or marketing surface.</li>
     <li>Decision: memory must distinguish per-project memory, overall user-level memory, and runtime session memory before any persistent write path is implemented.</li>
   </ul>
@@ -163,14 +163,14 @@
   <h2>2026-05-11 planning | agent-native verification stage</h2>
   <ul>
     <li>Added Stage 07 to translate the Software 3.0 product review into executable MVP work.</li>
-    <li>Decision: verification loops become a first-class HyperWiki product primitive before broad MCP implementation.</li>
+    <li>Decision: verification loops become a first-class hyperwiki product primitive before broad MCP implementation.</li>
     <li>Decision: structured MCP surfaces should expose project contracts, current plans, source context, verification loops, guardrails, and controlled prompt submission while preserving repo-local wiki and Git as durable truth.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-11 implementation | animated sidebar brand mark</h2>
   <ul>
-    <li>Added a subtle CSS-only animated dot grid beside the HyperWiki sidebar wordmark.</li>
+    <li>Added a subtle CSS-only animated dot grid beside the hyperwiki sidebar wordmark.</li>
     <li>Kept the indicator decorative, dependency-free, and disabled under reduced-motion preferences.</li>
   </ul>
 </article>
@@ -179,7 +179,7 @@
   <ul>
     <li>Added a sidebar plan prompt that appears when an agent session exists.</li>
     <li>Prompt submissions are written into the visible agent terminal with project and current wiki page context.</li>
-    <li>Kept the feature runtime-only: HyperWiki does not store a separate chat transcript or edit wiki files directly.</li>
+    <li>Kept the feature runtime-only: hyperwiki does not store a separate chat transcript or edit wiki files directly.</li>
   </ul>
 </article>
 <article>
@@ -187,7 +187,7 @@
   <ul>
     <li>Reduced duplicated sidebar metadata to a compact next-action status.</li>
     <li>Suppressed standalone wiki headers when pages are embedded in the workspace iframe.</li>
-    <li>Added per-pane terminal headers and removed the HyperWiki dogfood dev panel that conflicted with the already-running launch server.</li>
+    <li>Added per-pane terminal headers and removed the hyperwiki dogfood dev panel that conflicted with the already-running launch server.</li>
   </ul>
 </article>
 <article>
@@ -202,13 +202,13 @@
   <ul>
     <li>Dogfood finding: after a reset, fresh project initialization could inherit this repo's <code>codex --yolo</code> command without explicit user choice.</li>
     <li>Changed initialization so new projects leave <code>agent.launchCommand</code> empty unless <code>--agent-launch-command</code> is provided.</li>
-    <li>Existing configured projects, including HyperWiki itself, still launch their configured agent panel.</li>
+    <li>Existing configured projects, including hyperwiki itself, still launch their configured agent panel.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-10 implementation | safe reset command</h2>
   <ul>
-    <li>Added <code>npx hyperwiki reset</code> to clear the user-level project registry and ignored runtime/session state for HyperWiki-initialized projects.</li>
+    <li>Added <code>npx hyperwiki reset</code> to clear the user-level project registry and ignored runtime/session state for hyperwiki-initialized projects.</li>
     <li>Added <code>npx hyperwiki reset --dry-run</code> to preview reset scope.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:reset</code>, and <code>pnpm run smoke:launch</code>.</li>
   </ul>
@@ -250,7 +250,7 @@
   <h2>2026-05-10 implementation | multi-project workspace</h2>
   <ul>
     <li>Added a user-level project registry at <code>~/.hyperwiki/projects.json</code> with <code>HYPERWIKI_HOME</code> support for isolated tests.</li>
-    <li><code>npx hyperwiki</code> now registers HyperWiki-initialized repos and opens the active project URL.</li>
+    <li><code>npx hyperwiki</code> now registers hyperwiki-initialized repos and opens the active project URL.</li>
     <li>Added project-scoped APIs, project-scoped wiki routes, and project-scoped PTY/session routing while keeping per-project runtime state under each repo's <code>.hyperwiki/</code>.</li>
     <li>Added a collapsible project sidebar that remains hidden for a single registered project and appears once multiple projects exist.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
@@ -261,13 +261,13 @@
   <ul>
     <li>Added Stage 05 for user-level project registration, project-scoped runtime APIs, and a collapsible project switcher.</li>
     <li>Decision: single-project use stays visually unchanged until at least two projects are registered.</li>
-    <li>Decision: projects are added by launching <code>npx hyperwiki</code> from HyperWiki-initialized repos.</li>
+    <li>Decision: projects are added by launching <code>npx hyperwiki</code> from hyperwiki-initialized repos.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-10 correction | dogfood launch command parity</h2>
   <ul>
-    <li>Removed the HyperWiki-only <code>pnpm run launch</code> shortcut so dogfooding uses the same command path as normal initialized projects.</li>
+    <li>Removed the hyperwiki-only <code>pnpm run launch</code> shortcut so dogfooding uses the same command path as normal initialized projects.</li>
     <li>The canonical launch command is now <code>npx hyperwiki</code>, with <code>npx hyperwiki launch</code> available as the explicit subcommand.</li>
   </ul>
 </article>
@@ -374,7 +374,7 @@
   <h2>2026-05-10 implementation | dogfood operating layout</h2>
   <ul>
     <li>Added config-driven default terminal panels for shell, checks, dev server, git, and agent workflows.</li>
-    <li>Configured the HyperWiki dogfood repo with command presets for checks, dev server, and git status.</li>
+    <li>Configured the hyperwiki dogfood repo with command presets for checks, dev server, and git status.</li>
     <li>Updated workspace restore behavior to merge retained sessions with required layout panels.</li>
     <li>Extended browser smoke coverage to verify the dogfood operating layout and layout API.</li>
   </ul>
@@ -400,7 +400,7 @@
 <article>
   <h2>2026-05-10 implementation | init template quality and dogfood reset</h2>
   <ul>
-    <li>Reworked <code>hyperwiki init</code> templates to use project-specific repository evidence instead of HyperWiki-specific product copy.</li>
+    <li>Reworked <code>hyperwiki init</code> templates to use project-specific repository evidence instead of hyperwiki-specific product copy.</li>
     <li>Added package-script, README, Git branch, Git root, and manifest evidence to generated wiki pages and source briefs.</li>
     <li>Added <code>npm run smoke:init</code> and verified a clean generated dogfood wiki with browser smoke.</li>
     <li>Completed Stage 02 and advanced the current unit to Stage 03 Unit 01 - True PTY Compatibility.</li>

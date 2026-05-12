@@ -7,12 +7,12 @@ Always use `pnpm` for package management and package scripts in this repository.
 Prefer the `agent-browser` CLI for browser automation and visual checks before falling back to Playwright.
 
 <!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
-## HyperWiki Agent Guide
+## hyperwiki Agent Guide
 
 ### Project Wiki
 
 - Read `wiki/index.html` before answering project-specific questions or making structural changes.
-- HyperWiki intentionally adapts the project-wiki workflow to an HTML-first wiki. Durable project knowledge, plans, decisions, and project-context history live under `wiki/` as HTML.
+- hyperwiki intentionally adapts the project-wiki workflow to an HTML-first wiki. Durable project knowledge, plans, decisions, and project-context history live under `wiki/` as HTML.
 - Use `wiki/sources.html` as the source index.
 - Create or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
 - Do not create plans for small, local, reversible fixes that do not change product behavior, architecture, schema, dependencies, build configuration, public APIs, security posture, or durable project direction.

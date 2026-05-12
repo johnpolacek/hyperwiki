@@ -34,7 +34,7 @@ const pages = new Map([
   ["wiki/sources/design-brief.html", designBriefPage]
 ]);
 
-export async function initHyperWiki(root, options = {}) {
+export async function inithyperwiki(root, options = {}) {
   const context = await inspectProject(root, options);
   await mkdir(path.join(root, ".hyperwiki", "state"), { recursive: true });
   await mkdir(path.join(root, ".hyperwiki", "sessions"), { recursive: true });
@@ -60,7 +60,7 @@ export async function initHyperWiki(root, options = {}) {
     await writeIfSafe(path.join(root, relativePath), render(context), options);
   }
 
-  console.log(`Initialized HyperWiki for ${context.projectName}`);
+  console.log(`Initialized hyperwiki for ${context.projectName}`);
   console.log("Run: npx hyperwiki");
 }
 
@@ -238,7 +238,7 @@ function sourcesPage(context) {
 
 function ideasIndexPage(context) {
   return layout(context, "Ideas", `<h1>Ideas</h1>
-<p>Use this area for free-form concepts that are not full projects yet. When an idea is ready, initialize it as a HyperWiki project from the workspace dashboard.</p>
+<p>Use this area for free-form concepts that are not full projects yet. When an idea is ready, initialize it as a hyperwiki project from the workspace dashboard.</p>
 <section class="summary">
   <h2>Summary</h2>
   <ul>
@@ -279,7 +279,7 @@ function devPage(context) {
   return layout(context, "Development", `<h1>Development</h1>
 <h2>Commands</h2>
 <pre><code>${commands.map(escapeHtml).join("\n")}</code></pre>
-<h2>HyperWiki</h2>
+<h2>hyperwiki</h2>
 <pre><code>npx hyperwiki</code></pre>
 <h2>Workflow</h2>
 <p>Plan meaningful work in <a href="/wiki/plans/index.html">plans</a>, keep source truth in repo files and Git, and use the dev workspace to inspect wiki pages and terminal sessions.</p>`);

@@ -17,7 +17,7 @@ page.on("pageerror", (error) => errors.push(error.message));
 
 await page.goto(url, { waitUntil: "networkidle" });
 
-await page.locator(".topbar-brand").filter({ hasText: "HyperWiki" }).waitFor();
+await page.locator(".topbar-brand").filter({ hasText: "hyperwiki" }).waitFor();
 await page.locator("#dashboard-button").click();
 await page.waitForURL(dashboardUrl);
 await page.locator("#dashboard-page").evaluate((panel) => {
@@ -68,7 +68,7 @@ for (const expected of ["agent", "cli"]) {
   }
 }
 if (initialTabs.some((tab) => tab.includes("dev"))) {
-  throw new Error("Expected HyperWiki dogfood layout to omit the conflicting dev panel");
+  throw new Error("Expected hyperwiki dogfood layout to omit the conflicting dev panel");
 }
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
@@ -561,7 +561,7 @@ if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);
 }
 if (workspaceData.layout.panels.some((panel) => panel.name === "dev")) {
-  throw new Error("Expected HyperWiki dogfood layout to omit dev panel");
+  throw new Error("Expected hyperwiki dogfood layout to omit dev panel");
 }
 if (!workspaceData.layout.panels.some((panel) => panel.name === "agent" && panel.command)) {
   throw new Error("Expected workspace layout to include configured agent panel");

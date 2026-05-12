@@ -2,21 +2,21 @@ import { execFile } from "node:child_process";
 import { ProjectRegistry } from "./projects.js";
 import { startDevServer } from "./server.js";
 
-export async function launchHyperWiki(root, options = {}) {
+export async function launchhyperwiki(root, options = {}) {
   const host = String(options.host || "127.0.0.1");
   const port = Number(options.port || 4177);
   const registry = new ProjectRegistry();
   const project = await registry.register(root);
   const baseUrl = `http://${host}:${port}`;
   const workspaceUrl = `${baseUrl}${workspacePath(project)}`;
-  const existing = await existingHyperWiki(baseUrl);
+  const existing = await existinghyperwiki(baseUrl);
   const serverInfo = existing ? null : await startDevServer(root, { host, port, projectId: project.id });
 
   await waitForWorkspace(workspaceUrl);
   const opened = options.open === false ? false : await openWorkspace(workspaceUrl, options);
-  console.log(`HyperWiki workspace: ${workspaceUrl}`);
+  console.log(`hyperwiki workspace: ${workspaceUrl}`);
   if (existing) {
-    console.log("Attached to existing HyperWiki server.");
+    console.log("Attached to existing hyperwiki server.");
   }
   if (!opened && options.open !== false) {
     console.log("Browser open skipped; open the workspace URL manually.");
@@ -36,7 +36,7 @@ function workspacePath(project) {
   return `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}`;
 }
 
-async function existingHyperWiki(baseUrl) {
+async function existinghyperwiki(baseUrl) {
   try {
     const response = await fetch(`${baseUrl}/api/health`, { signal: AbortSignal.timeout(500) });
     if (!response.ok) {

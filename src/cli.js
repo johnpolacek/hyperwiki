@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { initHyperWiki } from "./init.js";
-import { launchHyperWiki } from "./launch.js";
-import { resetHyperWiki } from "./reset.js";
+import { inithyperwiki } from "./init.js";
+import { launchhyperwiki } from "./launch.js";
+import { resethyperwiki } from "./reset.js";
 import { startDevServer } from "./server.js";
 
 const rawCommand = process.argv[2];
@@ -10,11 +10,11 @@ const args = process.argv.slice(command === rawCommand ? 3 : 2);
 
 try {
   if (command === "init") {
-    await initHyperWiki(process.cwd(), parseArgs(args));
+    await inithyperwiki(process.cwd(), parseArgs(args));
   } else if (command === "launch") {
-    await launchHyperWiki(process.cwd(), launchOptions(parseArgs(args)));
+    await launchhyperwiki(process.cwd(), launchOptions(parseArgs(args)));
   } else if (command === "reset") {
-    await resetHyperWiki(process.cwd(), parseArgs(args));
+    await resethyperwiki(process.cwd(), parseArgs(args));
   } else if (command === "dev") {
     await startDevServer(process.cwd(), parseArgs(args));
   } else if (command === "help" || command === "--help" || command === "-h") {
@@ -59,7 +59,7 @@ function launchOptions(options) {
 }
 
 function printHelp() {
-  console.log(`HyperWiki
+  console.log(`hyperwiki
 
 Usage:
   npx hyperwiki
@@ -69,9 +69,9 @@ Usage:
   npx hyperwiki launch [--host 127.0.0.1] [--port 4177] [--no-open]
 
 Commands:
-  init     Scaffold an HTML-first repo-local wiki and HyperWiki config.
+  init     Scaffold an HTML-first repo-local wiki and hyperwiki config.
   reset    Clear user registry and ignored local runtime state without touching wiki or config files.
-  dev      Start the local-only HyperWiki workspace with wiki and terminal panels.
-  launch   Start or attach to HyperWiki, open the browser workspace, and restore wterm panels.
+  dev      Start the local-only hyperwiki workspace with wiki and terminal panels.
+  launch   Start or attach to hyperwiki, open the browser workspace, and restore wterm panels.
 `);
 }

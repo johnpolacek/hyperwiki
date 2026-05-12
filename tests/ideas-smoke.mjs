@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initHyperWiki } from "../src/init.js";
+import { inithyperwiki } from "../src/init.js";
 import { startDevServer } from "../src/server.js";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-ideas-smoke-"));
@@ -10,7 +10,7 @@ const projectsDir = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-ideas-projec
 process.env.HYPERWIKI_HOME = home;
 process.env.HYPERWIKI_PROJECTS_DIR = projectsDir;
 
-await initHyperWiki(root, { yes: true, project_name: "Ideas Origin", summary: "Origin project for idea promotion." });
+await inithyperwiki(root, { yes: true, project_name: "Ideas Origin", summary: "Origin project for idea promotion." });
 await writeFile(path.join(root, "wiki", "ideas", "portable-builder.html"), `<!doctype html>
 <html lang="en">
 <head>

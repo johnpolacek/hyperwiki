@@ -13,7 +13,7 @@ export class ProjectRegistry {
   async register(root) {
     const project = await projectFromRoot(root);
     if (!project.available) {
-      throw new Error("HyperWiki project not found. Run `npx hyperwiki init` in this repo first.");
+      throw new Error("hyperwiki project not found. Run `npx hyperwiki init` in this repo first.");
     }
     const registry = await this.#read();
     const existing = registry.projects.find((item) => samePath(item.root, project.root));
@@ -85,7 +85,7 @@ export class ProjectRegistry {
       ? registry.projects.find((item) => item.id === id)
       : fallback || registry.projects[0];
     if (!record) {
-      throw new Error("No HyperWiki projects are registered.");
+      throw new Error("No hyperwiki projects are registered.");
     }
     const project = await projectFromRoot(record.root);
     if (!project.available) {

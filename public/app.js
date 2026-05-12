@@ -513,7 +513,7 @@ async function promoteIdea(ideaPath, title, button, targetRoot = "") {
   const projectName = title || "this idea";
   const target = targetRoot || await targetRootForIdea(ideaPath);
   const targetLine = target ? `\n\nTarget: ${target}` : "";
-  if (!window.confirm(`Initialize "${projectName}" as a HyperWiki project?${targetLine}`)) {
+  if (!window.confirm(`Initialize "${projectName}" as a hyperwiki project?${targetLine}`)) {
     return;
   }
   button.disabled = true;
@@ -565,7 +565,7 @@ async function handOffIdeaMarkdown() {
     setDashboardStatus("Starting agent for idea import...");
     const slug = slugify(title);
     const prompt = [
-      "Create a new HyperWiki idea page from this markdown.",
+      "Create a new hyperwiki idea page from this markdown.",
       "",
       `Title: ${title}`,
       `Required output path: wiki/ideas/${slug}.html`,
@@ -576,7 +576,7 @@ async function handOffIdeaMarkdown() {
       "- Preserve the user's intent from the markdown, but shape it into a useful durable idea page.",
       "- If the markdown is ambiguous enough that a Q&A would materially improve the page, ask concise questions in this terminal before writing.",
       "- Do not initialize this idea as a project yet; the idea page should keep its own Initialize as project action.",
-      "- After writing, run the relevant HyperWiki checks and summarize the created path.",
+      "- After writing, run the relevant hyperwiki checks and summarize the created path.",
       "",
       "Markdown:",
       "```markdown",
@@ -614,7 +614,7 @@ async function createProjectFromMarkdown() {
     await showDashboardPage({ replace: true });
     setDashboardStatus("Starting agent in the new project...");
     const prompt = [
-      "Turn this markdown into the initial HyperWiki project pages.",
+      "Turn this markdown into the initial hyperwiki project pages.",
       "",
       `Project: ${title}`,
       `Repo root: ${result.project.root}`,
@@ -624,7 +624,7 @@ async function createProjectFromMarkdown() {
       "- Update the project wiki pages as if the user had typed this brief directly to you.",
       "- Create or revise source briefs, roadmap, and planning pages only where the markdown supports durable project context.",
       "- Ask concise Q&A in this terminal if the markdown lacks critical product, technical, or validation decisions.",
-      "- Keep the project locally grounded and run relevant HyperWiki checks before finishing.",
+      "- Keep the project locally grounded and run relevant hyperwiki checks before finishing.",
       "",
       "Markdown:",
       "```markdown",

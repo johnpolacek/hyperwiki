@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Technical Brief - HyperWiki</title>
+  <title>Technical Brief - hyperwiki</title>
   <link rel="stylesheet" href="/assets/wiki.css">
 </head>
 <body>
   <header class="wiki-header">
-    <a href="/wiki/index.html">HyperWiki</a>
+    <a href="/wiki/index.html">hyperwiki</a>
     <nav>
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
@@ -35,7 +35,7 @@
   <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
   <li>Local-only server binding by default.</li>
   <li><code>hyperwiki launch</code> is the primary startup command. Bare <code>hyperwiki</code> also launches the local workspace by default; <code>hyperwiki dev</code> remains the lower-level server-only command.</li>
-  <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only HyperWiki-initialized repos are eligible in v1.</li>
+  <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only hyperwiki-initialized repos are eligible in v1.</li>
   <li>The project switcher stays hidden until more than one project is registered.</li>
   <li>Agent startup is project-configured through <code>agent.launchCommand</code>. When set, the agent terminal is first; when absent, no agent terminal is shown.</li>
   <li>Default launch panels are agent, dev, and CLI, omitting unavailable agent/dev panels.</li>

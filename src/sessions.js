@@ -84,7 +84,7 @@ export class SessionRegistry {
     return {
       exportedAt: new Date().toISOString(),
       boundary: "runtime-only",
-      note: "This export is returned to the caller. HyperWiki does not write terminal runtime state into repo-visible wiki files automatically.",
+      note: "This export is returned to the caller. hyperwiki does not write terminal runtime state into repo-visible wiki files automatically.",
       session
     };
   }

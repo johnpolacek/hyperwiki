@@ -40,7 +40,7 @@ try {
   }
 
   const resetOutput = await runCli(["reset"], { cwd: root, env: { ...process.env, HYPERWIKI_HOME: home } });
-  if (!resetOutput.includes("HyperWiki local state reset complete.")) {
+  if (!resetOutput.includes("hyperwiki local state reset complete.")) {
     throw new Error(`Expected reset completion output, got ${resetOutput}`);
   }
   if (existsSync(path.join(home, "projects.json"))) {
@@ -55,7 +55,7 @@ try {
   }
   const unsafeState = await readFile(path.join(unsafeRoot, ".hyperwiki", "state", "danger.json"), "utf8");
   if (unsafeState !== "runtime\n") {
-    throw new Error("Expected reset to ignore non-HyperWiki registered roots.");
+    throw new Error("Expected reset to ignore non-hyperwiki registered roots.");
   }
 } finally {
   await rm(root, { recursive: true, force: true });

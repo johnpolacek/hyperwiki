@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Architecture - HyperWiki</title>
+  <title>Architecture - hyperwiki</title>
   <link rel="stylesheet" href="/assets/wiki.css">
 </head>
 <body>
   <header class="wiki-header">
-    <a href="/wiki/index.html">HyperWiki</a>
+    <a href="/wiki/index.html">hyperwiki</a>
     <nav>
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
@@ -20,14 +20,14 @@
   </header>
   <main class="wiki-page">
     <h1>Architecture</h1>
-<p>HyperWiki is a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
+<p>hyperwiki is a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
 <h2>Boundaries</h2>
 <ul>
   <li>The CLI performs repeatable filesystem operations and starts the dev runtime.</li>
   <li>The wiki is canonical repo-visible HTML.</li>
-  <li>Ideas are canonical repo-visible HTML under <code>wiki/ideas/</code> until explicitly promoted into a registered HyperWiki project.</li>
+  <li>Ideas are canonical repo-visible HTML under <code>wiki/ideas/</code> until explicitly promoted into a registered hyperwiki project.</li>
   <li>The dev runtime renders the wiki and terminal workspace but is not a hidden source of truth.</li>
-  <li>A user-level registry at <code>~/.hyperwiki/projects.json</code> tracks known local HyperWiki projects for switching.</li>
+  <li>A user-level registry at <code>~/.hyperwiki/projects.json</code> tracks known local hyperwiki projects for switching.</li>
   <li>Runtime state is ignored under <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code>.</li>
   <li>Multi-project runtime APIs resolve project roots through the registry, but each project's wiki, Git status, and terminal sessions remain isolated to that project root.</li>
   <li>The workspace exposes local-only mode, canonical wiki/Git truth, ignored runtime state, session metadata, command history boundaries, and export/prune actions through the guardrails UI and <code>/api/guardrails</code>.</li>

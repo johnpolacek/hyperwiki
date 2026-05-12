@@ -3,7 +3,7 @@ import { readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { ProjectRegistry, projectFromRoot } from "./projects.js";
 
-export async function resetHyperWiki(root, options = {}) {
+export async function resethyperwiki(root, options = {}) {
   const dryRun = Boolean(options.dry_run || options.dryRun);
   const registry = new ProjectRegistry();
   const registryData = await registry.readRaw();
@@ -26,7 +26,7 @@ export async function resetHyperWiki(root, options = {}) {
     }
   }
 
-  console.log(dryRun ? "HyperWiki reset dry run complete." : "HyperWiki local state reset complete.");
+  console.log(dryRun ? "hyperwiki reset dry run complete." : "hyperwiki local state reset complete.");
 }
 
 async function resetTargets(root, registeredProjects) {

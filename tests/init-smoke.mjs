@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initHyperWiki } from "../src/init.js";
+import { inithyperwiki } from "../src/init.js";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-init-smoke-"));
 const agentRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-init-agent-smoke-"));
@@ -19,7 +19,7 @@ await writeFile(
 );
 await writeFile(path.join(root, "README.md"), "# Sample Product\n");
 
-await initHyperWiki(root, { yes: true });
+await inithyperwiki(root, { yes: true });
 
 const index = await readFile(path.join(root, "wiki", "index.html"), "utf8");
 const dev = await readFile(path.join(root, "wiki", "dev.html"), "utf8");
@@ -39,7 +39,7 @@ if (!dev.includes("pnpm run dev") || !dev.includes("pnpm run test")) {
   throw new Error("Generated dev page did not include package scripts.");
 }
 if (!dev.includes("npx hyperwiki")) {
-  throw new Error("Generated dev page did not include the default HyperWiki launch command.");
+  throw new Error("Generated dev page did not include the default hyperwiki launch command.");
 }
 if (!generatedStage.includes("unit-01-confirm-project-direction.html")) {
   throw new Error("Generated stage page did not link to unit pages.");
@@ -50,8 +50,8 @@ if (!generatedUnit.includes("<h1>Unit 01 - Confirm Project Direction</h1>")) {
 if (!ideas.includes("<h1>Ideas</h1>") || !ideas.includes("free-form concepts")) {
   throw new Error("Generated wiki did not include the idea incubation page.");
 }
-if (prd.includes("HyperWiki turns repo-local project docs")) {
-  throw new Error("Generated PRD still contains HyperWiki-specific product copy.");
+if (prd.includes("hyperwiki turns repo-local project docs")) {
+  throw new Error("Generated PRD still contains hyperwiki-specific product copy.");
 }
 if (config.agent.launchCommand !== "") {
   throw new Error(`Expected fresh init to leave agent launch command empty, got ${config.agent.launchCommand}`);
@@ -60,7 +60,7 @@ if (config.layout.panels.some((panel) => panel.name === "agent")) {
   throw new Error("Expected fresh init to omit the agent panel until an agent command is configured.");
 }
 
-await initHyperWiki(agentRoot, { yes: true, agent_launch_command: "custom-agent --workspace" });
+await inithyperwiki(agentRoot, { yes: true, agent_launch_command: "custom-agent --workspace" });
 const agentConfig = JSON.parse(await readFile(path.join(agentRoot, ".hyperwiki", "config.json"), "utf8"));
 if (agentConfig.agent.launchCommand !== "custom-agent --workspace") {
   throw new Error("Expected explicit agent launch command to be written to config.");
