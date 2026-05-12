@@ -201,6 +201,18 @@ body {
   }
 }
 
+@keyframes dashboard-panel-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 .project-list {
   display: grid;
   gap: 4px;
@@ -233,18 +245,60 @@ body {
 }
 
 .dashboard-panel {
-  width: min(540px, calc(100vw - 24px));
+  left: 50%;
+  right: auto;
+  width: min(900px, calc(100vw - 24px));
+  max-height: min(640px, calc(100vh - 76px));
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+  padding: 14px;
+  transform: translateX(-50%);
+  transform-origin: top center;
+  animation-name: dashboard-panel-enter;
 }
 
-.dashboard-panel h2 {
-  margin: 0 0 8px;
+.dashboard-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #dedfd8;
+  padding-bottom: 11px;
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  color: #252a25;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #596158;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.dashboard-column {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.dashboard-column h3 {
+  margin: 0;
   color: #252a25;
   font-size: 12px;
   line-height: 1.2;
   text-transform: uppercase;
+}
+
+.dashboard-panel[hidden] {
+  display: none;
 }
 
 .dashboard-list {
@@ -1057,6 +1111,15 @@ body {
 
   .wiki-nav-group {
     min-width: 150px;
+  }
+
+  .dashboard-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    display: grid;
+    gap: 4px;
   }
 
   .wiki-pane {

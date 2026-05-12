@@ -293,15 +293,18 @@ async function loadProjects() {
 }
 
 async function loadDashboard() {
-  try {
-    const [ideasData, projectsData] = await Promise.all([
-      api(projectPath("/api/ideas")),
-      api(projectPath("/api/projects"))
-    ]);
-    renderDashboardIdeas(ideasData.ideas || []);
-    renderDashboardProjects(projectsData.projects || []);
-  } catch {
+  const [ideasResult, projectsResult] = await Promise.allSettled([
+    api(projectPath("/api/ideas")),
+    api(projectPath("/api/projects"))
+  ]);
+  if (ideasResult.status === "fulfilled") {
+    renderDashboardIdeas(ideasResult.value.ideas || []);
+  } else {
     dashboardIdeas.replaceChildren(emptyDashboardItem("Ideas unavailable"));
+  }
+  if (projectsResult.status === "fulfilled") {
+    renderDashboardProjects(projectsResult.value.projects || []);
+  } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("Projects unavailable"));
   }
 }
@@ -478,7 +481,6 @@ function groupWikiPages(pages) {
   );
   const groups = [
     planTree,
-    renderNavGroup("Ideas", pages.filter((page) => page.path.includes("/wiki/ideas/")), false),
     renderNavGroup("Project", projectPages, false)
   ];
   return groups.filter(Boolean);
