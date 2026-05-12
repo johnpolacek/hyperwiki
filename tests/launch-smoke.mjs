@@ -67,6 +67,11 @@ try {
   if (initialTerminals !== 0) {
     throw new Error(`Expected launch to start with no terminals, got ${initialTerminals}`);
   }
+  await page.locator(".terminal-pane").evaluate((pane) => {
+    if (getComputedStyle(pane).display === "none" || !pane.textContent.includes("new agent") || !pane.textContent.includes("new cli")) {
+      throw new Error(`Expected visible terminal controls before Execute, got ${pane.textContent}`);
+    }
+  });
   const singleProjectToggle = await page.locator("#project-toggle").evaluate((element) => element.hidden);
   if (!singleProjectToggle) {
     throw new Error("Expected project topbar action to stay hidden for a single registered project.");

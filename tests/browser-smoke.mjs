@@ -40,8 +40,8 @@ await page.evaluate(() => {
   if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
     throw new Error("Expected Dashboard to be a workspace page mode.");
   }
-  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
-    throw new Error("Expected terminal pane to be hidden before a Dashboard agent handoff.");
+  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display === "none") {
+    throw new Error("Expected terminal pane chrome to stay visible before a Dashboard agent handoff.");
   }
 });
 await page.evaluate(() => {
@@ -61,8 +61,11 @@ if (initialTerminalCount !== 0) {
   throw new Error(`Expected no terminals before Execute, got ${initialTerminalCount}`);
 }
 await page.locator(".terminal-pane").evaluate((pane) => {
-  if (getComputedStyle(pane).display !== "none") {
-    throw new Error("Expected terminal pane to stay hidden before Execute.");
+  if (getComputedStyle(pane).display === "none") {
+    throw new Error("Expected terminal pane chrome before Execute.");
+  }
+  if (!pane.textContent.includes("new agent") || !pane.textContent.includes("new cli") || !pane.textContent.includes("No terminals running")) {
+    throw new Error(`Expected terminal chrome with empty state before Execute, got ${pane.textContent}`);
   }
 });
 await page.locator(".terminal-toolbar").evaluate((toolbar) => {

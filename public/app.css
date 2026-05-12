@@ -73,14 +73,6 @@ body {
   grid-template-columns: 300px minmax(360px, 1fr) minmax(360px, 0.9fr);
 }
 
-.workspace:not(.terminal-active) {
-  grid-template-columns: 300px minmax(0, 1fr);
-}
-
-.workspace:not(.terminal-active) .terminal-pane {
-  display: none;
-}
-
 .topbar,
 .sidebar,
 .wiki-pane,
@@ -260,10 +252,6 @@ body {
 
 .workspace.dashboard-mode:not(.dashboard-agent-active) {
   grid-template-columns: 300px minmax(0, 1fr);
-}
-
-.workspace.dashboard-mode:not(.dashboard-agent-active) .terminal-pane {
-  display: none;
 }
 
 .dashboard-page {
@@ -1383,6 +1371,18 @@ body {
   gap: 1px;
   min-height: 0;
   overflow: auto;
+}
+
+.terminal-empty {
+  align-self: center;
+  justify-self: center;
+  margin: 0;
+  color: #abb5ad;
+  font: 12px/1.4 var(--mono-font);
+}
+
+.workspace.terminal-active .terminal-empty {
+  display: none;
 }
 
 .terminal-panel {
