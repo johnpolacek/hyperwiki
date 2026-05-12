@@ -1373,6 +1373,10 @@ body {
   overflow: auto;
 }
 
+.workspace:not(.terminal-active) .terminals {
+  background: transparent;
+}
+
 .terminal-empty {
   align-self: center;
   justify-self: center;
