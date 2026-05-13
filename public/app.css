@@ -362,6 +362,27 @@ body {
   resize: vertical;
 }
 
+.dashboard-import-separator {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: #8b9088;
+  font: 800 11px/1 var(--sidebar-font);
+  letter-spacing: 0;
+}
+
+.dashboard-import-separator::before,
+.dashboard-import-separator::after {
+  content: "";
+  height: 1px;
+  background: #d8d8d0;
+}
+
+.dashboard-import-separator span {
+  white-space: nowrap;
+}
+
 .dashboard-file-row {
   display: flex;
   align-items: end;
@@ -376,6 +397,30 @@ body {
 .dashboard-file-input input {
   padding: 7px;
   font-size: 11px;
+}
+
+.dashboard-import-button {
+  justify-items: center;
+  border: 1px solid #20231f;
+  border-radius: 8px;
+  padding: 18px;
+  background: #20231f;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.dashboard-import-button span {
+  color: inherit;
+  font-size: 13px;
+}
+
+.dashboard-import-button input {
+  max-width: 100%;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
 }
 
 .dashboard-action-form button {

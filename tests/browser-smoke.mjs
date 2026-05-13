@@ -1,8 +1,14 @@
 import { chromium } from "playwright";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
 const origin = new URL(url).origin;
 const dashboardUrl = `${origin}/dashboard`;
+const tempRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-browser-smoke-"));
+const ideaHtmlPath = path.join(tempRoot, "imported-idea.html");
+await writeFile(ideaHtmlPath, "<!doctype html><html><head><title>Fallback Title</title></head><body><h1>HTML Smoke Idea</h1><p>A brief imported from HTML.</p></body></html>");
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -34,6 +40,16 @@ await page.locator("#dashboard-page").evaluate((panel) => {
   }
 });
 await page.locator("#new-idea-toggle").click();
+await page.locator("#idea-import-form").evaluate((form) => {
+  const text = form.textContent || "";
+  const fileInput = form.querySelector("#idea-markdown-file");
+  if (!text.includes("OR") || !text.includes("Import document") || text.includes("Send to agent")) {
+    throw new Error(`Expected document import affordance without Send to agent, got ${text}`);
+  }
+  if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
+    throw new Error(`Expected idea import to accept HTML, got ${fileInput?.accept}`);
+  }
+});
 await page.locator("#idea-title").fill("Smoke Test Idea");
 await page.locator("#idea-markdown").fill("# Smoke Test Idea\n\nA test markdown brief.");
 await page.evaluate(() => {
@@ -158,6 +174,28 @@ if (contractedPromptHeight >= expandedPromptMetrics.clientHeight) {
 }
 await page.locator("#plan-prompt-submit").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
+
+await page.locator("#dashboard-button").click();
+await page.waitForURL(dashboardUrl);
+if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
+  await page.locator("#new-idea-toggle").click();
+}
+await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
+await page.locator("#idea-title").evaluate((input) => {
+  if (input.value !== "HTML Smoke Idea") {
+    throw new Error(`Expected HTML title inference, got ${input.value}`);
+  }
+});
+await page.locator("#idea-markdown").evaluate((textarea) => {
+  if (textarea.dataset.documentType !== "html" || !textarea.value.includes("<h1>HTML Smoke Idea</h1>")) {
+    throw new Error("Expected imported HTML content and document type.");
+  }
+});
+await page.locator("#dashboard-status").filter({ hasText: "Agent started for wiki/ideas/html-smoke-idea.html" }).waitFor();
+await page.evaluate(() => {
+  location.hash = "#/wiki/plans/index.html";
+});
+await page.waitForURL(/#\/wiki\/plans\/index\.html$/);
 
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
 const currentPage = await page.locator("#current-page").evaluate((element) => element.dataset.title);

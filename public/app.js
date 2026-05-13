@@ -228,12 +228,30 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+ideaMarkdownInput.addEventListener("input", () => {
+  ideaMarkdownInput.dataset.documentType = "markdown";
+});
+
+projectMarkdownInput.addEventListener("input", () => {
+  projectMarkdownInput.dataset.documentType = "markdown";
+});
+
 ideaMarkdownFile.addEventListener("change", () => {
-  void importMarkdownFile(ideaMarkdownFile, ideaMarkdownInput, ideaTitleInput);
+  void importDocumentFile(ideaMarkdownFile, ideaMarkdownInput, ideaTitleInput)
+    .then((imported) => {
+      if (imported) return handOffIdeaMarkdown();
+      return null;
+    })
+    .catch((error) => setDashboardStatus(error.message || "Could not import the document."));
 });
 
 projectMarkdownFile.addEventListener("change", () => {
-  void importMarkdownFile(projectMarkdownFile, projectMarkdownInput, projectTitleInput);
+  void importDocumentFile(projectMarkdownFile, projectMarkdownInput, projectTitleInput)
+    .then((imported) => {
+      if (imported) return createProjectFromMarkdown();
+      return null;
+    })
+    .catch((error) => setDashboardStatus(error.message || "Could not import the document."));
 });
 
 newIdeaToggle.addEventListener("click", () => {
@@ -631,19 +649,21 @@ async function targetRootForIdea(ideaPath) {
   }
 }
 
-async function importMarkdownFile(fileInput, markdownInput, titleInput) {
+async function importDocumentFile(fileInput, markdownInput, titleInput) {
   const [file] = fileInput.files || [];
-  if (!file) return;
+  if (!file) return false;
   const text = await file.text();
+  const type = isHtmlDocument(file, text) ? "html" : "markdown";
   markdownInput.value = text;
-  if (!titleInput.value.trim()) {
-    titleInput.value = titleFromMarkdown(text) || titleFromFilename(file.name);
-  }
+  markdownInput.dataset.documentType = type;
+  titleInput.value = titleFromDocument(text, type) || titleFromFilename(file.name);
+  return true;
 }
 
 async function handOffIdeaMarkdown() {
   const title = ideaTitleInput.value.trim();
   const markdown = ideaMarkdownInput.value.trim();
+  const documentType = ideaMarkdownInput.dataset.documentType || "markdown";
   if (!title || !markdown) return;
   try {
     setDashboardStatus("Starting agent for idea import...");
@@ -657,13 +677,13 @@ async function handOffIdeaMarkdown() {
       "Instructions:",
       "- Read wiki/index.html and wiki/sources/design-brief.html before writing.",
       "- Create a unique HTML idea page under wiki/ideas/ using the existing wiki page structure and styling.",
-      "- Preserve the user's intent from the markdown, but shape it into a useful durable idea page.",
-      "- If the markdown is ambiguous enough that a Q&A would materially improve the page, ask concise questions in this terminal before writing.",
+      "- Preserve the user's intent from the document, but shape it into a useful durable idea page.",
+      "- If the document is ambiguous enough that a Q&A would materially improve the page, ask concise questions in this terminal before writing.",
       "- Do not initialize this idea as a project yet; the idea page should keep its own Initialize as project action.",
       "- After writing, run the relevant hyperwiki checks and summarize the created path.",
       "",
-      "Markdown:",
-      "```markdown",
+      `${documentContentLabel(documentType)}:`,
+      `\`\`\`${documentType}`,
       markdown,
       "```"
     ].join("\n");
@@ -677,12 +697,13 @@ async function handOffIdeaMarkdown() {
 async function createProjectFromMarkdown() {
   const title = projectTitleInput.value.trim();
   const markdown = projectMarkdownInput.value.trim();
+  const documentType = projectMarkdownInput.dataset.documentType || "markdown";
   if (!title || !markdown) return;
   try {
     setDashboardStatus("Initializing project...");
     const result = await api(projectPath("/api/projects/create"), {
       method: "POST",
-      body: JSON.stringify({ title, summary: markdownSummary(markdown) })
+      body: JSON.stringify({ title, summary: documentSummary(markdown, documentType) })
     });
     closeAllTerminals();
     activeProjectId = result.project.id;
@@ -706,12 +727,12 @@ async function createProjectFromMarkdown() {
       "Instructions:",
       "- Read AGENTS.md, wiki/index.html, wiki/sources.html, wiki/sources/prd.html, wiki/sources/technical-brief.html, and wiki/sources/design-brief.html before writing.",
       "- Update the project wiki pages as if the user had typed this brief directly to you.",
-      "- Create or revise source briefs, roadmap, and planning pages only where the markdown supports durable project context.",
-      "- Ask concise Q&A in this terminal if the markdown lacks critical product, technical, or validation decisions.",
+      "- Create or revise source briefs, roadmap, and planning pages only where the document supports durable project context.",
+      "- Ask concise Q&A in this terminal if the document lacks critical product, technical, or validation decisions.",
       "- Keep the project locally grounded and run relevant hyperwiki checks before finishing.",
       "",
-      "Markdown:",
-      "```markdown",
+      `${documentContentLabel(documentType)}:`,
+      `\`\`\`${documentType}`,
       markdown,
       "```"
     ].join("\n");
@@ -821,21 +842,61 @@ function titleFromMarkdown(markdown) {
   return heading ? heading[1].trim() : "";
 }
 
+function titleFromDocument(content, type) {
+  return type === "html" ? titleFromHtml(content) : titleFromMarkdown(content);
+}
+
+function titleFromHtml(html) {
+  const documentElement = new DOMParser().parseFromString(String(html), "text/html");
+  const title = documentElement.querySelector("h1")?.textContent
+    || documentElement.querySelector("title")?.textContent
+    || documentElement.querySelector("h2, h3")?.textContent
+    || "";
+  return title.trim().replace(/\s+/g, " ");
+}
+
 function titleFromFilename(name) {
   return String(name || "")
-    .replace(/\.(md|markdown|txt)$/i, "")
+    .replace(/\.(md|markdown|txt|html|htm)$/i, "")
     .split(/[-_]+/)
     .filter(Boolean)
     .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
     .join(" ");
 }
 
+function documentSummary(content, type) {
+  return type === "html" ? htmlSummary(content) : markdownSummary(content);
+}
+
 function markdownSummary(markdown) {
-  const paragraph = String(markdown)
+  const paragraph = plainTextFromMarkdown(markdown)
     .split(/\n\s*\n/)
-    .map((block) => block.replace(/^#+\s+/gm, "").trim())
+    .map((block) => block.trim())
     .find(Boolean) || "Imported from Dashboard markdown.";
   return paragraph.length > 220 ? `${paragraph.slice(0, 217).trim()}...` : paragraph;
+}
+
+function htmlSummary(html) {
+  const documentElement = new DOMParser().parseFromString(String(html), "text/html");
+  const paragraph = documentElement.querySelector("p")?.textContent
+    || documentElement.body?.textContent
+    || "Imported from Dashboard HTML.";
+  const cleaned = paragraph.trim().replace(/\s+/g, " ");
+  return cleaned.length > 220 ? `${cleaned.slice(0, 217).trim()}...` : cleaned;
+}
+
+function plainTextFromMarkdown(markdown) {
+  return String(markdown).replace(/^#+\s+/gm, "");
+}
+
+function isHtmlDocument(file, text) {
+  return /\.html?$/i.test(file.name)
+    || String(file.type || "").toLowerCase() === "text/html"
+    || /^\s*(<!doctype html|<html[\s>])/i.test(text);
+}
+
+function documentContentLabel(type) {
+  return type === "html" ? "HTML" : "Markdown";
 }
 
 function slugify(value) {

@@ -160,23 +160,21 @@
             <form id="idea-import-form" class="dashboard-action-form" hidden>
               <header>
                 <h3>New Idea</h3>
-                <p>Create or import a markdown brief. The agent will turn it into a unique page under <code>wiki/ideas/</code>.</p>
+                <p>Create or import a brief. The agent will turn it into a unique page under <code>wiki/ideas/</code>.</p>
               </header>
               <label>
                 <span>Title</span>
                 <input id="idea-title" name="title" autocomplete="off" required>
               </label>
               <label>
-                <span>Markdown</span>
+                <span>Brief</span>
                 <textarea id="idea-markdown" name="markdown" rows="9" required></textarea>
               </label>
-              <div class="dashboard-file-row">
-                <label class="dashboard-file-input">
-                  <span>Import markdown</span>
-                  <input id="idea-markdown-file" type="file" accept=".md,.markdown,text/markdown,text/plain">
-                </label>
-                <button type="submit">Send to agent</button>
-              </div>
+              <div class="dashboard-import-separator" aria-hidden="true"><span>OR</span></div>
+              <label class="dashboard-file-input dashboard-import-button">
+                <span>Import document</span>
+                <input id="idea-markdown-file" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain">
+              </label>
             </form>
           </section>
           <section class="dashboard-section">
@@ -188,23 +186,21 @@
             <form id="project-import-form" class="dashboard-action-form" hidden>
               <header>
                 <h3>New Project</h3>
-                <p>Initialize a fresh hyperwiki project, switch to it, and ask the agent to build the first wiki pages from markdown.</p>
+                <p>Initialize a fresh hyperwiki project, switch to it, and ask the agent to build the first wiki pages from a brief.</p>
               </header>
               <label>
                 <span>Project name</span>
                 <input id="project-title" name="title" autocomplete="off" required>
               </label>
               <label>
-                <span>Markdown</span>
+                <span>Brief</span>
                 <textarea id="project-markdown" name="markdown" rows="9" required></textarea>
               </label>
-              <div class="dashboard-file-row">
-                <label class="dashboard-file-input">
-                  <span>Import markdown</span>
-                  <input id="project-markdown-file" type="file" accept=".md,.markdown,text/markdown,text/plain">
-                </label>
-                <button type="submit">Create and hand off</button>
-              </div>
+              <div class="dashboard-import-separator" aria-hidden="true"><span>OR</span></div>
+              <label class="dashboard-file-input dashboard-import-button">
+                <span>Import document</span>
+                <input id="project-markdown-file" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain">
+              </label>
             </form>
           </section>
         </div>
