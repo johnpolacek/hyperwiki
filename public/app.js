@@ -1154,7 +1154,7 @@ function syncFrameLocation() {
       return;
     }
     setCurrentPage(framePath, currentWikiTitle() || displayWikiPath(framePath));
-    setCommandBarCompleted(isCompletedPath(framePath));
+    setCommandBarCompleted(isCompletedPath(framePath) || embeddedWikiPageComplete());
     openPage.href = framePath;
     wikiNav.querySelectorAll("a").forEach((link) => {
       link.classList.toggle("active", link.dataset.path === displayWikiPath(framePath));
@@ -1169,6 +1169,19 @@ function syncFrameLocation() {
 
 function isCompletedPath(path) {
   return wikiPageStatus.get(path) === "complete" || wikiPageStatus.get(displayWikiPath(path)) === "complete";
+}
+
+function embeddedWikiPageComplete() {
+  try {
+    const documentElement = wikiFrame.contentDocument;
+    if (!documentElement) return false;
+    const path = displayWikiPath(wikiFrame.contentWindow.location.pathname);
+    if (path.includes("/wiki/plans/zzz_completed/")) return true;
+    const summaryText = documentElement.querySelector("main .summary")?.textContent || "";
+    return /\bstatus:\s*complete(d)?\b/i.test(summaryText);
+  } catch {
+    return false;
+  }
 }
 
 function setCommandBarCompleted(completed) {
