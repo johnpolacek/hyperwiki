@@ -1045,22 +1045,22 @@ function renderThemeEditor() {
 }
 
 function themeSelectedPreset(value, preset) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "theme-selected-preset-card";
-  wrapper.append(themePresetCard(value, preset, "selected"));
+  const wrapper = themePresetCard(value, preset, "selected");
   const edit = document.createElement("button");
   edit.type = "button";
   edit.id = "theme-preset-edit";
-  edit.className = "dashboard-new-button";
-  edit.textContent = "Edit Preset";
+  edit.className = "theme-preset-edit";
+  edit.textContent = "edit";
   wrapper.append(edit);
   return wrapper;
 }
 
 function themePresetCard(value, preset, variant = "") {
   const tokens = preset.tokens || {};
-  const card = document.createElement("button");
-  card.type = "button";
+  const card = document.createElement(variant === "selected" ? "div" : "button");
+  if (card instanceof HTMLButtonElement) {
+    card.type = "button";
+  }
   card.className = ["theme-preset-card", variant ? `theme-preset-card-${variant}` : ""].filter(Boolean).join(" ");
   card.dataset.preset = value;
   card.setAttribute("aria-pressed", value === themeDraft?.activePreset ? "true" : "false");

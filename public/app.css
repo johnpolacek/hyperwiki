@@ -838,14 +838,6 @@ body {
   min-width: 0;
 }
 
-.theme-selected-preset-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: stretch;
-  min-width: 0;
-}
-
 .theme-preset-card {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -862,9 +854,44 @@ body {
 }
 
 .theme-preset-card-selected {
-  grid-template-columns: 148px minmax(0, 1fr);
-  min-height: 112px;
-  padding: 14px;
+  position: relative;
+  grid-template-columns: 180px minmax(220px, 0.42fr) minmax(0, 1fr) auto;
+  min-height: 136px;
+  padding: 18px 18px 18px 20px;
+  cursor: default;
+}
+
+.theme-preset-card-selected::after {
+  content: "";
+  align-self: stretch;
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid color-mix(in srgb, var(--preset-primary) 32%, var(--border));
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, var(--preset-primary), var(--preset-secondary)) 0 0 / 100% 5px no-repeat,
+    linear-gradient(var(--preset-docs-bg), var(--preset-docs-bg)) 0 0 / 100% 100% no-repeat;
+  box-shadow: inset 0 -26px 0 var(--preset-terminal-bg);
+}
+
+.theme-preset-edit {
+  align-self: start;
+  justify-self: end;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  background: var(--panel);
+  color: var(--text);
+  font: 700 12px/1 var(--sidebar-font);
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.theme-preset-edit:hover,
+.theme-preset-edit:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: 0;
 }
 
 .theme-preset-picker {
@@ -907,22 +934,22 @@ body {
 }
 
 .theme-preset-card-selected .theme-preset-preview {
-  grid-template-columns: 42px 1fr;
-  grid-template-rows: 1fr 28px;
-  width: 148px;
-  height: 82px;
+  grid-template-columns: 52px 1fr;
+  grid-template-rows: 1fr 34px;
+  width: 180px;
+  height: 98px;
 }
 
 .theme-preset-card-selected .theme-preset-preview i {
   background:
-    linear-gradient(var(--preset-primary), var(--preset-primary)) 14px 18px / 14px 14px no-repeat,
+    linear-gradient(var(--preset-primary), var(--preset-primary)) 18px 22px / 16px 16px no-repeat,
     var(--preset-ui-bg);
 }
 
 .theme-preset-card-selected .theme-preset-preview b {
   background:
-    linear-gradient(var(--preset-secondary), var(--preset-secondary)) 18px 28px / 56px 5px no-repeat,
-    linear-gradient(color-mix(in srgb, var(--preset-secondary) 35%, transparent), color-mix(in srgb, var(--preset-secondary) 35%, transparent)) 18px 42px / 76px 5px no-repeat,
+    linear-gradient(var(--preset-secondary), var(--preset-secondary)) 22px 32px / 70px 6px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--preset-secondary) 35%, transparent), color-mix(in srgb, var(--preset-secondary) 35%, transparent)) 22px 48px / 94px 6px no-repeat,
     var(--preset-docs-bg);
 }
 
@@ -973,7 +1000,7 @@ body {
 }
 
 .theme-preset-card-selected .theme-preset-text strong {
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .theme-preset-text span {
@@ -994,7 +1021,7 @@ body {
 }
 
 .theme-preset-card-selected .theme-preset-body-font {
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .theme-preset-card-selected .theme-preset-mono-font {
