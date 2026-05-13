@@ -28,6 +28,7 @@
     <li>Define the repo-local shape for verification loops: command, scope, trigger, status, last run, evidence, and whether the result is automated or manual.</li>
     <li>Expose verification loops through a local API that can be consumed by the browser workspace and future MCP tools.</li>
     <li>Keep recorded verification state separate from canonical claims unless a human or agent intentionally records the outcome into the wiki.</li>
+    <li>Current code state: <code>/api/workspace</code> returns static verification command labels, but there is no verification loop model, run history, evidence store, status field, trigger field, or dedicated verification endpoint yet.</li>
     <li>Verification: <code>pnpm run check</code> plus targeted API smoke coverage for reading configured verification loops.</li>
   </ul>
 </section>

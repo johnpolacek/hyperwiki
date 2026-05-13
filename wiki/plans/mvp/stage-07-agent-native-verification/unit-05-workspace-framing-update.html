@@ -24,13 +24,14 @@
 <section class="summary">
   <h2>Summary</h2>
 <ul>
-    <li>Status: in progress</li>
+    <li>Status: complete</li>
     <li>Update product copy and workspace labels from a terminal/wiki workspace toward a repo-local agent operating layer.</li>
     <li>Keep the UI utilitarian: surface current context, verification loops, guardrails, and review workflows without creating a marketing page.</li>
     <li>Current slice: make Dashboard a literal workspace page for Ideas and Projects, with create/import flows that hand markdown to the active agent.</li>
     <li>Dashboard behavior: hide terminal panels until a create/import action starts an agent on the right; idea and project generation remain agent-driven from user-provided markdown.</li>
     <li>Fresh project behavior: initialize a new hyperwiki project, switch the workspace into it, then start the agent with the imported markdown and page-generation instructions.</li>
-    <li>Verification: <code>pnpm run check</code>, <code>pnpm run smoke:ideas</code>, <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4321/workspace/ pnpm run smoke:browser</code>, and manual agent-browser review of the Dashboard page.</li>
+    <li>Implemented: Dashboard is available at <code>/dashboard</code>, lists ideas and projects, supports markdown import forms, initializes new projects through <code>/api/projects/create</code>, and hands idea/project markdown to an agent terminal.</li>
+    <li>Verification: covered by <code>pnpm run check</code>, <code>pnpm run smoke:ideas</code>, and browser smoke coverage for Dashboard mode, forms, command bar behavior, and agent handoff visibility.</li>
   </ul>
 </section>
   </main>

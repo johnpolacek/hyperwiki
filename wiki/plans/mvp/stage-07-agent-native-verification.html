@@ -26,7 +26,7 @@
     <li>Status: active</li>
     <li>Shape: single MVP stage with multiple execution units</li>
     <li>Current unit: Unit 01 - Verification Loop Model</li>
-    <li>Next action: define the repo-local verification loop data model and API contract before implementing UI or MCP surfaces.</li>
+    <li>Next action: define the repo-local verification loop data model and API contract. Treat Units 05, 06, and 07 as completed enabling workspace work, not as completion of the core verification/contract/MCP layer.</li>
     <li>Blockers: none</li>
     <li>Validation: <code>pnpm run check</code>, targeted smoke coverage for new APIs and browser-visible workflow state, and manual dogfood from an agent session.</li>
   </ul>
@@ -47,6 +47,17 @@
   <li>Preserve the repo-local wiki and Git as durable truth, avoiding hidden app state as the source of project knowledge.</li>
   <li>Add machine-readable project contracts for facts, current plan state, verification commands, permission boundaries, and source index metadata.</li>
 </ul>
+<h2>Implementation State From Code Review</h2>
+<ul>
+  <li>Implemented: Dashboard is a first-class workspace page for ideas and projects, with markdown import/create flows that start an agent handoff instead of writing generated pages directly.</li>
+  <li>Implemented: the wiki command bar exposes breadcrumbs, Modify, Execute, preview links, and completed-plan behavior; completed plan pages hide Modify/Execute and show a Completed badge.</li>
+  <li>Implemented: Execute starts terminals lazily, supports main and worktree targets, posts scoped instructions into an agent terminal, and shows Portless preview URLs for main or worktree execution.</li>
+  <li>Implemented: sidebar plan navigation keeps stages chronological, marks current/completed rows, pins the Project group to the bottom, and keeps completed plans under the archive group.</li>
+  <li>Implemented: <code>/api/workspace</code> exposes a workspace summary with plan status, source briefs, verification command labels, and layout configuration; <code>/api/guardrails</code> exposes local-only and runtime-boundary facts.</li>
+  <li>Not implemented yet: a first-class verification loop data model with recorded runs, evidence, status, triggers, and API contract.</li>
+  <li>Not implemented yet: a stable machine-readable project contract endpoint or file that composes project facts, plan state, source index, verification loops, permissions, and runtime boundaries.</li>
+  <li>Not implemented yet: named agent review workflows and MCP resources/tools beyond the current local HTTP workspace APIs and terminal prompt handoff.</li>
+</ul>
 <h2>Non-goals</h2>
 <ul>
   <li>Do not replace the HTML wiki with a database-backed knowledge silo.</li>
@@ -61,9 +72,9 @@
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.html">Unit 02 - Machine-readable Project Contract</a> - pending</li>
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.html">Unit 03 - Agent Review Workflows</a> - pending</li>
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.html">Unit 04 - MCP Surface Definition</a> - pending</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-workspace-framing-update.html">Unit 05 - Workspace Framing Update</a> - pending</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-06-sidebar-project-pin.html">Unit 06 - Sidebar Project Pin</a> - pending</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-07-execute-target-workflow.html">Unit 07 - Execute Target Workflow</a> - pending</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-workspace-framing-update.html">Unit 05 - Workspace Framing Update</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-06-sidebar-project-pin.html">Unit 06 - Sidebar Project Pin</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-07-execute-target-workflow.html">Unit 07 - Execute Target Workflow</a> - complete</li>
   </ol>
 </section>
   </main>

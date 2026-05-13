@@ -22,8 +22,8 @@
     <h1>Technical Brief</h1>
 <h2>Status</h2>
 <ul>
-  <li>Last reviewed: 2026-05-10</li>
-  <li>Evidence basis: user prompt, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, and agent-first launch layout implementation</li>
+  <li>Last reviewed: 2026-05-13</li>
+  <li>Evidence basis: user prompt, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, agent-first launch layout implementation, Stage 07 code review, recent commits, and smoke coverage</li>
   <li>Confidence: high</li>
 </ul>
 <h2>Defaults</h2>
@@ -40,6 +40,7 @@
   <li>Agent startup is project-configured through <code>agent.launchCommand</code>, but workspace terminals are created lazily from the Execute control instead of opening on first load.</li>
   <li>Execute targets include <code>on main</code> and <code>on worktree</code>; worktree execution instructs agents to use <code>parallel-dev-worktrees</code>.</li>
   <li>Portless is the preferred dev preview surface, with worktree URLs shaped as <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
+  <li>The current local HTTP API exposes workspace summaries, guardrails, repo context, wiki pages, projects, ideas, sessions, and agent prompt handoff. It does not yet expose a durable verification-loop model, single project contract schema, named review workflows, or MCP resources/tools.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
 </ul>

@@ -22,6 +22,14 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-13 maintenance | Stage 07 code-state reconciliation</h2>
+  <ul>
+    <li>Deep code review found Stage 07 had advanced non-linearly: workspace framing, Dashboard handoffs, plan command bar affordances, completed-plan behavior, sidebar Project pinning, and Execute target workflow are implemented and covered by smoke tests.</li>
+    <li>Decision: keep Stage 07 active on Unit 01 because the core verification-loop model, machine-readable project contract, named review workflows, and MCP surfaces are not implemented yet.</li>
+    <li>Updated Stage 07 plan state, source briefs, architecture notes, source index, and planning dashboard to distinguish implemented workspace enablers from pending agent-native verification surfaces.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-11 implementation | execute target workflow</h2>
   <ul>
     <li>Changed workspace startup so terminals are created lazily after an explicit Execute target selection.</li>
