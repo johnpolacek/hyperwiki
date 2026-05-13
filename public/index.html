@@ -222,12 +222,42 @@
                   <input id="theme-primary" type="color">
                   <span>Primary</span>
                 </label>
-                <label class="theme-secondary-field">
+                <div class="theme-secondary-field">
                   <span>Secondary</span>
-                  <input id="theme-secondary" type="text" placeholder="Derived from primary">
-                </label>
+                  <div class="theme-secondary-control">
+                    <button type="button" id="theme-secondary-toggle" class="theme-secondary-toggle is-empty" aria-label="Set secondary color" title="Set secondary color">
+                      <span></span>
+                    </button>
+                    <button type="button" id="theme-secondary-clear" class="theme-secondary-clear" aria-label="Clear secondary color" title="Clear secondary color">×</button>
+                    <input id="theme-secondary" type="color">
+                  </div>
+                </div>
               </div>
               <div id="theme-controls" class="theme-controls"></div>
+              <section class="theme-control-section theme-terminal-controls">
+                <header>
+                  <strong>Terminal</strong>
+                  <span>Pane style and terminal typography</span>
+                </header>
+                <div class="theme-terminal-grid">
+                  <label class="settings-field">
+                    <span>Mode</span>
+                    <select id="theme-terminal-mode">
+                      <option value="match">Match theme</option>
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </label>
+                  <label class="settings-field">
+                    <span>Font</span>
+                    <select id="theme-terminal-font"></select>
+                  </label>
+                  <label class="theme-color-control">
+                    <input id="theme-terminal-accent" type="color">
+                    <span>Accent</span>
+                  </label>
+                </div>
+              </section>
               <details class="settings-json-details">
                 <summary>Advanced JSON</summary>
                 <textarea id="theme-json" rows="14" spellcheck="false"></textarea>
@@ -245,10 +275,17 @@
                   <p>Docs keep their reading voice while the UI stays dense and scannable.</p>
                   <code>wiki/plans/mvp/stage-08-settings-soul-memory.html</code>
                 </main>
-                <footer>
-                  <strong>agent</strong>
-                  <span>preview terminal chrome</span>
-                </footer>
+                <section class="theme-preview-terminal" aria-label="Terminal preview">
+                  <div>
+                    <strong>agent</strong>
+                    <span>preview terminal chrome</span>
+                  </div>
+                  <pre><span class="terminal-muted">gpt-5.5 low · ~/Projects/hyperwiki</span>
+<span class="terminal-accent">›</span> update wiki/settings theme tokens
+Reading settings, previewing terminal contrast...
+<span class="terminal-accent">✓</span> generated accessible terminal colors
+<span class="terminal-muted">agent</span> waiting for next instruction</pre>
+                </section>
               </div>
             </section>
           </div>

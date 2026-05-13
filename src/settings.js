@@ -42,7 +42,8 @@ export const defaultSettings = Object.freeze({
             border: "#2c302d",
             text: "#eef2ec",
             muted: "#abb5ad",
-            accent: "#9fd1ff"
+            accent: "#9fd1ff",
+            font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           }
         }
       },
@@ -78,7 +79,8 @@ export const defaultSettings = Object.freeze({
             border: "#33392f",
             text: "#f0f5ed",
             muted: "#a7b0a3",
-            accent: "#8bcf7a"
+            accent: "#8bcf7a",
+            font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           }
         }
       },
@@ -114,7 +116,8 @@ export const defaultSettings = Object.freeze({
             border: "#344145",
             text: "#ecf4f5",
             muted: "#a8b8bc",
-            accent: "#68d2ec"
+            accent: "#68d2ec",
+            font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           }
         }
       }
@@ -193,6 +196,7 @@ export function themeCss(settings) {
   --terminal-text: ${terminal.text};
   --terminal-muted: ${terminal.muted};
   --terminal-accent: ${terminal.accent};
+  --terminal-font: ${terminal.font || docs.monoFont};
 }
 `;
 }

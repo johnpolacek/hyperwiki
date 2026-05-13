@@ -41,6 +41,11 @@ const themePreset = document.getElementById("theme-preset");
 const themeMode = document.getElementById("theme-mode");
 const themePrimary = document.getElementById("theme-primary");
 const themeSecondary = document.getElementById("theme-secondary");
+const themeSecondaryToggle = document.getElementById("theme-secondary-toggle");
+const themeSecondaryClear = document.getElementById("theme-secondary-clear");
+const themeTerminalMode = document.getElementById("theme-terminal-mode");
+const themeTerminalFont = document.getElementById("theme-terminal-font");
+const themeTerminalAccent = document.getElementById("theme-terminal-accent");
 const themeControls = document.getElementById("theme-controls");
 const themeJson = document.getElementById("theme-json");
 const agentSummary = document.getElementById("agent-summary");
@@ -268,7 +273,27 @@ themePreset.addEventListener("change", () => {
 
 themeMode.addEventListener("change", updateThemeDraftFromSimpleControls);
 themePrimary.addEventListener("input", updateThemeDraftFromSimpleControls);
-themeSecondary.addEventListener("input", updateThemeDraftFromSimpleControls);
+themeSecondary.addEventListener("input", () => {
+  if (!themeDraftSimple) return;
+  themeDraftSimple.secondary = normalizeColorOrEmpty(themeSecondary.value);
+  updateThemeDraftFromSimpleControls();
+});
+themeSecondaryToggle.addEventListener("click", () => {
+  if (themeSecondary.showPicker) {
+    themeSecondary.showPicker();
+    return;
+  }
+  themeSecondary.click();
+});
+themeSecondaryClear.addEventListener("click", () => {
+  if (!themeDraftSimple) return;
+  themeDraftSimple.secondary = "";
+  applyGeneratedThemeTokens();
+  syncSimpleControls();
+});
+themeTerminalMode.addEventListener("change", updateThemeDraftFromSimpleControls);
+themeTerminalFont.addEventListener("change", updateThemeDraftFromSimpleControls);
+themeTerminalAccent.addEventListener("input", updateThemeDraftFromSimpleControls);
 
 themeJson.addEventListener("input", () => {
   if (!themeDraft) return;
@@ -984,10 +1009,22 @@ function renderThemeEditor() {
   }));
   themePreset.value = themeDraft?.activePreset || "paper";
   const theme = effectiveTheme({ theme: themeDraft });
+  renderTerminalFontOptions();
   syncSimpleControls();
   themeControls.replaceChildren(...themeSurfaces.map((surface) => themeFontSection(surface, theme.tokens[surface.key] || {})).filter(Boolean));
   themeJson.value = JSON.stringify(themeDraft || {}, null, 2);
   loadGoogleFontsForTheme(theme);
+}
+
+function renderTerminalFontOptions() {
+  themeTerminalFont.replaceChildren(...fontOptions
+    .filter((font) => font.value.includes("mono"))
+    .map((font) => {
+      const option = document.createElement("option");
+      option.value = font.value;
+      option.textContent = font.label;
+      return option;
+    }));
 }
 
 function themeFontSection(surface, tokens) {
@@ -1053,7 +1090,10 @@ function updateThemeDraftFromSimpleControls() {
   themeDraftSimple = {
     mode: themeMode.value === "dark" ? "dark" : "light",
     primary: themePrimary.value,
-    secondary: normalizeColorOrEmpty(themeSecondary.value)
+    secondary: themeDraftSimple?.secondary === "" ? "" : normalizeColorOrEmpty(themeSecondary.value),
+    terminalMode: ["light", "dark"].includes(themeTerminalMode.value) ? themeTerminalMode.value : "match",
+    terminalFont: themeTerminalFont.value || defaultTerminalFont(),
+    terminalAccent: normalizeColor(themeTerminalAccent.value || themePrimary.value)
   };
   applyGeneratedThemeTokens();
 }
@@ -1062,13 +1102,23 @@ function syncSimpleControls() {
   if (!themeDraftSimple) return;
   themeMode.value = themeDraftSimple.mode;
   themePrimary.value = normalizeColor(themeDraftSimple.primary);
-  themeSecondary.value = themeDraftSimple.secondary || "";
+  const derivedSecondary = derivedSecondaryColor(themeDraftSimple.primary, themeDraftSimple.mode);
+  const hasSecondary = Boolean(themeDraftSimple.secondary);
+  themeSecondary.value = normalizeColor(themeDraftSimple.secondary || derivedSecondary);
+  themeSecondaryToggle.classList.toggle("is-empty", !hasSecondary);
+  themeSecondaryToggle.style.setProperty("--secondary-color", normalizeColor(themeDraftSimple.secondary || derivedSecondary));
+  themeSecondaryClear.hidden = !hasSecondary;
+  themeTerminalMode.value = themeDraftSimple.terminalMode || "match";
+  themeTerminalFont.value = fontOptions.some((font) => font.value === themeDraftSimple.terminalFont)
+    ? themeDraftSimple.terminalFont
+    : defaultTerminalFont();
+  themeTerminalAccent.value = normalizeColor(themeDraftSimple.terminalAccent || themeDraftSimple.primary);
 }
 
 function applyGeneratedThemeTokens() {
   if (!themeDraft || !themeDraftSimple) return;
   const generated = generateThemeTokens(themeDraftSimple);
-  themeDraft.customTokens = deepMerge(generated, themeDraft.customTokens || {});
+  themeDraft.customTokens = deepMerge(themeDraft.customTokens || {}, generated);
   themeJson.value = JSON.stringify(themeDraft, null, 2);
   const theme = effectiveTheme({ theme: themeDraft });
   applyThemePreview(theme);
@@ -1126,7 +1176,8 @@ function applyTheme(settings) {
     "--terminal-border": theme.tokens.terminal.border,
     "--terminal-text": theme.tokens.terminal.text,
     "--terminal-muted": theme.tokens.terminal.muted,
-    "--terminal-accent": theme.tokens.terminal.accent
+    "--terminal-accent": theme.tokens.terminal.accent,
+    "--terminal-font": theme.tokens.terminal.font || defaultTerminalFont()
   });
   applyWikiFrameTheme(theme);
 }
@@ -1160,7 +1211,8 @@ function applyThemePreview(theme) {
     "--terminal-border": theme.tokens.terminal.border,
     "--terminal-text": theme.tokens.terminal.text,
     "--terminal-muted": theme.tokens.terminal.muted,
-    "--terminal-accent": theme.tokens.terminal.accent
+    "--terminal-accent": theme.tokens.terminal.accent,
+    "--terminal-font": theme.tokens.terminal.font || defaultTerminalFont()
   });
 }
 
@@ -1179,17 +1231,26 @@ function normalizeColorOrEmpty(value) {
 }
 
 function simpleThemeFromTokens(theme) {
+  const mode = theme?.mode === "dark" ? "dark" : "light";
+  const terminal = theme?.tokens?.terminal || {};
   return {
-    mode: theme?.mode === "dark" ? "dark" : "light",
+    mode,
     primary: normalizeColor(theme?.tokens?.ui?.accent || theme?.tokens?.docs?.link || "#276ef1"),
-    secondary: ""
+    secondary: "",
+    terminalMode: inferTerminalMode(terminal, mode),
+    terminalFont: terminal.font || defaultTerminalFont(),
+    terminalAccent: normalizeColor(terminal.accent || theme?.tokens?.ui?.accent || "#276ef1")
   };
 }
 
 function generateThemeTokens(simple) {
   const mode = simple.mode === "dark" ? "dark" : "light";
   const primary = normalizeColor(simple.primary);
-  const secondary = normalizeColorOrEmpty(simple.secondary) || mixHex(primary, mode === "dark" ? "#ffffff" : "#000000", 0.32);
+  const secondary = normalizeColorOrEmpty(simple.secondary) || derivedSecondaryColor(primary, mode);
+  const terminalMode = ["light", "dark"].includes(simple.terminalMode) ? simple.terminalMode : mode;
+  const terminalAccent = ensureAccent(normalizeColor(simple.terminalAccent || primary), terminalMode);
+  const terminalFont = simple.terminalFont || defaultTerminalFont();
+  const terminal = generateTerminalTokens(primary, terminalMode, terminalAccent, terminalFont);
   if (mode === "dark") {
     return {
       ui: {
@@ -1209,16 +1270,7 @@ function generateThemeTokens(simple) {
         link: ensureAccent(secondary, "dark"),
         code: mixHex(primary, "#1c1d17", 0.16)
       },
-      terminal: {
-        bg: mixHex(primary, "#090b09", 0.08),
-        pane: "#090b09",
-        toolbar: mixHex(primary, "#111410", 0.12),
-        header: mixHex(primary, "#151914", 0.14),
-        border: mixHex(primary, "#ffffff", 0.22),
-        text: "#eff5ed",
-        muted: "#a9b2a5",
-        accent: ensureAccent(primary, "dark")
-      }
+      terminal
     };
   }
   return {
@@ -1239,17 +1291,48 @@ function generateThemeTokens(simple) {
       link: ensureAccent(secondary, "light"),
       code: mixHex(secondary, "#efede4", 0.12)
     },
-    terminal: {
-      bg: mixHex(primary, "#272822", 0.22),
-      pane: mixHex(primary, "#111312", 0.16),
-      toolbar: mixHex(primary, "#171a18", 0.18),
-      header: mixHex(primary, "#1b1f1b", 0.2),
-      border: mixHex(primary, "#42483f", 0.18),
-      text: "#eef2ec",
-      muted: "#abb5ad",
-      accent: ensureAccent(primary, "dark")
-    }
+    terminal
   };
+}
+
+function derivedSecondaryColor(primary, mode) {
+  return mixHex(normalizeColor(primary), mode === "dark" ? "#ffffff" : "#000000", 0.32);
+}
+
+function generateTerminalTokens(primary, mode, accent, font) {
+  if (mode === "light") {
+    return {
+      bg: mixHex(primary, "#f8faf7", 0.05),
+      pane: "#ffffff",
+      toolbar: mixHex(primary, "#eff3ef", 0.08),
+      header: mixHex(primary, "#e8eee9", 0.1),
+      border: mixHex(primary, "#cbd5cc", 0.16),
+      text: "#1d241f",
+      muted: "#68736c",
+      accent: ensureAccent(accent, "light"),
+      font
+    };
+  }
+  return {
+    bg: mixHex(primary, "#090b09", 0.08),
+    pane: "#090b09",
+    toolbar: mixHex(primary, "#111410", 0.12),
+    header: mixHex(primary, "#151914", 0.14),
+    border: mixHex(primary, "#ffffff", 0.22),
+    text: "#eff5ed",
+    muted: "#a9b2a5",
+    accent: ensureAccent(accent, "dark"),
+    font
+  };
+}
+
+function inferTerminalMode(terminal, fallbackMode) {
+  if (!terminal?.bg) return fallbackMode;
+  return relativeLuminance(hexToRgb(normalizeColor(terminal.bg))) > 0.55 ? "light" : "dark";
+}
+
+function defaultTerminalFont() {
+  return fontOptions.find((font) => font.label === "Sometype Mono")?.value || fontOptions[0].value;
 }
 
 function ensureAccent(color, mode) {
@@ -1301,7 +1384,8 @@ function loadGoogleFontsForTheme(theme) {
   const values = [
     theme.tokens.ui.sidebarFont,
     theme.tokens.docs.serifFont,
-    theme.tokens.docs.monoFont
+    theme.tokens.docs.monoFont,
+    theme.tokens.terminal.font
   ];
   const families = fontOptions
     .filter((font) => font.google && values.includes(font.value))
