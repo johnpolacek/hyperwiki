@@ -277,6 +277,7 @@ async function loadWikiNav() {
   try {
     const response = await fetch(projectPath("/api/wiki"));
     const data = await response.json();
+    await hydrateWikiPageStatuses(data.pages || []);
     wikiPageTitles.clear();
     wikiPageStatus.clear();
     data.pages.forEach((page) => {
@@ -291,6 +292,28 @@ async function loadWikiNav() {
   } catch {
     document.getElementById("server-status").textContent = "Offline";
   }
+}
+
+async function hydrateWikiPageStatuses(pages) {
+  const candidates = pages.filter((page) => {
+    const path = displayWikiPath(page.path);
+    return path.includes("/wiki/plans/") && pageStatus(page) === "" && !path.endsWith("/wiki/plans/zzz_completed/index.html");
+  });
+  await Promise.all(candidates.map(async (page) => {
+    try {
+      const response = await fetch(page.path, { cache: "no-store" });
+      if (!response.ok) return;
+      const html = await response.text();
+      page.summary = summaryItemsFromHtml(html);
+    } catch {
+      // Keep sidebar usable even if a wiki page cannot be inspected.
+    }
+  }));
+}
+
+function summaryItemsFromHtml(html) {
+  const documentElement = new DOMParser().parseFromString(html, "text/html");
+  return [...documentElement.querySelectorAll("section.summary li")].map((item) => item.textContent.trim());
 }
 
 async function loadWorkspaceSummary() {
@@ -1024,12 +1047,14 @@ function renderWikiLink(page, state = "", options = {}) {
   const labelElement = document.createElement("span");
   labelElement.className = "wiki-nav-label";
   labelElement.textContent = label;
-  link.append(labelElement);
   link.title = label;
   link.dataset.path = displayWikiPath(page.path);
   if (options.completed) {
+    link.title = `${label} - completed`;
+    link.setAttribute("aria-label", `${label} completed`);
     link.classList.add("completed-plan-link");
   }
+  link.append(labelElement);
   if (state) {
     link.classList.add(state);
   }
@@ -1050,7 +1075,9 @@ function cleanPageTitle(page) {
 
 function pageStatus(page) {
   const summary = `${page.summary || ""} ${page.title || ""} ${page.path || ""}`;
-  if (displayWikiPath(page.path).includes("/wiki/plans/zzz_completed/")) return "complete";
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "";
+  if (path.includes("/wiki/plans/zzz_completed/")) return "complete";
   if (/\bstatus:\s*complete(d)?\b/i.test(summary)) return "complete";
   return "";
 }
@@ -1176,6 +1203,7 @@ function embeddedWikiPageComplete() {
     const documentElement = wikiFrame.contentDocument;
     if (!documentElement) return false;
     const path = displayWikiPath(wikiFrame.contentWindow.location.pathname);
+    if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return false;
     if (path.includes("/wiki/plans/zzz_completed/")) return true;
     const summaryText = documentElement.querySelector("main .summary")?.textContent || "";
     return /\bstatus:\s*complete(d)?\b/i.test(summaryText);

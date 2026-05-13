@@ -174,6 +174,11 @@ await page.locator("#wiki-nav .plan-tree").evaluate((element) => {
   if (topLevelLabels.includes("Plan Unit Navigation")) {
     throw new Error(`Expected completed plans to move out of the active plan list, got ${topLevelLabels.join(", ")}`);
   }
+  const completedArchiveLink = [...element.querySelectorAll("a")]
+    .find((link) => link.textContent.includes("Completed Plans"));
+  if (!completedArchiveLink || completedArchiveLink.classList.contains("completed-plan-link")) {
+    throw new Error("Expected Completed Plans archive row to stay unmarked.");
+  }
 });
 await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
 await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-07" }).waitFor();
@@ -352,6 +357,12 @@ const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "U
 if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).evaluate((link) => {
+  const marker = getComputedStyle(link, "::before");
+  if (!link.classList.contains("completed-plan-link") || marker.backgroundColor !== "rgb(211, 216, 207)") {
+    throw new Error(`Expected completed unit sidebar link to use muted completion styling, got ${marker.backgroundColor}`);
+  }
+});
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 01 - CLI and Repository Foundation");
 await page.locator(".wiki-command-bar").evaluate((bar) => {
@@ -368,6 +379,12 @@ await page.locator("#wiki-nav").evaluate(() => {
   const stageOneLink = stageOneGroup.querySelector(":scope > summary a");
   if (!stageOneLink.classList.contains("completed-plan-link")) {
     throw new Error("Expected completed stage sidebar link to be marked as completed.");
+  }
+  if (stageOneLink.getAttribute("aria-label") !== "Stage-01 CLI and Repository Foundation completed") {
+    throw new Error(`Expected completed stage accessible label, got ${stageOneLink.getAttribute("aria-label")}`);
+  }
+  if (getComputedStyle(stageOneLink, "::before").backgroundColor !== "rgb(211, 216, 207)") {
+    throw new Error("Expected completed stage sidebar link to use muted completion styling.");
   }
   if (getComputedStyle(stageOneLink).color !== "rgb(141, 146, 138)") {
     throw new Error(`Expected completed stage to be lighter, got ${getComputedStyle(stageOneLink).color}`);
