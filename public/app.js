@@ -38,6 +38,8 @@ const themeEditor = document.getElementById("theme-editor");
 const themeCancel = document.getElementById("theme-cancel");
 const themeSave = document.getElementById("theme-save");
 const themePresetBar = document.getElementById("theme-preset-bar");
+const themePresetPicker = document.getElementById("theme-preset-picker");
+const themeEditorLayout = document.getElementById("theme-editor-layout");
 const themeMode = document.getElementById("theme-mode");
 const themePrimary = document.getElementById("theme-primary");
 const themeSecondary = document.getElementById("theme-secondary");
@@ -88,6 +90,7 @@ let dashboardAgentActive = false;
 let settingsState = null;
 let themeDraft = null;
 let themeDraftSimple = null;
+let themePresetPickerOpen = false;
 let agentDraft = null;
 let agentsFileDraft = "";
 
@@ -277,15 +280,27 @@ projectImportForm.addEventListener("submit", async (event) => {
 });
 
 themePresetBar.addEventListener("click", (event) => {
+  if (event.target.closest("#theme-preset-edit")) {
+    themePresetPickerOpen = true;
+    renderThemeEditor();
+  }
+});
+
+themePresetPicker.addEventListener("click", (event) => {
   const card = event.target.closest(".theme-preset-card");
   if (!card) return;
+  applyThemePreset(card.dataset.preset);
+});
+
+function applyThemePreset(preset) {
   if (!settingsState || !themeDraft) return;
-  themeDraft.activePreset = card.dataset.preset;
+  themeDraft.activePreset = preset;
   themeDraft.customTokens = {};
   themeDraftSimple = simpleThemeFromTokens(themeDraft.presets?.[themeDraft.activePreset]);
+  themePresetPickerOpen = false;
   renderThemeEditor();
   applyThemePreview(effectiveTheme({ theme: themeDraft }));
-});
+}
 
 themeMode.addEventListener("change", updateThemeDraftFromSimpleControls);
 themePrimary.addEventListener("input", updateThemeDraftFromSimpleControls);
@@ -1008,6 +1023,7 @@ function openThemeEditor() {
 function closeThemeEditor() {
   themeDraft = null;
   themeDraftSimple = null;
+  themePresetPickerOpen = false;
   themeEditor.hidden = true;
   settingsLayout.hidden = false;
   settingsPage.classList.remove("theme-editing");
@@ -1016,7 +1032,11 @@ function closeThemeEditor() {
 
 function renderThemeEditor() {
   const presets = themeDraft?.presets || {};
-  themePresetBar.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset)));
+  const activePreset = themeDraft?.activePreset || "paper";
+  themePresetBar.replaceChildren(themeSelectedPreset(activePreset, presets[activePreset]));
+  themePresetPicker.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset, "picker")));
+  themePresetPicker.hidden = !themePresetPickerOpen;
+  themeEditorLayout.hidden = themePresetPickerOpen;
   const theme = effectiveTheme({ theme: themeDraft });
   syncSimpleControls();
   themeControls.replaceChildren(themeTypographySection(theme.tokens));
@@ -1024,11 +1044,24 @@ function renderThemeEditor() {
   loadGoogleFontsForTheme(theme);
 }
 
-function themePresetCard(value, preset) {
+function themeSelectedPreset(value, preset) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "theme-selected-preset-card";
+  wrapper.append(themePresetCard(value, preset, "selected"));
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.id = "theme-preset-edit";
+  edit.className = "dashboard-new-button";
+  edit.textContent = "Edit Preset";
+  wrapper.append(edit);
+  return wrapper;
+}
+
+function themePresetCard(value, preset, variant = "") {
   const tokens = preset.tokens || {};
   const card = document.createElement("button");
   card.type = "button";
-  card.className = "theme-preset-card";
+  card.className = ["theme-preset-card", variant ? `theme-preset-card-${variant}` : ""].filter(Boolean).join(" ");
   card.dataset.preset = value;
   card.setAttribute("aria-pressed", value === themeDraft?.activePreset ? "true" : "false");
 

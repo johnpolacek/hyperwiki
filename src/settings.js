@@ -6,6 +6,56 @@ import path from "node:path";
 const managedStart = "<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->";
 const managedEnd = "<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->";
 
+const themeFonts = {
+  inter: "\"Inter\", ui-sans-serif, system-ui, sans-serif",
+  ibmSans: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif",
+  workSans: "\"Work Sans\", ui-sans-serif, system-ui, sans-serif",
+  sourceSans: "\"Source Sans 3\", ui-sans-serif, system-ui, sans-serif",
+  montserrat: "\"Montserrat\", ui-sans-serif, system-ui, sans-serif",
+  instrument: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+  sourceSerif: "\"Source Serif 4\", ui-serif, Georgia, serif",
+  lora: "\"Lora\", ui-serif, Georgia, serif",
+  newsreader: "\"Newsreader\", ui-serif, Georgia, serif",
+  merriweather: "\"Merriweather\", ui-serif, Georgia, serif",
+  sometype: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  ibmMono: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  spaceMono: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+};
+
+function themePreset({
+  label,
+  mode,
+  bodyFont,
+  monoFont,
+  ui,
+  docs,
+  terminal
+}) {
+  return {
+    label,
+    mode,
+    tokens: {
+      ui: {
+        ...ui,
+        accent: ui.accent,
+        sidebarFont: monoFont
+      },
+      docs: {
+        ...docs,
+        link: docs.link,
+        code: docs.code,
+        serifFont: bodyFont,
+        monoFont
+      },
+      terminal: {
+        ...terminal,
+        accent: terminal.accent,
+        font: monoFont
+      }
+    }
+  };
+}
+
 export const defaultSettings = Object.freeze({
   theme: {
     activePreset: "paper",
@@ -47,154 +97,72 @@ export const defaultSettings = Object.freeze({
           }
         }
       },
-      ink: {
-        label: "Ink",
-        mode: "dark",
-        tokens: {
-          ui: {
-            bg: "#161714",
-            panel: "#20211d",
-            border: "#383a33",
-            text: "#eeeee8",
-            muted: "#a4a89d",
-            accent: "#8bcf7a",
-            sidebarFont: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          docs: {
-            bg: "#171813",
-            panel: "#202018",
-            border: "#3b392d",
-            text: "#efeadc",
-            muted: "#b4aa93",
-            link: "#9bc6ff",
-            code: "#2a291f",
-            serifFont: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
-            monoFont: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          terminal: {
-            bg: "#10120f",
-            pane: "#0b0d0b",
-            toolbar: "#151813",
-            header: "#191d17",
-            border: "#33392f",
-            text: "#f0f5ed",
-            muted: "#a7b0a3",
-            accent: "#8bcf7a",
-            font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          }
-        }
-      },
-      blueprint: {
-        label: "Blueprint",
-        mode: "light",
-        tokens: {
-          ui: {
-            bg: "#f3f7f8",
-            panel: "#ffffff",
-            border: "#cbd9dc",
-            text: "#172326",
-            muted: "#5f6f73",
-            accent: "#0c6c83",
-            sidebarFont: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          docs: {
-            bg: "#f8faf7",
-            panel: "#ffffff",
-            border: "#d4ddd9",
-            text: "#202923",
-            muted: "#65736b",
-            link: "#0c6c83",
-            code: "#e9f0ef",
-            serifFont: "\"Inter\", ui-sans-serif, system-ui, sans-serif",
-            monoFont: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          terminal: {
-            bg: "#1e2528",
-            pane: "#13181a",
-            toolbar: "#182023",
-            header: "#202a2d",
-            border: "#344145",
-            text: "#ecf4f5",
-            muted: "#a8b8bc",
-            accent: "#68d2ec",
-            font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          }
-        }
-      },
-      ledger: {
-        label: "Ledger",
-        mode: "light",
-        tokens: {
-          ui: {
-            bg: "#f5f6ef",
-            panel: "#fffffb",
-            border: "#d4d8c8",
-            text: "#20261d",
-            muted: "#626b5b",
-            accent: "#4f7d36",
-            sidebarFont: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          docs: {
-            bg: "#fbfaf0",
-            panel: "#fffdf4",
-            border: "#ded9c5",
-            text: "#252318",
-            muted: "#706a56",
-            link: "#775f16",
-            code: "#eeead8",
-            serifFont: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif",
-            monoFont: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          terminal: {
-            bg: "#20251d",
-            pane: "#11150f",
-            toolbar: "#171d14",
-            header: "#1d2419",
-            border: "#3d4736",
-            text: "#f0f4e8",
-            muted: "#b1b9a8",
-            accent: "#b8d986",
-            font: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          }
-        }
-      },
-      dusk: {
-        label: "Dusk",
-        mode: "dark",
-        tokens: {
-          ui: {
-            bg: "#18151b",
-            panel: "#221e27",
-            border: "#403746",
-            text: "#f1edf3",
-            muted: "#afa3b8",
-            accent: "#e28f62",
-            sidebarFont: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          docs: {
-            bg: "#1a161d",
-            panel: "#241f28",
-            border: "#44394a",
-            text: "#f2eadf",
-            muted: "#b9aa9d",
-            link: "#f1ad7a",
-            code: "#332a32",
-            serifFont: "\"Newsreader\", ui-serif, Georgia, serif",
-            monoFont: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          },
-          terminal: {
-            bg: "#130f15",
-            pane: "#0d0a0f",
-            toolbar: "#1a141d",
-            header: "#211926",
-            border: "#433549",
-            text: "#f5edf5",
-            muted: "#b8a8bd",
-            accent: "#e28f62",
-            font: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
-          }
-        }
-      }
+      atlas: themePreset({
+        label: "Atlas", mode: "light", bodyFont: themeFonts.inter, monoFont: themeFonts.sometype,
+        ui: { bg: "#f4f7f8", panel: "#ffffff", border: "#cad8dc", text: "#17252a", muted: "#5d6d72", accent: "#0b7285" },
+        docs: { bg: "#fafcfb", panel: "#ffffff", border: "#d3dddc", text: "#1f2928", muted: "#637170", link: "#0b7285", code: "#e9f1f1" },
+        terminal: { bg: "#1a2428", pane: "#10181b", toolbar: "#142025", header: "#1b2a30", border: "#34464c", text: "#eef7f8", muted: "#a9b8bb", accent: "#6bd6e6" }
+      }),
+      grove: themePreset({
+        label: "Grove", mode: "light", bodyFont: themeFonts.sourceSerif, monoFont: themeFonts.ibmMono,
+        ui: { bg: "#f5f6ef", panel: "#fffffb", border: "#d4d8c8", text: "#20261d", muted: "#626b5b", accent: "#4f7d36" },
+        docs: { bg: "#fbfaf0", panel: "#fffdf4", border: "#ded9c5", text: "#252318", muted: "#706a56", link: "#5f7426", code: "#eeead8" },
+        terminal: { bg: "#20251d", pane: "#11150f", toolbar: "#171d14", header: "#1d2419", border: "#3d4736", text: "#f0f4e8", muted: "#b1b9a8", accent: "#b8d986" }
+      }),
+      studio: themePreset({
+        label: "Studio", mode: "light", bodyFont: themeFonts.ibmSans, monoFont: themeFonts.ibmMono,
+        ui: { bg: "#f7f5f1", panel: "#ffffff", border: "#d8d2c7", text: "#24211c", muted: "#6c655b", accent: "#a14f2a" },
+        docs: { bg: "#fcfaf6", panel: "#fffdf9", border: "#ddd4c6", text: "#28221c", muted: "#75695d", link: "#a14f2a", code: "#efe7dc" },
+        terminal: { bg: "#29211c", pane: "#15100d", toolbar: "#1d1713", header: "#241c17", border: "#4b3a31", text: "#f6eee6", muted: "#b9aaa0", accent: "#f0a06f" }
+      }),
+      linen: themePreset({
+        label: "Linen", mode: "light", bodyFont: themeFonts.lora, monoFont: themeFonts.sometype,
+        ui: { bg: "#f8f3ea", panel: "#fffdf7", border: "#dfd4c2", text: "#272118", muted: "#716758", accent: "#8b6f21" },
+        docs: { bg: "#fffaf1", panel: "#fffdf7", border: "#e2d7c4", text: "#282116", muted: "#716551", link: "#8b6f21", code: "#f1e8d9" },
+        terminal: { bg: "#282318", pane: "#15120d", toolbar: "#1d1911", header: "#242016", border: "#4b432e", text: "#f6f1e6", muted: "#bbb29e", accent: "#d9bf64" }
+      }),
+      signal: themePreset({
+        label: "Signal", mode: "light", bodyFont: themeFonts.workSans, monoFont: themeFonts.spaceMono,
+        ui: { bg: "#f5f5f7", panel: "#ffffff", border: "#d2d4dc", text: "#20222a", muted: "#646978", accent: "#3f5bf6" },
+        docs: { bg: "#fbfbff", panel: "#ffffff", border: "#d8d9e6", text: "#202133", muted: "#666a7e", link: "#3f5bf6", code: "#eceef8" },
+        terminal: { bg: "#181b29", pane: "#0e1019", toolbar: "#141725", header: "#1a1f32", border: "#333b5a", text: "#f1f3ff", muted: "#aeb4cc", accent: "#8ea0ff" }
+      }),
+      obsidian: themePreset({
+        label: "Obsidian", mode: "dark", bodyFont: themeFonts.merriweather, monoFont: themeFonts.sometype,
+        ui: { bg: "#141516", panel: "#1d1f20", border: "#363a3b", text: "#eeeeea", muted: "#a5aaa8", accent: "#9dc4ff" },
+        docs: { bg: "#151617", panel: "#202223", border: "#383c3e", text: "#f0ede5", muted: "#b1aaa0", link: "#9dc4ff", code: "#2a2c2d" },
+        terminal: { bg: "#0c0d0e", pane: "#08090a", toolbar: "#111314", header: "#17191b", border: "#303438", text: "#f2f4f3", muted: "#a8b0ae", accent: "#9dc4ff" }
+      }),
+      ember: themePreset({
+        label: "Ember", mode: "dark", bodyFont: themeFonts.sourceSans, monoFont: themeFonts.ibmMono,
+        ui: { bg: "#1a1411", panel: "#241d18", border: "#45362d", text: "#f4eee8", muted: "#b6a79d", accent: "#ef8354" },
+        docs: { bg: "#1b1512", panel: "#261e19", border: "#49382e", text: "#f5eadf", muted: "#bda99a", link: "#f2a06f", code: "#33271f" },
+        terminal: { bg: "#120d0a", pane: "#0c0806", toolbar: "#1a120e", header: "#221813", border: "#493428", text: "#fbefe6", muted: "#bea99b", accent: "#ef8354" }
+      }),
+      nocturne: themePreset({
+        label: "Nocturne", mode: "dark", bodyFont: themeFonts.newsreader, monoFont: themeFonts.spaceMono,
+        ui: { bg: "#18151b", panel: "#221e27", border: "#403746", text: "#f1edf3", muted: "#afa3b8", accent: "#d497ff" },
+        docs: { bg: "#1a161d", panel: "#241f28", border: "#44394a", text: "#f2eadf", muted: "#b9aa9d", link: "#d497ff", code: "#332a32" },
+        terminal: { bg: "#130f15", pane: "#0d0a0f", toolbar: "#1a141d", header: "#211926", border: "#433549", text: "#f5edf5", muted: "#b8a8bd", accent: "#d497ff" }
+      }),
+      graphite: themePreset({
+        label: "Graphite", mode: "dark", bodyFont: themeFonts.montserrat, monoFont: themeFonts.sometype,
+        ui: { bg: "#171819", panel: "#202224", border: "#3a3f43", text: "#f0f2f2", muted: "#a6adb1", accent: "#7dd3a8" },
+        docs: { bg: "#17191a", panel: "#222426", border: "#3c4145", text: "#edf1ee", muted: "#aab2ad", link: "#7dd3a8", code: "#2a2d2f" },
+        terminal: { bg: "#0d0f10", pane: "#090a0b", toolbar: "#121516", header: "#181c1e", border: "#333a3d", text: "#eef5f1", muted: "#a7b2ad", accent: "#7dd3a8" }
+      }),
+      aubergine: themePreset({
+        label: "Aubergine", mode: "dark", bodyFont: themeFonts.instrument, monoFont: themeFonts.ibmMono,
+        ui: { bg: "#1c141a", panel: "#261d24", border: "#493644", text: "#f5edf2", muted: "#b8a5b0", accent: "#ff8fb3" },
+        docs: { bg: "#1d151b", panel: "#292027", border: "#4d3948", text: "#f4e9ee", muted: "#b9a5ae", link: "#ff8fb3", code: "#352830" },
+        terminal: { bg: "#130d11", pane: "#0d090c", toolbar: "#1b1218", header: "#241920", border: "#4b3544", text: "#f8edf3", muted: "#bca8b4", accent: "#ff8fb3" }
+      }),
+      cobalt: themePreset({
+        label: "Cobalt", mode: "dark", bodyFont: themeFonts.inter, monoFont: themeFonts.spaceMono,
+        ui: { bg: "#111827", panel: "#1b2433", border: "#334158", text: "#eff4ff", muted: "#a7b2c7", accent: "#60a5fa" },
+        docs: { bg: "#121a2a", panel: "#1c2638", border: "#34445f", text: "#eef4ff", muted: "#aab6cd", link: "#93c5fd", code: "#253149" },
+        terminal: { bg: "#0b1020", pane: "#070b16", toolbar: "#10172a", header: "#17213a", border: "#33415f", text: "#eff6ff", muted: "#a9b7cf", accent: "#60a5fa" }
+      })
     },
     customTokens: {}
   },
@@ -343,10 +311,7 @@ function mergeSettings(base, override) {
 
 function normalizeBuiltInPresets(settings) {
   settings.theme ||= {};
-  settings.theme.presets = {
-    ...(settings.theme.presets || {}),
-    ...structuredClone(defaultSettings.theme.presets)
-  };
+  settings.theme.presets = structuredClone(defaultSettings.theme.presets);
   return settings;
 }
 

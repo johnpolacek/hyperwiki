@@ -834,10 +834,15 @@ body {
   min-width: 0;
 }
 
-.theme-preset-bar {
+.theme-selected-preset {
+  min-width: 0;
+}
+
+.theme-selected-preset-card {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: stretch;
   min-width: 0;
 }
 
@@ -854,6 +859,28 @@ body {
   color: var(--text);
   text-align: left;
   cursor: pointer;
+}
+
+.theme-preset-card-selected {
+  grid-template-columns: 148px minmax(0, 1fr);
+  min-height: 112px;
+  padding: 14px;
+}
+
+.theme-preset-picker {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.theme-preset-picker[hidden] {
+  display: none;
+}
+
+.theme-preset-card-picker {
+  min-height: 118px;
+  align-content: center;
 }
 
 .theme-preset-card:hover,
@@ -877,6 +904,26 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--preset-ui-bg);
+}
+
+.theme-preset-card-selected .theme-preset-preview {
+  grid-template-columns: 42px 1fr;
+  grid-template-rows: 1fr 28px;
+  width: 148px;
+  height: 82px;
+}
+
+.theme-preset-card-selected .theme-preset-preview i {
+  background:
+    linear-gradient(var(--preset-primary), var(--preset-primary)) 14px 18px / 14px 14px no-repeat,
+    var(--preset-ui-bg);
+}
+
+.theme-preset-card-selected .theme-preset-preview b {
+  background:
+    linear-gradient(var(--preset-secondary), var(--preset-secondary)) 18px 28px / 56px 5px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--preset-secondary) 35%, transparent), color-mix(in srgb, var(--preset-secondary) 35%, transparent)) 18px 42px / 76px 5px no-repeat,
+    var(--preset-docs-bg);
 }
 
 .theme-preset-preview i,
@@ -925,6 +972,10 @@ body {
   white-space: nowrap;
 }
 
+.theme-preset-card-selected .theme-preset-text strong {
+  font-size: 18px;
+}
+
 .theme-preset-text span {
   overflow: hidden;
   color: var(--muted);
@@ -940,6 +991,14 @@ body {
 
 .theme-preset-mono-font {
   font-size: 12px;
+}
+
+.theme-preset-card-selected .theme-preset-body-font {
+  font-size: 20px;
+}
+
+.theme-preset-card-selected .theme-preset-mono-font {
+  font-size: 14px;
 }
 
 .agent-editor-layout {
