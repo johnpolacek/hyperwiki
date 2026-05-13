@@ -227,7 +227,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
   const ideaIncubationLabel = navLabels.find((label) => label.textContent.includes("Idea Incubation"));
   const terminalHeaderLabel = navLabels.find((label) => label.textContent.includes("Terminal Header Simplification"));
-  const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit 03"));
+  const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit-03"));
   if (!stageOneLabel || !stageSevenLabel || !ideaIncubationLabel || !terminalHeaderLabel || !longUnitLabel) {
     throw new Error("Expected stage and unit labels in plan navigation");
   }
@@ -319,7 +319,7 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error(`Expected expanded sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Verification Loop Model" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Verification Loop Model");
 await page.locator(".wiki-command-bar").evaluate((bar) => {
   if (bar.querySelector("#completion-badge:not([hidden])") || bar.querySelector("#modify-button")?.hidden || bar.querySelector("#execute-button")?.hidden) {
@@ -348,7 +348,7 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error("Expected selected unit to show a 2px black left rail at the window edge");
   }
 });
-const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();
+const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).count();
 if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
@@ -422,7 +422,7 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 07 - Agent-native Verification");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Verification Loop Model" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-07-agent-native-verification\/unit-01-verification-loop-model\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Verification Loop Model");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
