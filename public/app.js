@@ -116,19 +116,30 @@ const themeSurfaces = [
 ];
 
 const fontOptions = [
-  { label: "Sometype Mono", value: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "" },
-  { label: "Instrument Serif", value: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif", google: "" },
-  { label: "Inter", value: "\"Inter\", ui-sans-serif, system-ui, sans-serif", google: "Inter:wght@400;500;600;700" },
-  { label: "IBM Plex Sans", value: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif", google: "IBM+Plex+Sans:wght@400;500;600;700" },
-  { label: "IBM Plex Mono", value: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "IBM+Plex+Mono:wght@400;500;600;700" },
-  { label: "Newsreader", value: "\"Newsreader\", ui-serif, Georgia, serif", google: "Newsreader:wght@400;600;700" },
-  { label: "Source Serif 4", value: "\"Source Serif 4\", ui-serif, Georgia, serif", google: "Source+Serif+4:wght@400;600;700" },
-  { label: "Space Mono", value: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Space+Mono:wght@400;700" }
+  { label: "Inter", type: "sans", value: "\"Inter\", ui-sans-serif, system-ui, sans-serif", google: "Inter:wght@400;500;600;700" },
+  { label: "Roboto", type: "sans", value: "\"Roboto\", ui-sans-serif, system-ui, sans-serif", google: "Roboto:wght@400;500;700" },
+  { label: "Open Sans", type: "sans", value: "\"Open Sans\", ui-sans-serif, system-ui, sans-serif", google: "Open+Sans:wght@400;500;600;700" },
+  { label: "Lato", type: "sans", value: "\"Lato\", ui-sans-serif, system-ui, sans-serif", google: "Lato:wght@400;700" },
+  { label: "Montserrat", type: "sans", value: "\"Montserrat\", ui-sans-serif, system-ui, sans-serif", google: "Montserrat:wght@400;500;600;700" },
+  { label: "Source Sans 3", type: "sans", value: "\"Source Sans 3\", ui-sans-serif, system-ui, sans-serif", google: "Source+Sans+3:wght@400;500;600;700" },
+  { label: "Work Sans", type: "sans", value: "\"Work Sans\", ui-sans-serif, system-ui, sans-serif", google: "Work+Sans:wght@400;500;600;700" },
+  { label: "IBM Plex Sans", type: "sans", value: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif", google: "IBM+Plex+Sans:wght@400;500;600;700" },
+  { label: "Instrument Serif", type: "serif", value: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif", google: "" },
+  { label: "Merriweather", type: "serif", value: "\"Merriweather\", ui-serif, Georgia, serif", google: "Merriweather:wght@400;700" },
+  { label: "Lora", type: "serif", value: "\"Lora\", ui-serif, Georgia, serif", google: "Lora:wght@400;500;600;700" },
+  { label: "Playfair Display", type: "serif", value: "\"Playfair Display\", ui-serif, Georgia, serif", google: "Playfair+Display:wght@400;600;700" },
+  { label: "Libre Baskerville", type: "serif", value: "\"Libre Baskerville\", ui-serif, Georgia, serif", google: "Libre+Baskerville:wght@400;700" },
+  { label: "Crimson Pro", type: "serif", value: "\"Crimson Pro\", ui-serif, Georgia, serif", google: "Crimson+Pro:wght@400;500;600;700" },
+  { label: "Newsreader", type: "serif", value: "\"Newsreader\", ui-serif, Georgia, serif", google: "Newsreader:wght@400;600;700" },
+  { label: "Source Serif 4", type: "serif", value: "\"Source Serif 4\", ui-serif, Georgia, serif", google: "Source+Serif+4:wght@400;600;700" },
+  { label: "Sometype Mono", type: "mono", value: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "" },
+  { label: "IBM Plex Mono", type: "mono", value: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "IBM+Plex+Mono:wght@400;500;600;700" },
+  { label: "Space Mono", type: "mono", value: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Space+Mono:wght@400;700" }
 ];
 
-const serifFontOptions = fontOptions.filter((font) => font.value.includes("serif"));
-const sansFontOptions = fontOptions.filter((font) => font.value.includes("sans-serif"));
-const monoFontOptions = fontOptions.filter((font) => font.value.includes("mono"));
+const serifFontOptions = fontOptions.filter((font) => font.type === "serif");
+const sansFontOptions = fontOptions.filter((font) => font.type === "sans");
+const monoFontOptions = fontOptions.filter((font) => font.type === "mono");
 
 window.addEventListener("hashchange", () => {
   activateWorkspaceLocation(workspaceLocation());
