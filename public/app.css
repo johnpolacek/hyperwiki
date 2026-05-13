@@ -909,6 +909,23 @@ body {
   box-shadow: 0 0 0 2px rgba(37, 162, 68, 0.14);
 }
 
+.wiki-nav a.completed-plan-link {
+  color: #8d928a;
+}
+
+.wiki-nav a.completed-plan-link .wiki-nav-label {
+  opacity: 0.72;
+}
+
+.wiki-nav a.completed-plan-link::before {
+  background: #d3d8cf;
+  box-shadow: none;
+}
+
+.wiki-nav details.completed-plan > summary {
+  color: #9aa098;
+}
+
 .plan-tree > a,
 .plan-subtree > a {
   max-width: 100%;
@@ -1194,6 +1211,23 @@ body {
   cursor: pointer;
   font: 600 12px/1.2 var(--sidebar-font);
   text-decoration: none;
+}
+
+.completion-badge {
+  flex: 0 0 auto;
+  border: 1px solid #d6d8d1;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #f0f2ed;
+  color: #6b756c;
+  font: 800 10px/1.2 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.completion-badge[hidden],
+.modify-button[hidden],
+.execute-button[hidden] {
+  display: none;
 }
 
 .modify-button {

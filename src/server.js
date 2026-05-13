@@ -885,6 +885,7 @@ async function walkWiki(baseRoot, directory, pages, projectId) {
     const html = await readFile(fullPath, "utf8");
     pages.push({
       title: firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(relativePath),
+      summary: listItemsFromFirstSummary(html),
       path: projectId ? `/projects/${projectId}/wiki/${relativePath}` : `/wiki/${relativePath}`
     });
   }

@@ -4,6 +4,7 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
+const completionBadge = document.getElementById("completion-badge");
 const modifyButton = document.getElementById("modify-button");
 const modifyPlanUi = document.getElementById("modify-plan-ui");
 const modifyPlanInput = document.getElementById("modify-plan-input");
@@ -48,6 +49,7 @@ const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
 const terminalSessions = new Map();
 const wikiPageTitles = new Map();
+const wikiPageStatus = new Map();
 let agentTerminalCount = 0;
 let cliTerminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
@@ -276,9 +278,13 @@ async function loadWikiNav() {
     const response = await fetch(projectPath("/api/wiki"));
     const data = await response.json();
     wikiPageTitles.clear();
+    wikiPageStatus.clear();
     data.pages.forEach((page) => {
       wikiPageTitles.set(page.path, cleanPageTitle(page));
       wikiPageTitles.set(displayWikiPath(page.path), cleanPageTitle(page));
+      const status = pageStatus(page);
+      wikiPageStatus.set(page.path, status);
+      wikiPageStatus.set(displayWikiPath(page.path), status);
     });
     currentPlanPath = data.pages.find((page) => page.path.endsWith("/wiki/plans/index.html"))?.path || currentPlanPath;
     wikiNav.replaceChildren(...groupWikiPages(data.pages));
@@ -371,6 +377,7 @@ async function showDashboardPage(options = {}) {
   openPage.href = "/dashboard";
   modifyPlanUi.hidden = true;
   modifyButton.setAttribute("aria-expanded", "false");
+  setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
   if (location.pathname !== "/dashboard") {
     const method = options.replace ? "replaceState" : "pushState";
@@ -928,15 +935,16 @@ function renderPlanTree(pages) {
 function renderPlanNode(page, pages) {
   const children = childPlanPages(page, pages);
   const state = currentPlanState(page);
+  const completed = isCompletedPage(page);
   if (children.length === 0) {
-    return renderWikiLink(page, state);
+    return renderWikiLink(page, state, { completed });
   }
   const group = document.createElement("details");
-  group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}`;
+  group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}${completed ? " completed-plan" : ""}`;
   group.dataset.path = displayWikiPath(page.path);
   group.open = state || children.some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
   const summary = document.createElement("summary");
-  summary.append(renderWikiLink(page, state));
+  summary.append(renderWikiLink(page, state, { completed }));
   group.append(summary, ...children.map((child) => renderPlanNode(child, pages)));
   return group;
 }
@@ -1009,7 +1017,7 @@ function hasCurrentDescendant(page, pages) {
   return childPlanPages(page, pages).some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
 }
 
-function renderWikiLink(page, state = "") {
+function renderWikiLink(page, state = "", options = {}) {
   const link = document.createElement("a");
   link.href = `#${page.path}`;
   const label = cleanPageTitle(page);
@@ -1019,6 +1027,9 @@ function renderWikiLink(page, state = "") {
   link.append(labelElement);
   link.title = label;
   link.dataset.path = displayWikiPath(page.path);
+  if (options.completed) {
+    link.classList.add("completed-plan-link");
+  }
   if (state) {
     link.classList.add(state);
   }
@@ -1037,6 +1048,17 @@ function cleanPageTitle(page) {
   return page.title;
 }
 
+function pageStatus(page) {
+  const summary = `${page.summary || ""} ${page.title || ""} ${page.path || ""}`;
+  if (displayWikiPath(page.path).includes("/wiki/plans/zzz_completed/")) return "complete";
+  if (/\bstatus:\s*complete(d)?\b/i.test(summary)) return "complete";
+  return "";
+}
+
+function isCompletedPage(page) {
+  return pageStatus(page) === "complete";
+}
+
 function activateWikiPage(path) {
   const nextPath = normalizeWikiPath(path);
   requestedWikiPath = nextPath;
@@ -1044,6 +1066,7 @@ function activateWikiPage(path) {
     wikiFrame.setAttribute("src", nextPath);
   }
   setCurrentPage(nextPath, titleForWikiPath(nextPath));
+  setCommandBarCompleted(isCompletedPath(nextPath));
   openPage.href = nextPath;
   wikiNav.querySelectorAll("a").forEach((link) => {
     link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
@@ -1131,6 +1154,7 @@ function syncFrameLocation() {
       return;
     }
     setCurrentPage(framePath, currentWikiTitle() || displayWikiPath(framePath));
+    setCommandBarCompleted(isCompletedPath(framePath));
     openPage.href = framePath;
     wikiNav.querySelectorAll("a").forEach((link) => {
       link.classList.toggle("active", link.dataset.path === displayWikiPath(framePath));
@@ -1140,6 +1164,22 @@ function syncFrameLocation() {
     }
   } catch {
     // Same-origin wiki pages should be readable; ignore if a browser policy blocks it.
+  }
+}
+
+function isCompletedPath(path) {
+  return wikiPageStatus.get(path) === "complete" || wikiPageStatus.get(displayWikiPath(path)) === "complete";
+}
+
+function setCommandBarCompleted(completed) {
+  completionBadge.hidden = !completed;
+  modifyButton.hidden = completed;
+  executeButton.hidden = completed;
+  executeMenu.hidden = true;
+  executeButton.setAttribute("aria-expanded", "false");
+  if (completed) {
+    modifyPlanUi.hidden = true;
+    modifyButton.setAttribute("aria-expanded", "false");
   }
 }
 

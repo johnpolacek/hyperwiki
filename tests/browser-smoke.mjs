@@ -69,7 +69,7 @@ await page.locator("#modify-plan-ui").evaluate((form) => {
 });
 const modifyInput = page.locator("#modify-plan-input");
 const initialModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
-await modifyInput.fill(["tighten scope", "add verification", "note follow-up"].join("\n"));
+await modifyInput.fill(["tighten scope", "add verification", "note follow-up", "record assumption"].join("\n"));
 await modifyInput.evaluate((element) => element.dispatchEvent(new Event("input", { bubbles: true })));
 const expandedModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
 if (expandedModifyHeight <= initialModifyHeight) {
@@ -240,8 +240,8 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   const stageOneBefore = getComputedStyle(stageOneLink, "::before");
   const stageSevenBefore = getComputedStyle(stageSevenLink, "::before");
   const currentPlanBefore = getComputedStyle(currentPlanLink, "::before");
-  if (stageOneBefore.backgroundColor !== "rgba(0, 0, 0, 0)") {
-    throw new Error(`Expected inactive stage dot to be transparent, got ${stageOneBefore.backgroundColor}`);
+  if (stageOneBefore.backgroundColor !== "rgb(211, 216, 207)") {
+    throw new Error(`Expected completed stage dot to be light gray, got ${stageOneBefore.backgroundColor}`);
   }
   if (currentPlanBefore.backgroundColor !== "rgb(37, 162, 68)") {
     throw new Error(`Expected current plan dot to be green, got ${currentPlanBefore.backgroundColor}`);
@@ -321,6 +321,11 @@ await page.locator("#wiki-nav").evaluate(() => {
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Verification Loop Model" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Verification Loop Model");
+await page.locator(".wiki-command-bar").evaluate((bar) => {
+  if (bar.querySelector("#completion-badge:not([hidden])") || bar.querySelector("#modify-button")?.hidden || bar.querySelector("#execute-button")?.hidden) {
+    throw new Error("Expected active unit to show Modify and Execute actions.");
+  }
+});
 await page.locator("#current-page").evaluate((element) => {
   const text = element.textContent || "";
   if (!text.includes("MVP Plan") || !text.includes("Stage 07") || !text.includes("Unit 01")) {
@@ -349,11 +354,23 @@ if (stageOneUnitLinks !== 1) {
 }
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 01 - CLI and Repository Foundation");
+await page.locator(".wiki-command-bar").evaluate((bar) => {
+  if (bar.querySelector("#completion-badge")?.hidden || !bar.querySelector("#modify-button")?.hidden || !bar.querySelector("#execute-button")?.hidden) {
+    throw new Error("Expected completed stage to replace Modify/Execute with Completed.");
+  }
+});
 await page.locator("#wiki-nav").evaluate(() => {
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
   if (!stageOneGroup?.open || stageSevenGroup?.open) {
     throw new Error("Expected selected Stage 01 to expand and Stage 07 to collapse");
+  }
+  const stageOneLink = stageOneGroup.querySelector(":scope > summary a");
+  if (!stageOneLink.classList.contains("completed-plan-link")) {
+    throw new Error("Expected completed stage sidebar link to be marked as completed.");
+  }
+  if (getComputedStyle(stageOneLink).color !== "rgb(141, 146, 138)") {
+    throw new Error(`Expected completed stage to be lighter, got ${getComputedStyle(stageOneLink).color}`);
   }
 });
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
