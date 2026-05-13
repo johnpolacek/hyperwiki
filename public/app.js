@@ -1106,7 +1106,7 @@ function syncSimpleControls() {
   const hasSecondary = Boolean(themeDraftSimple.secondary);
   themeSecondary.value = normalizeColor(themeDraftSimple.secondary || derivedSecondary);
   themeSecondaryToggle.classList.toggle("is-empty", !hasSecondary);
-  themeSecondaryToggle.style.setProperty("--secondary-color", normalizeColor(themeDraftSimple.secondary || derivedSecondary));
+  themeSecondaryToggle.style.setProperty("--secondary-color", hasSecondary ? normalizeColor(themeDraftSimple.secondary) : "transparent");
   themeSecondaryClear.hidden = !hasSecondary;
   themeTerminalMode.value = themeDraftSimple.terminalMode || "match";
   themeTerminalFont.value = fontOptions.some((font) => font.value === themeDraftSimple.terminalFont)

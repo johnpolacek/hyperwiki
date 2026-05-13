@@ -890,8 +890,6 @@ body {
   display: grid;
   gap: 10px;
   min-width: 0;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
 }
 
 .theme-font-grid {
@@ -960,6 +958,17 @@ body {
   border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
   border-radius: 4px;
   background: var(--secondary-color);
+}
+
+.theme-secondary-toggle.is-empty span {
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--muted) 22%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--muted) 22%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--muted) 22%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--muted) 22%, transparent) 75%),
+    var(--panel);
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-size: 10px 10px;
 }
 
 .theme-secondary-toggle.is-empty::after {
