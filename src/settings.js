@@ -105,7 +105,7 @@ export const defaultSettings = Object.freeze({
             muted: "#65736b",
             link: "#0c6c83",
             code: "#e9f0ef",
-            serifFont: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
+            serifFont: "\"Inter\", ui-sans-serif, system-ui, sans-serif",
             monoFont: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           },
           terminal: {
@@ -142,7 +142,7 @@ export const defaultSettings = Object.freeze({
             muted: "#706a56",
             link: "#775f16",
             code: "#eeead8",
-            serifFont: "\"Source Serif 4\", ui-serif, Georgia, serif",
+            serifFont: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif",
             monoFont: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           },
           terminal: {
@@ -219,14 +219,14 @@ export function hyperwikiHome() {
 export async function readSettings() {
   const settingsPath = path.join(hyperwikiHome(), "settings.json");
   if (!existsSync(settingsPath)) {
-    return structuredClone(defaultSettings);
+    return normalizeBuiltInPresets(structuredClone(defaultSettings));
   }
   const parsed = JSON.parse(await readFile(settingsPath, "utf8"));
-  return mergeSettings(defaultSettings, parsed);
+  return normalizeBuiltInPresets(mergeSettings(defaultSettings, parsed));
 }
 
 export async function writeSettings(settings) {
-  const next = mergeSettings(defaultSettings, settings);
+  const next = normalizeBuiltInPresets(mergeSettings(defaultSettings, settings));
   const settingsPath = path.join(hyperwikiHome(), "settings.json");
   await mkdir(path.dirname(settingsPath), { recursive: true });
   await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
@@ -339,6 +339,15 @@ function mergeSettings(base, override) {
     }
   }
   return next;
+}
+
+function normalizeBuiltInPresets(settings) {
+  settings.theme ||= {};
+  settings.theme.presets = {
+    ...(settings.theme.presets || {}),
+    ...structuredClone(defaultSettings.theme.presets)
+  };
+  return settings;
 }
 
 function isPlainObject(value) {

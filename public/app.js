@@ -1046,9 +1046,11 @@ function themePresetCard(value, preset) {
   const label = document.createElement("strong");
   label.textContent = preset.label || value;
   const docsFont = document.createElement("span");
+  docsFont.className = "theme-preset-body-font";
   docsFont.textContent = fontLabel(tokens.docs?.serifFont);
   docsFont.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
   const uiFont = document.createElement("span");
+  uiFont.className = "theme-preset-mono-font";
   uiFont.textContent = fontLabel(tokens.ui?.sidebarFont);
   uiFont.style.fontFamily = tokens.ui?.sidebarFont || "var(--sidebar-font)";
   text.append(label, docsFont, uiFont);

@@ -928,11 +928,18 @@ body {
 .theme-preset-text span {
   overflow: hidden;
   color: var(--muted);
-  font-size: 14px;
   font-weight: 500;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.theme-preset-body-font {
+  font-size: 15px;
+}
+
+.theme-preset-mono-font {
+  font-size: 12px;
 }
 
 .agent-editor-layout {
