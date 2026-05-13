@@ -239,6 +239,10 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
     throw new Error("Expected Stage 01 to appear before Stage 07 in plan navigation");
   }
+  const unitIndent = longUnitLabel.getBoundingClientRect().left - stageSevenLabel.getBoundingClientRect().left;
+  if (unitIndent < 10 || unitIndent > 16) {
+    throw new Error(`Expected unit rows to sit slightly under stages, got ${unitIndent}px`);
+  }
   const stageOneLink = stageOneLabel.closest("a");
   const stageSevenLink = stageSevenLabel.closest("a");
   const currentPlanLink = document.querySelector("#wiki-nav a.current-plan");
