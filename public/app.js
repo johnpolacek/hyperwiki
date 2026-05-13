@@ -909,7 +909,7 @@ async function saveAgentInstructions() {
     renderSettings(settingsState);
     await loadAgentsFilePreview();
     closeAgentEditor();
-    setSettingsStatus(`Agent instructions saved and synced to ${result.path}`);
+    setSettingsStatus("Agent instructions saved", "success");
   } catch (error) {
     setSettingsStatus(error.message || "Could not save agent instructions.");
   } finally {
@@ -1059,8 +1059,9 @@ async function saveThemeDraft() {
   setSettingsStatus("Theme saved.");
 }
 
-function setSettingsStatus(message) {
+function setSettingsStatus(message, tone = "") {
   settingsStatus.textContent = message;
+  settingsStatus.classList.toggle("status-success", tone === "success");
 }
 
 function applyTheme(settings) {

@@ -297,10 +297,39 @@ body {
 }
 
 .dashboard-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 6px;
   margin: 0;
   color: #3f473f;
   font: 600 11px/1.35 var(--sidebar-font);
   text-align: right;
+}
+
+.dashboard-status.status-success {
+  color: #1f7a3a;
+}
+
+.dashboard-status.status-success::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #25a244;
+}
+
+.dashboard-status.status-success::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 3px;
+  margin-left: 3px;
+  margin-top: -1px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
 }
 
 .dashboard-action-form {
