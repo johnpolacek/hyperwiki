@@ -1074,6 +1074,12 @@ function themePresetCard(value, preset, variant = "") {
   preview.style.setProperty("--preset-secondary", tokens.docs?.link || tokens.ui?.accent || "#276ef1");
   preview.innerHTML = "<i></i><b></b><em></em><strong></strong>";
 
+  const text = variant === "selected" ? themeSelectedPresetText(value, preset, tokens) : themeCompactPresetText(value, preset, tokens);
+  card.append(preview, text);
+  return card;
+}
+
+function themeCompactPresetText(value, preset, tokens) {
   const text = document.createElement("span");
   text.className = "theme-preset-text";
   const label = document.createElement("strong");
@@ -1087,8 +1093,44 @@ function themePresetCard(value, preset, variant = "") {
   uiFont.textContent = fontLabel(tokens.ui?.sidebarFont);
   uiFont.style.fontFamily = tokens.ui?.sidebarFont || "var(--sidebar-font)";
   text.append(label, docsFont, uiFont);
-  card.append(preview, text);
-  return card;
+  return text;
+}
+
+function themeSelectedPresetText(value, preset, tokens) {
+  const text = document.createElement("span");
+  text.className = "theme-preset-text theme-preset-text-selected";
+  const header = document.createElement("span");
+  header.className = "theme-preset-selected-header";
+  const label = document.createElement("strong");
+  label.textContent = preset.label || value;
+  const bodySpec = document.createElement("span");
+  bodySpec.className = "theme-preset-selected-type theme-preset-selected-body";
+  bodySpec.innerHTML = `<small>Heading</small><b>AaBbCcDd</b><em>The quick brown fox jumps over the lazy dog...</em>`;
+  bodySpec.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
+  const monoSpec = document.createElement("span");
+  monoSpec.className = "theme-preset-selected-type theme-preset-selected-mono";
+  monoSpec.innerHTML = `<small>Mono</small><b>AaBbCcDd</b><em>wiki/theme.tokens preview...</em>`;
+  monoSpec.style.fontFamily = tokens.docs?.monoFont || "var(--docs-mono-font)";
+  header.append(label, bodySpec, monoSpec);
+
+  const chips = document.createElement("span");
+  chips.className = "theme-preset-selected-chips";
+  [
+    ["Background", tokens.docs?.bg],
+    ["Surface", tokens.ui?.panel],
+    ["Accent", tokens.ui?.accent],
+    ["Ink", tokens.docs?.text]
+  ].forEach(([name, color]) => {
+    const chip = document.createElement("span");
+    const swatch = document.createElement("i");
+    swatch.style.background = color || "transparent";
+    const caption = document.createElement("small");
+    caption.textContent = name;
+    chip.append(swatch, caption);
+    chips.append(chip);
+  });
+  text.append(header, chips);
+  return text;
 }
 
 function fontLabel(value) {
