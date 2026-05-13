@@ -383,6 +383,13 @@ body {
   white-space: nowrap;
 }
 
+.dashboard-import-label {
+  margin: -2px 0 0;
+  color: #596158;
+  font: 700 11px/1.2 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
 .dashboard-file-row {
   display: flex;
   align-items: end;

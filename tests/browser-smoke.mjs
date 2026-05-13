@@ -44,7 +44,7 @@ await page.locator("#idea-import-form").evaluate((form) => {
   const text = form.textContent || "";
   const fileInput = form.querySelector("#idea-markdown-file");
   const importButton = form.querySelector(".dashboard-import-button");
-  if (!text.includes("OR") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
+  if (!text.includes("OR") || !text.includes("Import idea") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
     throw new Error(`Expected custom document import affordance without Send to agent, got ${text}`);
   }
   if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
