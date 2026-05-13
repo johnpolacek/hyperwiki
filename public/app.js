@@ -1088,7 +1088,57 @@ function themePresetCard(value, preset, variant = "") {
   uiFont.style.fontFamily = tokens.ui?.sidebarFont || "var(--sidebar-font)";
   text.append(label, docsFont, uiFont);
   card.append(preview, text);
+  if (variant === "selected") {
+    card.append(themePresetSpec(tokens));
+  }
   return card;
+}
+
+function themePresetSpec(tokens) {
+  const spec = document.createElement("span");
+  spec.className = "theme-preset-spec";
+
+  const swatches = document.createElement("span");
+  swatches.className = "theme-preset-spec-swatches";
+  [
+    tokens.ui?.bg,
+    tokens.ui?.panel,
+    tokens.docs?.bg,
+    tokens.ui?.accent,
+    tokens.docs?.link,
+    tokens.terminal?.bg
+  ].forEach((color) => {
+    const swatch = document.createElement("i");
+    swatch.style.background = color || "transparent";
+    swatches.append(swatch);
+  });
+
+  const specimen = document.createElement("span");
+  specimen.className = "theme-preset-spec-type";
+  const body = document.createElement("b");
+  body.textContent = "Readable planning copy";
+  body.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
+  const mono = document.createElement("code");
+  mono.textContent = "wiki/theme.tokens";
+  mono.style.fontFamily = tokens.docs?.monoFont || "var(--docs-mono-font)";
+  specimen.append(body, mono);
+
+  const surfaces = document.createElement("span");
+  surfaces.className = "theme-preset-spec-surfaces";
+  [
+    ["UI", tokens.ui?.panel, tokens.ui?.text],
+    ["Docs", tokens.docs?.bg, tokens.docs?.text],
+    ["Terminal", tokens.terminal?.bg, tokens.terminal?.text]
+  ].forEach(([label, bg, text]) => {
+    const chip = document.createElement("span");
+    chip.textContent = label;
+    chip.style.background = bg || "transparent";
+    chip.style.color = text || "inherit";
+    surfaces.append(chip);
+  });
+
+  spec.append(swatches, specimen, surfaces);
+  return spec;
 }
 
 function fontLabel(value) {

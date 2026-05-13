@@ -855,23 +855,10 @@ body {
 
 .theme-preset-card-selected {
   position: relative;
-  grid-template-columns: 180px minmax(220px, 0.42fr) minmax(0, 1fr) auto;
-  min-height: 136px;
+  grid-template-columns: 190px minmax(220px, 0.36fr) minmax(360px, 1fr) auto;
+  min-height: 150px;
   padding: 18px 18px 18px 20px;
   cursor: default;
-}
-
-.theme-preset-card-selected::after {
-  content: "";
-  align-self: stretch;
-  width: 100%;
-  min-height: 72px;
-  border: 1px solid color-mix(in srgb, var(--preset-primary) 32%, var(--border));
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, var(--preset-primary), var(--preset-secondary)) 0 0 / 100% 5px no-repeat,
-    linear-gradient(var(--preset-docs-bg), var(--preset-docs-bg)) 0 0 / 100% 100% no-repeat;
-  box-shadow: inset 0 -26px 0 var(--preset-terminal-bg);
 }
 
 .theme-preset-edit {
@@ -936,8 +923,8 @@ body {
 .theme-preset-card-selected .theme-preset-preview {
   grid-template-columns: 52px 1fr;
   grid-template-rows: 1fr 34px;
-  width: 180px;
-  height: 98px;
+  width: 190px;
+  height: 108px;
 }
 
 .theme-preset-card-selected .theme-preset-preview i {
@@ -1026,6 +1013,82 @@ body {
 
 .theme-preset-card-selected .theme-preset-mono-font {
   font-size: 14px;
+}
+
+.theme-preset-spec {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.32fr) minmax(190px, 0.42fr) minmax(150px, 0.26fr);
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.theme-preset-spec-swatches {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.theme-preset-spec-swatches i {
+  min-height: 82px;
+  border-right: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.theme-preset-spec-swatches i:last-child {
+  border-right: 0;
+}
+
+.theme-preset-spec-type {
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--preset-secondary) 28%, var(--border));
+  border-radius: 8px;
+  padding: 13px 14px;
+  background: var(--preset-docs-bg);
+  color: var(--text);
+}
+
+.theme-preset-spec-type b,
+.theme-preset-spec-type code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-preset-spec-type b {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.theme-preset-spec-type code {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.theme-preset-spec-surfaces {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.theme-preset-spec-surfaces span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 10px;
+  font: 700 11px/1 var(--sidebar-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-editor-layout {
