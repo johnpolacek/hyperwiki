@@ -6,7 +6,6 @@ Always use `pnpm` for package management and package scripts in this repository.
 
 Prefer the `agent-browser` CLI for browser automation and visual checks before falling back to Playwright.
 
-<!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
 ## hyperwiki Agent Guide
 
 ### Project Wiki
@@ -34,4 +33,3 @@ Prefer the `agent-browser` CLI for browser automation and visual checks before f
 - Install dependencies: auto
 - Run long commands: ask
 - Create plans before code: meaningful-only
-<!-- PROJECT-WIKI-BOOTSTRAPPER:END -->
