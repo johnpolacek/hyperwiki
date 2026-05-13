@@ -445,6 +445,7 @@ body {
   padding: 0;
   border: 0;
   opacity: 0;
+  cursor: pointer;
 }
 
 .dashboard-import-button:has(input:focus-visible) {
