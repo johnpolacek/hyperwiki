@@ -1018,7 +1018,7 @@ function renderPlanTree(pages) {
 
 function renderPlanNode(page, pages) {
   const children = childPlanPages(page, pages);
-  const state = currentPlanState(page);
+  const state = currentPlanState(page, pages);
   const completed = isCompletedPage(page);
   if (children.length === 0) {
     return renderWikiLink(page, state, { completed });
@@ -1026,7 +1026,7 @@ function renderPlanNode(page, pages) {
   const group = document.createElement("details");
   group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}${completed ? " completed-plan" : ""}`;
   group.dataset.path = displayWikiPath(page.path);
-  group.open = state || children.some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
+  group.open = state || children.some((child) => currentPlanState(child, pages) || hasCurrentDescendant(child, pages));
   const summary = document.createElement("summary");
   summary.append(renderWikiLink(page, state, { completed }));
   group.append(summary, ...children.map((child) => renderPlanNode(child, pages)));
@@ -1068,16 +1068,10 @@ function isImmediateChildPlanPage(parent, candidate, pages) {
   }
   if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
     return /^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
-      && !candidatePath.endsWith("/index.html")
-      && !completedPlanHasChildDirectory(candidatePath, pages);
+      && !candidatePath.endsWith("/index.html");
   }
   const parentBase = parentPath.replace(/\.html$/, "");
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
-}
-
-function completedPlanHasChildDirectory(planPath, pages) {
-  const planBase = planPath.replace(/\.html$/, "");
-  return pages.some((page) => displayWikiPath(page.path).startsWith(`${planBase}/`));
 }
 
 function planSortKey(page) {
@@ -1089,16 +1083,20 @@ function planSortKey(page) {
   return `02-${path}`;
 }
 
-function currentPlanState(page) {
+function currentPlanState(page, pages = []) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/mvp/index.html")) return "current-plan";
-  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification.html")) return "current-stage";
-  if (path.endsWith("/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html")) return "current-unit";
+  if (isUnitPage(page) && pageStatus(page) === "active") return "current-unit";
+  if (isStagePlanPath(path) && (pageStatus(page) === "active" || hasActiveDescendant(page, pages))) return "current-stage";
+  if (isTopLevelPlanPage(page) && (pageStatus(page) === "active" || hasActiveDescendant(page, pages))) return "current-plan";
   return "";
 }
 
 function hasCurrentDescendant(page, pages) {
-  return childPlanPages(page, pages).some((child) => currentPlanState(child) || hasCurrentDescendant(child, pages));
+  return childPlanPages(page, pages).some((child) => currentPlanState(child, pages) || hasCurrentDescendant(child, pages));
+}
+
+function hasActiveDescendant(page, pages) {
+  return childPlanPages(page, pages).some((child) => pageStatus(child) === "active" || hasActiveDescendant(child, pages));
 }
 
 function renderWikiLink(page, state = "", options = {}) {
@@ -1139,8 +1137,20 @@ function pageStatus(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "";
   if (path.includes("/wiki/plans/zzz_completed/")) return "complete";
+  const explicit = explicitPageStatus(page);
+  if (explicit) return explicit;
   if (/\bstatus:\s*complete(d)?\b/i.test(summary)) return "complete";
   return "";
+}
+
+function explicitPageStatus(page) {
+  const summary = Array.isArray(page.summary) ? page.summary : [];
+  const statusItem = summary.find((item) => /^status:/i.test(item));
+  if (!statusItem) return "";
+  const status = statusItem.slice(statusItem.indexOf(":") + 1).trim().toLowerCase();
+  return ["active", "pending", "complete", "completed", "draft", "blocked", "deferred"].includes(status)
+    ? status.replace("completed", "complete")
+    : "";
 }
 
 function isCompletedPage(page) {

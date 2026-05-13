@@ -353,9 +353,10 @@ function safeDropName(name) {
 async function workspaceSummary(root, config) {
   const packageManager = await packageManagerForRoot(root);
   const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
+  const wikiPages = await listWikiPages(root);
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
-  const status = workspaceStatus(planDashboard.summary, logEntries);
+  const status = workspaceStatus(planDashboard.summary, logEntries, wikiPages.pages);
   return {
     plan: {
       title: planDashboard.title || "Plans",
@@ -381,33 +382,59 @@ async function workspaceSummary(root, config) {
   };
 }
 
-function workspaceStatus(planSummary, logEntries) {
+function workspaceStatus(planSummary, logEntries, pages = []) {
   const currentUnit = summaryValue(planSummary, "Current unit");
   const currentStage = summaryValue(planSummary, "Current stage");
-  const current = currentUnit || currentUnitLabelForStage(currentStage) || currentStage || summaryValue(planSummary, "Status") || "Unknown";
+  const currentStagePage = findPlanPageByLabel(pages, currentStage) || findActivePlanPage(pages, isStagePath);
+  const currentUnitPage = findPlanPageByLabel(pages, currentUnit, currentStagePage)
+    || findActivePlanPage(pages, isUnitPath, currentStagePage)
+    || (!currentStagePage ? findActivePlanPage(pages, isUnitPath) : null);
+  const current = currentUnit || currentUnitPage?.title || currentStage || currentStagePage?.title || summaryValue(planSummary, "Status") || "Unknown";
   return {
     completed: completedStatus(planSummary, logEntries),
-    stage: currentStage || "Unknown",
+    stage: currentStage || currentStagePage?.title || "Unknown",
     current,
-    currentPath: currentUnitPath(current)
+    currentPath: currentUnitPage?.path || currentStagePage?.path || ""
   };
 }
 
-function currentUnitLabelForStage(stage) {
-  if (/stage\s*0?7|agent-native verification/i.test(stage || "")) {
-    return "Unit 01 - Verification Loop Model";
-  }
-  return "";
+function findPlanPageByLabel(pages, label, parentPage = null) {
+  if (!label || /^none|complete$/i.test(label)) return null;
+  const normalized = normalizePlanLabel(label);
+  const parentBase = parentPage ? parentPage.path.replace(/\.html$/, "") : "";
+  return pages.find((page) => {
+    if (!page.path.includes("/wiki/plans/")) return false;
+    if (parentBase && !page.path.startsWith(`${parentBase}/`)) return false;
+    return normalizePlanLabel(page.title) === normalized;
+  }) || null;
 }
 
-function currentUnitPath(current) {
-  if (/unit\s*0?1/i.test(current) || /verification loop/i.test(current)) {
-    return "/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html";
-  }
-  if (/stage\s*0?7|agent-native verification/i.test(current)) {
-    return "/wiki/plans/mvp/stage-07-agent-native-verification.html";
-  }
-  return "";
+function findActivePlanPage(pages, predicate, parentPage = null) {
+  const parentBase = parentPage ? parentPage.path.replace(/\.html$/, "") : "";
+  return pages.find((page) => {
+    if (parentBase && !page.path.startsWith(`${parentBase}/`)) return false;
+    return predicate(page.path) && pageSummaryStatus(page) === "active";
+  }) || null;
+}
+
+function isStagePath(pathValue) {
+  return /\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(pathValue);
+}
+
+function isUnitPath(pathValue) {
+  return /\/unit-\d+-[^/]+\.html$/.test(pathValue);
+}
+
+function normalizePlanLabel(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim()
+    .toLowerCase();
+}
+
+function pageSummaryStatus(page) {
+  return summaryValue(page.summary || [], "Status").toLowerCase();
 }
 
 function completedStatus(planSummary, logEntries) {

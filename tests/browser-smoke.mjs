@@ -78,6 +78,16 @@ await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   }
 });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
+const workspaceSummary = await page.evaluate(async () => {
+  const response = await fetch("/api/workspace");
+  return response.json();
+});
+if (workspaceSummary.status.current !== "Unit 01 - Verification Loop Model") {
+  throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
+}
+if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html") {
+  throw new Error(`Expected workspace current path for Stage 07 Unit 01, got ${workspaceSummary.status.currentPath}`);
+}
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
     throw new Error(`Expected current page breadcrumb for Planning Dashboard, got ${element.textContent}`);
@@ -213,6 +223,7 @@ await page.locator("#wiki-nav .plan-tree").evaluate((element) => {
   if (element.tagName === "DETAILS") throw new Error("Expected plan navigation heading not to be collapsible");
   if (element.textContent.includes("Planning Dashboard")) throw new Error("Expected plan navigation to omit Planning Dashboard");
   if (!element.textContent.includes("Completed Plans")) throw new Error("Expected completed plans archive in plan navigation");
+  if (!element.textContent.includes("Agent Workspace Enablers")) throw new Error("Expected extracted enabler plan in completed plans archive");
   const topLevelLabels = [...element.children]
     .filter((child) => !child.classList.contains("plan-tree-heading"))
     .map((child) => child.querySelector(":scope > summary .wiki-nav-label, :scope > .wiki-nav-label")?.textContent || child.textContent || "");
@@ -333,11 +344,18 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-07 Agent-native Verification" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 07 - Agent-native Verification");
 await page.locator("#wiki-nav").evaluate(() => {
+  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
+  const stageSevenText = stageSevenGroup?.textContent || "";
+  if (stageSevenText.includes("Workspace Framing Update") || stageSevenText.includes("Sidebar Project Pin") || stageSevenText.includes("Execute Target Workflow")) {
+    throw new Error(`Expected Stage 07 to omit extracted completed enabler units, got ${stageSevenText}`);
+  }
+  if (!stageSevenText.includes("Verification Loop Model") || !stageSevenText.includes("MCP Surface Definition")) {
+    throw new Error(`Expected Stage 07 to keep core verification units, got ${stageSevenText}`);
+  }
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-07"));
   const currentUnitLabel = navLabels.find((label) => label.textContent.includes("Verification Loop Model"));
   const longExpandedUnitLabel = navLabels.find((label) => label.textContent.includes("Machine-readable Project Contract"));
-  const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
   const selectedSummary = stageSevenLabel.closest("summary");
   const selectedRail = getComputedStyle(selectedSummary, "::after").backgroundColor;
   const selectedRailLeft = Number.parseFloat(getComputedStyle(selectedSummary, "::after").left);
