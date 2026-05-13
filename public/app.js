@@ -38,7 +38,11 @@ const themeEditor = document.getElementById("theme-editor");
 const themeCancel = document.getElementById("theme-cancel");
 const themeSave = document.getElementById("theme-save");
 const themePreset = document.getElementById("theme-preset");
+const themeMode = document.getElementById("theme-mode");
+const themePrimary = document.getElementById("theme-primary");
+const themeSecondary = document.getElementById("theme-secondary");
 const themeControls = document.getElementById("theme-controls");
+const themeJson = document.getElementById("theme-json");
 const agentSummary = document.getElementById("agent-summary");
 const agentEdit = document.getElementById("agent-edit");
 const agentEditor = document.getElementById("agent-editor");
@@ -79,6 +83,7 @@ let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
 let settingsState = null;
 let themeDraft = null;
+let themeDraftSimple = null;
 let agentDraft = null;
 let agentsFileDraft = "";
 
@@ -256,8 +261,26 @@ themePreset.addEventListener("change", () => {
   if (!settingsState || !themeDraft) return;
   themeDraft.activePreset = themePreset.value;
   themeDraft.customTokens = {};
+  themeDraftSimple = simpleThemeFromTokens(themeDraft.presets?.[themeDraft.activePreset]);
   renderThemeEditor();
   applyThemePreview(effectiveTheme({ theme: themeDraft }));
+});
+
+themeMode.addEventListener("change", updateThemeDraftFromSimpleControls);
+themePrimary.addEventListener("input", updateThemeDraftFromSimpleControls);
+themeSecondary.addEventListener("input", updateThemeDraftFromSimpleControls);
+
+themeJson.addEventListener("input", () => {
+  if (!themeDraft) return;
+  try {
+    const parsed = JSON.parse(themeJson.value);
+    themeDraft = parsed;
+    themeDraftSimple = simpleThemeFromTokens(effectiveTheme({ theme: themeDraft }));
+    syncSimpleControls();
+    applyThemePreview(effectiveTheme({ theme: themeDraft }));
+  } catch {
+    // Keep the user's text while they are editing invalid JSON.
+  }
 });
 
 themeEdit.addEventListener("click", () => {
@@ -934,6 +957,7 @@ async function loadAgentsFilePreview() {
 function openThemeEditor() {
   if (!settingsState) return;
   themeDraft = structuredClone(settingsState.theme);
+  themeDraftSimple = simpleThemeFromTokens(effectiveTheme({ theme: themeDraft }));
   settingsLayout.hidden = true;
   themeEditor.hidden = false;
   settingsPage.classList.add("theme-editing");
@@ -943,6 +967,7 @@ function openThemeEditor() {
 
 function closeThemeEditor() {
   themeDraft = null;
+  themeDraftSimple = null;
   themeEditor.hidden = true;
   settingsLayout.hidden = false;
   settingsPage.classList.remove("theme-editing");
@@ -959,11 +984,14 @@ function renderThemeEditor() {
   }));
   themePreset.value = themeDraft?.activePreset || "paper";
   const theme = effectiveTheme({ theme: themeDraft });
-  themeControls.replaceChildren(...themeSurfaces.map((surface) => themeControlSection(surface, theme.tokens[surface.key] || {})));
+  syncSimpleControls();
+  themeControls.replaceChildren(...themeSurfaces.map((surface) => themeFontSection(surface, theme.tokens[surface.key] || {})).filter(Boolean));
+  themeJson.value = JSON.stringify(themeDraft || {}, null, 2);
   loadGoogleFontsForTheme(theme);
 }
 
-function themeControlSection(surface, tokens) {
+function themeFontSection(surface, tokens) {
+  if (surface.fontTokens.length === 0) return null;
   const section = document.createElement("section");
   section.className = "theme-control-section";
   const heading = document.createElement("header");
@@ -972,36 +1000,13 @@ function themeControlSection(surface, tokens) {
   const description = document.createElement("span");
   description.textContent = surface.description;
   heading.append(title, description);
-  const colors = document.createElement("div");
-  colors.className = "theme-color-grid";
-  surface.colorTokens.forEach((token) => {
-    colors.append(colorControl(surface.key, token, tokens[token]));
+  const fonts = document.createElement("div");
+  fonts.className = "theme-font-grid";
+  surface.fontTokens.forEach((token) => {
+    fonts.append(fontControl(surface.key, token, tokens[token]));
   });
-  section.append(heading, colors);
-  if (surface.fontTokens.length > 0) {
-    const fonts = document.createElement("div");
-    fonts.className = "theme-font-grid";
-    surface.fontTokens.forEach((token) => {
-      fonts.append(fontControl(surface.key, token, tokens[token]));
-    });
-    section.append(fonts);
-  }
+  section.append(heading, fonts);
   return section;
-}
-
-function colorControl(surface, token, value) {
-  const label = document.createElement("label");
-  label.className = "theme-color-control";
-  const name = document.createElement("span");
-  name.textContent = readableTokenName(token);
-  const input = document.createElement("input");
-  input.type = "color";
-  input.value = normalizeColor(value);
-  input.addEventListener("input", () => {
-    setThemeDraftToken(surface, token, input.value);
-  });
-  label.append(input, name);
-  return label;
 }
 
 function fontControl(surface, token, value) {
@@ -1037,6 +1042,34 @@ function setThemeDraftToken(surface, token, value) {
   } else {
     themeDraft.customTokens[surface][token] = value;
   }
+  const theme = effectiveTheme({ theme: themeDraft });
+  themeJson.value = JSON.stringify(themeDraft, null, 2);
+  applyThemePreview(theme);
+  loadGoogleFontsForTheme(theme);
+}
+
+function updateThemeDraftFromSimpleControls() {
+  if (!themeDraft) return;
+  themeDraftSimple = {
+    mode: themeMode.value === "dark" ? "dark" : "light",
+    primary: themePrimary.value,
+    secondary: normalizeColorOrEmpty(themeSecondary.value)
+  };
+  applyGeneratedThemeTokens();
+}
+
+function syncSimpleControls() {
+  if (!themeDraftSimple) return;
+  themeMode.value = themeDraftSimple.mode;
+  themePrimary.value = normalizeColor(themeDraftSimple.primary);
+  themeSecondary.value = themeDraftSimple.secondary || "";
+}
+
+function applyGeneratedThemeTokens() {
+  if (!themeDraft || !themeDraftSimple) return;
+  const generated = generateThemeTokens(themeDraftSimple);
+  themeDraft.customTokens = deepMerge(generated, themeDraft.customTokens || {});
+  themeJson.value = JSON.stringify(themeDraft, null, 2);
   const theme = effectiveTheme({ theme: themeDraft });
   applyThemePreview(theme);
   loadGoogleFontsForTheme(theme);
@@ -1138,6 +1171,130 @@ function clearThemePreview() {
 function normalizeColor(value) {
   const color = String(value || "").trim();
   return /^#[0-9a-f]{6}$/i.test(color) ? color : "#000000";
+}
+
+function normalizeColorOrEmpty(value) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "";
+}
+
+function simpleThemeFromTokens(theme) {
+  return {
+    mode: theme?.mode === "dark" ? "dark" : "light",
+    primary: normalizeColor(theme?.tokens?.ui?.accent || theme?.tokens?.docs?.link || "#276ef1"),
+    secondary: ""
+  };
+}
+
+function generateThemeTokens(simple) {
+  const mode = simple.mode === "dark" ? "dark" : "light";
+  const primary = normalizeColor(simple.primary);
+  const secondary = normalizeColorOrEmpty(simple.secondary) || mixHex(primary, mode === "dark" ? "#ffffff" : "#000000", 0.32);
+  if (mode === "dark") {
+    return {
+      ui: {
+        bg: mixHex(primary, "#070807", 0.08),
+        panel: mixHex(primary, "#111310", 0.12),
+        border: mixHex(primary, "#ffffff", 0.24),
+        text: "#f4f5f0",
+        muted: "#aeb5aa",
+        accent: ensureAccent(primary, "dark")
+      },
+      docs: {
+        bg: mixHex(primary, "#0d0e0b", 0.07),
+        panel: mixHex(secondary, "#151611", 0.12),
+        border: mixHex(secondary, "#ffffff", 0.22),
+        text: "#f1ecdf",
+        muted: "#b8b09f",
+        link: ensureAccent(secondary, "dark"),
+        code: mixHex(primary, "#1c1d17", 0.16)
+      },
+      terminal: {
+        bg: mixHex(primary, "#090b09", 0.08),
+        pane: "#090b09",
+        toolbar: mixHex(primary, "#111410", 0.12),
+        header: mixHex(primary, "#151914", 0.14),
+        border: mixHex(primary, "#ffffff", 0.22),
+        text: "#eff5ed",
+        muted: "#a9b2a5",
+        accent: ensureAccent(primary, "dark")
+      }
+    };
+  }
+  return {
+    ui: {
+      bg: mixHex(primary, "#f8f8f4", 0.06),
+      panel: "#ffffff",
+      border: mixHex(primary, "#d8d8d0", 0.14),
+      text: "#20231f",
+      muted: "#62675f",
+      accent: ensureAccent(primary, "light")
+    },
+    docs: {
+      bg: mixHex(secondary, "#fbfaf4", 0.07),
+      panel: "#fffdf8",
+      border: mixHex(secondary, "#ddd7c9", 0.14),
+      text: "#24221d",
+      muted: "#6f695d",
+      link: ensureAccent(secondary, "light"),
+      code: mixHex(secondary, "#efede4", 0.12)
+    },
+    terminal: {
+      bg: mixHex(primary, "#272822", 0.22),
+      pane: mixHex(primary, "#111312", 0.16),
+      toolbar: mixHex(primary, "#171a18", 0.18),
+      header: mixHex(primary, "#1b1f1b", 0.2),
+      border: mixHex(primary, "#42483f", 0.18),
+      text: "#eef2ec",
+      muted: "#abb5ad",
+      accent: ensureAccent(primary, "dark")
+    }
+  };
+}
+
+function ensureAccent(color, mode) {
+  const normalized = normalizeColor(color);
+  const contrastTarget = mode === "dark" ? "#111312" : "#ffffff";
+  if (contrastRatio(normalized, contrastTarget) >= 4.5) return normalized;
+  return mode === "dark" ? mixHex(normalized, "#ffffff", 0.45) : mixHex(normalized, "#000000", 0.38);
+}
+
+function mixHex(a, b, amount) {
+  const left = hexToRgb(normalizeColor(a));
+  const right = hexToRgb(normalizeColor(b));
+  return rgbToHex({
+    r: Math.round(left.r * (1 - amount) + right.r * amount),
+    g: Math.round(left.g * (1 - amount) + right.g * amount),
+    b: Math.round(left.b * (1 - amount) + right.b * amount)
+  });
+}
+
+function contrastRatio(a, b) {
+  const left = relativeLuminance(hexToRgb(a));
+  const right = relativeLuminance(hexToRgb(b));
+  const light = Math.max(left, right);
+  const dark = Math.min(left, right);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function relativeLuminance(rgb) {
+  const values = [rgb.r, rgb.g, rgb.b].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+}
+
+function hexToRgb(hex) {
+  return {
+    r: Number.parseInt(hex.slice(1, 3), 16),
+    g: Number.parseInt(hex.slice(3, 5), 16),
+    b: Number.parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
 function loadGoogleFontsForTheme(theme) {

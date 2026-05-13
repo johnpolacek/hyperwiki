@@ -210,7 +210,28 @@
                 <span>Preset</span>
                 <select id="theme-preset"></select>
               </label>
+              <div class="theme-simple-controls">
+                <label class="settings-field">
+                  <span>Mode</span>
+                  <select id="theme-mode">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </label>
+                <label class="theme-color-control theme-primary-control">
+                  <input id="theme-primary" type="color">
+                  <span>Primary</span>
+                </label>
+                <label class="theme-secondary-field">
+                  <span>Secondary</span>
+                  <input id="theme-secondary" type="text" placeholder="Derived from primary">
+                </label>
+              </div>
               <div id="theme-controls" class="theme-controls"></div>
+              <details class="settings-json-details">
+                <summary>Advanced JSON</summary>
+                <textarea id="theme-json" rows="14" spellcheck="false"></textarea>
+              </details>
             </section>
             <section class="theme-preview-pane" aria-label="Theme preview pane">
               <div class="theme-preview-shell">

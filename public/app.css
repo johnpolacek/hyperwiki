@@ -879,18 +879,19 @@ body {
   gap: 14px;
 }
 
+.theme-simple-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
 .theme-control-section {
   display: grid;
   gap: 10px;
   min-width: 0;
   border-top: 1px solid var(--border);
   padding-top: 12px;
-}
-
-.theme-color-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
 }
 
 .theme-font-grid {
@@ -915,6 +916,27 @@ body {
   border-radius: 6px;
   padding: 2px;
   background: var(--panel);
+}
+
+.theme-secondary-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font: 700 11px/1.25 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.theme-secondary-field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.45 var(--sidebar-font);
+  text-transform: none;
 }
 
 .theme-preview-pane {
