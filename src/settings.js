@@ -205,10 +205,12 @@ export function effectiveTheme(settings) {
   });
 }
 
-export async function syncAgentsFile(root) {
+export async function syncAgentsFile(root, baseContent = null) {
   const settings = await readSettings();
   const filePath = path.join(root, "AGENTS.md");
-  const existing = existsSync(filePath) ? await readFile(filePath, "utf8") : "";
+  const existing = typeof baseContent === "string"
+    ? baseContent
+    : existsSync(filePath) ? await readFile(filePath, "utf8") : "";
   const block = renderAgentsBlock(settings);
   const next = existing.includes(managedStart) && existing.includes(managedEnd)
     ? existing.replace(new RegExp(`${escapeRegExp(managedStart)}[\\s\\S]*?${escapeRegExp(managedEnd)}`), block)

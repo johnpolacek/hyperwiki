@@ -268,11 +268,15 @@
           </div>
           <section class="settings-section agents-file-preview">
             <div class="settings-section-header">
-              <h2>Current AGENTS.md</h2>
+              <h2>AGENTS.md</h2>
               <span id="agents-file-path" class="agents-file-path"></span>
             </div>
-            <pre id="agents-file-content" aria-label="Current AGENTS.md contents"></pre>
+            <textarea id="agents-file-content" rows="18" aria-label="AGENTS.md contents"></textarea>
           </section>
+          <div class="settings-actions agent-editor-bottom-actions">
+            <button type="button" id="agent-cancel-bottom" class="dashboard-new-button">Cancel</button>
+            <button type="button" id="agent-save-bottom" class="settings-primary-button">Save Agent Instructions</button>
+          </div>
         </section>
       </section>
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>

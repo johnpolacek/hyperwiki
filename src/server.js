@@ -112,7 +112,8 @@ async function handleRequest(defaultRoot, request, response, context) {
     }
     if (url.pathname === "/api/settings/sync-agents" && request.method === "POST") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
-      await sendJson(response, await syncAgentsFile(project.root));
+      const body = await readJsonBody(request);
+      await sendJson(response, await syncAgentsFile(project.root, typeof body.content === "string" ? body.content : null));
       return;
     }
     if (url.pathname === "/api/settings/agents-file") {

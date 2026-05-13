@@ -44,6 +44,8 @@ const agentEdit = document.getElementById("agent-edit");
 const agentEditor = document.getElementById("agent-editor");
 const agentCancel = document.getElementById("agent-cancel");
 const agentSave = document.getElementById("agent-save");
+const agentCancelBottom = document.getElementById("agent-cancel-bottom");
+const agentSaveBottom = document.getElementById("agent-save-bottom");
 const agentsFilePath = document.getElementById("agents-file-path");
 const agentsFileContent = document.getElementById("agents-file-content");
 const soulPrinciples = document.getElementById("soul-principles");
@@ -78,6 +80,7 @@ let dashboardAgentActive = false;
 let settingsState = null;
 let themeDraft = null;
 let agentDraft = null;
+let agentsFileDraft = "";
 
 const themeSurfaces = [
   {
@@ -277,8 +280,24 @@ agentCancel.addEventListener("click", () => {
   closeAgentEditor();
 });
 
+agentCancelBottom.addEventListener("click", () => {
+  closeAgentEditor();
+});
+
 agentSave.addEventListener("click", async () => {
   await saveAgentInstructions();
+});
+
+agentSaveBottom.addEventListener("click", async () => {
+  await saveAgentInstructions();
+});
+
+soulPrinciples.addEventListener("input", updateAgentsFileDraftFromFields);
+soulInterface.addEventListener("input", updateAgentsFileDraftFromFields);
+soulAgent.addEventListener("input", updateAgentsFileDraftFromFields);
+
+agentsFileContent.addEventListener("input", () => {
+  agentsFileDraft = agentsFileContent.value;
 });
 
 memoryAdd.addEventListener("click", () => {
@@ -788,6 +807,7 @@ function openAgentEditor() {
 
 function closeAgentEditor() {
   agentDraft = null;
+  agentsFileDraft = "";
   agentEditor.hidden = true;
   settingsLayout.hidden = false;
   settingsPage.classList.remove("agent-editing");
@@ -801,17 +821,71 @@ function renderAgentEditor() {
   renderMemory(agentDraft.memory?.entries || []);
 }
 
+function updateAgentsFileDraftFromFields() {
+  if (!agentDraft) return;
+  agentDraft.soul = currentSoulDraftFromFields();
+  const block = renderAgentsManagedBlock({
+    soul: agentDraft.soul,
+    memory: agentDraft.memory || { entries: [] }
+  });
+  agentsFileDraft = replaceManagedAgentsBlock(agentsFileDraft || agentsFileContent.value, block);
+  agentsFileContent.value = agentsFileDraft;
+}
+
+function currentSoulDraftFromFields() {
+  return {
+    principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
+    interface: soulInterface.value.trim(),
+    agent: soulAgent.value.trim()
+  };
+}
+
+function renderAgentsManagedBlock(settings) {
+  const soul = settings.soul || {};
+  const principles = Array.isArray(soul.principles) ? soul.principles.filter(Boolean) : [];
+  const memories = (settings.memory?.entries || [])
+    .filter((entry) => entry.enabled !== false && String(entry.content || "").trim())
+    .map((entry) => ({
+      title: String(entry.title || "").trim(),
+      content: String(entry.content || "").trim()
+    }));
+  return `<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->
+## HyperWiki Global Context
+
+### Soul
+
+${principles.length ? principles.map((item) => `- ${item}`).join("\n") : "- No global soul principles recorded."}
+
+Interface guidance: ${soul.interface || "Use HyperWiki's default interface guidance."}
+
+Agent guidance: ${soul.agent || "Use HyperWiki's default agent guidance."}
+
+### Memory
+
+${memories.length ? memories.map((entry) => `- ${entry.title ? `${entry.title}: ` : ""}${entry.content}`).join("\n") : "- No approved global memory entries recorded."}
+<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->`;
+}
+
+function replaceManagedAgentsBlock(content, block) {
+  const start = "<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->";
+  const end = "<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->";
+  if (content.includes(start) && content.includes(end)) {
+    return content.replace(new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}`), block);
+  }
+  return `${content.trimEnd()}${content.trim() ? "\n\n" : ""}${block}\n`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function saveAgentInstructions() {
   if (!settingsState || !agentDraft) return;
   agentSave.disabled = true;
   setSettingsStatus("Saving agent instructions...");
   const next = {
     ...settingsState,
-    soul: {
-      principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
-      interface: soulInterface.value.trim(),
-      agent: soulAgent.value.trim()
-    },
+    soul: currentSoulDraftFromFields(),
     memory: {
       entries: (agentDraft.memory?.entries || []).map((entry) => ({
         id: entry.id || crypto.randomUUID(),
@@ -827,7 +901,11 @@ async function saveAgentInstructions() {
       method: "PUT",
       body: JSON.stringify(next)
     });
-    const result = await api(projectPath("/api/settings/sync-agents"), { method: "POST" });
+    updateAgentsFileDraftFromFields();
+    const result = await api(projectPath("/api/settings/sync-agents"), {
+      method: "POST",
+      body: JSON.stringify({ content: agentsFileContent.value })
+    });
     renderSettings(settingsState);
     await loadAgentsFilePreview();
     closeAgentEditor();
@@ -841,14 +919,15 @@ async function saveAgentInstructions() {
 
 async function loadAgentsFilePreview() {
   agentsFilePath.textContent = "Loading";
-  agentsFileContent.textContent = "";
+  agentsFileContent.value = "";
   try {
     const result = await api(projectPath("/api/settings/agents-file"));
     agentsFilePath.textContent = result.path || "AGENTS.md";
-    agentsFileContent.textContent = result.content || "No AGENTS.md found.";
+    agentsFileDraft = result.content || "";
+    updateAgentsFileDraftFromFields();
   } catch (error) {
     agentsFilePath.textContent = "Unavailable";
-    agentsFileContent.textContent = error.message || "Could not load AGENTS.md.";
+    agentsFileContent.value = error.message || "Could not load AGENTS.md.";
   }
 }
 

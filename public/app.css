@@ -823,7 +823,9 @@ body {
   white-space: nowrap;
 }
 
-.agents-file-preview pre {
+.agents-file-preview textarea {
+  width: 100%;
+  min-height: 360px;
   max-height: 360px;
   overflow: auto;
   margin: 0;
@@ -833,7 +835,14 @@ body {
   background: var(--bg);
   color: var(--text);
   font: 12px/1.45 var(--mono-font);
+  resize: vertical;
   white-space: pre-wrap;
+}
+
+.agent-editor-bottom-actions {
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
 }
 
 .theme-controls {
