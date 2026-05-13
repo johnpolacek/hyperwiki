@@ -120,6 +120,80 @@ export const defaultSettings = Object.freeze({
             font: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           }
         }
+      },
+      ledger: {
+        label: "Ledger",
+        mode: "light",
+        tokens: {
+          ui: {
+            bg: "#f5f6ef",
+            panel: "#fffffb",
+            border: "#d4d8c8",
+            text: "#20261d",
+            muted: "#626b5b",
+            accent: "#4f7d36",
+            sidebarFont: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          },
+          docs: {
+            bg: "#fbfaf0",
+            panel: "#fffdf4",
+            border: "#ded9c5",
+            text: "#252318",
+            muted: "#706a56",
+            link: "#775f16",
+            code: "#eeead8",
+            serifFont: "\"Source Serif 4\", ui-serif, Georgia, serif",
+            monoFont: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          },
+          terminal: {
+            bg: "#20251d",
+            pane: "#11150f",
+            toolbar: "#171d14",
+            header: "#1d2419",
+            border: "#3d4736",
+            text: "#f0f4e8",
+            muted: "#b1b9a8",
+            accent: "#b8d986",
+            font: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          }
+        }
+      },
+      dusk: {
+        label: "Dusk",
+        mode: "dark",
+        tokens: {
+          ui: {
+            bg: "#18151b",
+            panel: "#221e27",
+            border: "#403746",
+            text: "#f1edf3",
+            muted: "#afa3b8",
+            accent: "#e28f62",
+            sidebarFont: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          },
+          docs: {
+            bg: "#1a161d",
+            panel: "#241f28",
+            border: "#44394a",
+            text: "#f2eadf",
+            muted: "#b9aa9d",
+            link: "#f1ad7a",
+            code: "#332a32",
+            serifFont: "\"Newsreader\", ui-serif, Georgia, serif",
+            monoFont: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          },
+          terminal: {
+            bg: "#130f15",
+            pane: "#0d0a0f",
+            toolbar: "#1a141d",
+            header: "#211926",
+            border: "#433549",
+            text: "#f5edf5",
+            muted: "#b8a8bd",
+            accent: "#e28f62",
+            font: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          }
+        }
       }
     },
     customTokens: {}
