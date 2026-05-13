@@ -43,11 +43,18 @@ await page.locator("#new-idea-toggle").click();
 await page.locator("#idea-import-form").evaluate((form) => {
   const text = form.textContent || "";
   const fileInput = form.querySelector("#idea-markdown-file");
-  if (!text.includes("OR") || !text.includes("Import document") || text.includes("Send to agent")) {
-    throw new Error(`Expected document import affordance without Send to agent, got ${text}`);
+  const importButton = form.querySelector(".dashboard-import-button");
+  if (!text.includes("OR") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
+    throw new Error(`Expected custom document import affordance without Send to agent, got ${text}`);
   }
   if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
     throw new Error(`Expected idea import to accept HTML, got ${fileInput?.accept}`);
+  }
+  if (getComputedStyle(importButton).backgroundColor !== "rgb(251, 251, 248)") {
+    throw new Error(`Expected import button to match dashboard surface, got ${getComputedStyle(importButton).backgroundColor}`);
+  }
+  if (getComputedStyle(fileInput).opacity !== "0") {
+    throw new Error("Expected native file input to be visually hidden.");
   }
 });
 await page.locator("#idea-title").fill("Smoke Test Idea");
