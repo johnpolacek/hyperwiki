@@ -282,6 +282,11 @@ body {
   padding-bottom: 18px;
 }
 
+.settings-page-header {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .dashboard-page-header h1 {
   margin: 0;
   color: #20231f;
@@ -814,8 +819,6 @@ body {
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 14px;
 }
 
 .theme-editor-header h2 {
@@ -829,6 +832,105 @@ body {
   grid-template-columns: minmax(320px, 0.55fr) minmax(420px, 1fr);
   gap: 16px;
   min-width: 0;
+}
+
+.theme-preset-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.theme-preset-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px;
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-preset-card:hover,
+.theme-preset-card:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  outline: 0;
+}
+
+.theme-preset-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.theme-preset-preview {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  grid-template-rows: 1fr 16px;
+  width: 72px;
+  height: 48px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--preset-ui-bg);
+}
+
+.theme-preset-preview i,
+.theme-preset-preview b,
+.theme-preset-preview em,
+.theme-preset-preview strong {
+  display: block;
+  min-width: 0;
+}
+
+.theme-preset-preview i {
+  grid-row: 1 / -1;
+  background:
+    linear-gradient(var(--preset-primary), var(--preset-primary)) 7px 10px / 8px 8px no-repeat,
+    var(--preset-ui-bg);
+}
+
+.theme-preset-preview b {
+  background:
+    linear-gradient(var(--preset-secondary), var(--preset-secondary)) 10px 17px / 30px 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--preset-secondary) 35%, transparent), color-mix(in srgb, var(--preset-secondary) 35%, transparent)) 10px 25px / 42px 3px no-repeat,
+    var(--preset-docs-bg);
+}
+
+.theme-preset-preview em {
+  background: var(--preset-terminal-bg);
+}
+
+.theme-preset-preview strong {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: linear-gradient(90deg, var(--preset-primary), var(--preset-secondary));
+}
+
+.theme-preset-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.theme-preset-text strong {
+  overflow: hidden;
+  color: var(--text);
+  font: 700 12px/1.2 var(--sidebar-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-preset-text span {
+  overflow: hidden;
+  color: var(--muted);
+  font: 11px/1.25 var(--sidebar-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-editor-layout {

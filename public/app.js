@@ -37,7 +37,7 @@ const themeEdit = document.getElementById("theme-edit");
 const themeEditor = document.getElementById("theme-editor");
 const themeCancel = document.getElementById("theme-cancel");
 const themeSave = document.getElementById("theme-save");
-const themePreset = document.getElementById("theme-preset");
+const themePresetBar = document.getElementById("theme-preset-bar");
 const themeMode = document.getElementById("theme-mode");
 const themePrimary = document.getElementById("theme-primary");
 const themeSecondary = document.getElementById("theme-secondary");
@@ -262,9 +262,11 @@ projectImportForm.addEventListener("submit", async (event) => {
   await createProjectFromMarkdown();
 });
 
-themePreset.addEventListener("change", () => {
+themePresetBar.addEventListener("click", (event) => {
+  const card = event.target.closest(".theme-preset-card");
+  if (!card) return;
   if (!settingsState || !themeDraft) return;
-  themeDraft.activePreset = themePreset.value;
+  themeDraft.activePreset = card.dataset.preset;
   themeDraft.customTokens = {};
   themeDraftSimple = simpleThemeFromTokens(themeDraft.presets?.[themeDraft.activePreset]);
   renderThemeEditor();
@@ -1001,19 +1003,45 @@ function closeThemeEditor() {
 
 function renderThemeEditor() {
   const presets = themeDraft?.presets || {};
-  themePreset.replaceChildren(...Object.entries(presets).map(([value, preset]) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = preset.label || value;
-    return option;
-  }));
-  themePreset.value = themeDraft?.activePreset || "paper";
+  themePresetBar.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset)));
   const theme = effectiveTheme({ theme: themeDraft });
   renderTerminalFontOptions();
   syncSimpleControls();
   themeControls.replaceChildren(...themeSurfaces.map((surface) => themeFontSection(surface, theme.tokens[surface.key] || {})).filter(Boolean));
   themeJson.value = JSON.stringify(themeDraft || {}, null, 2);
   loadGoogleFontsForTheme(theme);
+}
+
+function themePresetCard(value, preset) {
+  const tokens = preset.tokens || {};
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "theme-preset-card";
+  card.dataset.preset = value;
+  card.setAttribute("aria-pressed", value === themeDraft?.activePreset ? "true" : "false");
+
+  const preview = document.createElement("span");
+  preview.className = "theme-preset-preview";
+  preview.style.setProperty("--preset-ui-bg", tokens.ui?.bg || "#f7f7f4");
+  preview.style.setProperty("--preset-docs-bg", tokens.docs?.bg || "#fbfaf4");
+  preview.style.setProperty("--preset-terminal-bg", tokens.terminal?.bg || "#272822");
+  preview.style.setProperty("--preset-primary", tokens.ui?.accent || "#276ef1");
+  preview.style.setProperty("--preset-secondary", tokens.docs?.link || tokens.ui?.accent || "#276ef1");
+  preview.innerHTML = "<i></i><b></b><em></em><strong></strong>";
+
+  const text = document.createElement("span");
+  text.className = "theme-preset-text";
+  const label = document.createElement("strong");
+  label.textContent = preset.label || value;
+  const meta = document.createElement("span");
+  meta.textContent = `${preset.mode === "dark" ? "Dark" : "Light"} · ${fontLabel(tokens.docs?.serifFont)} / ${fontLabel(tokens.ui?.sidebarFont)}`;
+  text.append(label, meta);
+  card.append(preview, text);
+  return card;
+}
+
+function fontLabel(value) {
+  return fontOptions.find((font) => font.value === value)?.label || "Custom";
 }
 
 function renderTerminalFontOptions() {
