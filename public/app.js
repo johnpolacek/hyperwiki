@@ -44,6 +44,8 @@ const agentEdit = document.getElementById("agent-edit");
 const agentEditor = document.getElementById("agent-editor");
 const agentCancel = document.getElementById("agent-cancel");
 const agentSave = document.getElementById("agent-save");
+const agentsFilePath = document.getElementById("agents-file-path");
+const agentsFileContent = document.getElementById("agents-file-content");
 const soulPrinciples = document.getElementById("soul-principles");
 const soulInterface = document.getElementById("soul-interface");
 const soulAgent = document.getElementById("soul-agent");
@@ -781,6 +783,7 @@ function openAgentEditor() {
   agentEditor.hidden = false;
   settingsPage.classList.add("agent-editing");
   renderAgentEditor();
+  void loadAgentsFilePreview();
 }
 
 function closeAgentEditor() {
@@ -826,12 +829,26 @@ async function saveAgentInstructions() {
     });
     const result = await api(projectPath("/api/settings/sync-agents"), { method: "POST" });
     renderSettings(settingsState);
+    await loadAgentsFilePreview();
     closeAgentEditor();
     setSettingsStatus(`Agent instructions saved and synced to ${result.path}`);
   } catch (error) {
     setSettingsStatus(error.message || "Could not save agent instructions.");
   } finally {
     agentSave.disabled = false;
+  }
+}
+
+async function loadAgentsFilePreview() {
+  agentsFilePath.textContent = "Loading";
+  agentsFileContent.textContent = "";
+  try {
+    const result = await api(projectPath("/api/settings/agents-file"));
+    agentsFilePath.textContent = result.path || "AGENTS.md";
+    agentsFileContent.textContent = result.content || "No AGENTS.md found.";
+  } catch (error) {
+    agentsFilePath.textContent = "Unavailable";
+    agentsFileContent.textContent = error.message || "Could not load AGENTS.md.";
   }
 }
 

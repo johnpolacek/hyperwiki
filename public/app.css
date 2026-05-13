@@ -809,6 +809,33 @@ body {
   min-width: 0;
 }
 
+.agents-file-preview {
+  gap: 10px;
+}
+
+.agents-file-path {
+  min-width: 0;
+  color: var(--muted);
+  font: 600 11px/1.2 var(--sidebar-font);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agents-file-preview pre {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 12px;
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.45 var(--mono-font);
+  white-space: pre-wrap;
+}
+
 .theme-controls {
   display: grid;
   gap: 14px;

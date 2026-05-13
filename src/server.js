@@ -115,6 +115,11 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await syncAgentsFile(project.root));
       return;
     }
+    if (url.pathname === "/api/settings/agents-file") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await agentsFile(project.root));
+      return;
+    }
     if (url.pathname === "/assets/theme.css") {
       await sendText(response, themeCss(await readSettings()), "text/css; charset=utf-8");
       return;
@@ -368,6 +373,14 @@ async function saveDroppedFiles(root, body) {
     saved.push({ name, path: filePath });
   }
   return { files: saved };
+}
+
+async function agentsFile(root) {
+  const filePath = path.join(root, "AGENTS.md");
+  return {
+    path: filePath,
+    content: existsSync(filePath) ? await readFile(filePath, "utf8") : ""
+  };
 }
 
 function safeDropName(name) {
