@@ -168,14 +168,16 @@ function resizePlanPromptInput() {
 function resizePlanTextarea(textarea) {
   textarea.style.height = "auto";
   const styles = window.getComputedStyle(textarea);
+  const minLines = Number.parseInt(styles.getPropertyValue("--plan-prompt-min-lines"), 10) || Number(textarea.getAttribute("rows")) || 1;
   const maxLines = Number.parseInt(styles.getPropertyValue("--plan-prompt-max-lines"), 10);
   const lineHeight = Number.parseFloat(styles.lineHeight);
   const verticalPadding = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
   const verticalBorder = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
+  const minHeight = minLines * lineHeight + verticalPadding + verticalBorder;
   const maxHeight = maxLines * lineHeight + verticalPadding + verticalBorder;
   const valueLines = textarea.value.split("\n").length;
   const contentHeight = Math.max(textarea.scrollHeight, valueLines * lineHeight + verticalPadding + verticalBorder);
-  const nextHeight = Math.min(contentHeight, maxHeight);
+  const nextHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
   textarea.style.height = `${nextHeight}px`;
   textarea.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
 }
