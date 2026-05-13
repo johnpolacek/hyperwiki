@@ -1114,9 +1114,15 @@ body {
 
 .theme-terminal-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
+}
+
+.theme-typography-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .theme-preview-pane {

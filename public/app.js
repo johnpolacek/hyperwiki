@@ -44,7 +44,6 @@ const themeSecondary = document.getElementById("theme-secondary");
 const themeSecondaryToggle = document.getElementById("theme-secondary-toggle");
 const themeSecondaryClear = document.getElementById("theme-secondary-clear");
 const themeTerminalMode = document.getElementById("theme-terminal-mode");
-const themeTerminalFont = document.getElementById("theme-terminal-font");
 const themeTerminalAccent = document.getElementById("theme-terminal-accent");
 const themeControls = document.getElementById("theme-controls");
 const themeJson = document.getElementById("theme-json");
@@ -98,14 +97,14 @@ const themeSurfaces = [
     label: "UI",
     description: "Sidebar and workspace chrome",
     colorTokens: ["bg", "panel", "border", "text", "muted", "accent"],
-    fontTokens: ["sidebarFont"]
+    fontTokens: []
   },
   {
     key: "docs",
     label: "Docs",
     description: "Planning and wiki pages",
     colorTokens: ["bg", "panel", "border", "text", "muted", "link", "code"],
-    fontTokens: ["serifFont", "monoFont"]
+    fontTokens: []
   },
   {
     key: "terminal",
@@ -126,6 +125,10 @@ const fontOptions = [
   { label: "Source Serif 4", value: "\"Source Serif 4\", ui-serif, Georgia, serif", google: "Source+Serif+4:wght@400;600;700" },
   { label: "Space Mono", value: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Space+Mono:wght@400;700" }
 ];
+
+const serifFontOptions = fontOptions.filter((font) => font.value.includes("serif"));
+const sansFontOptions = fontOptions.filter((font) => font.value.includes("sans-serif"));
+const monoFontOptions = fontOptions.filter((font) => font.value.includes("mono"));
 
 window.addEventListener("hashchange", () => {
   activateWorkspaceLocation(workspaceLocation());
@@ -294,7 +297,6 @@ themeSecondaryClear.addEventListener("click", () => {
   syncSimpleControls();
 });
 themeTerminalMode.addEventListener("change", updateThemeDraftFromSimpleControls);
-themeTerminalFont.addEventListener("change", updateThemeDraftFromSimpleControls);
 themeTerminalAccent.addEventListener("input", updateThemeDraftFromSimpleControls);
 
 themeJson.addEventListener("input", () => {
@@ -1005,9 +1007,8 @@ function renderThemeEditor() {
   const presets = themeDraft?.presets || {};
   themePresetBar.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset)));
   const theme = effectiveTheme({ theme: themeDraft });
-  renderTerminalFontOptions();
   syncSimpleControls();
-  themeControls.replaceChildren(...themeSurfaces.map((surface) => themeFontSection(surface, theme.tokens[surface.key] || {})).filter(Boolean));
+  themeControls.replaceChildren(themeTypographySection(theme.tokens));
   themeJson.value = JSON.stringify(themeDraft || {}, null, 2);
   loadGoogleFontsForTheme(theme);
 }
@@ -1048,54 +1049,97 @@ function fontLabel(value) {
   return fontOptions.find((font) => font.value === value)?.label || "Custom";
 }
 
-function renderTerminalFontOptions() {
-  themeTerminalFont.replaceChildren(...fontOptions
-    .filter((font) => font.value.includes("mono"))
-    .map((font) => {
-      const option = document.createElement("option");
-      option.value = font.value;
-      option.textContent = font.label;
-      return option;
-    }));
-}
-
-function themeFontSection(surface, tokens) {
-  if (surface.fontTokens.length === 0) return null;
+function themeTypographySection(tokens) {
   const section = document.createElement("section");
-  section.className = "theme-control-section";
+  section.className = "theme-control-section theme-typography-controls";
   const heading = document.createElement("header");
   const title = document.createElement("strong");
-  title.textContent = surface.label;
+  title.textContent = "Typography";
   const description = document.createElement("span");
-  description.textContent = surface.description;
+  description.textContent = "Body, mono, and sidebar font behavior";
   heading.append(title, description);
-  const fonts = document.createElement("div");
-  fonts.className = "theme-font-grid";
-  surface.fontTokens.forEach((token) => {
-    fonts.append(fontControl(surface.key, token, tokens[token]));
-  });
-  section.append(heading, fonts);
+  const controls = document.createElement("div");
+  controls.className = "theme-typography-grid";
+  const bodyFont = tokens.docs?.serifFont || defaultBodyFont("serif");
+  const monoFont = tokens.docs?.monoFont || defaultTerminalFont();
+  const bodyKind = bodyFont.includes("sans-serif") ? "sans" : "serif";
+  const sidebarSource = tokens.ui?.sidebarFont === bodyFont ? "body" : "mono";
+  controls.append(
+    selectControl("Body Style", [
+      { label: "Serif", value: "serif" },
+      { label: "Sans Serif", value: "sans" }
+    ], bodyKind, (value) => {
+      const nextBody = defaultBodyFont(value);
+      setThemeTypography({
+        bodyFont: nextBody,
+        monoFont: currentThemeTokens().docs?.monoFont || monoFont,
+        sidebarSource: currentSidebarSource(currentThemeTokens(), bodyFont)
+      });
+    }),
+    selectControl("Body Font", bodyFontOptions(bodyKind), bodyFont, (value) => {
+      setThemeTypography({
+        bodyFont: value,
+        monoFont: currentThemeTokens().docs?.monoFont || monoFont,
+        sidebarSource: currentSidebarSource(currentThemeTokens(), bodyFont)
+      });
+    }),
+    selectControl("Mono Font", monoFontOptions, monoFont, (value) => {
+      const current = currentThemeTokens();
+      setThemeTypography({
+        bodyFont: current.docs?.serifFont || bodyFont,
+        monoFont: value,
+        sidebarSource: currentSidebarSource(current, bodyFont)
+      });
+    }),
+    selectControl("Sidebar", [
+      { label: "Body copy font", value: "body" },
+      { label: "Mono font", value: "mono" }
+    ], sidebarSource, (value) => {
+      const current = currentThemeTokens();
+      setThemeTypography({
+        bodyFont: current.docs?.serifFont || bodyFont,
+        monoFont: current.docs?.monoFont || monoFont,
+        sidebarSource: value
+      });
+    })
+  );
+  section.append(heading, controls);
   return section;
 }
 
-function fontControl(surface, token, value) {
+function selectControl(labelText, options, value, onChange) {
   const label = document.createElement("label");
   label.className = "settings-field";
   const name = document.createElement("span");
-  name.textContent = readableTokenName(token);
+  name.textContent = labelText;
   const select = document.createElement("select");
-  fontOptions.forEach((font) => {
+  options.forEach((font) => {
     const option = document.createElement("option");
     option.value = font.value;
     option.textContent = font.label;
     select.append(option);
   });
-  select.value = fontOptions.some((font) => font.value === value) ? value : fontOptions[0].value;
+  select.value = options.some((option) => option.value === value) ? value : options[0]?.value;
   select.addEventListener("change", () => {
-    setThemeDraftToken(surface, token, select.value);
+    onChange(select.value);
   });
   label.append(name, select);
   return label;
+}
+
+function setThemeTypography({ bodyFont, monoFont, sidebarSource }) {
+  if (!themeDraft) return;
+  const sidebarFont = sidebarSource === "body" ? bodyFont : monoFont;
+  themeDraftSimple.terminalFont = monoFont;
+  setThemeDraftToken("docs", "serifFont", bodyFont);
+  setThemeDraftToken("docs", "monoFont", monoFont);
+  setThemeDraftToken("terminal", "font", monoFont);
+  setThemeDraftToken("ui", "sidebarFont", sidebarFont);
+  const theme = effectiveTheme({ theme: themeDraft });
+  themeControls.replaceChildren(themeTypographySection(theme.tokens));
+  themeJson.value = JSON.stringify(themeDraft, null, 2);
+  applyThemePreview(theme);
+  loadGoogleFontsForTheme(theme);
 }
 
 function setThemeDraftToken(surface, token, value) {
@@ -1111,10 +1155,22 @@ function setThemeDraftToken(surface, token, value) {
   } else {
     themeDraft.customTokens[surface][token] = value;
   }
-  const theme = effectiveTheme({ theme: themeDraft });
-  themeJson.value = JSON.stringify(themeDraft, null, 2);
-  applyThemePreview(theme);
-  loadGoogleFontsForTheme(theme);
+}
+
+function currentThemeTokens() {
+  return effectiveTheme({ theme: themeDraft }).tokens;
+}
+
+function currentSidebarSource(tokens, fallbackBodyFont) {
+  return tokens.ui?.sidebarFont === (tokens.docs?.serifFont || fallbackBodyFont) ? "body" : "mono";
+}
+
+function bodyFontOptions(kind) {
+  return kind === "sans" ? sansFontOptions : serifFontOptions;
+}
+
+function defaultBodyFont(kind) {
+  return (kind === "sans" ? sansFontOptions : serifFontOptions)[0]?.value || fontOptions[0].value;
 }
 
 function updateThemeDraftFromSimpleControls() {
@@ -1124,7 +1180,7 @@ function updateThemeDraftFromSimpleControls() {
     primary: themePrimary.value,
     secondary: themeDraftSimple?.secondary === "" ? "" : normalizeColorOrEmpty(themeSecondary.value),
     terminalMode: ["light", "dark"].includes(themeTerminalMode.value) ? themeTerminalMode.value : "match",
-    terminalFont: themeTerminalFont.value || defaultTerminalFont(),
+    terminalFont: themeDraftSimple?.terminalFont || currentThemeTokens().terminal?.font || defaultTerminalFont(),
     terminalAccent: normalizeColor(themeTerminalAccent.value || themePrimary.value)
   };
   applyGeneratedThemeTokens();
@@ -1141,9 +1197,6 @@ function syncSimpleControls() {
   themeSecondaryToggle.style.setProperty("--secondary-color", hasSecondary ? normalizeColor(themeDraftSimple.secondary) : "transparent");
   themeSecondaryClear.hidden = !hasSecondary;
   themeTerminalMode.value = themeDraftSimple.terminalMode || "match";
-  themeTerminalFont.value = fontOptions.some((font) => font.value === themeDraftSimple.terminalFont)
-    ? themeDraftSimple.terminalFont
-    : defaultTerminalFont();
   themeTerminalAccent.value = normalizeColor(themeDraftSimple.terminalAccent || themeDraftSimple.primary);
 }
 
@@ -1364,7 +1417,7 @@ function inferTerminalMode(terminal, fallbackMode) {
 }
 
 function defaultTerminalFont() {
-  return fontOptions.find((font) => font.label === "Sometype Mono")?.value || fontOptions[0].value;
+  return monoFontOptions.find((font) => font.label === "Sometype Mono")?.value || monoFontOptions[0]?.value || fontOptions[0].value;
 }
 
 function ensureAccent(color, mode) {
