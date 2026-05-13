@@ -31,6 +31,7 @@ const settingsPage = document.getElementById("settings-page");
 const settingsStatus = document.getElementById("settings-status");
 const settingsLayout = document.querySelector(".settings-layout");
 const themeTitle = document.getElementById("theme-title");
+const themeHeroSwatches = document.getElementById("theme-hero-swatches");
 const themeSummary = document.getElementById("theme-summary");
 const themeEdit = document.getElementById("theme-edit");
 const themeEditor = document.getElementById("theme-editor");
@@ -38,8 +39,11 @@ const themeCancel = document.getElementById("theme-cancel");
 const themeSave = document.getElementById("theme-save");
 const themePreset = document.getElementById("theme-preset");
 const themeControls = document.getElementById("theme-controls");
-const settingsSave = document.getElementById("settings-save");
-const settingsSyncAgents = document.getElementById("settings-sync-agents");
+const agentSummary = document.getElementById("agent-summary");
+const agentEdit = document.getElementById("agent-edit");
+const agentEditor = document.getElementById("agent-editor");
+const agentCancel = document.getElementById("agent-cancel");
+const agentSave = document.getElementById("agent-save");
 const soulPrinciples = document.getElementById("soul-principles");
 const soulInterface = document.getElementById("soul-interface");
 const soulAgent = document.getElementById("soul-agent");
@@ -71,6 +75,7 @@ let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
 let settingsState = null;
 let themeDraft = null;
+let agentDraft = null;
 
 const themeSurfaces = [
   {
@@ -262,24 +267,29 @@ themeSave.addEventListener("click", async () => {
   await saveThemeDraft();
 });
 
-settingsSave.addEventListener("click", async () => {
-  await saveSettings();
+agentEdit.addEventListener("click", () => {
+  openAgentEditor();
 });
 
-settingsSyncAgents.addEventListener("click", async () => {
-  await syncAgents();
+agentCancel.addEventListener("click", () => {
+  closeAgentEditor();
+});
+
+agentSave.addEventListener("click", async () => {
+  await saveAgentInstructions();
 });
 
 memoryAdd.addEventListener("click", () => {
-  if (!settingsState) return;
-  settingsState.memory.entries.push({
+  if (!agentDraft) return;
+  agentDraft.memory.entries ||= [];
+  agentDraft.memory.entries.push({
     id: crypto.randomUUID(),
     title: "",
     content: "",
     enabled: true,
     updatedAt: new Date().toISOString()
   });
-  renderMemory(settingsState.memory.entries);
+  renderMemory(agentDraft.memory.entries);
 });
 
 async function restoreTerminals() {
@@ -568,6 +578,7 @@ async function loadSettings() {
 function renderSettings(settings) {
   if (!settings) return;
   renderThemeSummary(settings);
+  renderAgentSummary(settings);
   soulPrinciples.value = (settings.soul?.principles || []).join("\n");
   soulInterface.value = settings.soul?.interface || "";
   soulAgent.value = settings.soul?.agent || "";
@@ -577,6 +588,20 @@ function renderSettings(settings) {
 function renderThemeSummary(settings) {
   const theme = effectiveTheme(settings);
   themeTitle.textContent = themeDisplayName(settings);
+  const heroColors = [
+    theme.tokens.ui.bg,
+    theme.tokens.ui.panel,
+    theme.tokens.ui.accent,
+    theme.tokens.docs.bg,
+    theme.tokens.docs.link,
+    theme.tokens.terminal.bg,
+    theme.tokens.terminal.accent
+  ];
+  themeHeroSwatches.replaceChildren(...heroColors.map((color) => {
+    const swatch = document.createElement("span");
+    swatch.style.background = color;
+    return swatch;
+  }));
   themeSummary.replaceChildren(...themeSurfaces.map((surface) => {
     const tokens = theme.tokens[surface.key] || {};
     const section = document.createElement("article");
@@ -610,6 +635,37 @@ function renderThemeSummary(settings) {
     if (surface.fontTokens.length > 0) section.append(fonts);
     return section;
   }));
+}
+
+function renderAgentSummary(settings) {
+  const principles = settings.soul?.principles || [];
+  const enabledMemory = (settings.memory?.entries || []).filter((entry) => entry.enabled !== false && (entry.title || entry.content));
+  const cards = [
+    agentSummaryCard("Soul", `${principles.length} principles`, principles.slice(0, 3)),
+    agentSummaryCard("Agent", "Guidance", [settings.soul?.agent || "No agent guidance recorded."]),
+    agentSummaryCard("Memory", `${enabledMemory.length} enabled`, enabledMemory.slice(0, 3).map((entry) => entry.title || entry.content))
+  ];
+  agentSummary.replaceChildren(...cards);
+}
+
+function agentSummaryCard(title, meta, lines) {
+  const card = document.createElement("article");
+  card.className = "agent-summary-card";
+  const header = document.createElement("header");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const status = document.createElement("span");
+  status.textContent = meta;
+  header.append(heading, status);
+  const list = document.createElement("ul");
+  const values = lines.length > 0 ? lines : ["No entries added yet."];
+  values.forEach((line) => {
+    const item = document.createElement("li");
+    item.textContent = line;
+    list.append(item);
+  });
+  card.append(header, list);
+  return card;
 }
 
 function themeDisplayName(settings) {
@@ -655,14 +711,14 @@ function memoryEntryRow(entry, index) {
   title.value = entry.title || "";
   title.placeholder = "Title";
   title.addEventListener("input", () => {
-    settingsState.memory.entries[index].title = title.value;
+    if (agentDraft) agentDraft.memory.entries[index].title = title.value;
   });
   const content = document.createElement("textarea");
   content.rows = 3;
   content.value = entry.content || "";
   content.placeholder = "Memory";
   content.addEventListener("input", () => {
-    settingsState.memory.entries[index].content = content.value;
+    if (agentDraft) agentDraft.memory.entries[index].content = content.value;
   });
   const enabled = document.createElement("label");
   enabled.className = "memory-enabled";
@@ -670,7 +726,7 @@ function memoryEntryRow(entry, index) {
   checkbox.type = "checkbox";
   checkbox.checked = entry.enabled !== false;
   checkbox.addEventListener("change", () => {
-    settingsState.memory.entries[index].enabled = checkbox.checked;
+    if (agentDraft) agentDraft.memory.entries[index].enabled = checkbox.checked;
   });
   enabled.append(checkbox, "Enabled");
   const remove = document.createElement("button");
@@ -678,8 +734,9 @@ function memoryEntryRow(entry, index) {
   remove.className = "memory-remove";
   remove.textContent = "Remove";
   remove.addEventListener("click", () => {
-    settingsState.memory.entries.splice(index, 1);
-    renderMemory(settingsState.memory.entries);
+    if (!agentDraft) return;
+    agentDraft.memory.entries.splice(index, 1);
+    renderMemory(agentDraft.memory.entries);
   });
   row.append(title, content, enabled, remove);
   return row;
@@ -712,6 +769,70 @@ async function saveSettings() {
   renderSettings(settingsState);
   applyTheme(settingsState);
   setSettingsStatus("Saved.");
+}
+
+function openAgentEditor() {
+  if (!settingsState) return;
+  agentDraft = {
+    soul: structuredClone(settingsState.soul || {}),
+    memory: structuredClone(settingsState.memory || { entries: [] })
+  };
+  settingsLayout.hidden = true;
+  agentEditor.hidden = false;
+  settingsPage.classList.add("agent-editing");
+  renderAgentEditor();
+}
+
+function closeAgentEditor() {
+  agentDraft = null;
+  agentEditor.hidden = true;
+  settingsLayout.hidden = false;
+  settingsPage.classList.remove("agent-editing");
+}
+
+function renderAgentEditor() {
+  if (!agentDraft) return;
+  soulPrinciples.value = (agentDraft.soul?.principles || []).join("\n");
+  soulInterface.value = agentDraft.soul?.interface || "";
+  soulAgent.value = agentDraft.soul?.agent || "";
+  renderMemory(agentDraft.memory?.entries || []);
+}
+
+async function saveAgentInstructions() {
+  if (!settingsState || !agentDraft) return;
+  agentSave.disabled = true;
+  setSettingsStatus("Saving agent instructions...");
+  const next = {
+    ...settingsState,
+    soul: {
+      principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
+      interface: soulInterface.value.trim(),
+      agent: soulAgent.value.trim()
+    },
+    memory: {
+      entries: (agentDraft.memory?.entries || []).map((entry) => ({
+        id: entry.id || crypto.randomUUID(),
+        title: String(entry.title || "").trim(),
+        content: String(entry.content || "").trim(),
+        enabled: entry.enabled !== false,
+        updatedAt: new Date().toISOString()
+      })).filter((entry) => entry.title || entry.content)
+    }
+  };
+  try {
+    settingsState = await api("/api/settings", {
+      method: "PUT",
+      body: JSON.stringify(next)
+    });
+    const result = await api(projectPath("/api/settings/sync-agents"), { method: "POST" });
+    renderSettings(settingsState);
+    closeAgentEditor();
+    setSettingsStatus(`Agent instructions saved and synced to ${result.path}`);
+  } catch (error) {
+    setSettingsStatus(error.message || "Could not save agent instructions.");
+  } finally {
+    agentSave.disabled = false;
+  }
 }
 
 function openThemeEditor() {
@@ -840,20 +961,6 @@ async function saveThemeDraft() {
   applyTheme(settingsState);
   closeThemeEditor();
   setSettingsStatus("Theme saved.");
-}
-
-async function syncAgents() {
-  await saveSettings();
-  settingsSyncAgents.disabled = true;
-  setSettingsStatus("Syncing AGENTS.md...");
-  try {
-    const result = await api(projectPath("/api/settings/sync-agents"), { method: "POST" });
-    setSettingsStatus(`Synced ${result.memoryEntries} memory entries to ${result.path}`);
-  } catch (error) {
-    setSettingsStatus(error.message || "Could not sync AGENTS.md.");
-  } finally {
-    settingsSyncAgents.disabled = false;
-  }
 }
 
 function setSettingsStatus(message) {

@@ -37,8 +37,8 @@ await page.locator("#settings-button").click();
 await page.waitForURL(`${origin}/settings`);
 await page.locator("#settings-page").evaluate((panel) => {
   const text = panel.textContent || "";
-  if (!text.includes("Theme") || !text.includes("Soul") || !text.includes("Memory") || !text.includes("AGENTS.md Sync")) {
-    throw new Error(`Expected Settings to include Theme, Soul, Memory, and AGENTS.md sync, got ${text}`);
+  if (!text.includes("Theme") || !text.includes("Agent Instructions")) {
+    throw new Error(`Expected Settings to include Theme and Agent Instructions, got ${text}`);
   }
   if (!document.querySelector(".workspace")?.classList.contains("settings-mode")) {
     throw new Error("Expected Settings to be a workspace page mode.");
@@ -47,8 +47,10 @@ await page.locator("#settings-page").evaluate((panel) => {
     throw new Error("Expected terminal pane to be hidden on Settings.");
   }
 });
+await page.locator("#agent-edit").click();
 await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
+await page.locator("#agent-cancel").click();
 await page.locator("#dashboard-button").click();
 await page.waitForURL(dashboardUrl);
 await page.locator("#new-idea-toggle").click();

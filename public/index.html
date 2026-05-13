@@ -169,52 +169,28 @@
         <header class="dashboard-page-header settings-page-header">
           <div>
             <h1>Settings</h1>
-            <p>Control global HyperWiki theme, Soul, Memory, and explicit AGENTS.md sync.</p>
+            <p>Control global theme and agent instructions.</p>
           </div>
           <p id="settings-status" class="dashboard-status" role="status"></p>
         </header>
         <div class="settings-layout">
-          <section class="settings-section">
+          <section class="settings-section theme-overview-section">
             <div class="settings-section-header">
               <h2>Theme</h2>
               <button type="button" id="theme-edit" class="dashboard-new-button">Edit</button>
             </div>
-            <p id="theme-title" class="theme-title">Paper</p>
+            <div class="theme-readonly-hero">
+              <p id="theme-title" class="theme-title">Paper</p>
+              <div id="theme-hero-swatches" class="theme-hero-swatches" aria-hidden="true"></div>
+            </div>
             <div id="theme-summary" class="theme-summary" aria-label="Theme summary"></div>
           </section>
-          <section class="settings-section">
+          <section class="settings-section agent-instructions-section">
             <div class="settings-section-header">
-              <h2>Soul</h2>
+              <h2>Agent Instructions</h2>
+              <button type="button" id="agent-edit" class="dashboard-new-button">Edit</button>
             </div>
-            <label class="settings-field">
-              <span>Principles</span>
-              <textarea id="soul-principles" rows="6"></textarea>
-            </label>
-            <label class="settings-field">
-              <span>Interface Guidance</span>
-              <textarea id="soul-interface" rows="4"></textarea>
-            </label>
-            <label class="settings-field">
-              <span>Agent Guidance</span>
-              <textarea id="soul-agent" rows="4"></textarea>
-            </label>
-          </section>
-          <section class="settings-section settings-section-wide">
-            <div class="settings-section-header">
-              <h2>Memory</h2>
-              <button type="button" id="memory-add" class="dashboard-new-button">+ Memory</button>
-            </div>
-            <div id="memory-list" class="memory-list" aria-label="Memory entries"></div>
-          </section>
-          <section class="settings-section settings-section-wide settings-sync-section">
-            <div>
-              <h2>AGENTS.md Sync</h2>
-              <p>Soul and enabled Memory entries are written only when you sync. HyperWiki preserves content outside its managed block.</p>
-            </div>
-            <div class="settings-actions">
-              <button type="button" id="settings-save" class="settings-primary-button">Save Settings</button>
-              <button type="button" id="settings-sync-agents" class="dashboard-new-button">Sync Current Project AGENTS.md</button>
-            </div>
+            <div id="agent-summary" class="agent-summary" aria-label="Agent instructions summary"></div>
           </section>
         </div>
         <section id="theme-editor" class="theme-editor" aria-label="Edit Theme" hidden>
@@ -253,6 +229,41 @@
                   <span>preview terminal chrome</span>
                 </footer>
               </div>
+            </section>
+          </div>
+        </section>
+        <section id="agent-editor" class="agent-editor" aria-label="Edit Agent Instructions" hidden>
+          <header class="theme-editor-header">
+            <div>
+              <h2>Edit Agent Instructions</h2>
+              <p>Saving updates global instructions and syncs the current project AGENTS.md.</p>
+            </div>
+            <div class="settings-actions">
+              <button type="button" id="agent-cancel" class="dashboard-new-button">Cancel</button>
+              <button type="button" id="agent-save" class="settings-primary-button">Save Agent Instructions</button>
+            </div>
+          </header>
+          <div class="agent-editor-layout">
+            <section class="settings-section">
+              <label class="settings-field">
+                <span>Principles</span>
+                <textarea id="soul-principles" rows="7"></textarea>
+              </label>
+              <label class="settings-field">
+                <span>Interface Guidance</span>
+                <textarea id="soul-interface" rows="4"></textarea>
+              </label>
+              <label class="settings-field">
+                <span>Agent Guidance</span>
+                <textarea id="soul-agent" rows="4"></textarea>
+              </label>
+            </section>
+            <section class="settings-section">
+              <div class="settings-section-header">
+                <h2>Memory</h2>
+                <button type="button" id="memory-add" class="dashboard-new-button">+ Memory</button>
+              </div>
+              <div id="memory-list" class="memory-list" aria-label="Memory entries"></div>
             </section>
           </div>
         </section>
