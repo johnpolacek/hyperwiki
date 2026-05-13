@@ -4,6 +4,10 @@ const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
+const modifyButton = document.getElementById("modify-button");
+const modifyPlanUi = document.getElementById("modify-plan-ui");
+const modifyPlanInput = document.getElementById("modify-plan-input");
+const modifyPlanStatus = document.getElementById("modify-plan-status");
 const executeButton = document.getElementById("execute-button");
 const executeMenu = document.getElementById("execute-menu");
 const previewLink = document.getElementById("preview-link");
@@ -102,6 +106,36 @@ executeMenu.addEventListener("click", (event) => {
   void executeTarget(target.dataset.executeTarget || "main");
 });
 
+modifyButton.addEventListener("click", () => {
+  const open = modifyPlanUi.hidden;
+  modifyPlanUi.hidden = !open;
+  modifyButton.setAttribute("aria-expanded", String(open));
+  if (open) {
+    resizePlanTextarea(modifyPlanInput);
+    requestAnimationFrame(() => modifyPlanInput.focus());
+  }
+});
+
+modifyPlanInput.addEventListener("input", () => resizePlanTextarea(modifyPlanInput));
+resizePlanTextarea(modifyPlanInput);
+
+modifyPlanUi.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const prompt = modifyPlanInput.value.trim();
+  if (!prompt) return;
+  modifyPlanStatus.textContent = "Sending...";
+  try {
+    await ensureAgentTerminal();
+    await postAgentPromptWithRetry(modifyPlanPrompt(prompt), currentPage.title || requestedWikiPath);
+    modifyPlanInput.value = "";
+    resizePlanTextarea(modifyPlanInput);
+    modifyPlanStatus.textContent = "Sent to agent.";
+    activateTerminal("agent");
+  } catch (error) {
+    modifyPlanStatus.textContent = error.message || "Agent unavailable.";
+  }
+});
+
 planPromptInput.addEventListener("input", resizePlanPromptInput);
 resizePlanPromptInput();
 
@@ -128,18 +162,22 @@ planPrompt.addEventListener("submit", async (event) => {
 });
 
 function resizePlanPromptInput() {
-  planPromptInput.style.height = "auto";
-  const styles = window.getComputedStyle(planPromptInput);
+  resizePlanTextarea(planPromptInput);
+}
+
+function resizePlanTextarea(textarea) {
+  textarea.style.height = "auto";
+  const styles = window.getComputedStyle(textarea);
   const maxLines = Number.parseInt(styles.getPropertyValue("--plan-prompt-max-lines"), 10);
   const lineHeight = Number.parseFloat(styles.lineHeight);
   const verticalPadding = Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
   const verticalBorder = Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
   const maxHeight = maxLines * lineHeight + verticalPadding + verticalBorder;
-  const valueLines = planPromptInput.value.split("\n").length;
-  const contentHeight = Math.max(planPromptInput.scrollHeight, valueLines * lineHeight + verticalPadding + verticalBorder);
+  const valueLines = textarea.value.split("\n").length;
+  const contentHeight = Math.max(textarea.scrollHeight, valueLines * lineHeight + verticalPadding + verticalBorder);
   const nextHeight = Math.min(contentHeight, maxHeight);
-  planPromptInput.style.height = `${nextHeight}px`;
-  planPromptInput.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
 }
 
 projectToggle.addEventListener("click", (event) => {
@@ -329,6 +367,8 @@ async function showDashboardPage(options = {}) {
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
   setCurrentPage("/dashboard", "Dashboard");
   openPage.href = "/dashboard";
+  modifyPlanUi.hidden = true;
+  modifyButton.setAttribute("aria-expanded", "false");
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
   if (location.pathname !== "/dashboard") {
     const method = options.replace ? "replaceState" : "pushState";
@@ -1011,6 +1051,26 @@ function activateWikiPage(path) {
   if (location.pathname === "/dashboard" || `${location.pathname}${location.hash}` !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
+}
+
+function modifyPlanPrompt(prompt) {
+  const pagePath = currentPage.title || requestedWikiPath;
+  const pageTitle = currentPage.dataset.title || titleForWikiPath(pagePath);
+  return [
+    "Modify the current hyperwiki plan from this instruction.",
+    "",
+    `Current page: ${pageTitle}`,
+    `Current path: ${displayWikiPath(pagePath)}`,
+    "",
+    "Instructions:",
+    "- Read the current page and relevant parent plan pages before editing.",
+    "- Apply the requested plan change directly to the wiki HTML files.",
+    "- Keep the change scoped to planning content unless the user explicitly asks for code.",
+    "- Run the relevant checks after editing.",
+    "",
+    "Requested modification:",
+    prompt
+  ].join("\n");
 }
 
 function syncPlanTreeOpenState(selectedPath) {

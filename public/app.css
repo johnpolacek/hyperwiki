@@ -255,7 +255,7 @@ body {
 }
 
 .dashboard-page {
-  grid-row: 2;
+  grid-row: 3;
   height: 100%;
   overflow: auto;
   padding: 28px 32px 36px;
@@ -1040,6 +1040,7 @@ body {
 }
 
 .plan-prompt {
+  grid-row: 4;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
@@ -1120,7 +1121,7 @@ body {
   grid-column: 2;
   grid-row: 2;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .wiki-command-bar {
@@ -1181,6 +1182,7 @@ body {
 }
 
 .execute-button,
+.modify-button,
 .execute-menu button,
 .preview-link {
   min-height: 30px;
@@ -1192,6 +1194,10 @@ body {
   cursor: pointer;
   font: 600 12px/1.2 var(--sidebar-font);
   text-decoration: none;
+}
+
+.modify-button {
+  flex: 0 0 auto;
 }
 
 .execute-button {
@@ -1239,6 +1245,8 @@ body {
 
 .execute-button:hover,
 .execute-button:focus-visible,
+.modify-button:hover,
+.modify-button:focus-visible,
 .execute-menu button:hover,
 .execute-menu button:focus-visible,
 .preview-link:hover,
@@ -1247,7 +1255,86 @@ body {
   background: #f2f4ef;
 }
 
+.modify-plan-ui {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label status"
+    "input button";
+  align-items: start;
+  gap: 6px 10px;
+  border-bottom: 1px solid #d8d8d0;
+  padding: 9px 10px 10px;
+  background:
+    linear-gradient(90deg, rgba(37, 162, 68, 0.08), transparent 42%),
+    #fbfbf8;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.modify-plan-ui[hidden] {
+  display: none;
+}
+
+.modify-plan-ui label {
+  grid-area: label;
+  color: #5f6b60;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.modify-plan-ui textarea {
+  grid-area: input;
+  width: 100%;
+  min-width: 0;
+  --plan-prompt-max-lines: 8;
+  overflow-y: hidden;
+  resize: none;
+  border: 1px solid #c6c8c0;
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: #ffffff;
+  color: var(--text);
+  font: 12px/1.55 var(--sidebar-font);
+}
+
+.modify-plan-ui button {
+  grid-area: button;
+  display: inline-flex;
+  align-items: center;
+  align-self: start;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid #20231f;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #20231f;
+  color: #fff;
+  cursor: pointer;
+  font: 700 11px/1.2 var(--sidebar-font);
+}
+
+.modify-plan-ui button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.modify-plan-ui p {
+  grid-area: status;
+  justify-self: end;
+  min-height: 14px;
+  margin: 0;
+  color: #5f6b60;
+  font-size: 11px;
+}
+
 .wiki-pane iframe {
+  grid-row: 3;
   width: 100%;
   height: 100%;
   border: 0;

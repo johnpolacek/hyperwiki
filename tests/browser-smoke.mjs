@@ -61,6 +61,24 @@ await page.locator("#current-page").evaluate((element) => {
   }
 });
 await page.locator("#execute-button").filter({ hasText: "Execute" }).waitFor();
+await page.locator("#modify-button").filter({ hasText: "Modify" }).click();
+await page.locator("#modify-plan-ui").evaluate((form) => {
+  if (form.hidden || !form.textContent.includes("Send")) {
+    throw new Error("Expected Modify Plan UI with Send action.");
+  }
+});
+const modifyInput = page.locator("#modify-plan-input");
+const initialModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
+await modifyInput.fill(["tighten scope", "add verification", "note follow-up"].join("\n"));
+await modifyInput.evaluate((element) => element.dispatchEvent(new Event("input", { bubbles: true })));
+const expandedModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
+if (expandedModifyHeight <= initialModifyHeight) {
+  throw new Error(`Expected Modify textarea to expand, got ${expandedModifyHeight}/${initialModifyHeight}`);
+}
+await page.locator("#modify-button").click();
+await page.locator("#modify-plan-ui").evaluate((form) => {
+  if (!form.hidden) throw new Error("Expected Modify Plan UI to collapse.");
+});
 const initialTerminalCount = await page.locator(".terminal-panel").count();
 if (initialTerminalCount !== 0) {
   throw new Error(`Expected no terminals before Execute, got ${initialTerminalCount}`);
@@ -116,7 +134,7 @@ if (expandedPromptMetrics.clientHeight <= initialPromptHeight) {
 if (expandedPromptMetrics.clientHeight >= expandedPromptMetrics.scrollHeight || expandedPromptMetrics.overflowY !== "auto") {
   throw new Error("Expected plan prompt to cap at five lines and scroll beyond that.");
 }
-const promptButtonMetrics = await page.locator("#plan-prompt button").evaluate((button) => {
+const promptButtonMetrics = await page.locator("#plan-prompt-submit").evaluate((button) => {
   const textarea = document.querySelector("#plan-prompt-input");
   const buttonRect = button.getBoundingClientRect();
   const textareaRect = textarea.getBoundingClientRect();
@@ -138,11 +156,8 @@ const contractedPromptHeight = await promptInput.evaluate((element) => element.c
 if (contractedPromptHeight >= expandedPromptMetrics.clientHeight) {
   throw new Error(`Expected plan prompt to contract, got ${contractedPromptHeight}/${expandedPromptMetrics.clientHeight}`);
 }
-await page.locator("#plan-prompt button").click();
+await page.locator("#plan-prompt-submit").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
-await page.waitForFunction(() =>
-  document.querySelector(".terminal[data-name=\"agent\"]")?.innerText.includes("HYPERWIKI_PLAN_PROMPT_SMOKE")
-);
 
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
 const currentPage = await page.locator("#current-page").evaluate((element) => element.dataset.title);

@@ -113,6 +113,7 @@
     <section class="wiki-pane">
       <div class="wiki-command-bar">
         <nav id="current-page" class="wiki-breadcrumbs" aria-label="Current wiki location">/wiki/index.html</nav>
+        <button type="button" id="modify-button" class="modify-button" aria-expanded="false" aria-controls="modify-plan-ui">Modify</button>
         <div class="execute-control">
           <button type="button" id="execute-button" class="execute-button" aria-expanded="false" aria-controls="execute-menu">
             <span>Execute</span>
@@ -128,6 +129,18 @@
         <a id="preview-link" class="preview-link" href="#" target="_blank" rel="noreferrer" hidden>Open preview</a>
         <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
       </div>
+      <form id="modify-plan-ui" class="modify-plan-ui" hidden>
+        <label for="modify-plan-input">Modify plan</label>
+        <textarea id="modify-plan-input" rows="1" placeholder="Describe the change to this plan..."></textarea>
+        <button type="submit" aria-label="Send plan modification">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m3 3 3 9-3 9 19-9Z"></path>
+            <path d="M6 12h16"></path>
+          </svg>
+          <span>Send</span>
+        </button>
+        <p id="modify-plan-status" role="status"></p>
+      </form>
       <section id="dashboard-page" class="dashboard-page" aria-label="hyperwiki Dashboard" hidden>
         <header class="dashboard-page-header">
           <div>
@@ -199,7 +212,7 @@
       <form id="plan-prompt" class="plan-prompt" hidden>
         <label for="plan-prompt-input">Plan prompt</label>
         <textarea id="plan-prompt-input" rows="1" placeholder="Ask the agent to revise this plan..."></textarea>
-        <button type="submit" aria-label="Send prompt to agent">
+        <button type="submit" id="plan-prompt-submit" aria-label="Send prompt to agent">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m3 3 3 9-3 9 19-9Z"></path>
             <path d="M6 12h16"></path>
