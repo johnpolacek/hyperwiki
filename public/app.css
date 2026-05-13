@@ -913,7 +913,7 @@ body {
 
 .theme-preset-text {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -928,7 +928,9 @@ body {
 .theme-preset-text span {
   overflow: hidden;
   color: var(--muted);
-  font: 11px/1.25 var(--sidebar-font);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

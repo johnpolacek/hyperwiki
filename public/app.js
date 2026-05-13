@@ -1033,9 +1033,13 @@ function themePresetCard(value, preset) {
   text.className = "theme-preset-text";
   const label = document.createElement("strong");
   label.textContent = preset.label || value;
-  const meta = document.createElement("span");
-  meta.textContent = `${preset.mode === "dark" ? "Dark" : "Light"} · ${fontLabel(tokens.docs?.serifFont)} / ${fontLabel(tokens.ui?.sidebarFont)}`;
-  text.append(label, meta);
+  const docsFont = document.createElement("span");
+  docsFont.textContent = fontLabel(tokens.docs?.serifFont);
+  docsFont.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
+  const uiFont = document.createElement("span");
+  uiFont.textContent = fontLabel(tokens.ui?.sidebarFont);
+  uiFont.style.fontFamily = tokens.ui?.sidebarFont || "var(--sidebar-font)";
+  text.append(label, docsFont, uiFont);
   card.append(preview, text);
   return card;
 }
