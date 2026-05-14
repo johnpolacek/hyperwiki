@@ -33,7 +33,7 @@ await page.locator("#dashboard-page").evaluate((panel) => {
     throw new Error("Expected dashboard forms to start collapsed.");
   }
 });
-await page.locator("#settings-button").click();
+await page.locator("#dashboard-settings-button").click();
 await page.waitForURL(`${origin}/settings`);
 await page.locator("#settings-page").evaluate((panel) => {
   const text = panel.textContent || "";

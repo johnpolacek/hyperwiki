@@ -14,6 +14,7 @@ const dashboardPage = document.getElementById("dashboard-page");
 const dashboardIdeas = document.getElementById("dashboard-ideas");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const dashboardStatus = document.getElementById("dashboard-status");
+const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
 const newProjectToggle = document.getElementById("new-project-toggle");
 const ideaImportForm = document.getElementById("idea-import-form");
@@ -26,7 +27,6 @@ const projectMarkdownInput = document.getElementById("project-markdown");
 const projectMarkdownFile = document.getElementById("project-markdown-file");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
-const settingsButton = document.getElementById("settings-button");
 const settingsPage = document.getElementById("settings-page");
 const settingsStatus = document.getElementById("settings-status");
 const settingsLayout = document.querySelector(".settings-layout");
@@ -237,14 +237,13 @@ dashboardButton.addEventListener("click", async (event) => {
   showDashboardPage();
 });
 
+dashboardSettingsButton.addEventListener("click", () => {
+  void showSettingsPage();
+});
+
 upNextButton.addEventListener("click", (event) => {
   event.stopPropagation();
   setTopbarPanelOpen("up-next", upNextPopover.hidden);
-});
-
-settingsButton.addEventListener("click", (event) => {
-  event.stopPropagation();
-  void showSettingsPage();
 });
 
 projectPanel.addEventListener("click", (event) => {
@@ -529,7 +528,6 @@ async function showDashboardPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.add("active");
-  settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
   workspace.classList.remove("settings-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
@@ -550,8 +548,7 @@ async function showSettingsPage(options = {}) {
   settingsPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
-  dashboardButton.classList.remove("active");
-  settingsButton.classList.add("active");
+  dashboardButton.classList.add("active");
   workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
@@ -569,7 +566,6 @@ function hideDashboardPage() {
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   dashboardButton.classList.remove("active");
-  settingsButton.classList.remove("active");
   workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
@@ -2264,10 +2260,10 @@ function pageFromHash() {
 }
 
 function workspaceLocation() {
+  if (location.pathname === "/dashboard") return "/dashboard";
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
   if (location.pathname === "/settings") return "/settings";
-  if (location.pathname === "/dashboard") return "/dashboard";
   return currentPlanPath;
 }
 

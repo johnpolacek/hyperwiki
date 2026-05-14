@@ -301,6 +301,14 @@ body {
   line-height: 1.45;
 }
 
+.dashboard-header-actions {
+  display: flex;
+  align-items: start;
+  justify-content: end;
+  gap: 12px;
+  min-width: 0;
+}
+
 .dashboard-status {
   position: relative;
   display: inline-flex;

@@ -58,13 +58,6 @@
           </svg>
           <span>Projects</span>
         </button>
-        <button type="button" id="settings-button" class="topbar-button" aria-controls="settings-page">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
-            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .92V20.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-.92 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.92-1H3.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 .92-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.92V3.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 .92 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.43.7.92 1h.18a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1 .92Z"></path>
-          </svg>
-          <span>Settings</span>
-        </button>
       </div>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
         <div id="project-list" class="project-list" aria-label="Projects"></div>
@@ -104,7 +97,10 @@
             <h1>Dashboard</h1>
             <p>Start ideas and projects from markdown, then hand the work to an agent.</p>
           </div>
-          <p id="dashboard-status" class="dashboard-status" role="status"></p>
+          <div class="dashboard-header-actions">
+            <button type="button" id="dashboard-settings-button" class="dashboard-new-button">Settings</button>
+            <p id="dashboard-status" class="dashboard-status" role="status"></p>
+          </div>
         </header>
         <div class="dashboard-inventory">
           <section class="dashboard-section">
