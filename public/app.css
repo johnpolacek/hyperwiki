@@ -658,6 +658,17 @@ body {
   gap: 8px;
 }
 
+#dashboard-ideas {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+@media (max-width: 1280px) {
+  #dashboard-ideas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .dashboard-item {
   display: grid;
   gap: 5px;
@@ -3010,6 +3021,10 @@ body {
   .dashboard-page-header {
     display: grid;
     gap: 4px;
+  }
+
+  #dashboard-ideas {
+    grid-template-columns: 1fr;
   }
 
   .idea-card-details,
