@@ -1071,8 +1071,8 @@ body {
 
 .theme-preset-selected-chips {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 112px));
-  gap: 34px;
+  grid-template-columns: repeat(4, minmax(0, 124px));
+  gap: 26px;
   align-items: start;
 }
 
@@ -1083,7 +1083,7 @@ body {
 }
 
 .theme-preset-selected-chips i {
-  width: 84px;
+  width: 96px;
   height: 28px;
   border: 1px solid var(--border);
   border-radius: 7px;
