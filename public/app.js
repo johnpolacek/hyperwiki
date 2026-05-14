@@ -2264,9 +2264,9 @@ function pageFromHash() {
 }
 
 function workspaceLocation() {
-  if (location.pathname === "/settings") return "/settings";
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
+  if (location.pathname === "/settings") return "/settings";
   if (location.pathname === "/dashboard") return "/dashboard";
   return currentPlanPath;
 }
