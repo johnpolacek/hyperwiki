@@ -116,9 +116,9 @@ await page.evaluate(() => {
     throw new Error("Expected Ideas to be a workspace page mode.");
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory.html`, { waitUntil: "networkidle" });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html`, { waitUntil: "networkidle" });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
@@ -133,11 +133,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "Unit 01 - Global Settings Page") {
+if (workspaceSummary.status.current !== "none") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
-if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html") {
-  throw new Error(`Expected workspace current path for Stage 08 Unit 01, got ${workspaceSummary.status.currentPath}`);
+if (workspaceSummary.status.currentPath !== "") {
+  throw new Error(`Expected no current MVP unit path after MVP completion, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
@@ -356,22 +356,18 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   const stageOneLink = stageOneLabel.closest("a");
   const stageSevenLink = stageSevenLabel.closest("a");
-  const currentPlanLink = document.querySelector("#wiki-nav a.current-plan");
   const currentStageLinks = [...document.querySelectorAll("#wiki-nav a.current-stage")];
-  if (currentStageLinks.length !== 1 || !currentStageLinks[0].textContent.includes("Stage-08")) {
-    throw new Error(`Expected exactly one current stage marker for Stage 08, got ${currentStageLinks.map((link) => link.textContent.trim()).join(", ")}`);
+  const currentUnitLinks = [...document.querySelectorAll("#wiki-nav a.current-unit")];
+  if (currentStageLinks.length !== 0 || currentUnitLinks.length !== 0) {
+    throw new Error(`Expected no current stage/unit marker after MVP completion, got ${currentStageLinks.map((link) => link.textContent.trim()).join(", ")} / ${currentUnitLinks.map((link) => link.textContent.trim()).join(", ")}`);
   }
   const stageOneBefore = getComputedStyle(stageOneLink, "::before");
   const stageSevenBefore = getComputedStyle(stageSevenLink, "::before");
-  const currentPlanBefore = getComputedStyle(currentPlanLink, "::before");
   if (stageOneBefore.backgroundColor !== "rgb(211, 216, 207)") {
     throw new Error(`Expected completed stage dot to be light gray, got ${stageOneBefore.backgroundColor}`);
   }
-  if (currentPlanBefore.backgroundColor !== "rgb(37, 162, 68)") {
-    throw new Error(`Expected current plan dot to be green, got ${currentPlanBefore.backgroundColor}`);
-  }
-  if (stageSevenBefore.backgroundColor !== "rgb(37, 162, 68)") {
-    throw new Error(`Expected current stage dot to be green, got ${stageSevenBefore.backgroundColor}`);
+  if (stageSevenBefore.backgroundColor !== "rgb(211, 216, 207)") {
+    throw new Error(`Expected completed stage dot to be light gray, got ${stageSevenBefore.backgroundColor}`);
   }
   if (Math.round(stageOneLabel.getBoundingClientRect().left) !== Math.round(stageSevenLabel.getBoundingClientRect().left)) {
     throw new Error("Expected active and inactive stage labels to align");
@@ -387,8 +383,8 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   }
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
-  if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || !stageSevenGroup.open) {
-    throw new Error("Expected current stage branch to expand by default under the current plan");
+  if (!stageOneGroup || !stageSevenGroup || stageOneGroup.open || stageSevenGroup.open) {
+    throw new Error("Expected completed MVP stage branches to stay collapsed by default");
   }
   if (getComputedStyle(longUnitLabel).textOverflow !== "ellipsis") {
     throw new Error("Expected plan navigation labels to use text overflow ellipses");
@@ -400,7 +396,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error(`Expected long plan label to overflow within a clipped label box, got ${longUnitLabel.scrollWidth}/${longUnitLabel.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory.html`, { waitUntil: "networkidle" });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
 await page.locator("#wiki-nav").evaluate(() => {
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-07-agent-native-verification.html\"]");
@@ -547,9 +543,9 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
   }
   element.open = false;
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory.html`, { waitUntil: "networkidle" });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-08-settings-soul-memory\/unit-01-global-settings-page\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
@@ -727,9 +723,11 @@ await page.locator("#up-next-button").evaluate((element) => {
   }
 });
 await page.locator("#up-next-popover dt").filter({ hasText: "Up Next" }).waitFor();
-await page.locator("#up-next-stage").filter({ hasText: /Stage 08/i }).waitFor();
-await page.locator("#up-next-current").filter({ hasText: /Unit 01|Global Settings Page/i }).waitFor();
-await page.locator("#up-next-link").filter({ hasText: "Open unit" }).waitFor();
+await page.locator("#up-next-stage").filter({ hasText: /^none$/i }).waitFor();
+await page.locator("#up-next-current").filter({ hasText: /^none$/i }).waitFor();
+if (await page.locator("#up-next-link").isVisible()) {
+  throw new Error("Expected no Up Next unit link after MVP completion");
+}
 const nextRowCount = await page.locator("#up-next-popover dt").filter({ hasText: /^Next$/ }).count();
 if (nextRowCount !== 0) {
   throw new Error("Expected Up Next popover to omit separate Next row");
