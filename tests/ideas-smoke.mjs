@@ -117,8 +117,8 @@ try {
 
   const after = await json(`${url}/api/ideas`);
   const promotedAfter = after.ideas.find((idea) => idea.path.endsWith("/wiki/ideas/portable-builder.html"));
-  if (!promotedAfter?.promoted) {
-    throw new Error("Expected promoted idea to be marked promoted in API output.");
+  if (promotedAfter) {
+    throw new Error("Expected promoted idea to disappear from API output.");
   }
 
   const dashboardProject = await json(`${url}/api/projects/create`, {

@@ -730,17 +730,11 @@ body {
 
 .dashboard-item.idea-card {
   gap: 11px;
-  min-height: 128px;
+  min-height: 118px;
   border-color: #d8d1c1;
   padding: 14px 16px 15px 18px;
   background:
     linear-gradient(90deg, color-mix(in srgb, #c28d3a 18%, transparent) 0 4px, transparent 4px),
-    #fffdfa;
-}
-
-.dashboard-item.idea-card.promoted {
-  background:
-    linear-gradient(90deg, color-mix(in srgb, #25a244 15%, transparent) 0 4px, transparent 4px),
     #fffdfa;
 }
 
@@ -758,23 +752,6 @@ body {
   line-height: 1.2;
 }
 
-.idea-card-status {
-  flex: 0 0 auto;
-  border: 1px solid #e1d4b8;
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: #fbf4e6;
-  color: #73501b;
-  font: 700 10px/1 var(--sidebar-font);
-  text-transform: uppercase;
-}
-
-.idea-card-status.promoted {
-  border-color: #cfd5c9;
-  background: #f4f7f1;
-  color: #315b3c;
-}
-
 .dashboard-item .idea-card-summary {
   max-width: 76ch;
   color: #4f564d;
@@ -783,7 +760,7 @@ body {
 
 .idea-card-details {
   display: grid;
-  grid-template-columns: minmax(180px, 0.75fr) minmax(180px, 0.75fr) minmax(260px, 1.5fr);
+  grid-template-columns: minmax(260px, 1fr);
   gap: 8px;
 }
 

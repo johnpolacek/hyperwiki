@@ -1219,12 +1219,14 @@ async function listIdeas(root, projectId = null) {
     }
     const relative = `wiki/ideas/${entry.name}`;
     const html = await readRepoFile(root, relative);
+    if (isPromotedIdea(html)) {
+      continue;
+    }
     const title = firstMatch(html, /<h1[^>]*>(.*?)<\/h1>/is) || titleFromWikiPath(`ideas/${entry.name}`);
     ideas.push({
       title,
       path: projectId ? `/projects/${projectId}/wiki/ideas/${entry.name}` : `/wiki/ideas/${entry.name}`,
       summary: ideaSummary(html),
-      promoted: isPromotedIdea(html),
       targetRoot: await uniqueProjectRoot(title)
     });
   }

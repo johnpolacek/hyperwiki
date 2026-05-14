@@ -264,7 +264,7 @@ await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor
 await page.locator("#dashboard-button").click();
 await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
-await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "<< Open idea" }).waitFor();
+await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "Open idea >>" }).waitFor();
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 

@@ -1853,7 +1853,7 @@ function renderDashboardIdeas(ideas) {
   }
   dashboardIdeas.replaceChildren(...ideas.map((idea) => {
     const item = document.createElement("article");
-    item.className = `dashboard-item idea-card${idea.promoted ? " promoted" : ""}`;
+    item.className = "dashboard-item idea-card";
     const link = document.createElement("a");
     link.href = `#${idea.path}`;
     link.className = "idea-card-title";
@@ -1863,13 +1863,9 @@ function renderDashboardIdeas(ideas) {
       activateWorkspaceLocation(idea.path);
     });
 
-    const status = document.createElement("span");
-    status.className = `idea-card-status${idea.promoted ? " promoted" : ""}`;
-    status.textContent = idea.promoted ? "Promoted" : "Incubating";
-
     const header = document.createElement("div");
     header.className = "idea-card-header";
-    header.append(link, status);
+    header.append(link);
 
     const summary = document.createElement("p");
     summary.className = "idea-card-summary";
@@ -1878,9 +1874,7 @@ function renderDashboardIdeas(ideas) {
     const details = document.createElement("div");
     details.className = "idea-card-details";
     details.append(
-      projectDetail("Page", displayWikiPath(idea.path)),
-      projectDetail("Next step", idea.promoted ? "Project initialized" : "Initialize when ready"),
-      projectDetail("Target", idea.targetRoot || "Choose on promote")
+      projectDetail("Path", extensionlessWikiPath(displayWikiPath(idea.path)))
     );
 
     const actions = document.createElement("div");
@@ -1888,23 +1882,20 @@ function renderDashboardIdeas(ideas) {
     const openLink = document.createElement("a");
     openLink.className = "dashboard-open-link";
     openLink.href = `#${idea.path}`;
-    openLink.textContent = "<< Open idea";
+    openLink.textContent = "Open idea >>";
     openLink.addEventListener("click", (event) => {
       event.preventDefault();
       activateWorkspaceLocation(idea.path);
     });
     actions.append(openLink);
-    if (idea.promoted) {
-      const badge = document.createElement("span");
-      badge.className = "dashboard-badge";
-      badge.textContent = "Promoted";
-      actions.append(badge);
-    } else {
-      actions.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
-    }
+    actions.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
     item.append(header, summary, details, actions);
     return item;
   }));
+}
+
+function extensionlessWikiPath(path) {
+  return String(path || "").replace(/\.html$/, "");
 }
 
 function renderDashboardProjects(projects) {
