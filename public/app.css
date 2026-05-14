@@ -728,7 +728,66 @@ body {
   line-height: 1;
 }
 
-.project-card {
+.dashboard-item.idea-card {
+  gap: 11px;
+  min-height: 128px;
+  border-color: #d8d1c1;
+  padding: 14px 16px 15px 18px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #c28d3a 18%, transparent) 0 4px, transparent 4px),
+    #fffdfa;
+}
+
+.dashboard-item.idea-card.promoted {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, #25a244 15%, transparent) 0 4px, transparent 4px),
+    #fffdfa;
+}
+
+.idea-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dashboard-item .idea-card-title {
+  width: auto;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.idea-card-status {
+  flex: 0 0 auto;
+  border: 1px solid #e1d4b8;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fbf4e6;
+  color: #73501b;
+  font: 700 10px/1 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.idea-card-status.promoted {
+  border-color: #cfd5c9;
+  background: #f4f7f1;
+  color: #315b3c;
+}
+
+.dashboard-item .idea-card-summary {
+  max-width: 76ch;
+  color: #4f564d;
+  font-size: 12px;
+}
+
+.idea-card-details {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(180px, 0.75fr) minmax(260px, 1.5fr);
+  gap: 8px;
+}
+
+.dashboard-item.project-card {
   position: relative;
   gap: 11px;
   min-height: 112px;
@@ -739,7 +798,7 @@ body {
     #fffdfa;
 }
 
-.project-card.active {
+.dashboard-item.project-card.active {
   border-color: #b9c1b1;
   box-shadow: inset 0 0 0 1px #edf0e9;
 }
@@ -2974,6 +3033,11 @@ body {
   .dashboard-page-header {
     display: grid;
     gap: 4px;
+  }
+
+  .idea-card-details,
+  .project-card-details {
+    grid-template-columns: 1fr;
   }
 
   .wiki-pane {

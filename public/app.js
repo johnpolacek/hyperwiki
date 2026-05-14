@@ -1853,17 +1853,36 @@ function renderDashboardIdeas(ideas) {
   }
   dashboardIdeas.replaceChildren(...ideas.map((idea) => {
     const item = document.createElement("article");
-    item.className = "dashboard-item";
+    item.className = `dashboard-item idea-card${idea.promoted ? " promoted" : ""}`;
     const link = document.createElement("a");
     link.href = `#${idea.path}`;
+    link.className = "idea-card-title";
     link.textContent = idea.title;
     link.addEventListener("click", (event) => {
       event.preventDefault();
       activateWorkspaceLocation(idea.path);
     });
+
+    const status = document.createElement("span");
+    status.className = `idea-card-status${idea.promoted ? " promoted" : ""}`;
+    status.textContent = idea.promoted ? "Promoted" : "Incubating";
+
+    const header = document.createElement("div");
+    header.className = "idea-card-header";
+    header.append(link, status);
+
     const summary = document.createElement("p");
+    summary.className = "idea-card-summary";
     summary.textContent = idea.summary || "Free-form idea";
-    item.append(link, summary);
+
+    const details = document.createElement("div");
+    details.className = "idea-card-details";
+    details.append(
+      projectDetail("Page", displayWikiPath(idea.path)),
+      projectDetail("Next step", idea.promoted ? "Project initialized" : "Initialize when ready"),
+      projectDetail("Target", idea.targetRoot || "Choose on promote")
+    );
+
     const actions = document.createElement("div");
     actions.className = "dashboard-item-actions";
     const openLink = document.createElement("a");
@@ -1883,7 +1902,7 @@ function renderDashboardIdeas(ideas) {
     } else {
       actions.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
     }
-    item.append(actions);
+    item.append(header, summary, details, actions);
     return item;
   }));
 }
