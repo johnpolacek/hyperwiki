@@ -1762,7 +1762,7 @@ function renderDashboardIdeas(ideas) {
     const openLink = document.createElement("a");
     openLink.className = "dashboard-open-link";
     openLink.href = `#${idea.path}`;
-    openLink.textContent = "Open idea";
+    openLink.textContent = "<< Open idea";
     openLink.addEventListener("click", (event) => {
       event.preventDefault();
       activateWorkspaceLocation(idea.path);
