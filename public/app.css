@@ -1051,6 +1051,7 @@ body {
 
 .theme-preset-selected-type b {
   overflow: hidden;
+  padding-right: 18px;
   color: var(--text);
   font-size: 28px;
   font-weight: 500;
@@ -1071,8 +1072,8 @@ body {
 
 .theme-preset-selected-chips {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 124px));
-  gap: 26px;
+  grid-template-columns: repeat(4, minmax(0, 150px));
+  gap: 14px;
   align-items: start;
 }
 
@@ -1083,8 +1084,8 @@ body {
 }
 
 .theme-preset-selected-chips i {
-  width: 96px;
-  height: 28px;
+  width: 144px;
+  height: 24px;
   border: 1px solid var(--border);
   border-radius: 7px;
 }
