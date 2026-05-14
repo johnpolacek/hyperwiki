@@ -1063,7 +1063,7 @@ body {
 .theme-preset-selected-type em {
   overflow: hidden;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   font-style: normal;
   line-height: 1.25;
   text-overflow: ellipsis;

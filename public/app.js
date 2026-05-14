@@ -1115,13 +1115,14 @@ function themeSelectedPresetText(value, preset, tokens) {
   header.className = "theme-preset-selected-header";
   const label = document.createElement("strong");
   label.textContent = preset.label || value;
+  const previewSentence = "The quick brown fox jumps over the lazy dog...";
   const bodySpec = document.createElement("span");
   bodySpec.className = "theme-preset-selected-type theme-preset-selected-body";
-  bodySpec.innerHTML = `<small>Heading</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>The quick brown fox jumps over the lazy dog...</em>`;
+  bodySpec.innerHTML = `<small>Text</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>${previewSentence}</em>`;
   bodySpec.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
   const monoSpec = document.createElement("span");
   monoSpec.className = "theme-preset-selected-type theme-preset-selected-mono";
-  monoSpec.innerHTML = `<small>Mono</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>wiki/theme.tokens preview...</em>`;
+  monoSpec.innerHTML = `<small>Mono</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>${previewSentence}</em>`;
   monoSpec.style.fontFamily = tokens.docs?.monoFont || "var(--docs-mono-font)";
   header.append(label, bodySpec, monoSpec);
 
