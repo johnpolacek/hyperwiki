@@ -40,7 +40,7 @@
           </svg>
           <span>Up Next</span>
         </button>
-        <button type="button" id="dashboard-button" class="topbar-button" aria-controls="dashboard-page">
+        <button type="button" id="dashboard-button" class="topbar-button" aria-expanded="false" aria-controls="ideas-panel">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M12 5v14"></path>
             <path d="M7 8h10"></path>
@@ -66,8 +66,19 @@
           <span>Settings</span>
         </button>
       </div>
+      <section id="ideas-panel" class="topbar-panel" role="dialog" aria-label="Ideas" hidden>
+        <button type="button" id="manage-ideas-link" class="topbar-manage-link">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14"></path>
+            <path d="M7 8h10"></path>
+            <path d="M6 12h12"></path>
+            <path d="M8 16h8"></path>
+          </svg>
+          <span>Manage Ideas</span>
+        </button>
+      </section>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
-        <button type="button" id="manage-projects-link" class="project-manage-link">
+        <button type="button" id="manage-projects-link" class="topbar-manage-link">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 7h18"></path>
             <path d="M3 12h18"></path>

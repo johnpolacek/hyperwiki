@@ -26,6 +26,7 @@ await page.goto(url, { waitUntil: "networkidle" });
 
 await page.locator(".topbar-brand").filter({ hasText: "hyperwiki" }).waitFor();
 await page.locator("#dashboard-button").filter({ hasText: "Ideas" }).click();
+await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
 await page.locator("#dashboard-page").evaluate((panel) => {
   const text = panel.textContent || "";
@@ -88,6 +89,7 @@ await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
 await page.locator("#agent-cancel").click();
 await page.locator("#dashboard-button").click();
+await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
 await page.locator("#new-idea-toggle").click();
 await page.locator("#idea-import-form").evaluate((form) => {
@@ -250,6 +252,7 @@ await page.locator("#plan-prompt-submit").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
 
 await page.locator("#dashboard-button").click();
+await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
 if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
   await page.locator("#new-idea-toggle").click();
@@ -259,6 +262,7 @@ await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
 await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
 await page.locator("#dashboard-button").click();
+await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
 await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "<< Open idea" }).waitFor();
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });

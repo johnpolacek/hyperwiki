@@ -19,6 +19,7 @@ const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
 const dashboardButton = document.getElementById("dashboard-button");
 const settingsButton = document.getElementById("settings-button");
+const ideasPanel = document.getElementById("ideas-panel");
 const dashboardPage = document.getElementById("dashboard-page");
 const projectsPage = document.getElementById("projects-page");
 const dashboardIdeas = document.getElementById("dashboard-ideas");
@@ -26,6 +27,7 @@ const dashboardProjects = document.getElementById("dashboard-projects");
 const dashboardStatus = document.getElementById("dashboard-status");
 const projectsStatus = document.getElementById("projects-status");
 const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
+const manageIdeasLink = document.getElementById("manage-ideas-link");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
 const newProjectToggle = document.getElementById("new-project-toggle");
 const ideaImportForm = document.getElementById("idea-import-form");
@@ -299,7 +301,7 @@ projectToggle.addEventListener("click", (event) => {
 
 dashboardButton.addEventListener("click", async (event) => {
   event.stopPropagation();
-  showDashboardPage();
+  setTopbarPanelOpen("ideas", ideasPanel.hidden);
 });
 
 settingsButton.addEventListener("click", (event) => {
@@ -311,9 +313,17 @@ dashboardSettingsButton.addEventListener("click", () => {
   void showSettingsPage();
 });
 
+manageIdeasLink.addEventListener("click", () => {
+  void showDashboardPage();
+});
+
 upNextButton.addEventListener("click", (event) => {
   event.stopPropagation();
   setTopbarPanelOpen("up-next", upNextPopover.hidden);
+});
+
+ideasPanel.addEventListener("click", (event) => {
+  event.stopPropagation();
 });
 
 projectPanel.addEventListener("click", (event) => {
@@ -742,6 +752,7 @@ function isSettingsPath(path) {
 
 function setTopbarPanelOpen(panel, open) {
   const panels = {
+    ideas: { panel: ideasPanel, button: dashboardButton },
     projects: { panel: projectPanel, button: projectToggle },
     "up-next": { panel: upNextPopover, button: upNextButton }
   };
@@ -753,8 +764,10 @@ function setTopbarPanelOpen(panel, open) {
 }
 
 function closeTopbarPanels() {
+  ideasPanel.hidden = true;
   projectPanel.hidden = true;
   upNextPopover.hidden = true;
+  dashboardButton.setAttribute("aria-expanded", "false");
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
 }
