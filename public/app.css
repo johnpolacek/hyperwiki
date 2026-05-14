@@ -855,8 +855,9 @@ body {
   z-index: 4;
   align-self: stretch;
   margin-top: auto;
+  margin-right: -20px;
   margin-bottom: -18px;
-  padding: 8px 0 18px;
+  padding: 8px 20px 18px 0;
   background: #fbfbfa;
   border-top: 1px solid #e3e3df;
   box-shadow: 0 -14px 22px rgba(251, 251, 250, 0.92);
