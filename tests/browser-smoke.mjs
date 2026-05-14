@@ -102,11 +102,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "Unit 04 - MCP Surface Definition") {
+if (workspaceSummary.status.current !== "complete") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
-if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.html") {
-  throw new Error(`Expected workspace current path for Stage 07 Unit 04, got ${workspaceSummary.status.currentPath}`);
+if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification.html") {
+  throw new Error(`Expected workspace current path for completed Stage 07, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {

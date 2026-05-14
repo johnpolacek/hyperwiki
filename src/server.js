@@ -180,6 +180,11 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await reviewWorkflowSummary(project.root, await readConfig(project.root)));
       return;
     }
+    if (url.pathname === "/api/mcp-surface") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await mcpSurfaceSummary(project.root, await readConfig(project.root)));
+      return;
+    }
     if (url.pathname === "/api/guardrails") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, guardrailSummary(project.root));
@@ -651,6 +656,240 @@ async function projectContract(root, config) {
   };
   contract.agentContext = agentContextFromContract(contract);
   return contract;
+}
+
+async function mcpSurfaceSummary(root, config) {
+  const contract = await projectContract(root, config);
+  return {
+    version: 1,
+    kind: "hyperwiki.mcp-surface",
+    generatedAt: new Date().toISOString(),
+    boundary: "localhost-tooling",
+    transportStatus: "defined-not-served",
+    contract: {
+      sourceEndpoint: "/api/project-contract",
+      kind: contract.kind,
+      version: contract.version
+    },
+    project: contract.project,
+    canonicalTruth: contract.canonicalTruth,
+    runtimeTruth: contract.runtimeTruth,
+    resources: mcpResources(contract),
+    tools: mcpTools(contract),
+    useCases: [
+      "Start an agent with current project, plan, source, guardrail, and verification context.",
+      "Let an MCP-capable agent discover verification loops before finishing work.",
+      "Prepare consistent diff, architecture, security, and test-gap review prompts.",
+      "Expose Localhost Tooling trust boundaries without asking agents to scrape the UI.",
+      "Keep runtime evidence separate from durable wiki and Git truth."
+    ],
+    implementationNotes: [
+      "This is the stable surface contract for a future MCP server.",
+      "Read resources may be served directly from the corresponding local HTTP API payloads.",
+      "Action tools must preserve the same permission boundaries as the local HTTP handlers.",
+      "Prompt submission and review workflow execution require an active visible agent session unless dry-run preparation is requested."
+    ]
+  };
+}
+
+function mcpResources(contract) {
+  return [
+    {
+      uri: "hyperwiki://project-contract",
+      name: "Project Contract",
+      description: "Machine-readable project facts, current plan state, source briefs, guardrails, verification loops, layout, wiki pages, and runtime boundaries.",
+      mimeType: "application/json",
+      boundary: "localhost-tooling",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://current-plan",
+      name: "Current Plan",
+      description: "Current planning dashboard status and active plan/unit path derived from repo-visible wiki HTML.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$.plan"
+    },
+    {
+      uri: "hyperwiki://source-index",
+      name: "Source Index",
+      description: "Source index and generated source briefs that define durable product and technical context.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$.sources"
+    },
+    {
+      uri: "hyperwiki://verification-loops",
+      name: "Verification Loops",
+      description: "Configured or inferred verification loops plus latest local runtime evidence.",
+      mimeType: "application/json",
+      boundary: "runtime-evidence",
+      readOnly: true,
+      sourceEndpoint: "/api/verification",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://guardrails",
+      name: "Guardrails",
+      description: "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.",
+      mimeType: "application/json",
+      boundary: "localhost-tooling",
+      readOnly: true,
+      sourceEndpoint: "/api/guardrails",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://review-workflows",
+      name: "Review Workflows",
+      description: "Named agent review workflows for diff, architecture consistency, security, and test-gap review.",
+      mimeType: "application/json",
+      boundary: "runtime-only-until-recorded",
+      readOnly: true,
+      sourceEndpoint: "/api/review-workflows",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://wiki-pages",
+      name: "Wiki Pages",
+      description: "Repo-visible HTML wiki page index for canonical project knowledge.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/wiki",
+      contractPath: "$.wiki"
+    }
+  ];
+}
+
+function mcpTools(contract) {
+  return [
+    {
+      name: "get_project_contract",
+      title: "Get Project Contract",
+      description: "Return the complete machine-readable project contract.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "localhost-tooling",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/project-contract"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "get_current_plan",
+      title: "Get Current Plan",
+      description: "Return the active plan and current unit derived from the wiki.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "canonical-wiki",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/project-contract",
+        responsePath: "$.plan"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "list_verification_loops",
+      title: "List Verification Loops",
+      description: "Return verification loops and latest local runtime evidence.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-evidence",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/verification"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "list_review_workflows",
+      title: "List Review Workflows",
+      description: "Return available named agent review workflows.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-only-until-recorded",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/review-workflows"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "prepare_review_workflow",
+      title: "Prepare Review Workflow",
+      description: "Build a project-contract-aware review prompt without sending it to a terminal session.",
+      readOnly: false,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-evidence",
+      mapsTo: {
+        method: "POST",
+        endpoint: "/api/review-workflows/run",
+        fixedBody: {
+          dryRun: true
+        }
+      },
+      inputSchema: objectSchema({
+        workflowId: {
+          type: "string",
+          enum: reviewWorkflowDefinitions.map((workflow) => workflow.id),
+          description: "Review workflow to prepare."
+        },
+        currentPage: {
+          type: "string",
+          description: "Current wiki page path to include in the handoff."
+        }
+      }, ["workflowId"])
+    },
+    {
+      name: "submit_agent_prompt",
+      title: "Submit Agent Prompt",
+      description: "Send a bounded prompt into the active visible agent terminal session.",
+      readOnly: false,
+      idempotent: false,
+      destructive: false,
+      boundary: "visible-agent-session",
+      requiresActiveAgentSession: true,
+      mapsTo: {
+        method: "POST",
+        endpoint: "/api/agent/prompt"
+      },
+      inputSchema: objectSchema({
+        prompt: {
+          type: "string",
+          description: "Prompt text to route through the visible terminal handoff."
+        },
+        currentPage: {
+          type: "string",
+          description: "Current wiki page path to include in the handoff."
+        }
+      }, ["prompt"])
+    }
+  ].map((tool) => ({
+    ...tool,
+    projectRoot: contract.project.root
+  }));
+}
+
+function objectSchema(properties, required = []) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties,
+    required
+  };
 }
 
 function agentContextFromContract(contract) {

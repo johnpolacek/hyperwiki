@@ -22,6 +22,16 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 implementation | Stage 07 MCP surface contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 04 with a versioned <code>/api/mcp-surface</code> endpoint.</li>
+    <li>The surface defines MCP-style resources for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>The surface defines controlled tools for project contract access, current plan lookup, verification loop discovery, review workflow discovery/preparation, and visible agent prompt submission.</li>
+    <li>Tool entries include local endpoint mappings, JSON schemas, read-only/action flags, idempotency, destructive-operation flags, and Localhost Tooling boundaries.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:mcp-surface</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 implementation | Stage 07 agent review workflows</h2>
   <ul>
     <li>Implemented Stage 07 Unit 03 with versioned <code>/api/review-workflows</code> discovery for diff, architecture consistency, security, and test-gap reviews.</li>
