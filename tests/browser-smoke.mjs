@@ -215,6 +215,7 @@ if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
 await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
 await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
+await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
 await page.evaluate(() => {
   location.hash = "#/wiki/plans/index.html";
 });

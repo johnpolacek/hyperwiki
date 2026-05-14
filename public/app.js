@@ -1879,6 +1879,7 @@ async function createIdeaFromDocument() {
     ideaMarkdownInput.dataset.documentType = "markdown";
     ideaMarkdownFile.value = "";
     await loadDashboard();
+    await loadWikiNav();
     activateWorkspaceLocation(result.idea.path);
   } catch (error) {
     setDashboardStatus(error.message || "Could not create the idea.");
@@ -2174,6 +2175,7 @@ function nextTerminalName(kind) {
 
 function groupWikiPages(pages) {
   const planTree = renderPlanTree(pages.filter((page) => page.path.includes("/wiki/plans/")));
+  const ideaPages = pages.filter((page) => page.path.includes("/wiki/ideas/"));
   const projectPages = pages.filter((page) =>
     [
       "/wiki/index.html",
@@ -2186,6 +2188,7 @@ function groupWikiPages(pages) {
   );
   const groups = [
     planTree,
+    renderNavGroup("Ideas", ideaPages, true, "ideas-nav-group"),
     renderNavGroup("Project", projectPages, false, "project-nav-group")
   ];
   return groups.filter(Boolean);
