@@ -22,6 +22,38 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 fix | App-shell first paint</h2>
+  <ul>
+    <li>Fixed the initial load flash on Ideas, Projects, and Settings routes by making the HTML shell route-aware before CSS paints.</li>
+    <li>The app hides the default wiki iframe and reveals the matching app-shell page until normal JavaScript state takes over.</li>
+    <li>Verified with <code>agent-browser</code> immediate screenshots for <code>/ideas</code>, <code>/projects</code>, and <code>/settings</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Theme font enforcement</h2>
+  <ul>
+    <li>Audited app, Settings, terminal, and wiki typography for hard-coded visible font stacks.</li>
+    <li>Changed Settings page headings, theme preview titles, workspace body text, wiki header links, code areas, and terminal chrome to use active theme font variables instead of static Instrument Serif, system UI, or base mono declarations.</li>
+    <li>Added browser smoke assertions that compare rendered Settings fonts against the active theme CSS variables.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Ideas and Projects refresh routes</h2>
+  <ul>
+    <li>Fixed hard refreshes for <code>/ideas</code>, <code>/ideas/</code>, <code>/projects</code>, and <code>/projects/</code> so they serve and keep the workspace app shell instead of falling through to <code>Not found</code> or being rewritten to a workspace wiki URL.</li>
+    <li>Centralized client app-shell route detection for Ideas, Projects, Settings, and legacy Dashboard routes.</li>
+    <li>Added server and browser smoke coverage for direct Ideas and Projects route refreshes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Idea import agent handoff</h2>
+  <ul>
+    <li>Fixed Dashboard idea imports so selecting a markdown or HTML file creates the idea page, opens it, and starts the visible agent with refinement instructions.</li>
+    <li>Kept created idea pages durable even if the agent terminal is unavailable, with status text that distinguishes creation from handoff failure.</li>
+    <li>Added browser smoke coverage for the imported HTML idea handoff status.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 planning | MVP status reconciliation</h2>
   <ul>
     <li>Reviewed the MVP plan against the project contract, wiki stage/unit pages, source briefs, project log, and recent implementation history.</li>

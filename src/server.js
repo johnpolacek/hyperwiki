@@ -105,7 +105,7 @@ async function handleRequest(defaultRoot, request, response, context) {
       redirect(response, "/workspace/");
       return;
     }
-    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard" || url.pathname === "/ideas" || url.pathname === "/projects" || url.pathname === "/settings") {
+    if (workspaceRoute(url.pathname) || appShellRoute(url.pathname)) {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
       return;
     }
@@ -344,6 +344,10 @@ async function requestedProjectId(projectRegistry, url, activeProjectId, fallbac
 
 function workspaceRoute(pathname) {
   return /^\/workspace(?:\/[^/]+(?:\/[^/]+)?)?\/?$/.test(pathname);
+}
+
+function appShellRoute(pathname) {
+  return /^\/(?:dashboard|ideas|projects|settings)\/?$/.test(pathname);
 }
 
 function sessionRegistryFor(registries, root) {

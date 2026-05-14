@@ -30,6 +30,14 @@ await writeFile(path.join(root, "wiki", "ideas", "portable-builder.html"), `<!do
 
 const { server, url } = await startDevServer(root, { host: "127.0.0.1", port: 0 });
 try {
+  for (const route of ["/ideas", "/ideas/", "/projects", "/projects/"]) {
+    const response = await fetch(`${url}${route}`);
+    const body = await response.text();
+    if (!response.ok || !body.includes('id="dashboard-page"') || !body.includes('id="projects-page"')) {
+      throw new Error(`Expected ${route} refresh to serve the app shell, got ${response.status} ${body.slice(0, 80)}`);
+    }
+  }
+
   const ideas = await json(`${url}/api/ideas`);
   if (ideas.ideas.length !== 1 || ideas.ideas[0].title !== "Portable Builder") {
     throw new Error(`Expected one idea, got ${JSON.stringify(ideas)}`);

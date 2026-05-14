@@ -41,6 +41,14 @@ await page.locator("#dashboard-page").evaluate((panel) => {
     throw new Error("Expected idea form to start collapsed.");
   }
 });
+await page.goto(`${ideasUrl}/`, { waitUntil: "networkidle" });
+await page.waitForURL(ideasUrl);
+await page.locator("#dashboard-page").evaluate((panel) => {
+  if (panel.hidden) throw new Error("Expected /ideas/ refresh to show the Ideas page.");
+  if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
+    throw new Error("Expected /ideas/ refresh to keep the wiki iframe hidden.");
+  }
+});
 await page.locator("#project-toggle").click();
 await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
 await page.waitForURL(projectsUrl);
@@ -53,6 +61,14 @@ await page.locator("#projects-page").evaluate((panel) => {
     throw new Error("Expected project form to start collapsed.");
   }
 });
+await page.goto(`${projectsUrl}/`, { waitUntil: "networkidle" });
+await page.waitForURL(projectsUrl);
+await page.locator("#projects-page").evaluate((panel) => {
+  if (panel.hidden) throw new Error("Expected /projects/ refresh to show the Projects page.");
+  if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
+    throw new Error("Expected /projects/ refresh to keep the wiki iframe hidden.");
+  }
+});
 await page.locator("#settings-button").click();
 await page.waitForURL(`${origin}/settings`);
 await page.locator("#settings-page").evaluate((panel) => {
@@ -60,11 +76,27 @@ await page.locator("#settings-page").evaluate((panel) => {
   if (!text.includes("Theme") || !text.includes("Agent Instructions")) {
     throw new Error(`Expected Settings to include Theme and Agent Instructions, got ${text}`);
   }
+  if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
+    throw new Error("Expected Settings to keep the wiki iframe hidden.");
+  }
   if (!document.querySelector("#settings-button")?.classList.contains("active")) {
     throw new Error("Expected topbar Settings button to be active on Settings.");
   }
   if (!document.querySelector(".workspace")?.classList.contains("settings-mode")) {
     throw new Error("Expected Settings to be a workspace page mode.");
+  }
+  const docsSerif = getComputedStyle(document.documentElement).getPropertyValue("--docs-serif-font").trim();
+  const sidebarFont = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-font").trim();
+  const visiblePageTitle = [...document.querySelectorAll(".dashboard-page-header h1")]
+    .find((element) => !element.closest("[hidden]"));
+  if (!visiblePageTitle || getComputedStyle(visiblePageTitle).fontFamily !== docsSerif) {
+    throw new Error(`Expected Settings title to use docs serif theme font, got ${visiblePageTitle ? getComputedStyle(visiblePageTitle).fontFamily : "none"} / ${docsSerif}`);
+  }
+  if (getComputedStyle(document.querySelector("#theme-title")).fontFamily !== docsSerif) {
+    throw new Error(`Expected theme display title to use docs serif theme font, got ${getComputedStyle(document.querySelector("#theme-title")).fontFamily} / ${docsSerif}`);
+  }
+  if (getComputedStyle(document.body).fontFamily !== sidebarFont) {
+    throw new Error(`Expected workspace body to use sidebar theme font, got ${getComputedStyle(document.body).fontFamily} / ${sidebarFont}`);
   }
   if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
     throw new Error("Expected terminal pane to be hidden on Settings.");
@@ -259,12 +291,17 @@ if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
 }
 await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
 await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
+const importedIdeaPath = await page.evaluate(() => {
+  const hashPath = location.hash.replace(/^#/, "");
+  return hashPath.replace(/^\/projects\/[^/]+/, "");
+});
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
-await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
+await page.locator("#wiki-nav a.active").filter({ hasText: "HTML Smoke Idea" }).waitFor();
+await page.waitForFunction(() => /Agent started for HTML Smoke Idea|Idea created, but the agent did not start/.test(document.querySelector("#dashboard-status")?.textContent || ""));
 await page.locator("#dashboard-button").click();
 await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
-await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "Open idea >>" }).waitFor();
+await page.locator(`#dashboard-ideas .dashboard-open-link[href$="${importedIdeaPath}"]`).filter({ hasText: "Open idea >>" }).waitFor();
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 
@@ -290,9 +327,11 @@ await page.locator("#wiki-nav .plan-tree").evaluate((element) => {
     throw new Error("Expected Completed Plans archive row to stay unmarked.");
   }
 });
-await page.locator("#wiki-nav a.current-plan").filter({ hasText: "MVP Plan" }).waitFor();
-await page.locator("#wiki-nav a.current-stage").filter({ hasText: "Stage-08" }).waitFor();
-await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).waitFor();
+await page.locator("#wiki-nav a.completed-plan-link").filter({ hasText: "MVP Plan" }).waitFor();
+await page.waitForFunction(() => [...document.querySelectorAll("#wiki-nav a.completed-plan-link")]
+  .some((link) => link.textContent.includes("Stage-08")));
+await page.waitForFunction(() => [...document.querySelectorAll("#wiki-nav a.completed-plan-link")]
+  .some((link) => link.textContent.includes("Stage-01 CLI and Repository Foundation")));
 await page.locator(".workspace").evaluate((workspaceElement) => {
   const sidebar = document.querySelector(".sidebar");
   const directPlanLink = document.querySelector(".plan-tree > .plan-subtree > summary a");
@@ -419,8 +458,8 @@ await page.locator("#wiki-nav").evaluate(() => {
   if (!stageEightGroup?.open) {
     throw new Error("Expected selected Stage 08 to expand");
   }
-  if (selectedDot !== "rgb(37, 162, 68)") {
-    throw new Error(`Expected selected stage dot to be green, got ${selectedDot}`);
+  if (selectedDot !== "rgb(211, 216, 207)") {
+    throw new Error(`Expected selected completed stage dot to stay light gray, got ${selectedDot}`);
   }
   if (selectedSummaryBg === "rgba(0, 0, 0, 0)" || selectedIndicator.content === "none") {
     throw new Error("Expected selected stage to show a visible selected-page indicator");
@@ -548,9 +587,14 @@ await page.waitForFunction(() => document.querySelector("#current-page")?.datase
 await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-08-settings-soul-memory\/unit-01-global-settings-page\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
-await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
+const mvpPlanHref = await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).first().getAttribute("href");
+await page.goto(`${origin}/workspace/${mvpPlanHref}`);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "MVP Plan");
 
+if (await page.locator(".terminal-panel-header[data-name=\"agent\"]").count() === 0) {
+  await page.locator("#new-agent-terminal").click();
+  await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
+}
 await page.locator("#new-cli-terminal").click();
 await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
 await page.locator("#new-cli-terminal").click();
@@ -714,6 +758,7 @@ await page.keyboard.press(process.platform === "darwin" ? "Meta+Backspace" : "Co
 
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
 await page.locator("#up-next-button").click();
+await page.locator("#up-next-popover").waitFor();
 await page.locator("#up-next-popover").evaluate((element) => {
   if (element.hidden) throw new Error("Expected Up Next popover to open");
 });
@@ -725,16 +770,13 @@ await page.locator("#up-next-button").evaluate((element) => {
 await page.locator("#up-next-popover dt").filter({ hasText: "Up Next" }).waitFor();
 await page.locator("#up-next-stage").filter({ hasText: /^none$/i }).waitFor();
 await page.locator("#up-next-current").filter({ hasText: /^none$/i }).waitFor();
-if (await page.locator("#up-next-link").isVisible()) {
+if (!await page.locator("#up-next-link").evaluate((element) => element.hidden)) {
   throw new Error("Expected no Up Next unit link after MVP completion");
 }
 const nextRowCount = await page.locator("#up-next-popover dt").filter({ hasText: /^Next$/ }).count();
 if (nextRowCount !== 0) {
   throw new Error("Expected Up Next popover to omit separate Next row");
 }
-await page.locator("#up-next-link").click();
-await page.waitForURL(/\/wiki\/plans\/mvp\/stage-08-settings-soul-memory/);
-await page.locator("#up-next-button").click();
 await page.keyboard.press("Escape");
 await page.locator("#up-next-popover").evaluate((element) => {
   if (!element.hidden) throw new Error("Expected Up Next popover to close on Escape");
@@ -749,7 +791,7 @@ const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
   throw new Error("Expected workspace summary to include plan state");
 }
-if (!workspaceData.status?.stage || !workspaceData.status?.current || !workspaceData.status?.currentPath || !workspaceData.status?.completed) {
+if (workspaceData.status?.stage !== "none" || workspaceData.status?.current !== "none" || workspaceData.status?.currentPath !== "" || !workspaceData.status?.completed) {
   throw new Error(`Expected structured Up Next status, got ${JSON.stringify(workspaceData.status)}`);
 }
 if (workspaceData.sources.briefs.length < 3) {

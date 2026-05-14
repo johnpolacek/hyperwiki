@@ -187,6 +187,7 @@ await loadWikiNav();
 await loadWorkspaceSummary();
 await loadGuardrails();
 activateWorkspaceLocation(workspaceLocation() || currentPlanPath);
+delete document.documentElement.dataset.initialRoute;
 await restoreTerminals();
 
 newAgentTerminalButton.addEventListener("click", async () => {
@@ -316,8 +317,9 @@ manageIdeasLink.addEventListener("click", () => {
   void showDashboardPage();
 });
 
-upNextButton.addEventListener("click", (event) => {
+upNextButton.addEventListener("click", async (event) => {
   event.stopPropagation();
+  await loadWorkspaceSummary();
   setTopbarPanelOpen("up-next", upNextPopover.hidden);
 });
 
@@ -610,12 +612,15 @@ function doubleChevronIcon() {
 }
 
 function resolveUpNextStatus(status = {}) {
+  const current = status.current || "";
+  if (!status.currentPath && /^none$/i.test(current)) {
+    return { stage: "none", unit: "none", path: "" };
+  }
   const currentStageLink = wikiNav.querySelector("a.current-stage");
   const currentUnitLink = wikiNav.querySelector("a.current-unit");
   const navStage = currentStageLink?.querySelector(".wiki-nav-label")?.textContent?.trim() || "";
   const navUnit = currentUnitLink?.querySelector(".wiki-nav-label")?.textContent?.trim() || "";
   const navUnitPath = currentUnitLink?.dataset.path || "";
-  const current = status.current || "";
   const stage = status.stage || (isStageLabel(current) ? current : "") || navStage;
   const unit = status.currentPath
     ? current
@@ -738,15 +743,23 @@ function activateWorkspaceLocation(path) {
 }
 
 function isDashboardPath(path) {
-  return path === "/ideas" || path === "ideas" || path === "/dashboard" || path === "dashboard";
+  return normalizeAppPath(path) === "/ideas" || normalizeAppPath(path) === "/dashboard";
 }
 
 function isProjectsPath(path) {
-  return path === "/projects" || path === "projects";
+  return normalizeAppPath(path) === "/projects";
 }
 
 function isSettingsPath(path) {
-  return path === "/settings" || path === "settings";
+  return normalizeAppPath(path) === "/settings";
+}
+
+function normalizeAppPath(path) {
+  return `/${String(path || "").replace(/^\/+|\/+$/g, "")}`;
+}
+
+function isAppShellPath(path) {
+  return isDashboardPath(path) || isProjectsPath(path) || isSettingsPath(path);
 }
 
 function setTopbarPanelOpen(panel, open) {
@@ -791,7 +804,7 @@ async function loadProjects() {
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
-  if (activeProject && !prettyWorkspacePath(location.pathname) && !["/dashboard", "/ideas", "/projects", "/settings"].includes(location.pathname)) {
+  if (activeProject && !prettyWorkspacePath(location.pathname) && !isAppShellPath(location.pathname)) {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
   projectToggle.hidden = false;
@@ -1929,12 +1942,20 @@ function renderDashboardProjects(projects) {
     const details = document.createElement("div");
     details.className = "project-card-details";
     details.append(
-      projectDetail("Slug", project.projectSlug || "project"),
-      projectDetail("Worktree", project.worktreeSlug || "main"),
       projectDetail("Last opened", formatProjectDate(project.lastOpenedAt))
     );
 
-    item.append(header, meta, details);
+    const actions = document.createElement("div");
+    actions.className = "dashboard-item-actions";
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "project-open-button";
+    openButton.textContent = project.active ? "Open project" : "Switch and open";
+    openButton.disabled = !project.available;
+    openButton.addEventListener("click", () => switchProject(project));
+    actions.append(openButton);
+
+    item.append(header, meta, details, actions);
     return item;
   }));
 }
@@ -2038,7 +2059,10 @@ async function createIdeaFromDocument() {
   const title = ideaTitleInput.value.trim();
   const content = ideaMarkdownInput.value.trim();
   const documentType = ideaMarkdownInput.dataset.documentType || "markdown";
-  if (!title || !content) return;
+  if (!title || !content) {
+    setDashboardStatus("Add a title and brief before creating the idea.");
+    return;
+  }
   try {
     setDashboardStatus("Creating idea...");
     const result = await api(projectPath("/api/ideas/create"), {
@@ -2051,9 +2075,38 @@ async function createIdeaFromDocument() {
     await loadDashboard();
     await loadWikiNav();
     activateWorkspaceLocation(result.idea.path);
+    try {
+      setDashboardStatus("Starting agent for the imported idea...");
+      await handOffIdeaPrompt(title, result.idea.path, content, documentType);
+      setDashboardStatus(`Agent started for ${result.idea.title}`);
+    } catch (error) {
+      setDashboardStatus(`Idea created, but the agent did not start: ${error.message || "agent unavailable"}`);
+    }
   } catch (error) {
     setDashboardStatus(error.message || "Could not create the idea.");
   }
+}
+
+async function handOffIdeaPrompt(title, ideaPath, content, documentType) {
+  const prompt = [
+    "Turn this imported document into a useful hyperwiki idea page.",
+    "",
+    `Idea: ${title}`,
+    `Current path: ${displayWikiPath(ideaPath)}`,
+    "",
+    "Instructions:",
+    "- Read AGENTS.md, wiki/index.html, wiki/sources.html, and the current idea page before writing.",
+    "- Refine the idea page directly under wiki/ideas/ without promoting it to a project unless the user asks.",
+    "- Preserve concrete product, technical, and validation details from the imported document.",
+    "- Ask concise Q&A in this terminal if the document lacks critical decisions.",
+    "- Run relevant hyperwiki checks before finishing if you change files.",
+    "",
+    `${documentContentLabel(documentType)}:`,
+    `\`\`\`${documentType}`,
+    content,
+    "```"
+  ].join("\n");
+  await handOffDashboardPrompt(prompt, ideaPath);
 }
 
 async function createProjectFromMarkdown() {
@@ -2616,7 +2669,7 @@ function activateWikiPage(path) {
   });
   syncPlanTreeOpenState(nextPath);
   const nextUrl = `${currentWorkspacePath()}#${nextPath}`;
-  if (["/dashboard", "/ideas", "/projects"].includes(location.pathname) || `${location.pathname}${location.hash}` !== nextUrl) {
+  if (isAppShellPath(location.pathname) || `${location.pathname}${location.hash}` !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
 }
@@ -2691,6 +2744,9 @@ function pathContainsSelectedPage(path, selectedPath) {
 
 function syncFrameLocation() {
   try {
+    if (isAppShellPath(location.pathname)) {
+      return;
+    }
     const framePath = wikiFrame.contentWindow.location.pathname;
     hideEmbeddedWikiHeader();
     if (!isWikiPath(framePath) || framePath !== requestedWikiPath) {
@@ -2776,7 +2832,7 @@ function renderIdeaActionInFrame(documentElement) {
   button.style.border = "1px solid #171916";
   button.style.background = "#171916";
   button.style.color = "#fff";
-  button.style.font = "13px/1.2 system-ui, sans-serif";
+  button.style.font = "13px/1.2 var(--docs-mono-font)";
   button.style.cursor = "pointer";
   button.addEventListener("click", () => promoteIdea(framePath, heading.textContent.trim(), button));
   heading.insertAdjacentElement("afterend", button);
@@ -2798,9 +2854,9 @@ function pageFromHash() {
 function workspaceLocation() {
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
-  if (location.pathname === "/dashboard" || location.pathname === "/ideas") return "/ideas";
-  if (location.pathname === "/projects") return "/projects";
-  if (location.pathname === "/settings") return "/settings";
+  if (isDashboardPath(location.pathname)) return "/ideas";
+  if (isProjectsPath(location.pathname)) return "/projects";
+  if (isSettingsPath(location.pathname)) return "/settings";
   return currentPlanPath;
 }
 
