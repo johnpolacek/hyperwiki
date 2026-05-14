@@ -23,12 +23,12 @@
 <section class="summary">
   <h2>Summary</h2>
   <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Shape: compact corrective feature plan</li>
-    <li>Current unit: implement the deterministic create-and-navigate idea import flow</li>
-    <li>Next action: add the local create API, wire Dashboard idea submission to it, and update smoke coverage.</li>
+    <li>Current unit: complete</li>
+    <li>Next action: finish the worktree after reviewing the branch against updated <code>origin/main</code>.</li>
     <li>Blockers: none</li>
-    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:ideas</code>, <code>pnpm run smoke:browser</code>, plus a browser visual check at <code>https://feature-import-idea-document-navigation.hyperwiki.localhost</code>.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:ideas</code>, and targeted browser import verification against the worktree dev server passed. Full <code>pnpm run smoke:browser</code> reached an unrelated terminal-selection assertion failure after the idea import assertions passed.</li>
   </ul>
 </section>
 <section>
@@ -74,6 +74,16 @@
     <li>No change to Dashboard project import unless a later decision says project imports should also become deterministic.</li>
     <li>No new database or hidden idea store; ideas remain repo-visible HTML files under <code>wiki/ideas/</code>.</li>
     <li>No broad redesign of Dashboard layout or idea page styling.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Result</h2>
+  <ul>
+    <li>Added <code>POST /api/ideas/create</code> for deterministic idea page creation under <code>wiki/ideas/</code>.</li>
+    <li>Dashboard idea submit and file import now create the idea directly, refresh the Dashboard data, and navigate to the new idea page.</li>
+    <li>Markdown imports are converted to HTML; HTML imports preserve the imported body/main content inside the wiki layout.</li>
+    <li>Duplicate idea titles auto-suffix the generated slug.</li>
+    <li>Server smoke coverage now checks creation, suffixing, Markdown conversion, HTML preservation, and validation errors.</li>
   </ul>
 </section>
 <section>

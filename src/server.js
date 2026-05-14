@@ -154,6 +154,12 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await listIdeas(project.root, project.id));
       return;
     }
+    if (url.pathname === "/api/ideas/create" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const body = await readJsonBody(request);
+      await sendJson(response, await createIdeaFromDashboard(project, body));
+      return;
+    }
     if (url.pathname === "/api/ideas/promote" && request.method === "POST") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       const body = await readJsonBody(request);
@@ -667,6 +673,45 @@ async function promoteIdea(project, projectRegistry, body) {
   return { idea: { title, path: `/wiki/ideas/${path.basename(relativePath)}`, promoted: true }, project: record, workspaceUrl };
 }
 
+async function createIdeaFromDashboard(project, body) {
+  const title = String(body?.title || "").trim();
+  const content = String(body?.content || body?.markdown || "").trim();
+  const documentType = String(body?.documentType || "markdown").toLowerCase() === "html" ? "html" : "markdown";
+  if (!title) {
+    const error = new Error("Idea title is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!content) {
+    const error = new Error("Idea content is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const ideasRoot = path.join(project.root, "wiki", "ideas");
+  await mkdir(ideasRoot, { recursive: true });
+  const fileName = await uniqueIdeaFileName(ideasRoot, title);
+  const relativePath = `wiki/ideas/${fileName}`;
+  const bodyHtml = documentType === "html" ? ideaHtmlFromImportedHtml(title, content) : ideaHtmlFromMarkdown(content);
+  const html = wikiLayout(project.name, title, `<h1>${escapeHtml(title)}</h1>
+${bodyHtml}`);
+  const target = path.resolve(project.root, relativePath);
+  if (!target.startsWith(`${path.resolve(ideasRoot)}${path.sep}`)) {
+    const error = new Error("Idea path must stay under wiki/ideas.");
+    error.statusCode = 400;
+    throw error;
+  }
+  await writeFile(target, html, "utf8");
+  return {
+    idea: {
+      title,
+      path: `/wiki/ideas/${fileName}`,
+      summary: ideaSummary(html),
+      promoted: false,
+      targetRoot: await uniqueProjectRoot(title)
+    }
+  };
+}
+
 async function createProjectFromDashboard(projectRegistry, body) {
   const title = String(body?.title || "").trim();
   if (!title) {
@@ -685,6 +730,75 @@ async function createProjectFromDashboard(projectRegistry, body) {
   const record = await projectRegistry.register(projectRoot);
   const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
   return { project: record, workspaceUrl };
+}
+
+async function uniqueIdeaFileName(ideasRoot, title) {
+  const baseSlug = /[a-z0-9]/i.test(title) ? slugify(title) : "idea";
+  let candidate = `${baseSlug}.html`;
+  let count = 2;
+  while (existsSync(path.join(ideasRoot, candidate))) {
+    candidate = `${baseSlug}-${count}.html`;
+    count += 1;
+  }
+  return candidate;
+}
+
+function ideaHtmlFromImportedHtml(title, html) {
+  const content = String(html).trim();
+  const main = extractMainHtml(content);
+  const withoutDuplicateHeading = main.replace(/^\s*<h1\b[^>]*>[\s\S]*?<\/h1>\s*/i, "").trim();
+  return withoutDuplicateHeading || `<p>${escapeHtml(title)}</p>`;
+}
+
+function ideaHtmlFromMarkdown(markdown) {
+  const lines = String(markdown).replace(/\r\n?/g, "\n").split("\n");
+  const blocks = [];
+  let paragraph = [];
+  let list = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    blocks.push(`<p>${inlineMarkdown(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!list.length) return;
+    blocks.push(`<ul>\n${list.map((item) => `  <li>${inlineMarkdown(item)}</li>`).join("\n")}\n</ul>`);
+    list = [];
+  };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    const heading = trimmed.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      const level = Math.min(6, Math.max(2, heading[1].length + 1));
+      blocks.push(`<h${level}>${inlineMarkdown(heading[2].trim())}</h${level}>`);
+      continue;
+    }
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      list.push(bullet[1].trim());
+      continue;
+    }
+    flushList();
+    paragraph.push(trimmed);
+  }
+  flushParagraph();
+  flushList();
+  return blocks.join("\n") || "<p>Imported idea.</p>";
+}
+
+function inlineMarkdown(value) {
+  return escapeHtml(value)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
 function normalizeIdeaPath(value) {

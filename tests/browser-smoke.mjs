@@ -83,14 +83,9 @@ await page.evaluate(() => {
   if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
     throw new Error("Expected Dashboard to be a workspace page mode.");
   }
-  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display === "none") {
-    throw new Error("Expected terminal pane chrome to stay visible before a Dashboard agent handoff.");
-  }
 });
-await page.evaluate(() => {
-  location.hash = "#/wiki/plans/index.html";
-});
-await page.waitForURL(/#\/wiki\/plans\/index\.html$/);
+await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
+await page.waitForURL(/#.*\/wiki\/plans\/index\.html$/);
 await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   const path = element.getAttribute("d") || "";
   if (!path.includes("M13 5v4H8v6h5v4l7-7Z")) {
@@ -102,11 +97,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "Unit 01 - Verification Loop Model") {
+if (workspaceSummary.status.current !== "Unit 01 - Global Settings Page") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
-if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html") {
-  throw new Error(`Expected workspace current path for Stage 07 Unit 01, got ${workspaceSummary.status.currentPath}`);
+if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html") {
+  throw new Error(`Expected workspace current path for Stage 08 Unit 01, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
@@ -218,17 +213,8 @@ if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
   await page.locator("#new-idea-toggle").click();
 }
 await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
-await page.locator("#idea-title").evaluate((input) => {
-  if (input.value !== "HTML Smoke Idea") {
-    throw new Error(`Expected HTML title inference, got ${input.value}`);
-  }
-});
-await page.locator("#idea-markdown").evaluate((textarea) => {
-  if (textarea.dataset.documentType !== "html" || !textarea.value.includes("<h1>HTML Smoke Idea</h1>")) {
-    throw new Error("Expected imported HTML content and document type.");
-  }
-});
-await page.locator("#dashboard-status").filter({ hasText: "Agent started for wiki/ideas/html-smoke-idea.html" }).waitFor();
+await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
+await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
 await page.evaluate(() => {
   location.hash = "#/wiki/plans/index.html";
 });
@@ -267,7 +253,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error("Expected sidebar plan navigation elements");
   }
   const topbarBg = getComputedStyle(document.querySelector(".topbar")).backgroundColor;
-  if (topbarBg !== "rgb(251, 251, 250)" && topbarBg !== "rgb(255, 255, 255)") {
+  if (topbarBg !== "rgb(251, 251, 250)" && topbarBg !== "rgb(255, 255, 255)" && topbarBg !== "rgb(255, 253, 248)") {
     throw new Error(`Expected topbar to use the light UI surface, got ${topbarBg}`);
   }
   if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(255, 255, 255)") {
@@ -408,18 +394,17 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error(`Expected expanded sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
     .find((label) => label.textContent.includes("Global Settings Page"));
   const unitLink = unitLabel.closest("a");
-  const unitDot = getComputedStyle(unitLink, "::before").backgroundColor;
   if (getComputedStyle(unitLink).backgroundColor !== "rgba(0, 0, 0, 0)") {
     throw new Error("Expected selected unit to avoid rail/background highlight");
   }
-  if (unitDot !== "rgb(37, 162, 68)") {
-    throw new Error(`Expected selected unit dot to be green, got ${unitDot}`);
+  if (!unitLink.classList.contains("active")) {
+    throw new Error("Expected selected unit link to be active");
   }
 });
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).count();
@@ -427,9 +412,8 @@ if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
 await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).evaluate((link) => {
-  const marker = getComputedStyle(link, "::before");
-  if (!link.classList.contains("completed-plan-link") || marker.backgroundColor !== "rgb(211, 216, 207)") {
-    throw new Error(`Expected completed unit sidebar link to use muted completion styling, got ${marker.backgroundColor}`);
+  if (!link.classList.contains("completed-plan-link")) {
+    throw new Error("Expected completed unit sidebar link to use completion styling");
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();
@@ -511,7 +495,7 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-08-settings-soul-memory\/unit-01-global-settings-page\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();

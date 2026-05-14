@@ -41,6 +41,49 @@ try {
     throw new Error(`Expected idea target preview under test projects dir, got ${ideas.ideas[0].targetRoot}`);
   }
 
+  const markdownIdea = await json(`${url}/api/ideas/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "Portable Builder",
+      content: "# Portable Builder\n\nA second builder idea from **markdown**.\n\n- Keep it local\n- Keep it small",
+      documentType: "markdown"
+    })
+  });
+  if (markdownIdea.idea?.path !== "/wiki/ideas/portable-builder-2.html") {
+    throw new Error(`Expected duplicate title to auto-suffix, got ${JSON.stringify(markdownIdea)}`);
+  }
+  const markdownIdeaHtml = await readFile(path.join(root, "wiki", "ideas", "portable-builder-2.html"), "utf8");
+  if (!markdownIdeaHtml.includes("<h2>Portable Builder</h2>") || !markdownIdeaHtml.includes("<strong>markdown</strong>") || !markdownIdeaHtml.includes("<li>Keep it local</li>")) {
+    throw new Error("Expected created markdown idea to be converted to HTML.");
+  }
+
+  const htmlIdea = await json(`${url}/api/ideas/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      title: "HTML Imported Idea",
+      content: "<article><h1>HTML Imported Idea</h1><p>A preserved <strong>HTML</strong> idea.</p></article>",
+      documentType: "html"
+    })
+  });
+  if (htmlIdea.idea?.path !== "/wiki/ideas/html-imported-idea.html") {
+    throw new Error(`Expected created HTML idea path, got ${JSON.stringify(htmlIdea)}`);
+  }
+  const htmlIdeaHtml = await readFile(path.join(root, "wiki", "ideas", "html-imported-idea.html"), "utf8");
+  if (!htmlIdeaHtml.includes("<article>") || !htmlIdeaHtml.includes("<strong>HTML</strong>") || !htmlIdeaHtml.includes("A preserved")) {
+    throw new Error("Expected imported HTML idea content to be preserved.");
+  }
+
+  const invalidIdea = await fetch(`${url}/api/ideas/create`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ title: "", content: "Missing title", documentType: "markdown" })
+  });
+  if (invalidIdea.status !== 400) {
+    throw new Error(`Expected invalid idea create to be rejected, got ${invalidIdea.status}`);
+  }
+
   const blocked = await fetch(`${url}/api/ideas/promote`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -73,7 +116,8 @@ try {
   }
 
   const after = await json(`${url}/api/ideas`);
-  if (!after.ideas[0]?.promoted) {
+  const promotedAfter = after.ideas.find((idea) => idea.path.endsWith("/wiki/ideas/portable-builder.html"));
+  if (!promotedAfter?.promoted) {
     throw new Error("Expected promoted idea to be marked promoted in API output.");
   }
 
