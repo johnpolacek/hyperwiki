@@ -26,7 +26,7 @@
     <li>Status: complete</li>
     <li>Shape: single MVP stage with multiple execution units</li>
     <li>Current unit: complete</li>
-    <li>Next action: use the Stage 07 APIs and MCP surface contract while planning the next implementation stage. Completed workspace-enabler work has been split into <a href="/wiki/plans/zzz_completed/agent-workspace-enablers.html">Agent Workspace Enablers</a> so this stage stays focused on the core verification/contract/MCP layer.</li>
+    <li>Next action: use the Stage 07 APIs and local stdio MCP transport while planning the next implementation stage. Completed workspace-enabler work has been split into <a href="/wiki/plans/zzz_completed/agent-workspace-enablers.html">Agent Workspace Enablers</a> so this stage stays focused on the core verification/contract/MCP layer.</li>
     <li>Blockers: none</li>
     <li>Validation: <code>pnpm run check</code>, targeted smoke coverage for new APIs and browser-visible workflow state, and manual dogfood from an agent session.</li>
   </ul>
@@ -57,7 +57,8 @@
   <li>Implemented: <code>/api/project-contract</code> exposes a stable machine-readable project contract that composes project facts, plan state, source index, verification loops, guardrails, layout, wiki pages, and runtime boundaries.</li>
   <li>Implemented: <code>/api/review-workflows</code> and <code>/api/review-workflows/run</code> expose named agent review workflows for diff, architecture consistency, security, and test-gap review, with review findings kept as runtime evidence until recorded.</li>
   <li>Implemented: <code>/api/mcp-surface</code> defines stable MCP-style resources and tools for project contract, current plan, source index, verification loops, guardrails, review workflows, and controlled prompt submission.</li>
-  <li>Not implemented yet: full MCP server transport beyond the current local HTTP workspace APIs and terminal prompt handoff.</li>
+  <li>Implemented: <code>hyperwiki mcp</code> serves read-only Stage 07 resources and tools over local stdio MCP transport.</li>
+  <li>Not implemented yet: action-oriented MCP tools for terminal prompt submission or review workflow execution.</li>
 </ul>
 <h2>Non-goals</h2>
 <ul>
@@ -74,6 +75,7 @@
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.html">Unit 02 - Machine-readable Project Contract</a> - complete</li>
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.html">Unit 03 - Agent Review Workflows</a> - complete</li>
     <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.html">Unit 04 - MCP Surface Definition</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-mcp-server-transport.html">Unit 05 - MCP Server Transport</a> - complete</li>
   </ol>
 </section>
   </main>

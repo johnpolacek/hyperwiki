@@ -460,7 +460,7 @@ const reviewWorkflowDefinitions = [
   }
 ];
 
-async function reviewWorkflowSummary(root, config) {
+export async function reviewWorkflowSummary(root, config) {
   const contract = await projectContract(root, config);
   return {
     version: 1,
@@ -577,7 +577,7 @@ function safeDropName(name) {
   return path.basename(String(name || fallback)).replace(/[^a-zA-Z0-9._-]/g, "-") || fallback;
 }
 
-async function workspaceSummary(root, config) {
+export async function workspaceSummary(root, config) {
   const packageManager = await packageManagerForRoot(root);
   const planDashboard = await htmlSummary(root, "wiki/plans/index.html");
   const wikiPages = await listWikiPages(root);
@@ -605,7 +605,7 @@ async function workspaceSummary(root, config) {
   };
 }
 
-async function verificationSummary(root, config) {
+export async function verificationSummary(root, config) {
   const packageManager = await packageManagerForRoot(root);
   const loops = await verificationLoops(root, config, packageManager);
   return {
@@ -618,7 +618,7 @@ async function verificationSummary(root, config) {
   };
 }
 
-async function projectContract(root, config) {
+export async function projectContract(root, config) {
   const [workspace, verification, repo, wiki, sources, guardrails] = await Promise.all([
     workspaceSummary(root, config),
     verificationSummary(root, config),
@@ -677,14 +677,14 @@ async function projectContract(root, config) {
   return contract;
 }
 
-async function mcpSurfaceSummary(root, config) {
+export async function mcpSurfaceSummary(root, config) {
   const contract = await projectContract(root, config);
   return {
     version: 1,
     kind: "hyperwiki.mcp-surface",
     generatedAt: new Date().toISOString(),
     boundary: "localhost-tooling",
-    transportStatus: "defined-not-served",
+    transportStatus: "stdio-served",
     contract: {
       sourceEndpoint: "/api/project-contract",
       kind: contract.kind,
@@ -703,15 +703,15 @@ async function mcpSurfaceSummary(root, config) {
       "Keep runtime evidence separate from durable wiki and Git truth."
     ],
     implementationNotes: [
-      "This is the stable surface contract for a future MCP server.",
-      "Read resources may be served directly from the corresponding local HTTP API payloads.",
+      "This is the stable surface contract for the local stdio MCP server.",
+      "Read resources are served through `hyperwiki mcp` and may also be read from corresponding local HTTP API payloads.",
       "Action tools must preserve the same permission boundaries as the local HTTP handlers.",
       "Prompt submission and review workflow execution require an active visible agent session unless dry-run preparation is requested."
     ]
   };
 }
 
-function mcpResources(contract) {
+export function mcpResources(contract) {
   return [
     {
       uri: "hyperwiki://project-contract",
@@ -786,7 +786,7 @@ function mcpResources(contract) {
   ];
 }
 
-function mcpTools(contract) {
+export function mcpTools(contract) {
   return [
     {
       name: "get_project_contract",
@@ -1112,7 +1112,7 @@ async function packageManagerForRoot(root) {
   return "npm";
 }
 
-function guardrailSummary(root) {
+export function guardrailSummary(root) {
   return {
     mode: {
       label: "Localhost Tooling",
@@ -1141,7 +1141,7 @@ function guardrailSummary(root) {
   };
 }
 
-async function readConfig(root) {
+export async function readConfig(root) {
   const configPath = path.join(root, ".hyperwiki", "config.json");
   if (!existsSync(configPath)) {
     return {};
@@ -1184,7 +1184,7 @@ function fallbackPanels(config) {
   return panels;
 }
 
-async function sourceBriefSummary(root) {
+export async function sourceBriefSummary(root) {
   const sourceRoot = path.join(root, "wiki", "sources");
   if (!existsSync(sourceRoot)) {
     return [];
@@ -1603,7 +1603,7 @@ function stripHtml(value) {
     .trim();
 }
 
-async function repoContext(root) {
+export async function repoContext(root) {
   const [gitRoot, branch, status, commonDir, worktree] = await Promise.all([
     git(root, ["rev-parse", "--show-toplevel"]),
     git(root, ["branch", "--show-current"]),
@@ -1644,7 +1644,7 @@ async function readJsonBody(request) {
   return raw ? JSON.parse(raw) : {};
 }
 
-async function listWikiPages(root, projectId = null) {
+export async function listWikiPages(root, projectId = null) {
   const wikiRoot = path.join(root, "wiki");
   if (!existsSync(wikiRoot)) {
     return { pages: [] };

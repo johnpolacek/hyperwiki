@@ -49,7 +49,8 @@
   <li><code>/api/project-contract</code> composes project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, wiki page index, runtime boundaries, and copy-pasteable agent context.</li>
   <li><code>/api/review-workflows</code> exposes diff, architecture consistency, security, and test-gap review workflows; <code>/api/review-workflows/run</code> prepares or routes project-contract-aware prompts into the visible agent terminal, with results treated as runtime evidence until recorded.</li>
   <li><code>/api/mcp-surface</code> defines MCP-style resources and tools for project contract, current plan, source index, verification loops, guardrails, review workflows, wiki pages, review preparation, and controlled prompt submission.</li>
-  <li>It does not yet serve a full MCP transport; the MCP surface is currently a stable local contract manifest over HTTP.</li>
+  <li><code>hyperwiki mcp</code> serves a local stdio MCP transport for read-only resources and read-only tools over Content-Length framed JSON-RPC messages.</li>
+  <li>It does not yet expose action-oriented MCP tools for terminal prompt submission or review workflow execution.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
   <li>Hosted sync, telemetry, remote execution, and cloud-backed project memory are not default assumptions; any future hosted integration must be explicit and subordinate to local repo truth.</li>

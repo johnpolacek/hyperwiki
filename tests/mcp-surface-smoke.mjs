@@ -27,8 +27,8 @@ try {
   if (surface.version !== 1 || surface.kind !== "hyperwiki.mcp-surface") {
     throw new Error(`Expected versioned MCP surface, got ${JSON.stringify(surface)}`);
   }
-  if (surface.boundary !== "localhost-tooling" || surface.transportStatus !== "defined-not-served") {
-    throw new Error(`Expected local defined-not-served surface, got ${JSON.stringify(surface)}`);
+  if (surface.boundary !== "localhost-tooling" || surface.transportStatus !== "stdio-served") {
+    throw new Error(`Expected local stdio-served surface, got ${JSON.stringify(surface)}`);
   }
   if (surface.contract.sourceEndpoint !== "/api/project-contract" || surface.project.name !== "MCP Surface Smoke") {
     throw new Error(`Expected project contract mapping, got ${JSON.stringify(surface.contract)}`);

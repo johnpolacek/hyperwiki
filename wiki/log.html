@@ -22,6 +22,16 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 implementation | Stage 07 MCP server transport</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 05 with <code>hyperwiki mcp</code>, a local stdio MCP server using Content-Length framed JSON-RPC messages.</li>
+    <li>The MCP server exposes read-only resources for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>The MCP server exposes read-only tools for project contract access, current plan lookup, verification loop discovery, and review workflow discovery.</li>
+    <li>Deferred action-oriented MCP tools for terminal prompt submission and review workflow execution until permissions are designed.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:mcp-transport</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 workflow | Portless worktree runtime</h2>
   <ul>
     <li>Decision: repo development should start through Portless by default with <code>pnpm dev</code>, keeping <code>pnpm run dev:app</code> as the direct server command.</li>

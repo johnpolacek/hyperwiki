@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { inithyperwiki } from "./init.js";
 import { launchhyperwiki } from "./launch.js";
+import { startMcpServer } from "./mcp.js";
 import { resethyperwiki } from "./reset.js";
 import { startDevServer } from "./server.js";
 
@@ -17,6 +18,8 @@ try {
     await resethyperwiki(process.cwd(), parseArgs(args));
   } else if (command === "dev") {
     await startDevServer(process.cwd(), parseArgs(args));
+  } else if (command === "mcp") {
+    await startMcpServer(process.cwd(), parseArgs(args));
   } else if (command === "help" || command === "--help" || command === "-h") {
     printHelp();
   } else {
@@ -67,11 +70,13 @@ Usage:
   npx hyperwiki reset [--dry-run]
   npx hyperwiki dev [--host 127.0.0.1] [--port 4177]
   npx hyperwiki launch [--host 127.0.0.1] [--port 4177] [--no-open]
+  npx hyperwiki mcp
 
 Commands:
   init     Scaffold an HTML-first repo-local wiki and hyperwiki config.
   reset    Clear user registry and ignored local runtime state without touching wiki or config files.
   dev      Start the local-only hyperwiki workspace with wiki and terminal panels.
   launch   Start or attach to hyperwiki, open the browser workspace, and restore wterm panels.
+  mcp      Start the local stdio MCP server for read-only project context.
 `);
 }
