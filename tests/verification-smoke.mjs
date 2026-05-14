@@ -5,6 +5,7 @@ import { inithyperwiki } from "../src/init.js";
 import { startDevServer } from "../src/server.js";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-verification-smoke-"));
+process.env.HYPERWIKI_HOME = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-verification-home-"));
 await writeFile(path.join(root, "package.json"), `${JSON.stringify({
   name: "verification-smoke",
   packageManager: "pnpm@10.33.3",

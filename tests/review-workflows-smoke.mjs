@@ -5,6 +5,7 @@ import { inithyperwiki } from "../src/init.js";
 import { startDevServer } from "../src/server.js";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-review-workflows-smoke-"));
+process.env.HYPERWIKI_HOME = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-review-workflows-home-"));
 await writeFile(path.join(root, "package.json"), `${JSON.stringify({
   name: "review-workflows-smoke",
   packageManager: "pnpm@10.33.3",
