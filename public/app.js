@@ -110,21 +110,21 @@ const themeSurfaces = [
     label: "UI",
     description: "Sidebar and workspace chrome",
     colorTokens: ["bg", "panel", "border", "text", "muted", "accent"],
-    fontTokens: []
+    fontTokens: ["sidebarFont"]
   },
   {
     key: "docs",
     label: "Docs",
     description: "Planning and wiki pages",
     colorTokens: ["bg", "panel", "border", "text", "muted", "link", "code"],
-    fontTokens: []
+    fontTokens: ["serifFont", "monoFont"]
   },
   {
     key: "terminal",
     label: "Terminal",
     description: "Pane chrome and session frames",
     colorTokens: ["bg", "pane", "toolbar", "header", "border", "text", "muted", "accent"],
-    fontTokens: []
+    fontTokens: ["font"]
   }
 ];
 
@@ -844,7 +844,14 @@ function renderThemeSummary(settings) {
       const dt = document.createElement("dt");
       dt.textContent = readableTokenName(token);
       const dd = document.createElement("dd");
-      dd.textContent = fontLabelForValue(tokens[token]);
+      const fontName = document.createElement("span");
+      fontName.className = "theme-font-name";
+      fontName.textContent = fontLabelForValue(tokens[token]);
+      const sample = document.createElement("span");
+      sample.className = "theme-font-sample";
+      sample.textContent = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz";
+      sample.style.fontFamily = tokens[token] || "inherit";
+      dd.append(fontName, sample);
       row.append(dt, dd);
       fonts.append(row);
     });

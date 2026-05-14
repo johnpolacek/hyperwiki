@@ -258,6 +258,17 @@ body {
   display: none;
 }
 
+.workspace.settings-mode .wiki-pane {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workspace.settings-mode .wiki-command-bar,
+.workspace.settings-mode .modify-plan-ui,
+.workspace.settings-mode #wiki-frame,
+.workspace.settings-mode .plan-prompt {
+  display: none;
+}
+
 .dashboard-page,
 .settings-page {
   grid-row: 1;
@@ -284,6 +295,11 @@ body {
 .settings-page-header {
   border-bottom: 0;
   padding-bottom: 0;
+}
+
+.workspace.settings-mode .settings-page {
+  grid-row: 1 / -1;
+  padding: 34px 42px 44px;
 }
 
 .dashboard-page-header h1 {
@@ -637,9 +653,9 @@ body {
 
 .settings-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
+  grid-template-columns: minmax(420px, 1.18fr) minmax(340px, 0.82fr);
+  gap: 22px;
+  margin-top: 24px;
   align-items: start;
 }
 
@@ -731,20 +747,21 @@ body {
   font-family: var(--mono-font);
 }
 
-.theme-title {
+.settings-section .theme-title {
   margin: 0;
   color: var(--text);
-  font: 700 28px/1 "Instrument Serif", Georgia, serif;
+  font: 700 clamp(48px, 7vw, 92px)/0.88 "Instrument Serif", Georgia, serif;
 }
 
 .theme-readonly-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 14px;
+  gap: 18px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 14px;
+  min-height: 168px;
+  padding: 22px;
   background:
     linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 54%),
     var(--bg);
@@ -757,8 +774,8 @@ body {
 }
 
 .theme-hero-swatches span {
-  width: 23px;
-  height: 42px;
+  width: 30px;
+  height: 84px;
   border: 1px solid var(--border);
   border-left: 0;
 }
@@ -780,13 +797,13 @@ body {
 
 .theme-summary-surface {
   display: grid;
-  grid-template-columns: minmax(120px, 0.36fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: minmax(148px, 0.32fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 7px;
-  padding: 9px;
+  padding: 12px;
   background: color-mix(in srgb, var(--panel) 74%, var(--bg));
 }
 
@@ -826,7 +843,7 @@ body {
 .theme-font-list {
   grid-column: 1 / -1;
   display: grid;
-  gap: 4px;
+  gap: 8px;
   margin: 0;
 }
 
@@ -866,26 +883,50 @@ body {
 }
 
 .theme-font-list div {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: minmax(80px, 0.2fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
   min-width: 0;
   color: var(--muted);
-  font-size: 11px;
 }
 
 .theme-font-list dt,
 .theme-font-list dd {
   min-width: 0;
   margin: 0;
+}
+
+.theme-font-list dt {
+  color: var(--muted);
+  font: 700 10px/1.2 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.theme-font-list dd {
+  display: grid;
+  gap: 3px;
+  overflow: hidden;
+  color: var(--text);
+}
+
+.theme-font-name,
+.theme-font-sample {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.theme-font-list dd {
+.theme-font-name {
+  color: var(--muted);
+  font: 600 11px/1.2 var(--sidebar-font);
+}
+
+.theme-font-sample {
   color: var(--text);
-  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.05;
 }
 
 .theme-editor,

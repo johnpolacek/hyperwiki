@@ -55,6 +55,20 @@ await page.locator("#settings-page").evaluate((panel) => {
   if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
     throw new Error("Expected terminal pane to be hidden on Settings.");
   }
+  if (getComputedStyle(document.querySelector(".wiki-command-bar")).display !== "none") {
+    throw new Error("Expected Settings to hide the wiki command bar.");
+  }
+  if (getComputedStyle(panel).gridRowStart !== "1" || getComputedStyle(panel).gridRowEnd !== "-1") {
+    throw new Error("Expected Settings page to span the full wiki pane area.");
+  }
+  const titleSize = Number.parseFloat(getComputedStyle(document.querySelector("#theme-title")).fontSize);
+  if (titleSize < 48) {
+    throw new Error(`Expected larger theme title, got ${titleSize}px.`);
+  }
+  const fontSample = document.querySelector(".theme-font-sample");
+  if (!fontSample || !fontSample.textContent.includes("AaBbCc") || !fontSample.textContent.includes("YyZz")) {
+    throw new Error("Expected font preview samples in the theme summary.");
+  }
 });
 await page.locator("#agent-edit").click();
 await page.locator("#memory-add").click();
