@@ -32,17 +32,19 @@
   </ul>
 </section>
 <h2>Intent</h2>
-<p>Turn hyperwiki from an agent-visible workspace into an agent-native operating layer: repo-local context, structured tool surfaces, explicit verification loops, auditable agent review workflows, and machine-readable project contracts.</p>
+<p>Turn hyperwiki from an agent-visible workspace into Localhost Tooling for agent-native development: repo-local context, structured tool surfaces, explicit verification loops, auditable agent review workflows, and machine-readable project contracts inside the developer's own trust boundary.</p>
 <h2>Source Context</h2>
 <ul>
   <li>Karpathy's Software 3.0 framing: define the context, tools, feedback loop, and guardrails; let agents work while preserving human understanding.</li>
   <li>Existing hyperwiki direction: canonical HTML wiki files, local-only runtime state, visible guardrails, agent-first launch, and deferred structured MCP integration.</li>
+  <li>2026-05-14 product decision: hyperwiki should fully claim and identify as Localhost Tooling.</li>
   <li>Product decision: keep canonical project truth in repo-visible files and Git; keep terminal/session/runtime data local unless intentionally exported or recorded.</li>
 </ul>
 <h2>Scope</h2>
 <ul>
   <li>Promote verification loops to a first-class product primitive across checks, tests, smoke scripts, screenshots, CI status, and manual review outcomes.</li>
   <li>Define structured MCP/tool surfaces as the product thesis, not only a later technical integration.</li>
+  <li>Make the Localhost Tooling trust boundary explicit in project contracts, guardrails, verification loops, and agent handoffs.</li>
   <li>Add explicit agent review workflows for security, architecture, test gaps, and diff review.</li>
   <li>Preserve the repo-local wiki and Git as durable truth, avoiding hidden app state as the source of project knowledge.</li>
   <li>Add machine-readable project contracts for facts, current plan state, verification commands, permission boundaries, and source index metadata.</li>
@@ -60,6 +62,7 @@
   <li>Do not replace the HTML wiki with a database-backed knowledge silo.</li>
   <li>Do not auto-commit, auto-push, or auto-resolve reviews from agent output without explicit user policy.</li>
   <li>Do not build a full remote collaboration or hosted CI product in this stage.</li>
+  <li>Do not make hosted sync, remote execution, telemetry, or cloud-backed memory default requirements.</li>
   <li>Do not make MCP integration depend on one agent vendor's private protocol when a local CLI/API contract can remain stable.</li>
 </ul>
 <section>

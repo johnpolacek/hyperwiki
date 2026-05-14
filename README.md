@@ -1,6 +1,8 @@
 # hyperwiki
 
-hyperwiki is a repo-local HTML workspace for docs-driven agentic development. It turns project docs, plans, logs, source references, terminal panels, and verification status into a local development surface.
+hyperwiki is Localhost Tooling for docs-driven agentic development. It runs as a local app over the developer's own repo, files, Git state, terminal sessions, credentials, and environment variables, keeping that machine-local environment as the trust boundary.
+
+It turns project docs, plans, logs, source references, terminal panels, and verification status into a repo-local development surface.
 
 hyperwiki is early and experimental. The current package is useful for trying the workflow and reserving the `npx hyperwiki` command, but the terminal and agent-integration surfaces are still MVP-grade.
 
@@ -47,11 +49,13 @@ Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` s
 
 ## Local-Only Guardrails
 
+- hyperwiki identifies as Localhost Tooling, not a hosted project dashboard.
 - `dev` binds to localhost addresses only.
 - Repo files and Git remain canonical.
 - The browser workspace should not become a hidden source of truth.
 - Terminal/session state is local runtime state by default.
 - Agent and terminal controls should stay visible and auditable.
+- Hosted sync, telemetry, and remote execution are not default product assumptions.
 
 ## Current Status
 

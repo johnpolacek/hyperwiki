@@ -505,8 +505,8 @@ async function packageManagerForRoot(root) {
 function guardrailSummary(root) {
   return {
     mode: {
-      label: "Local-only",
-      value: "Dev server binds to localhost addresses and serves repo-local files."
+      label: "Localhost Tooling",
+      value: "Dev server binds to localhost addresses and keeps the developer's machine, repo files, Git state, terminal sessions, credentials, and environment variables inside the local trust boundary."
     },
     canonical: [
       { label: "Wiki truth", path: "wiki/", detail: "Repo-visible HTML docs, plans, source briefs, and project log." },

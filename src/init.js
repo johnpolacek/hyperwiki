@@ -235,7 +235,7 @@ function indexPage(context) {
 <p>${escapeHtml(context.summary)}</p>
 <section>
   <h2>Current Focus</h2>
-  <p>Use this wiki to keep project plans, source context, architecture notes, development workflows, and verification status visible beside the local workspace.</p>
+  <p>Use this Localhost Tooling workspace to keep project plans, source context, architecture notes, development workflows, and verification status visible beside local files, Git state, terminal sessions, and agent handoffs.</p>
 </section>
 <section>
   <h2>Core Pages</h2>
@@ -330,6 +330,7 @@ function architecturePage(context) {
   <li>Repository root: <code>${escapeHtml(context.git.root || "Unknown")}</code>.</li>
   <li>Primary manifest: <code>${context.hasPackageJson ? "package.json" : "Unknown"}</code>.</li>
   <li>Current Git branch at initialization: <code>${escapeHtml(context.git.branch || "Unknown")}</code>.</li>
+  <li>hyperwiki is Localhost Tooling: the developer's machine, repo files, Git state, terminal sessions, credentials, and environment variables define the trust boundary.</li>
   <li>The wiki is canonical repo-visible HTML for maintained project context.</li>
   <li>Runtime state is ignored under <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code>.</li>
 </ul>`);

@@ -22,18 +22,20 @@
     <h1>Technical Brief</h1>
 <h2>Status</h2>
 <ul>
-  <li>Last reviewed: 2026-05-13</li>
-  <li>Evidence basis: user prompt, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, agent-first launch layout implementation, Stage 07 code review, recent commits, and smoke coverage</li>
+  <li>Last reviewed: 2026-05-14</li>
+  <li>Evidence basis: user prompt, Localhost Tooling product direction, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, agent-first launch layout implementation, Stage 07 code review, recent commits, and smoke coverage</li>
   <li>Confidence: high</li>
 </ul>
 <h2>Defaults</h2>
 <ul>
   <li>Single Node npm package.</li>
+  <li>Product category: Localhost Tooling for docs-driven agentic development.</li>
   <li>HTML canonical wiki files.</li>
   <li>Vanilla browser JS workspace.</li>
   <li>@wterm/dom for terminal rendering and node-pty plus WebSocket for local PTY sessions.</li>
   <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
   <li>Local-only server binding by default.</li>
+  <li>The developer's local machine, repo files, Git state, terminal sessions, credentials, and environment variables define the primary trust boundary.</li>
   <li><code>hyperwiki launch</code> is the primary startup command. Bare <code>hyperwiki</code> also launches the local workspace by default; <code>hyperwiki dev</code> remains the lower-level server-only command.</li>
   <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only hyperwiki-initialized repos are eligible in v1.</li>
   <li>The project switcher stays hidden until more than one project is registered.</li>
@@ -43,6 +45,7 @@
   <li>The current local HTTP API exposes workspace summaries, guardrails, repo context, wiki pages, projects, ideas, sessions, and agent prompt handoff. It does not yet expose a durable verification-loop model, single project contract schema, named review workflows, or MCP resources/tools.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
+  <li>Hosted sync, telemetry, remote execution, and cloud-backed project memory are not default assumptions; any future hosted integration must be explicit and subordinate to local repo truth.</li>
 </ul>
   </main>
 </body>

@@ -1,7 +1,7 @@
 {
   "name": "hyperwiki",
   "version": "0.1.1",
-  "description": "Repo-local HTML workspace for docs-driven agentic development.",
+  "description": "Localhost Tooling for docs-driven agentic development.",
   "type": "module",
   "packageManager": "pnpm@10.33.3",
   "bin": {

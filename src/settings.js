@@ -204,7 +204,7 @@ export const defaultSettings = Object.freeze({
   },
   soul: {
     principles: [
-      "HyperWiki is local-first, durable, and agent-readable.",
+      "HyperWiki is Localhost Tooling for docs-driven agentic development.",
       "Prefer concise, concrete language over marketing language.",
       "Keep product behavior visible, inspectable, and reversible."
     ],

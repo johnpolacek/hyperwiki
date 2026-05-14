@@ -20,7 +20,8 @@
   </header>
   <main class="wiki-page">
     <h1>Architecture</h1>
-<p>hyperwiki is a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
+<p>hyperwiki is Localhost Tooling packaged as a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
+<p>Its trust boundary is the developer's own machine, repo files, Git state, terminal sessions, credentials, and environment variables. Hosted services are optional integrations, not the source of truth.</p>
 <h2>Boundaries</h2>
 <ul>
   <li>The CLI performs repeatable filesystem operations and starts the dev runtime.</li>
@@ -34,6 +35,14 @@
   <li>The Dashboard is a workspace route rather than a wiki file; it reads repo-local ideas and registered projects, then hands markdown-driven creation work to an agent terminal.</li>
   <li>The Execute control is the primary start-work boundary: it creates terminals lazily and posts scoped main/worktree instructions into the visible agent session.</li>
   <li>Current structured surfaces are local HTTP endpoints. A first-class verification-loop model, project contract schema, named review workflows, and MCP resources remain planned Stage 07 work.</li>
+</ul>
+<h2>Localhost Tooling Commitments</h2>
+<ul>
+  <li>Bind local runtime surfaces to localhost addresses by default.</li>
+  <li>Keep canonical project knowledge in repo-visible files and Git.</li>
+  <li>Keep runtime state local and ignored unless a user intentionally exports or records it.</li>
+  <li>Expose permission, session, command-history, and export boundaries in the workspace instead of hiding them in app state.</li>
+  <li>Avoid default hosted sync, telemetry, remote execution, or cloud-backed knowledge stores.</li>
 </ul>
   </main>
 </body>

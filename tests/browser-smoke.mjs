@@ -727,8 +727,11 @@ if (!workspaceData.layout.panels.some((panel) => panel.name === "agent" && panel
 }
 const guardrailResponse = await fetch(`${origin}/api/guardrails`);
 const guardrailData = await guardrailResponse.json();
-if (guardrailData.mode.label !== "Local-only") {
-  throw new Error(`Expected local-only guardrail mode, got ${guardrailData.mode.label}`);
+if (guardrailData.mode.label !== "Localhost Tooling") {
+  throw new Error(`Expected Localhost Tooling guardrail mode, got ${guardrailData.mode.label}`);
+}
+if (!guardrailData.mode.value.includes("local trust boundary")) {
+  throw new Error(`Expected guardrails to document the local trust boundary, got ${guardrailData.mode.value}`);
 }
 if (!guardrailData.canonical.some((item) => item.path === "wiki/")) {
   throw new Error("Expected guardrails to identify wiki/ as canonical repo truth");
