@@ -793,6 +793,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-item .idea-card-title {
   width: auto;
   font: 700 22px/1.05 var(--docs-serif-font);
+  text-decoration: none;
 }
 
 .dashboard-item .idea-card-summary {
