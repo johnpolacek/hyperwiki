@@ -175,6 +175,11 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await projectContract(project.root, await readConfig(project.root)));
       return;
     }
+    if (url.pathname === "/api/review-workflows") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await reviewWorkflowSummary(project.root, await readConfig(project.root)));
+      return;
+    }
     if (url.pathname === "/api/guardrails") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, guardrailSummary(project.root));
@@ -209,6 +214,15 @@ async function handleRequest(defaultRoot, request, response, context) {
       const inputs = sessionInputFor(context.sessionInputs, project.root);
       const body = await readJsonBody(request);
       const result = await sendAgentPrompt(project, sessionRegistry, inputs, body);
+      await sendJson(response, result);
+      return;
+    }
+    if (url.pathname === "/api/review-workflows/run" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
+      const inputs = sessionInputFor(context.sessionInputs, project.root);
+      const body = await readJsonBody(request);
+      const result = await runReviewWorkflow(project, sessionRegistry, inputs, body);
       await sendJson(response, result);
       return;
     }
@@ -365,6 +379,146 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
       name: agentSession.name
     }
   };
+}
+
+const reviewWorkflowDefinitions = [
+  {
+    id: "diff-review",
+    label: "Diff Review",
+    scope: "changed-files",
+    description: "Review the current Git diff for behavioral regressions, missing edge cases, accidental churn, and commit readiness.",
+    evidenceType: "review.findings.diff",
+    instructions: [
+      "Inspect the current Git diff and repo status before giving findings.",
+      "Prioritize bugs, regressions, unintended behavior changes, and missing tests.",
+      "Report findings first with file and line references where possible.",
+      "Call out whether the changes look ready to commit after verification."
+    ]
+  },
+  {
+    id: "architecture-review",
+    label: "Architecture Consistency Review",
+    scope: "project-architecture",
+    description: "Check whether the current work matches the documented wiki architecture, source briefs, plan intent, and existing code patterns.",
+    evidenceType: "review.findings.architecture",
+    instructions: [
+      "Compare the current implementation against the active plan, source briefs, and nearby code patterns.",
+      "Identify drift from documented architecture, duplicated concepts, misplaced responsibilities, or unclear boundaries.",
+      "Prefer small corrective changes that preserve the existing system shape.",
+      "Name any plan or source page that needs a durable update."
+    ]
+  },
+  {
+    id: "security-review",
+    label: "Security Review",
+    scope: "trust-boundaries",
+    description: "Review localhost tooling trust boundaries, filesystem access, terminal handoff behavior, user input handling, and runtime state.",
+    evidenceType: "review.findings.security",
+    instructions: [
+      "Focus on concrete security risks in the changed behavior and exposed local endpoints.",
+      "Check trust boundaries around files, credentials, environment variables, terminal sessions, runtime state, and generated prompts.",
+      "Separate confirmed issues from theoretical concerns.",
+      "Recommend minimal mitigations and tests for each confirmed issue."
+    ]
+  },
+  {
+    id: "test-gap-review",
+    label: "Test Gap Review",
+    scope: "verification-coverage",
+    description: "Find missing automated or manual verification coverage for the current plan, changed code paths, and user-visible workflows.",
+    evidenceType: "review.findings.test-gaps",
+    instructions: [
+      "Map the active plan acceptance criteria to existing checks and smoke tests.",
+      "Identify important paths that are untested or only manually tested.",
+      "Recommend focused tests or manual verification loops, avoiding broad low-value coverage.",
+      "Call out any known failing smoke coverage separately from new gaps."
+    ]
+  }
+];
+
+async function reviewWorkflowSummary(root, config) {
+  const contract = await projectContract(root, config);
+  return {
+    version: 1,
+    kind: "hyperwiki.review-workflows",
+    generatedAt: new Date().toISOString(),
+    boundary: "runtime-only-until-recorded",
+    source: "built-in review workflow definitions plus the current project contract",
+    resultTruth: "Review findings are runtime evidence until a human or agent records them in wiki files or Git.",
+    workflows: reviewWorkflowDefinitions.map((workflow) => reviewWorkflowView(workflow)),
+    project: contract.project,
+    plan: contract.plan
+  };
+}
+
+async function runReviewWorkflow(project, sessionRegistry, inputs, body) {
+  const workflowId = typeof body.workflowId === "string" ? body.workflowId : "";
+  const workflow = reviewWorkflowDefinitions.find((item) => item.id === workflowId);
+  if (!workflow) {
+    const error = new Error("Unknown review workflow.");
+    error.statusCode = 404;
+    throw error;
+  }
+  const contract = await projectContract(project.root, await readConfig(project.root));
+  const currentPage = typeof body.currentPage === "string" ? body.currentPage : contract.plan.currentPath || "/wiki/plans/index.html";
+  const prompt = reviewWorkflowPrompt(workflow, contract, currentPage);
+  const evidence = {
+    workflowId: workflow.id,
+    status: body.dryRun === true ? "prepared" : "queued",
+    boundary: "runtime-evidence",
+    recorded: false,
+    evidenceType: workflow.evidenceType
+  };
+  if (body.dryRun === true) {
+    return {
+      ok: true,
+      sent: false,
+      workflow: reviewWorkflowView(workflow),
+      boundary: "runtime-only-until-recorded",
+      evidence,
+      prompt
+    };
+  }
+  const result = await sendAgentPrompt(project, sessionRegistry, inputs, { prompt, currentPage });
+  return {
+    ...result,
+    sent: true,
+    workflow: reviewWorkflowView(workflow),
+    boundary: "runtime-only-until-recorded",
+    evidence
+  };
+}
+
+function reviewWorkflowView(workflow) {
+  return {
+    id: workflow.id,
+    label: workflow.label,
+    scope: workflow.scope,
+    description: workflow.description,
+    requiresAgent: true,
+    resultBoundary: "runtime-evidence",
+    evidenceType: workflow.evidenceType
+  };
+}
+
+function reviewWorkflowPrompt(workflow, contract, currentPage) {
+  return [
+    `Workflow: ${workflow.label}`,
+    `Workflow ID: ${workflow.id}`,
+    `Scope: ${workflow.scope}`,
+    `Current wiki page: ${currentPage}`,
+    "",
+    "Project contract:",
+    contract.agentContext,
+    "",
+    "Review instructions:",
+    ...workflow.instructions.map((instruction) => `- ${instruction}`),
+    "",
+    "Result boundary:",
+    "- Treat the review result as runtime evidence.",
+    "- Do not edit wiki files, commit, or change code unless the user explicitly asks you to act on a finding.",
+    "- If a finding should become durable project knowledge, say exactly where it should be recorded."
+  ].join("\n");
 }
 
 async function saveDroppedFiles(root, body) {
