@@ -645,6 +645,7 @@ function displayPlanLabel(value = "") {
 async function showDashboardPage(options = {}) {
   closeTopbarPanels();
   await loadIdeas();
+  setUpNextAvailable(false);
   settingsPage.hidden = true;
   projectsPage.hidden = true;
   dashboardPage.hidden = false;
@@ -670,6 +671,7 @@ async function showDashboardPage(options = {}) {
 async function showProjectsPage(options = {}) {
   closeTopbarPanels();
   await loadProjectManagement();
+  setUpNextAvailable(false);
   settingsPage.hidden = true;
   dashboardPage.hidden = true;
   projectsPage.hidden = false;
@@ -694,6 +696,7 @@ async function showProjectsPage(options = {}) {
 async function showSettingsPage(options = {}) {
   closeTopbarPanels();
   await loadSettings();
+  setUpNextAvailable(false);
   dashboardPage.hidden = true;
   projectsPage.hidden = true;
   settingsPage.hidden = false;
@@ -714,6 +717,7 @@ async function showSettingsPage(options = {}) {
 }
 
 function hideDashboardPage() {
+  setUpNextAvailable(true);
   dashboardPage.hidden = true;
   projectsPage.hidden = true;
   settingsPage.hidden = true;
@@ -723,6 +727,14 @@ function hideDashboardPage() {
   workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode", "projects-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
+}
+
+function setUpNextAvailable(available) {
+  upNextButton.hidden = !available;
+  if (!available) {
+    upNextPopover.hidden = true;
+    upNextButton.setAttribute("aria-expanded", "false");
+  }
 }
 
 function activateWorkspaceLocation(path) {

@@ -22,6 +22,14 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 fix | Contextual Up Next visibility</h2>
+  <ul>
+    <li>Hid the Up Next control on Ideas, Projects, and Settings because those app-shell pages are outside the current plan context.</li>
+    <li>Restored Up Next automatically when returning to wiki pages where current-plan context applies.</li>
+    <li>Added browser smoke assertions for Ideas, Projects, and Settings visibility.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 fix | App-shell first paint</h2>
   <ul>
     <li>Fixed the initial load flash on Ideas, Projects, and Settings routes by making the HTML shell route-aware before CSS paints.</li>

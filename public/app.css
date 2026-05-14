@@ -372,6 +372,12 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
+.workspace.dashboard-mode #up-next-button,
+.workspace.projects-mode #up-next-button,
+.workspace.settings-mode #up-next-button {
+  display: none;
+}
+
 .workspace.dashboard-mode .terminal-pane,
 .workspace.projects-mode .terminal-pane {
   display: none;

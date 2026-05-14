@@ -28,14 +28,18 @@ await page.locator(".topbar-brand").filter({ hasText: "hyperwiki" }).waitFor();
 await page.locator("#dashboard-button").filter({ hasText: "Ideas" }).click();
 await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);
+await page.locator("#new-idea-toggle").filter({ hasText: "+ New Idea" }).waitFor();
 await page.locator("#dashboard-page").evaluate((panel) => {
   const text = panel.textContent || "";
   if (!text.includes("New Idea") || !text.includes("Ideas") || text.includes("New Project") || text.includes("Projects")) {
     throw new Error(`Expected Ideas page without Projects inventory, got ${text}`);
   }
-  const ideasHeader = panel.querySelector(".dashboard-section-header");
+  if (!document.querySelector("#up-next-button")?.hidden) {
+    throw new Error("Expected Up Next to be hidden on Ideas.");
+  }
+  const ideasHeader = panel.querySelector(".dashboard-page-header");
   if (!ideasHeader || !ideasHeader.textContent.includes("Ideas") || !ideasHeader.textContent.includes("+ New Idea")) {
-    throw new Error("Expected Ideas section header with a New Idea button.");
+    throw new Error("Expected Ideas page header with a New Idea button.");
   }
   if (!document.querySelector("#idea-import-form")?.hidden) {
     throw new Error("Expected idea form to start collapsed.");
@@ -56,6 +60,9 @@ await page.locator("#projects-page").evaluate((panel) => {
   const text = panel.textContent || "";
   if (!text.includes("Projects") || !text.includes("+ New Project") || !text.includes("New Project")) {
     throw new Error(`Expected Projects management page, got ${text}`);
+  }
+  if (!document.querySelector("#up-next-button")?.hidden) {
+    throw new Error("Expected Up Next to be hidden on Projects.");
   }
   if (!document.querySelector("#project-import-form")?.hidden) {
     throw new Error("Expected project form to start collapsed.");
@@ -78,6 +85,9 @@ await page.locator("#settings-page").evaluate((panel) => {
   }
   if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
     throw new Error("Expected Settings to keep the wiki iframe hidden.");
+  }
+  if (!document.querySelector("#up-next-button")?.hidden) {
+    throw new Error("Expected Up Next to be hidden on Settings.");
   }
   if (!document.querySelector("#settings-button")?.classList.contains("active")) {
     throw new Error("Expected topbar Settings button to be active on Settings.");
