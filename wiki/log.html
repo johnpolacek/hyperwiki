@@ -22,6 +22,14 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 implementation | Stage 07 project contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 02 with a versioned <code>/api/project-contract</code> endpoint.</li>
+    <li>The contract composes project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, wiki page index, runtime boundaries, and copy-pasteable agent context.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:contract</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 implementation | Stage 07 verification loop model</h2>
   <ul>
     <li>Implemented Stage 07 Unit 01 with a versioned <code>/api/verification</code> endpoint and the same verification loop model exposed through <code>/api/workspace</code>.</li>

@@ -24,12 +24,13 @@
 <section class="summary">
   <h2>Summary</h2>
 <ul>
-    <li>Status: active</li>
+    <li>Status: complete</li>
     <li>Add a stable project contract endpoint or file that summarizes project facts, current plan state, source index metadata, verification commands, permission boundaries, and runtime-state boundaries.</li>
     <li>Prefer deriving contract values from canonical wiki/config/Git state over duplicating maintained facts.</li>
     <li>Make the contract copy-pasteable into agents and directly useful as MCP resource payloads.</li>
-    <li>Current code state: <code>/api/workspace</code>, <code>/api/repo</code>, <code>/api/guardrails</code>, <code>/api/wiki</code>, and <code>/api/projects</code> expose useful fragments, but there is no single project contract payload or schema.</li>
-    <li>Verification: contract smoke test plus manual inspection against <code>wiki/index.html</code>, <code>wiki/plans/index.html</code>, <code>wiki/sources.html</code>, and <code>.hyperwiki/config.json</code>.</li>
+    <li>Implemented: <code>/api/project-contract</code> returns a versioned <code>hyperwiki.project-contract</code> payload composed from project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, and wiki page index.</li>
+    <li>Implemented: the contract includes a copy-pasteable <code>agentContext</code> string for agent handoffs and future MCP resource payloads.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:contract</code> passed on 2026-05-14.</li>
   </ul>
 </section>
   </main>

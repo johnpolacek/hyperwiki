@@ -102,11 +102,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "Unit 02 - Machine-readable Project Contract") {
+if (workspaceSummary.status.current !== "Unit 03 - Agent Review Workflows") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
-if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.html") {
-  throw new Error(`Expected workspace current path for Stage 07 Unit 02, got ${workspaceSummary.status.currentPath}`);
+if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.html") {
+  throw new Error(`Expected workspace current path for Stage 07 Unit 03, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {

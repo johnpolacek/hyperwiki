@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node src/cli.js dev",
-    "check": "node --check src/cli.js && node --check src/launch.js && node --check src/reset.js && node --check src/server.js && node --check src/init.js && node --check src/projects.js && node --check src/pty.js && node --check src/sessions.js && node --check src/settings.js && node --check public/app.js && node --check tests/browser-smoke.mjs && node --check tests/ideas-smoke.mjs && node --check tests/init-smoke.mjs && node --check tests/launch-smoke.mjs && node --check tests/pty-smoke.mjs && node --check tests/reset-smoke.mjs && node --check tests/session-retention-smoke.mjs && node --check tests/verification-smoke.mjs",
+    "check": "node --check src/cli.js && node --check src/launch.js && node --check src/reset.js && node --check src/server.js && node --check src/init.js && node --check src/projects.js && node --check src/pty.js && node --check src/sessions.js && node --check src/settings.js && node --check public/app.js && node --check tests/browser-smoke.mjs && node --check tests/ideas-smoke.mjs && node --check tests/init-smoke.mjs && node --check tests/launch-smoke.mjs && node --check tests/pty-smoke.mjs && node --check tests/reset-smoke.mjs && node --check tests/session-retention-smoke.mjs && node --check tests/verification-smoke.mjs && node --check tests/project-contract-smoke.mjs",
     "smoke:browser": "node tests/browser-smoke.mjs",
     "smoke:ideas": "node tests/ideas-smoke.mjs",
     "smoke:init": "node tests/init-smoke.mjs",
@@ -17,7 +17,8 @@
     "smoke:pty": "node tests/pty-smoke.mjs",
     "smoke:reset": "node tests/reset-smoke.mjs",
     "smoke:sessions": "node tests/session-retention-smoke.mjs",
-    "smoke:verification": "node tests/verification-smoke.mjs"
+    "smoke:verification": "node tests/verification-smoke.mjs",
+    "smoke:contract": "node tests/project-contract-smoke.mjs"
   },
   "dependencies": {
     "@wterm/core": "^0.3.0",

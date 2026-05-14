@@ -170,6 +170,11 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await verificationSummary(project.root, await readConfig(project.root)));
       return;
     }
+    if (url.pathname === "/api/project-contract") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await projectContract(project.root, await readConfig(project.root)));
+      return;
+    }
     if (url.pathname === "/api/guardrails") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, guardrailSummary(project.root));
@@ -433,6 +438,82 @@ async function verificationSummary(root, config) {
     recordedTruth: "Verification runs are runtime evidence until a human or agent records the result into wiki files or Git.",
     loops
   };
+}
+
+async function projectContract(root, config) {
+  const [workspace, verification, repo, wiki, sources, guardrails] = await Promise.all([
+    workspaceSummary(root, config),
+    verificationSummary(root, config),
+    repoContext(root),
+    listWikiPages(root),
+    sourceBriefSummary(root),
+    Promise.resolve(guardrailSummary(root))
+  ]);
+  const project = {
+    name: String(config.projectName || path.basename(root)),
+    root,
+    canonicalWiki: String(config.canonicalWiki || "html"),
+    runtimeState: String(config.runtimeState || ".hyperwiki/state"),
+    sessions: String(config.sessions || ".hyperwiki/sessions")
+  };
+  const plan = {
+    dashboard: workspace.plan,
+    status: workspace.status,
+    currentPath: workspace.status.currentPath || workspace.plan.path
+  };
+  const agent = {
+    launchCommand: config.agent?.launchCommand ? String(config.agent.launchCommand) : "",
+    handoff: "Use visible terminal handoffs; do not treat runtime evidence as canonical until it is recorded in wiki files or Git."
+  };
+  const contract = {
+    version: 1,
+    kind: "hyperwiki.project-contract",
+    generatedAt: new Date().toISOString(),
+    boundary: "localhost-tooling",
+    project,
+    repo,
+    plan,
+    sources: {
+      indexPath: "/wiki/sources.html",
+      briefs: sources
+    },
+    verification,
+    guardrails,
+    layout: workspace.layout,
+    wiki: {
+      indexPath: "/wiki/index.html",
+      pages: wiki.pages
+    },
+    agent,
+    canonicalTruth: [
+      "wiki/",
+      ".git"
+    ],
+    runtimeTruth: [
+      project.runtimeState,
+      project.sessions,
+      verification.statePath
+    ]
+  };
+  contract.agentContext = agentContextFromContract(contract);
+  return contract;
+}
+
+function agentContextFromContract(contract) {
+  const verification = contract.verification.loops
+    .map((loop) => `- ${loop.label}: ${loop.command || "manual"} [${loop.status}; ${loop.trigger}]`)
+    .join("\n");
+  return [
+    `Project: ${contract.project.name}`,
+    `Root: ${contract.project.root}`,
+    `Branch: ${contract.repo.git.branch}`,
+    `Current plan: ${contract.plan.status.current}`,
+    `Current path: ${contract.plan.currentPath || "Unknown"}`,
+    `Boundary: ${contract.boundary}; canonical truth lives in ${contract.canonicalTruth.join(" and ")}.`,
+    "Verification loops:",
+    verification || "- None configured",
+    `Runtime evidence remains local until recorded: ${contract.verification.statePath}.`
+  ].join("\n");
 }
 
 async function verificationLoops(root, config, packageManager) {
