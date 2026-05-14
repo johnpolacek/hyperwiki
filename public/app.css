@@ -759,8 +759,7 @@ body {
 
 .dashboard-item .idea-card-title {
   width: auto;
-  font-size: 15px;
-  line-height: 1.2;
+  font: 700 22px/1.05 var(--docs-serif-font);
 }
 
 .dashboard-item .idea-card-summary {
