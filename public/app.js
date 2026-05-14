@@ -20,9 +20,11 @@ const repoBranch = document.getElementById("repo-branch");
 const dashboardButton = document.getElementById("dashboard-button");
 const settingsButton = document.getElementById("settings-button");
 const dashboardPage = document.getElementById("dashboard-page");
+const projectsPage = document.getElementById("projects-page");
 const dashboardIdeas = document.getElementById("dashboard-ideas");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const dashboardStatus = document.getElementById("dashboard-status");
+const projectsStatus = document.getElementById("projects-status");
 const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
 const newProjectToggle = document.getElementById("new-project-toggle");
@@ -83,6 +85,7 @@ const workspace = document.querySelector(".workspace");
 const projectToggle = document.getElementById("project-toggle");
 const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
+const manageProjectsLink = document.getElementById("manage-projects-link");
 const terminalSessions = new Map();
 const wikiPageTitles = new Map();
 const wikiPageStatus = new Map();
@@ -317,6 +320,10 @@ projectPanel.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 
+manageProjectsLink.addEventListener("click", () => {
+  void showProjectsPage();
+});
+
 upNextPopover.addEventListener("click", (event) => {
   event.stopPropagation();
 });
@@ -356,7 +363,7 @@ projectMarkdownFile.addEventListener("change", () => {
       if (imported) return createProjectFromMarkdown();
       return null;
     })
-    .catch((error) => setDashboardStatus(error.message || "Could not import the document."));
+    .catch((error) => setProjectsStatus(error.message || "Could not import the document."));
 });
 
 newIdeaToggle.addEventListener("click", () => {
@@ -623,25 +630,50 @@ function displayPlanLabel(value = "") {
 
 async function showDashboardPage(options = {}) {
   closeTopbarPanels();
-  await loadDashboard();
+  await loadIdeas();
   settingsPage.hidden = true;
+  projectsPage.hidden = true;
   dashboardPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.add("active");
   settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
-  workspace.classList.remove("settings-mode");
+  workspace.classList.remove("settings-mode", "projects-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
-  setCurrentPage("/dashboard", "Dashboard");
-  openPage.href = "/dashboard";
+  setCurrentPage("/ideas", "Ideas");
+  openPage.href = "/ideas";
   modifyPlanUi.hidden = true;
   modifyButton.setAttribute("aria-expanded", "false");
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
-  if (`${location.pathname}${location.hash}` !== "/dashboard") {
+  if (`${location.pathname}${location.hash}` !== "/ideas") {
     const method = options.replace ? "replaceState" : "pushState";
-    history[method](null, "", "/dashboard");
+    history[method](null, "", "/ideas");
+  }
+}
+
+async function showProjectsPage(options = {}) {
+  closeTopbarPanels();
+  await loadProjectManagement();
+  settingsPage.hidden = true;
+  dashboardPage.hidden = true;
+  projectsPage.hidden = false;
+  wikiFrame.hidden = true;
+  planPrompt.hidden = true;
+  dashboardButton.classList.remove("active");
+  settingsButton.classList.remove("active");
+  workspace.classList.add("projects-mode");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
+  setCurrentPage("/projects", "Projects");
+  openPage.href = "/projects";
+  modifyPlanUi.hidden = true;
+  modifyButton.setAttribute("aria-expanded", "false");
+  setCommandBarCompleted(false);
+  wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  if (`${location.pathname}${location.hash}` !== "/projects") {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method](null, "", "/projects");
   }
 }
 
@@ -649,12 +681,13 @@ async function showSettingsPage(options = {}) {
   closeTopbarPanels();
   await loadSettings();
   dashboardPage.hidden = true;
+  projectsPage.hidden = true;
   settingsPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.remove("active");
   settingsButton.classList.add("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "projects-mode");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
   currentPage.title = "/settings";
@@ -668,11 +701,12 @@ async function showSettingsPage(options = {}) {
 
 function hideDashboardPage() {
   dashboardPage.hidden = true;
+  projectsPage.hidden = true;
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   dashboardButton.classList.remove("active");
   settingsButton.classList.remove("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode", "projects-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
 }
@@ -680,6 +714,10 @@ function hideDashboardPage() {
 function activateWorkspaceLocation(path) {
   if (isDashboardPath(path)) {
     void showDashboardPage({ replace: true });
+    return;
+  }
+  if (isProjectsPath(path)) {
+    void showProjectsPage({ replace: true });
     return;
   }
   if (isSettingsPath(path)) {
@@ -691,7 +729,11 @@ function activateWorkspaceLocation(path) {
 }
 
 function isDashboardPath(path) {
-  return path === "/dashboard" || path === "dashboard";
+  return path === "/ideas" || path === "ideas" || path === "/dashboard" || path === "dashboard";
+}
+
+function isProjectsPath(path) {
+  return path === "/projects" || path === "projects";
 }
 
 function isSettingsPath(path) {
@@ -737,15 +779,8 @@ async function loadProjects() {
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
-  if (activeProject && !prettyWorkspacePath(location.pathname) && location.pathname !== "/dashboard" && location.pathname !== "/settings") {
+  if (activeProject && !prettyWorkspacePath(location.pathname) && !["/dashboard", "/ideas", "/projects", "/settings"].includes(location.pathname)) {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
-  }
-  if (data.projects.length <= 1) {
-    projectToggle.hidden = true;
-    projectPanel.hidden = true;
-    workspace.classList.remove("has-projects");
-    projectToggle.setAttribute("aria-expanded", "false");
-    return;
   }
   projectToggle.hidden = false;
   workspace.classList.add("has-projects");
@@ -766,17 +801,22 @@ async function loadProjects() {
 }
 
 async function loadDashboard() {
-  const [ideasResult, projectsResult] = await Promise.allSettled([
-    api(projectPath("/api/ideas")),
-    api(projectPath("/api/projects"))
-  ]);
-  if (ideasResult.status === "fulfilled") {
-    renderDashboardIdeas(ideasResult.value.ideas || []);
+  await Promise.all([loadIdeas(), loadProjectManagement()]);
+}
+
+async function loadIdeas() {
+  const result = await Promise.allSettled([api(projectPath("/api/ideas"))]);
+  if (result[0].status === "fulfilled") {
+    renderDashboardIdeas(result[0].value.ideas || []);
   } else {
     dashboardIdeas.replaceChildren(emptyDashboardItem("No ideas added yet..."));
   }
-  if (projectsResult.status === "fulfilled") {
-    renderDashboardProjects(projectsResult.value.projects || []);
+}
+
+async function loadProjectManagement() {
+  const result = await Promise.allSettled([api(projectPath("/api/projects"))]);
+  if (result[0].status === "fulfilled") {
+    renderDashboardProjects(result[0].value.projects || []);
   } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
   }
@@ -1923,7 +1963,7 @@ async function createProjectFromMarkdown() {
   const documentType = projectMarkdownInput.dataset.documentType || "markdown";
   if (!title || !markdown) return;
   try {
-    setDashboardStatus("Initializing project...");
+    setProjectsStatus("Initializing project...");
     const result = await api(projectPath("/api/projects/create"), {
       method: "POST",
       body: JSON.stringify({ title, summary: documentSummary(markdown, documentType) })
@@ -1932,15 +1972,16 @@ async function createProjectFromMarkdown() {
     activeProjectId = result.project.id;
     activeProjectSlug = result.project.projectSlug;
     activeWorktreeSlug = result.project.worktreeSlug;
-    history.pushState(null, "", "/dashboard");
+    history.pushState(null, "", "/projects");
     await loadProjects();
-    await loadDashboard();
+    await loadIdeas();
+    await loadProjectManagement();
     await loadRepoContext();
     await loadWikiNav();
     await loadWorkspaceSummary();
     await loadGuardrails();
-    await showDashboardPage({ replace: true });
-    setDashboardStatus("Starting agent in the new project...");
+    await showProjectsPage({ replace: true });
+    setProjectsStatus("Starting agent in the new project...");
     const prompt = [
       "Turn this markdown into the initial hyperwiki project pages.",
       "",
@@ -1959,10 +2000,10 @@ async function createProjectFromMarkdown() {
       markdown,
       "```"
     ].join("\n");
-    await handOffDashboardPrompt(prompt, "/dashboard");
-    setDashboardStatus(`Agent started in ${result.project.name}`);
+    await handOffDashboardPrompt(prompt, "/projects");
+    setProjectsStatus(`Agent started in ${result.project.name}`);
   } catch (error) {
-    setDashboardStatus(error.message || "Could not create the project.");
+    setProjectsStatus(error.message || "Could not create the project.");
   }
 }
 
@@ -2058,6 +2099,10 @@ async function postAgentPromptWithRetry(prompt, currentPagePath) {
 
 function setDashboardStatus(message) {
   dashboardStatus.textContent = message;
+}
+
+function setProjectsStatus(message) {
+  projectsStatus.textContent = message;
 }
 
 function titleFromMarkdown(markdown) {
@@ -2178,7 +2223,10 @@ async function switchProject(project) {
 }
 
 function updatePlanPromptVisibility() {
-  planPrompt.hidden = workspace.classList.contains("dashboard-mode") || workspace.classList.contains("settings-mode") || !terminalSessions.has("agent");
+  planPrompt.hidden = workspace.classList.contains("dashboard-mode")
+    || workspace.classList.contains("projects-mode")
+    || workspace.classList.contains("settings-mode")
+    || !terminalSessions.has("agent");
 }
 
 function terminalTemplate(name) {
@@ -2469,7 +2517,7 @@ function activateWikiPage(path) {
   });
   syncPlanTreeOpenState(nextPath);
   const nextUrl = `${currentWorkspacePath()}#${nextPath}`;
-  if (location.pathname === "/dashboard" || `${location.pathname}${location.hash}` !== nextUrl) {
+  if (["/dashboard", "/ideas", "/projects"].includes(location.pathname) || `${location.pathname}${location.hash}` !== nextUrl) {
     history.replaceState(null, "", nextUrl);
   }
 }
@@ -2651,7 +2699,8 @@ function pageFromHash() {
 function workspaceLocation() {
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
-  if (location.pathname === "/dashboard") return "/dashboard";
+  if (location.pathname === "/dashboard" || location.pathname === "/ideas") return "/ideas";
+  if (location.pathname === "/projects") return "/projects";
   if (location.pathname === "/settings") return "/settings";
   return currentPlanPath;
 }
@@ -2715,7 +2764,8 @@ function breadcrumbItems(path, title) {
 }
 
 function planBreadcrumbs(path, title) {
-  if (path === "/dashboard") return [{ label: "Dashboard", path }];
+  if (path === "/dashboard" || path === "/ideas") return [{ label: "Ideas", path: "/ideas" }];
+  if (path === "/projects") return [{ label: "Projects", path }];
   if (path.endsWith("/wiki/plans/mvp/index.html")) {
     return [{ label: "MVP Plan", path: "/wiki/plans/mvp/index.html" }];
   }

@@ -5,7 +5,8 @@ import path from "node:path";
 
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
 const origin = new URL(url).origin;
-const dashboardUrl = `${origin}/dashboard`;
+const ideasUrl = `${origin}/ideas`;
+const projectsUrl = `${origin}/projects`;
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-browser-smoke-"));
 const ideaHtmlPath = path.join(tempRoot, "imported-idea.html");
 await writeFile(ideaHtmlPath, "<!doctype html><html><head><title>Fallback Title</title></head><body><h1>HTML Smoke Idea</h1><p>A brief imported from HTML.</p></body></html>");
@@ -24,19 +25,31 @@ page.on("pageerror", (error) => errors.push(error.message));
 await page.goto(url, { waitUntil: "networkidle" });
 
 await page.locator(".topbar-brand").filter({ hasText: "hyperwiki" }).waitFor();
-await page.locator("#dashboard-button").click();
-await page.waitForURL(dashboardUrl);
+await page.locator("#dashboard-button").filter({ hasText: "Ideas" }).click();
+await page.waitForURL(ideasUrl);
 await page.locator("#dashboard-page").evaluate((panel) => {
   const text = panel.textContent || "";
-  if (!text.includes("New Idea") || !text.includes("New Project") || !text.includes("Ideas") || !text.includes("Projects")) {
-    throw new Error(`Expected dashboard to include ideas and projects, got ${text}`);
+  if (!text.includes("New Idea") || !text.includes("Ideas") || text.includes("New Project") || text.includes("Projects")) {
+    throw new Error(`Expected Ideas page without Projects inventory, got ${text}`);
   }
   const ideasHeader = panel.querySelector(".dashboard-section-header");
   if (!ideasHeader || !ideasHeader.textContent.includes("Ideas") || !ideasHeader.textContent.includes("+ New Idea")) {
     throw new Error("Expected Ideas section header with a New Idea button.");
   }
-  if (!document.querySelector("#idea-import-form")?.hidden || !document.querySelector("#project-import-form")?.hidden) {
-    throw new Error("Expected dashboard forms to start collapsed.");
+  if (!document.querySelector("#idea-import-form")?.hidden) {
+    throw new Error("Expected idea form to start collapsed.");
+  }
+});
+await page.locator("#project-toggle").click();
+await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
+await page.waitForURL(projectsUrl);
+await page.locator("#projects-page").evaluate((panel) => {
+  const text = panel.textContent || "";
+  if (!text.includes("Projects") || !text.includes("+ New Project") || !text.includes("New Project")) {
+    throw new Error(`Expected Projects management page, got ${text}`);
+  }
+  if (!document.querySelector("#project-import-form")?.hidden) {
+    throw new Error("Expected project form to start collapsed.");
   }
 });
 await page.locator("#settings-button").click();
@@ -75,7 +88,7 @@ await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
 await page.locator("#agent-cancel").click();
 await page.locator("#dashboard-button").click();
-await page.waitForURL(dashboardUrl);
+await page.waitForURL(ideasUrl);
 await page.locator("#new-idea-toggle").click();
 await page.locator("#idea-import-form").evaluate((form) => {
   const text = form.textContent || "";
@@ -98,7 +111,7 @@ await page.locator("#idea-title").fill("Smoke Test Idea");
 await page.locator("#idea-markdown").fill("# Smoke Test Idea\n\nA test markdown brief.");
 await page.evaluate(() => {
   if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
-    throw new Error("Expected Dashboard to be a workspace page mode.");
+    throw new Error("Expected Ideas to be a workspace page mode.");
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
@@ -237,7 +250,7 @@ await page.locator("#plan-prompt-submit").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
 
 await page.locator("#dashboard-button").click();
-await page.waitForURL(dashboardUrl);
+await page.waitForURL(ideasUrl);
 if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
   await page.locator("#new-idea-toggle").click();
 }
@@ -246,7 +259,7 @@ await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
 await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
 await page.locator("#dashboard-button").click();
-await page.waitForURL(dashboardUrl);
+await page.waitForURL(ideasUrl);
 await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "<< Open idea" }).waitFor();
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);

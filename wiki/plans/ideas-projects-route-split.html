@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ideas and Projects Route Split - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/ideas/index.html">Ideas</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Ideas and Projects Route Split</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: archive this plan during the next planning cleanup.</li>
+    <li>Blockers: none</li>
+    <li>Validation: <code>pnpm run check</code> and targeted browser route checks passed.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Dashboard has become an Ideas surface. Projects should move to a dedicated workspace page that is reachable from the Projects dropdown, while the top navigation should expose Ideas directly at <code>/ideas</code>.</p>
+</section>
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Change the topbar Dashboard button into an Ideas button that navigates to <code>/ideas</code>.</li>
+    <li>Move project list and new-project import form into a dedicated <code>/projects</code> workspace page.</li>
+    <li>Add a Manage Projects link to the Projects dropdown.</li>
+    <li>Keep existing idea create, open, sidebar refresh, and promote behavior.</li>
+    <li>Keep existing project switching and project creation behavior, but relocate project management UI.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Result</h2>
+  <ul>
+    <li>The topbar Dashboard control is now an Ideas button that opens <code>/ideas</code>.</li>
+    <li>The Ideas page contains only idea list/import behavior.</li>
+    <li>Projects moved to <code>/projects</code> with the project list and new-project import form.</li>
+    <li>The Projects dropdown now includes a Manage Projects link.</li>
+    <li>Legacy <code>/dashboard</code> requests are routed to the Ideas surface for compatibility.</li>
+  </ul>
+</section>
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>No registry schema changes.</li>
+    <li>No new persisted project metadata.</li>
+    <li>No change to promoted project creation semantics.</li>
+  </ul>
+</section>
+  </main>
+</body>
+</html>

@@ -105,7 +105,7 @@ async function handleRequest(defaultRoot, request, response, context) {
       redirect(response, "/workspace/");
       return;
     }
-    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard" || url.pathname === "/settings") {
+    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard" || url.pathname === "/ideas" || url.pathname === "/projects" || url.pathname === "/settings") {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
       return;
     }

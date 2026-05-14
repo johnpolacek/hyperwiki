@@ -42,12 +42,12 @@
         </button>
         <button type="button" id="dashboard-button" class="topbar-button" aria-controls="dashboard-page">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="4" y="4" width="7" height="7"></rect>
-            <rect x="13" y="4" width="7" height="7"></rect>
-            <rect x="4" y="13" width="7" height="7"></rect>
-            <rect x="13" y="13" width="7" height="7"></rect>
+            <path d="M12 5v14"></path>
+            <path d="M7 8h10"></path>
+            <path d="M6 12h12"></path>
+            <path d="M8 16h8"></path>
           </svg>
-          <span>Dashboard</span>
+          <span>Ideas</span>
         </button>
         <button type="button" id="settings-button" class="topbar-button" aria-controls="settings-page">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -67,6 +67,7 @@
         </button>
       </div>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
+        <button type="button" id="manage-projects-link" class="project-manage-link">Manage Projects</button>
         <div id="project-list" class="project-list" aria-label="Projects"></div>
       </section>
       <section id="up-next-popover" class="topbar-panel up-next-popover" role="dialog" aria-label="Up Next" hidden>
@@ -127,11 +128,11 @@
         </button>
         <p id="modify-plan-status" role="status"></p>
       </form>
-      <section id="dashboard-page" class="dashboard-page" aria-label="hyperwiki Dashboard" hidden>
+      <section id="dashboard-page" class="dashboard-page" aria-label="hyperwiki Ideas" hidden>
         <header class="dashboard-page-header">
           <div>
-            <h1>Dashboard</h1>
-            <p>Start ideas and projects from markdown, then hand the work to an agent.</p>
+            <h1>Ideas</h1>
+            <p>Capture imported briefs as local idea pages, then open or promote them when they are ready.</p>
           </div>
           <div class="dashboard-header-actions">
             <button type="button" id="dashboard-settings-button" class="dashboard-new-button">Settings</button>
@@ -167,6 +168,17 @@
               </label>
             </form>
           </section>
+        </div>
+      </section>
+      <section id="projects-page" class="dashboard-page projects-page" aria-label="hyperwiki Projects" hidden>
+        <header class="dashboard-page-header">
+          <div>
+            <h1>Projects</h1>
+            <p>Switch between registered local hyperwiki projects or initialize a new project from a brief.</p>
+          </div>
+          <p id="projects-status" class="dashboard-status" role="status"></p>
+        </header>
+        <div class="dashboard-inventory projects-inventory">
           <section class="dashboard-section">
             <div class="dashboard-section-header">
               <h2>Projects</h2>
