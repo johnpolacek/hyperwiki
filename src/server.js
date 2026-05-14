@@ -12,6 +12,7 @@ import { createPtySession } from "./pty.js";
 import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
+import { readSettings, resetThemeSettings, syncAgentsFile, themeCss, writeSettings } from "./settings.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.resolve(here, "..", "public");
@@ -91,8 +92,37 @@ async function handleRequest(defaultRoot, request, response, context) {
       redirect(response, "/workspace/");
       return;
     }
-    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard") {
+    if (workspaceRoute(url.pathname) || url.pathname === "/dashboard" || url.pathname === "/settings") {
       await sendFile(response, path.join(publicRoot, "index.html"), publicRoot);
+      return;
+    }
+    if (url.pathname === "/api/settings") {
+      if (request.method === "GET") {
+        await sendJson(response, await readSettings());
+        return;
+      }
+      if (request.method === "PUT") {
+        await sendJson(response, await writeSettings(await readJsonBody(request)));
+        return;
+      }
+    }
+    if (url.pathname === "/api/settings/reset-theme" && request.method === "POST") {
+      await sendJson(response, await resetThemeSettings());
+      return;
+    }
+    if (url.pathname === "/api/settings/sync-agents" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const body = await readJsonBody(request);
+      await sendJson(response, await syncAgentsFile(project.root, typeof body.content === "string" ? body.content : null));
+      return;
+    }
+    if (url.pathname === "/api/settings/agents-file") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await agentsFile(project.root));
+      return;
+    }
+    if (url.pathname === "/assets/theme.css") {
+      await sendText(response, themeCss(await readSettings()), "text/css; charset=utf-8");
       return;
     }
     if (url.pathname === "/api/wiki") {
@@ -220,13 +250,13 @@ async function handleRequest(defaultRoot, request, response, context) {
     if (projectWikiMatch) {
       const project = await context.projectRegistry.resolve(projectWikiMatch[1], defaultRoot);
       const wikiRoot = path.join(project.root, "wiki");
-      await sendFile(response, path.join(wikiRoot, projectWikiMatch[2]), wikiRoot);
+      await sendWikiFile(response, path.join(wikiRoot, projectWikiMatch[2]), wikiRoot);
       return;
     }
     if (url.pathname.startsWith("/wiki/")) {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       const wikiRoot = path.join(project.root, "wiki");
-      await sendFile(response, path.join(project.root, url.pathname), wikiRoot);
+      await sendWikiFile(response, path.join(project.root, url.pathname), wikiRoot);
       return;
     }
     notFound(response);
@@ -310,6 +340,7 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
     `Project: ${project.name}`,
     `Repo root: ${project.root}`,
     `Current wiki page: ${currentPage}`,
+    "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
     "Keep durable project knowledge in wiki/ HTML pages and Git-visible files. Run relevant checks before finishing.",
     "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
     "",
@@ -343,6 +374,14 @@ async function saveDroppedFiles(root, body) {
     saved.push({ name, path: filePath });
   }
   return { files: saved };
+}
+
+async function agentsFile(root) {
+  const filePath = path.join(root, "AGENTS.md");
+  return {
+    path: filePath,
+    content: existsSync(filePath) ? await readFile(filePath, "utf8") : ""
+  };
 }
 
 function safeDropName(name) {
@@ -761,6 +800,7 @@ function wikiLayout(projectName, title, body) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)} - ${escapeHtml(projectName)}</title>
   <link rel="stylesheet" href="/assets/wiki.css">
+  <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
   <header class="wiki-header">
@@ -931,6 +971,33 @@ function titleFromWikiPath(relativePath) {
 function sendJson(response, value) {
   response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   response.end(`${JSON.stringify(value)}\n`);
+}
+
+function sendText(response, value, contentTypeHeader) {
+  response.writeHead(200, {
+    "cache-control": "no-store",
+    "content-type": contentTypeHeader
+  });
+  response.end(value);
+}
+
+async function sendWikiFile(response, filePath, allowedRoot) {
+  const resolved = path.resolve(filePath);
+  const root = path.resolve(allowedRoot);
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+    response.writeHead(403, { "content-type": "text/plain; charset=utf-8" });
+    response.end("Forbidden");
+    return;
+  }
+  if (!existsSync(resolved) || !(await stat(resolved)).isFile()) {
+    notFound(response);
+    return;
+  }
+  let html = await readFile(resolved, "utf8");
+  if (!html.includes("/assets/theme.css")) {
+    html = html.replace("</head>", "  <link rel=\"stylesheet\" href=\"/assets/theme.css\">\n</head>");
+  }
+  sendText(response, html, "text/html; charset=utf-8");
 }
 
 async function sendFile(response, filePath, allowedRoot) {

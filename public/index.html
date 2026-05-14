@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>hyperwiki</title>
   <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/theme.css">
   <link rel="stylesheet" href="/vendor/@wterm/dom/src/terminal.css">
   <script type="importmap">
     {
@@ -57,13 +58,6 @@
           </svg>
           <span>Projects</span>
         </button>
-        <button type="button" id="settings-button" class="topbar-button" aria-expanded="false" aria-controls="settings-panel">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
-            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .92V20.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-.92 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.92-1H3.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 .92-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.92V3.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 .92 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.36.43.7.92 1h.18a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1 .92Z"></path>
-          </svg>
-          <span>Settings</span>
-        </button>
       </div>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
         <div id="project-list" class="project-list" aria-label="Projects"></div>
@@ -83,22 +77,6 @@
             </dd>
           </div>
         </dl>
-      </section>
-      <section id="settings-panel" class="topbar-panel settings-panel" role="dialog" aria-label="Settings" hidden>
-        <div class="settings-placeholder">
-          <h2>Settings</h2>
-          <p>Workspace preferences will live here.</p>
-          <dl>
-            <div>
-              <dt>Theme</dt>
-              <dd>System</dd>
-            </div>
-            <div>
-              <dt>Automation</dt>
-              <dd>Local only</dd>
-            </div>
-          </dl>
-        </div>
       </section>
     </header>
     <aside class="sidebar">
@@ -148,7 +126,10 @@
             <h1>Dashboard</h1>
             <p>Start ideas and projects from markdown, then hand the work to an agent.</p>
           </div>
-          <p id="dashboard-status" class="dashboard-status" role="status"></p>
+          <div class="dashboard-header-actions">
+            <button type="button" id="dashboard-settings-button" class="dashboard-new-button">Settings</button>
+            <p id="dashboard-status" class="dashboard-status" role="status"></p>
+          </div>
         </header>
         <div class="dashboard-inventory">
           <section class="dashboard-section">
@@ -207,6 +188,172 @@
             </form>
           </section>
         </div>
+      </section>
+      <section id="settings-page" class="settings-page" aria-label="hyperwiki Settings" hidden>
+        <header class="dashboard-page-header settings-page-header">
+          <div>
+            <h1>Settings</h1>
+            <p>Control global theme and agent instructions.</p>
+          </div>
+          <p id="settings-status" class="dashboard-status" role="status"></p>
+        </header>
+        <div class="settings-layout">
+          <section class="settings-section theme-overview-section">
+            <div class="settings-section-header">
+              <h2>Theme</h2>
+              <button type="button" id="theme-edit" class="dashboard-new-button">Edit</button>
+            </div>
+            <div class="theme-readonly-hero">
+              <p id="theme-title" class="theme-title">Paper</p>
+              <div id="theme-hero-swatches" class="theme-hero-swatches" aria-hidden="true"></div>
+            </div>
+            <div id="theme-summary" class="theme-summary" aria-label="Theme summary"></div>
+          </section>
+          <section class="settings-section agent-instructions-section">
+            <div class="settings-section-header">
+              <h2>Agent Instructions</h2>
+              <button type="button" id="agent-edit" class="dashboard-new-button">Edit</button>
+            </div>
+            <div id="agent-summary" class="agent-summary" aria-label="Agent instructions summary"></div>
+          </section>
+        </div>
+        <section id="theme-editor" class="theme-editor" aria-label="Edit Theme" hidden>
+          <header class="theme-editor-header">
+            <div>
+              <h2>Edit Theme</h2>
+              <p>Adjust a draft theme and preview it here. The workspace updates after Save.</p>
+            </div>
+            <div class="settings-actions">
+              <button type="button" id="theme-cancel" class="dashboard-new-button">Cancel</button>
+              <button type="button" id="theme-save" class="settings-primary-button">Save Theme</button>
+            </div>
+          </header>
+          <section id="theme-preset-bar" class="theme-selected-preset" aria-label="Selected theme preset"></section>
+          <section id="theme-preset-picker" class="theme-preset-picker" aria-label="Theme preset picker" hidden></section>
+          <div id="theme-editor-layout" class="theme-editor-layout">
+            <section class="settings-section">
+              <div class="theme-simple-controls">
+                <label class="settings-field">
+                  <span>Mode</span>
+                  <select id="theme-mode">
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </label>
+                <label class="theme-color-control theme-primary-control">
+                  <input id="theme-primary" type="color">
+                  <span>Primary</span>
+                </label>
+                <div class="theme-secondary-field">
+                  <span>Secondary</span>
+                  <div class="theme-secondary-control">
+                    <button type="button" id="theme-secondary-toggle" class="theme-secondary-toggle is-empty" aria-label="Set secondary color" title="Set secondary color">
+                      <span></span>
+                    </button>
+                    <button type="button" id="theme-secondary-clear" class="theme-secondary-clear" aria-label="Clear secondary color" title="Clear secondary color">×</button>
+                    <input id="theme-secondary" type="color">
+                  </div>
+                </div>
+              </div>
+              <div id="theme-controls" class="theme-controls"></div>
+              <section class="theme-control-section theme-terminal-controls">
+                <header>
+                  <strong>Terminal</strong>
+                  <span>Pane style and terminal typography</span>
+                </header>
+                <div class="theme-terminal-grid">
+                  <label class="settings-field">
+                    <span>Mode</span>
+                    <select id="theme-terminal-mode">
+                      <option value="match">Match theme</option>
+                      <option value="dark">Dark</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </label>
+                  <label class="theme-color-control">
+                    <input id="theme-terminal-accent" type="color">
+                    <span>Accent</span>
+                  </label>
+                </div>
+              </section>
+              <details class="settings-json-details">
+                <summary>Advanced JSON</summary>
+                <textarea id="theme-json" rows="14" spellcheck="false"></textarea>
+              </details>
+            </section>
+            <section class="theme-preview-pane" aria-label="Theme preview pane">
+              <div class="theme-preview-shell">
+                <aside>
+                  <strong>Plans</strong>
+                  <span>Stage-08 Settings, Soul, and Memory</span>
+                  <span>Unit 02 · Theme System</span>
+                </aside>
+                <main>
+                  <h3>Planning Preview</h3>
+                  <p>Docs keep their reading voice while the UI stays dense and scannable.</p>
+                  <code>wiki/plans/mvp/stage-08-settings-soul-memory.html</code>
+                </main>
+                <section class="theme-preview-terminal" aria-label="Terminal preview">
+                  <div>
+                    <strong>agent</strong>
+                    <span>preview terminal chrome</span>
+                  </div>
+                  <pre><span class="terminal-muted">gpt-5.5 low · ~/Projects/hyperwiki</span>
+<span class="terminal-accent">›</span> update wiki/settings theme tokens
+Reading settings, previewing terminal contrast...
+<span class="terminal-accent">✓</span> generated accessible terminal colors
+<span class="terminal-muted">agent</span> waiting for next instruction</pre>
+                </section>
+              </div>
+            </section>
+          </div>
+        </section>
+        <section id="agent-editor" class="agent-editor" aria-label="Edit Agent Instructions" hidden>
+          <header class="theme-editor-header">
+            <div>
+              <h2>Edit Agent Instructions</h2>
+              <p>Saving updates global instructions and syncs the current project AGENTS.md.</p>
+            </div>
+            <div class="settings-actions">
+              <button type="button" id="agent-cancel" class="dashboard-new-button">Cancel</button>
+              <button type="button" id="agent-save" class="settings-primary-button">Save Agent Instructions</button>
+            </div>
+          </header>
+          <div class="agent-editor-layout">
+            <section class="settings-section">
+              <label class="settings-field">
+                <span>Principles</span>
+                <textarea id="soul-principles" rows="7"></textarea>
+              </label>
+              <label class="settings-field">
+                <span>Interface Guidance</span>
+                <textarea id="soul-interface" rows="4"></textarea>
+              </label>
+              <label class="settings-field">
+                <span>Agent Guidance</span>
+                <textarea id="soul-agent" rows="4"></textarea>
+              </label>
+            </section>
+            <section class="settings-section">
+              <div class="settings-section-header">
+                <h2>Memory</h2>
+                <button type="button" id="memory-add" class="dashboard-new-button">+ Memory</button>
+              </div>
+              <div id="memory-list" class="memory-list" aria-label="Memory entries"></div>
+            </section>
+          </div>
+          <section class="settings-section agents-file-preview">
+            <div class="settings-section-header">
+              <h2>AGENTS.md</h2>
+              <span id="agents-file-path" class="agents-file-path"></span>
+            </div>
+            <textarea id="agents-file-content" rows="18" aria-label="AGENTS.md contents"></textarea>
+          </section>
+          <div class="settings-actions agent-editor-bottom-actions">
+            <button type="button" id="agent-cancel-bottom" class="dashboard-new-button">Cancel</button>
+            <button type="button" id="agent-save-bottom" class="settings-primary-button">Save Agent Instructions</button>
+          </div>
+        </section>
       </section>
       <iframe id="wiki-frame" name="wiki-frame" title="Wiki" src="/wiki/index.html"></iframe>
       <form id="plan-prompt" class="plan-prompt" hidden>

@@ -10,7 +10,6 @@ Use Portless for local app previews and prefer named `.localhost` URLs over fixe
 
 Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree previews should use `https://<branch-slug>.hyperwiki.localhost`.
 
-<!-- PROJECT-WIKI-BOOTSTRAPPER:START v1 -->
 ## hyperwiki Agent Guide
 
 ### Project Wiki
@@ -38,4 +37,3 @@ Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree 
 - Install dependencies: auto
 - Run long commands: ask
 - Create plans before code: meaningful-only
-<!-- PROJECT-WIKI-BOOTSTRAPPER:END -->

@@ -22,6 +22,7 @@ const dashboardPage = document.getElementById("dashboard-page");
 const dashboardIdeas = document.getElementById("dashboard-ideas");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const dashboardStatus = document.getElementById("dashboard-status");
+const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
 const newProjectToggle = document.getElementById("new-project-toggle");
 const ideaImportForm = document.getElementById("idea-import-form");
@@ -34,8 +35,42 @@ const projectMarkdownInput = document.getElementById("project-markdown");
 const projectMarkdownFile = document.getElementById("project-markdown-file");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
-const settingsButton = document.getElementById("settings-button");
-const settingsPanel = document.getElementById("settings-panel");
+const settingsPage = document.getElementById("settings-page");
+const settingsStatus = document.getElementById("settings-status");
+const settingsLayout = document.querySelector(".settings-layout");
+const themeTitle = document.getElementById("theme-title");
+const themeHeroSwatches = document.getElementById("theme-hero-swatches");
+const themeSummary = document.getElementById("theme-summary");
+const themeEdit = document.getElementById("theme-edit");
+const themeEditor = document.getElementById("theme-editor");
+const themeCancel = document.getElementById("theme-cancel");
+const themeSave = document.getElementById("theme-save");
+const themePresetBar = document.getElementById("theme-preset-bar");
+const themePresetPicker = document.getElementById("theme-preset-picker");
+const themeEditorLayout = document.getElementById("theme-editor-layout");
+const themeMode = document.getElementById("theme-mode");
+const themePrimary = document.getElementById("theme-primary");
+const themeSecondary = document.getElementById("theme-secondary");
+const themeSecondaryToggle = document.getElementById("theme-secondary-toggle");
+const themeSecondaryClear = document.getElementById("theme-secondary-clear");
+const themeTerminalMode = document.getElementById("theme-terminal-mode");
+const themeTerminalAccent = document.getElementById("theme-terminal-accent");
+const themeControls = document.getElementById("theme-controls");
+const themeJson = document.getElementById("theme-json");
+const agentSummary = document.getElementById("agent-summary");
+const agentEdit = document.getElementById("agent-edit");
+const agentEditor = document.getElementById("agent-editor");
+const agentCancel = document.getElementById("agent-cancel");
+const agentSave = document.getElementById("agent-save");
+const agentCancelBottom = document.getElementById("agent-cancel-bottom");
+const agentSaveBottom = document.getElementById("agent-save-bottom");
+const agentsFilePath = document.getElementById("agents-file-path");
+const agentsFileContent = document.getElementById("agents-file-content");
+const soulPrinciples = document.getElementById("soul-principles");
+const soulInterface = document.getElementById("soul-interface");
+const soulAgent = document.getElementById("soul-agent");
+const memoryList = document.getElementById("memory-list");
+const memoryAdd = document.getElementById("memory-add");
 const upNextCompleted = document.getElementById("up-next-completed");
 const upNextStage = document.getElementById("up-next-stage");
 const upNextCurrent = document.getElementById("up-next-current");
@@ -61,6 +96,74 @@ let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
+let settingsState = null;
+let themeDraft = null;
+let themeDraftSimple = null;
+let themePresetPickerOpen = false;
+let agentDraft = null;
+let agentsFileDraft = "";
+
+const themeSurfaces = [
+  {
+    key: "ui",
+    label: "UI",
+    description: "Sidebar and workspace chrome",
+    colorTokens: ["bg", "panel", "border", "text", "muted", "accent"],
+    fontTokens: []
+  },
+  {
+    key: "docs",
+    label: "Docs",
+    description: "Planning and wiki pages",
+    colorTokens: ["bg", "panel", "border", "text", "muted", "link", "code"],
+    fontTokens: []
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    description: "Pane chrome and session frames",
+    colorTokens: ["bg", "pane", "toolbar", "header", "border", "text", "muted", "accent"],
+    fontTokens: []
+  }
+];
+
+const fontOptions = [
+  { label: "Inter", type: "sans", value: "\"Inter\", ui-sans-serif, system-ui, sans-serif", google: "Inter:wght@400;500;600;700" },
+  { label: "Roboto", type: "sans", value: "\"Roboto\", ui-sans-serif, system-ui, sans-serif", google: "Roboto:wght@400;500;700" },
+  { label: "Open Sans", type: "sans", value: "\"Open Sans\", ui-sans-serif, system-ui, sans-serif", google: "Open+Sans:wght@400;500;600;700" },
+  { label: "Lato", type: "sans", value: "\"Lato\", ui-sans-serif, system-ui, sans-serif", google: "Lato:wght@400;700" },
+  { label: "Montserrat", type: "sans", value: "\"Montserrat\", ui-sans-serif, system-ui, sans-serif", google: "Montserrat:wght@400;500;600;700" },
+  { label: "Source Sans 3", type: "sans", value: "\"Source Sans 3\", ui-sans-serif, system-ui, sans-serif", google: "Source+Sans+3:wght@400;500;600;700" },
+  { label: "Work Sans", type: "sans", value: "\"Work Sans\", ui-sans-serif, system-ui, sans-serif", google: "Work+Sans:wght@400;500;600;700" },
+  { label: "IBM Plex Sans", type: "sans", value: "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif", google: "IBM+Plex+Sans:wght@400;500;600;700" },
+  { label: "DM Sans", type: "sans", value: "\"DM Sans\", ui-sans-serif, system-ui, sans-serif", google: "DM+Sans:wght@400;500;600;700" },
+  { label: "Noto Sans", type: "sans", value: "\"Noto Sans\", ui-sans-serif, system-ui, sans-serif", google: "Noto+Sans:wght@400;500;600;700" },
+  { label: "Poppins", type: "sans", value: "\"Poppins\", ui-sans-serif, system-ui, sans-serif", google: "Poppins:wght@400;500;600;700" },
+  { label: "Nunito", type: "sans", value: "\"Nunito\", ui-sans-serif, system-ui, sans-serif", google: "Nunito:wght@400;500;600;700" },
+  { label: "Instrument Serif", type: "serif", value: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif", google: "" },
+  { label: "Merriweather", type: "serif", value: "\"Merriweather\", ui-serif, Georgia, serif", google: "Merriweather:wght@400;700" },
+  { label: "Lora", type: "serif", value: "\"Lora\", ui-serif, Georgia, serif", google: "Lora:wght@400;500;600;700" },
+  { label: "Playfair Display", type: "serif", value: "\"Playfair Display\", ui-serif, Georgia, serif", google: "Playfair+Display:wght@400;600;700" },
+  { label: "Libre Baskerville", type: "serif", value: "\"Libre Baskerville\", ui-serif, Georgia, serif", google: "Libre+Baskerville:wght@400;700" },
+  { label: "Crimson Pro", type: "serif", value: "\"Crimson Pro\", ui-serif, Georgia, serif", google: "Crimson+Pro:wght@400;500;600;700" },
+  { label: "Newsreader", type: "serif", value: "\"Newsreader\", ui-serif, Georgia, serif", google: "Newsreader:wght@400;600;700" },
+  { label: "Source Serif 4", type: "serif", value: "\"Source Serif 4\", ui-serif, Georgia, serif", google: "Source+Serif+4:wght@400;600;700" },
+  { label: "EB Garamond", type: "serif", value: "\"EB Garamond\", ui-serif, Georgia, serif", google: "EB+Garamond:wght@400;500;600;700" },
+  { label: "Cormorant Garamond", type: "serif", value: "\"Cormorant Garamond\", ui-serif, Georgia, serif", google: "Cormorant+Garamond:wght@400;500;600;700" },
+  { label: "Literata", type: "serif", value: "\"Literata\", ui-serif, Georgia, serif", google: "Literata:wght@400;500;600;700" },
+  { label: "Fraunces", type: "serif", value: "\"Fraunces\", ui-serif, Georgia, serif", google: "Fraunces:wght@400;500;600;700" },
+  { label: "Sometype Mono", type: "mono", value: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "" },
+  { label: "IBM Plex Mono", type: "mono", value: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "IBM+Plex+Mono:wght@400;500;600;700" },
+  { label: "Space Mono", type: "mono", value: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Space+Mono:wght@400;700" },
+  { label: "JetBrains Mono", type: "mono", value: "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "JetBrains+Mono:wght@400;500;600;700" },
+  { label: "Fira Code", type: "mono", value: "\"Fira Code\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Fira+Code:wght@400;500;600;700" },
+  { label: "Source Code Pro", type: "mono", value: "\"Source Code Pro\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Source+Code+Pro:wght@400;500;600;700" },
+  { label: "Roboto Mono", type: "mono", value: "\"Roboto Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", google: "Roboto+Mono:wght@400;500;600;700" }
+];
+
+const serifFontOptions = fontOptions.filter((font) => font.type === "serif");
+const sansFontOptions = fontOptions.filter((font) => font.type === "sans");
+const monoFontOptions = fontOptions.filter((font) => font.type === "mono");
 
 window.addEventListener("hashchange", () => {
   activateWorkspaceLocation(workspaceLocation());
@@ -72,6 +175,7 @@ wikiFrame.addEventListener("load", () => {
 
 await loadProjects();
 await loadDashboard();
+await loadSettings();
 await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
@@ -194,14 +298,13 @@ dashboardButton.addEventListener("click", async (event) => {
   showDashboardPage();
 });
 
+dashboardSettingsButton.addEventListener("click", () => {
+  void showSettingsPage();
+});
+
 upNextButton.addEventListener("click", (event) => {
   event.stopPropagation();
   setTopbarPanelOpen("up-next", upNextPopover.hidden);
-});
-
-settingsButton.addEventListener("click", (event) => {
-  event.stopPropagation();
-  setTopbarPanelOpen("settings", settingsPanel.hidden);
 });
 
 projectPanel.addEventListener("click", (event) => {
@@ -209,10 +312,6 @@ projectPanel.addEventListener("click", (event) => {
 });
 
 upNextPopover.addEventListener("click", (event) => {
-  event.stopPropagation();
-});
-
-settingsPanel.addEventListener("click", (event) => {
   event.stopPropagation();
 });
 
@@ -270,6 +369,117 @@ ideaImportForm.addEventListener("submit", async (event) => {
 projectImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await createProjectFromMarkdown();
+});
+
+themePresetBar.addEventListener("click", (event) => {
+  if (event.target.closest("#theme-preset-edit")) {
+    themePresetPickerOpen = true;
+    renderThemeEditor();
+  }
+});
+
+themePresetPicker.addEventListener("click", (event) => {
+  const card = event.target.closest(".theme-preset-card");
+  if (!card) return;
+  applyThemePreset(card.dataset.preset);
+});
+
+function applyThemePreset(preset) {
+  if (!settingsState || !themeDraft) return;
+  themeDraft.activePreset = preset;
+  themeDraft.customTokens = {};
+  themeDraftSimple = simpleThemeFromTokens(themeDraft.presets?.[themeDraft.activePreset]);
+  renderThemeEditor();
+  applyThemePreview(effectiveTheme({ theme: themeDraft }));
+}
+
+themeMode.addEventListener("change", updateThemeDraftFromSimpleControls);
+themePrimary.addEventListener("input", updateThemeDraftFromSimpleControls);
+themeSecondary.addEventListener("input", () => {
+  if (!themeDraftSimple) return;
+  themeDraftSimple.secondary = normalizeColorOrEmpty(themeSecondary.value);
+  updateThemeDraftFromSimpleControls();
+});
+themeSecondaryToggle.addEventListener("click", () => {
+  if (themeSecondary.showPicker) {
+    themeSecondary.showPicker();
+    return;
+  }
+  themeSecondary.click();
+});
+themeSecondaryClear.addEventListener("click", () => {
+  if (!themeDraftSimple) return;
+  themeDraftSimple.secondary = "";
+  applyGeneratedThemeTokens();
+  syncSimpleControls();
+});
+themeTerminalMode.addEventListener("change", updateThemeDraftFromSimpleControls);
+themeTerminalAccent.addEventListener("input", updateThemeDraftFromSimpleControls);
+
+themeJson.addEventListener("input", () => {
+  if (!themeDraft) return;
+  try {
+    const parsed = JSON.parse(themeJson.value);
+    themeDraft = parsed;
+    themeDraftSimple = simpleThemeFromTokens(effectiveTheme({ theme: themeDraft }));
+    syncSimpleControls();
+    applyThemePreview(effectiveTheme({ theme: themeDraft }));
+  } catch {
+    // Keep the user's text while they are editing invalid JSON.
+  }
+});
+
+themeEdit.addEventListener("click", () => {
+  openThemeEditor();
+});
+
+themeCancel.addEventListener("click", () => {
+  closeThemeEditor();
+});
+
+themeSave.addEventListener("click", async () => {
+  await saveThemeDraft();
+});
+
+agentEdit.addEventListener("click", () => {
+  openAgentEditor();
+});
+
+agentCancel.addEventListener("click", () => {
+  closeAgentEditor();
+});
+
+agentCancelBottom.addEventListener("click", () => {
+  closeAgentEditor();
+});
+
+agentSave.addEventListener("click", async () => {
+  await saveAgentInstructions();
+});
+
+agentSaveBottom.addEventListener("click", async () => {
+  await saveAgentInstructions();
+});
+
+soulPrinciples.addEventListener("input", updateAgentsFileDraftFromFields);
+soulInterface.addEventListener("input", updateAgentsFileDraftFromFields);
+soulAgent.addEventListener("input", updateAgentsFileDraftFromFields);
+
+agentsFileContent.addEventListener("input", () => {
+  agentsFileDraft = agentsFileContent.value;
+});
+
+memoryAdd.addEventListener("click", () => {
+  if (!agentDraft) return;
+  agentDraft.memory.entries ||= [];
+  agentDraft.memory.entries.push({
+    id: crypto.randomUUID(),
+    title: "",
+    content: "",
+    enabled: true,
+    updatedAt: new Date().toISOString()
+  });
+  renderMemory(agentDraft.memory.entries);
 });
 
 async function restoreTerminals() {
@@ -408,11 +618,13 @@ function displayPlanLabel(value = "") {
 async function showDashboardPage(options = {}) {
   closeTopbarPanels();
   await loadDashboard();
+  settingsPage.hidden = true;
   dashboardPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.add("active");
   workspace.classList.add("dashboard-mode");
+  workspace.classList.remove("settings-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
   setCurrentPage("/dashboard", "Dashboard");
   openPage.href = "/dashboard";
@@ -420,17 +632,38 @@ async function showDashboardPage(options = {}) {
   modifyButton.setAttribute("aria-expanded", "false");
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
-  if (location.pathname !== "/dashboard") {
+  if (`${location.pathname}${location.hash}` !== "/dashboard") {
     const method = options.replace ? "replaceState" : "pushState";
     history[method](null, "", "/dashboard");
   }
 }
 
+async function showSettingsPage(options = {}) {
+  closeTopbarPanels();
+  await loadSettings();
+  dashboardPage.hidden = true;
+  settingsPage.hidden = false;
+  wikiFrame.hidden = true;
+  planPrompt.hidden = true;
+  dashboardButton.classList.add("active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
+  workspace.classList.add("settings-mode");
+  currentPage.textContent = "Settings";
+  currentPage.title = "/settings";
+  openPage.href = "/settings";
+  wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  if (`${location.pathname}${location.hash}` !== "/settings") {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method](null, "", "/settings");
+  }
+}
+
 function hideDashboardPage() {
   dashboardPage.hidden = true;
+  settingsPage.hidden = true;
   wikiFrame.hidden = false;
   dashboardButton.classList.remove("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
 }
@@ -438,6 +671,10 @@ function hideDashboardPage() {
 function activateWorkspaceLocation(path) {
   if (isDashboardPath(path)) {
     void showDashboardPage({ replace: true });
+    return;
+  }
+  if (isSettingsPath(path)) {
+    void showSettingsPage({ replace: true });
     return;
   }
   hideDashboardPage();
@@ -448,11 +685,14 @@ function isDashboardPath(path) {
   return path === "/dashboard" || path === "dashboard";
 }
 
+function isSettingsPath(path) {
+  return path === "/settings" || path === "settings";
+}
+
 function setTopbarPanelOpen(panel, open) {
   const panels = {
     projects: { panel: projectPanel, button: projectToggle },
-    "up-next": { panel: upNextPopover, button: upNextButton },
-    settings: { panel: settingsPanel, button: settingsButton }
+    "up-next": { panel: upNextPopover, button: upNextButton }
   };
   Object.entries(panels).forEach(([name, item]) => {
     const isOpen = name === panel && open;
@@ -464,10 +704,8 @@ function setTopbarPanelOpen(panel, open) {
 function closeTopbarPanels() {
   projectPanel.hidden = true;
   upNextPopover.hidden = true;
-  settingsPanel.hidden = true;
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
-  settingsButton.setAttribute("aria-expanded", "false");
 }
 
 function closeExecuteMenu() {
@@ -490,7 +728,7 @@ async function loadProjects() {
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
-  if (activeProject && !prettyWorkspacePath(location.pathname) && location.pathname !== "/dashboard") {
+  if (activeProject && !prettyWorkspacePath(location.pathname) && location.pathname !== "/dashboard" && location.pathname !== "/settings") {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
   if (data.projects.length <= 1) {
@@ -533,6 +771,972 @@ async function loadDashboard() {
   } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
   }
+}
+
+async function loadSettings() {
+  try {
+    settingsState = await api("/api/settings");
+    renderSettings(settingsState);
+    applyTheme(settingsState);
+  } catch (error) {
+    setSettingsStatus(error.message || "Settings unavailable.");
+  }
+}
+
+function renderSettings(settings) {
+  if (!settings) return;
+  renderThemeSummary(settings);
+  renderAgentSummary(settings);
+  soulPrinciples.value = (settings.soul?.principles || []).join("\n");
+  soulInterface.value = settings.soul?.interface || "";
+  soulAgent.value = settings.soul?.agent || "";
+  renderMemory(settings.memory?.entries || []);
+}
+
+function renderThemeSummary(settings) {
+  const theme = effectiveTheme(settings);
+  themeTitle.textContent = themeDisplayName(settings);
+  const heroColors = [
+    theme.tokens.ui.bg,
+    theme.tokens.ui.panel,
+    theme.tokens.ui.accent,
+    theme.tokens.docs.bg,
+    theme.tokens.docs.link,
+    theme.tokens.terminal.bg,
+    theme.tokens.terminal.accent
+  ];
+  themeHeroSwatches.replaceChildren(...heroColors.map((color) => {
+    const swatch = document.createElement("span");
+    swatch.style.background = color;
+    return swatch;
+  }));
+  themeSummary.replaceChildren(...themeSurfaces.map((surface) => {
+    const tokens = theme.tokens[surface.key] || {};
+    const section = document.createElement("article");
+    section.className = "theme-summary-surface";
+    const heading = document.createElement("header");
+    const title = document.createElement("strong");
+    title.textContent = surface.label;
+    const description = document.createElement("span");
+    description.textContent = surface.description;
+    heading.append(title, description);
+    const swatches = document.createElement("div");
+    swatches.className = "theme-swatches";
+    surface.colorTokens.forEach((token) => {
+      const swatch = document.createElement("span");
+      swatch.title = `${token}: ${tokens[token] || ""}`;
+      swatch.style.background = tokens[token] || "transparent";
+      swatches.append(swatch);
+    });
+    const fonts = document.createElement("dl");
+    fonts.className = "theme-font-list";
+    surface.fontTokens.forEach((token) => {
+      const row = document.createElement("div");
+      const dt = document.createElement("dt");
+      dt.textContent = readableTokenName(token);
+      const dd = document.createElement("dd");
+      dd.textContent = fontLabelForValue(tokens[token]);
+      row.append(dt, dd);
+      fonts.append(row);
+    });
+    section.append(heading, swatches);
+    if (surface.fontTokens.length > 0) section.append(fonts);
+    return section;
+  }));
+}
+
+function renderAgentSummary(settings) {
+  const principles = settings.soul?.principles || [];
+  const enabledMemory = (settings.memory?.entries || []).filter((entry) => entry.enabled !== false && (entry.title || entry.content));
+  const cards = [
+    agentSummaryCard("Soul", `${principles.length} principles`, principles.slice(0, 3)),
+    agentSummaryCard("Agent", "Guidance", [settings.soul?.agent || "No agent guidance recorded."]),
+    agentSummaryCard("Memory", `${enabledMemory.length} enabled`, enabledMemory.slice(0, 3).map((entry) => entry.title || entry.content))
+  ];
+  agentSummary.replaceChildren(...cards);
+}
+
+function agentSummaryCard(title, meta, lines) {
+  const card = document.createElement("article");
+  card.className = "agent-summary-card";
+  const header = document.createElement("header");
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  const status = document.createElement("span");
+  status.textContent = meta;
+  header.append(heading, status);
+  const list = document.createElement("ul");
+  const values = lines.length > 0 ? lines : ["No entries added yet."];
+  values.forEach((line) => {
+    const item = document.createElement("li");
+    item.textContent = line;
+    list.append(item);
+  });
+  card.append(header, list);
+  return card;
+}
+
+function themeDisplayName(settings) {
+  if (hasThemeOverrides(settings.theme)) return "Custom";
+  const preset = settings.theme?.presets?.[settings.theme?.activePreset || "paper"];
+  return preset?.label || "Custom";
+}
+
+function hasThemeOverrides(theme) {
+  return Object.keys(theme?.customTokens || {}).some((surface) =>
+    Object.keys(theme.customTokens?.[surface] || {}).length > 0
+  );
+}
+
+function fontLabelForValue(value = "") {
+  return fontOptions.find((font) => font.value === value)?.label || value.split(",")[0].replaceAll("\"", "") || "Default";
+}
+
+function readableTokenName(token) {
+  return token.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function renderMemory(entries) {
+  const normalized = Array.isArray(entries) ? entries : [];
+  if (normalized.length === 0) {
+    memoryList.replaceChildren(emptyMemoryItem());
+    return;
+  }
+  memoryList.replaceChildren(...normalized.map((entry, index) => memoryEntryRow(entry, index)));
+}
+
+function emptyMemoryItem() {
+  const item = document.createElement("p");
+  item.className = "memory-empty";
+  item.textContent = "No memory entries added yet...";
+  return item;
+}
+
+function memoryEntryRow(entry, index) {
+  const row = document.createElement("article");
+  row.className = "memory-entry";
+  const title = document.createElement("input");
+  title.value = entry.title || "";
+  title.placeholder = "Title";
+  title.addEventListener("input", () => {
+    if (agentDraft) agentDraft.memory.entries[index].title = title.value;
+  });
+  const content = document.createElement("textarea");
+  content.rows = 3;
+  content.value = entry.content || "";
+  content.placeholder = "Memory";
+  content.addEventListener("input", () => {
+    if (agentDraft) agentDraft.memory.entries[index].content = content.value;
+  });
+  const enabled = document.createElement("label");
+  enabled.className = "memory-enabled";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = entry.enabled !== false;
+  checkbox.addEventListener("change", () => {
+    if (agentDraft) agentDraft.memory.entries[index].enabled = checkbox.checked;
+  });
+  enabled.append(checkbox, "Enabled");
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "memory-remove";
+  remove.textContent = "Remove";
+  remove.addEventListener("click", () => {
+    if (!agentDraft) return;
+    agentDraft.memory.entries.splice(index, 1);
+    renderMemory(agentDraft.memory.entries);
+  });
+  row.append(title, content, enabled, remove);
+  return row;
+}
+
+async function saveSettings() {
+  if (!settingsState) return;
+  const next = {
+    ...settingsState,
+    soul: {
+      principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
+      interface: soulInterface.value.trim(),
+      agent: soulAgent.value.trim()
+    },
+    memory: {
+      entries: (settingsState.memory?.entries || []).map((entry) => ({
+        id: entry.id || crypto.randomUUID(),
+        title: String(entry.title || "").trim(),
+        content: String(entry.content || "").trim(),
+        enabled: entry.enabled !== false,
+        updatedAt: new Date().toISOString()
+      })).filter((entry) => entry.title || entry.content)
+    }
+  };
+  setSettingsStatus("Saving...");
+  settingsState = await api("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(next)
+  });
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+  setSettingsStatus("Saved.");
+}
+
+function openAgentEditor() {
+  if (!settingsState) return;
+  agentDraft = {
+    soul: structuredClone(settingsState.soul || {}),
+    memory: structuredClone(settingsState.memory || { entries: [] })
+  };
+  settingsLayout.hidden = true;
+  agentEditor.hidden = false;
+  settingsPage.classList.add("agent-editing");
+  renderAgentEditor();
+  void loadAgentsFilePreview();
+}
+
+function closeAgentEditor() {
+  agentDraft = null;
+  agentsFileDraft = "";
+  agentEditor.hidden = true;
+  settingsLayout.hidden = false;
+  settingsPage.classList.remove("agent-editing");
+}
+
+function renderAgentEditor() {
+  if (!agentDraft) return;
+  soulPrinciples.value = (agentDraft.soul?.principles || []).join("\n");
+  soulInterface.value = agentDraft.soul?.interface || "";
+  soulAgent.value = agentDraft.soul?.agent || "";
+  renderMemory(agentDraft.memory?.entries || []);
+}
+
+function updateAgentsFileDraftFromFields() {
+  if (!agentDraft) return;
+  agentDraft.soul = currentSoulDraftFromFields();
+  const block = renderAgentsManagedBlock({
+    soul: agentDraft.soul,
+    memory: agentDraft.memory || { entries: [] }
+  });
+  agentsFileDraft = replaceManagedAgentsBlock(agentsFileDraft || agentsFileContent.value, block);
+  agentsFileContent.value = agentsFileDraft;
+}
+
+function currentSoulDraftFromFields() {
+  return {
+    principles: soulPrinciples.value.split("\n").map((line) => line.trim()).filter(Boolean),
+    interface: soulInterface.value.trim(),
+    agent: soulAgent.value.trim()
+  };
+}
+
+function renderAgentsManagedBlock(settings) {
+  const soul = settings.soul || {};
+  const principles = Array.isArray(soul.principles) ? soul.principles.filter(Boolean) : [];
+  const memories = (settings.memory?.entries || [])
+    .filter((entry) => entry.enabled !== false && String(entry.content || "").trim())
+    .map((entry) => ({
+      title: String(entry.title || "").trim(),
+      content: String(entry.content || "").trim()
+    }));
+  return `<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->
+## HyperWiki Global Context
+
+### Soul
+
+${principles.length ? principles.map((item) => `- ${item}`).join("\n") : "- No global soul principles recorded."}
+
+Interface guidance: ${soul.interface || "Use HyperWiki's default interface guidance."}
+
+Agent guidance: ${soul.agent || "Use HyperWiki's default agent guidance."}
+
+### Memory
+
+${memories.length ? memories.map((entry) => `- ${entry.title ? `${entry.title}: ` : ""}${entry.content}`).join("\n") : "- No approved global memory entries recorded."}
+<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->`;
+}
+
+function replaceManagedAgentsBlock(content, block) {
+  const start = "<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->";
+  const end = "<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->";
+  if (content.includes(start) && content.includes(end)) {
+    return content.replace(new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}`), block);
+  }
+  return `${content.trimEnd()}${content.trim() ? "\n\n" : ""}${block}\n`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function saveAgentInstructions() {
+  if (!settingsState || !agentDraft) return;
+  agentSave.disabled = true;
+  setSettingsStatus("Saving agent instructions...");
+  const next = {
+    ...settingsState,
+    soul: currentSoulDraftFromFields(),
+    memory: {
+      entries: (agentDraft.memory?.entries || []).map((entry) => ({
+        id: entry.id || crypto.randomUUID(),
+        title: String(entry.title || "").trim(),
+        content: String(entry.content || "").trim(),
+        enabled: entry.enabled !== false,
+        updatedAt: new Date().toISOString()
+      })).filter((entry) => entry.title || entry.content)
+    }
+  };
+  try {
+    settingsState = await api("/api/settings", {
+      method: "PUT",
+      body: JSON.stringify(next)
+    });
+    updateAgentsFileDraftFromFields();
+    const result = await api(projectPath("/api/settings/sync-agents"), {
+      method: "POST",
+      body: JSON.stringify({ content: agentsFileContent.value })
+    });
+    renderSettings(settingsState);
+    await loadAgentsFilePreview();
+    closeAgentEditor();
+    setSettingsStatus("Agent instructions saved", "success");
+  } catch (error) {
+    setSettingsStatus(error.message || "Could not save agent instructions.");
+  } finally {
+    agentSave.disabled = false;
+  }
+}
+
+async function loadAgentsFilePreview() {
+  agentsFilePath.textContent = "Loading";
+  agentsFileContent.value = "";
+  try {
+    const result = await api(projectPath("/api/settings/agents-file"));
+    agentsFilePath.textContent = result.path || "AGENTS.md";
+    agentsFileDraft = result.content || "";
+    updateAgentsFileDraftFromFields();
+  } catch (error) {
+    agentsFilePath.textContent = "Unavailable";
+    agentsFileContent.value = error.message || "Could not load AGENTS.md.";
+  }
+}
+
+function openThemeEditor() {
+  if (!settingsState) return;
+  themeDraft = structuredClone(settingsState.theme);
+  themeDraftSimple = simpleThemeFromTokens(effectiveTheme({ theme: themeDraft }));
+  settingsLayout.hidden = true;
+  themeEditor.hidden = false;
+  settingsPage.classList.add("theme-editing");
+  renderThemeEditor();
+  applyThemePreview(effectiveTheme({ theme: themeDraft }));
+}
+
+function closeThemeEditor() {
+  themeDraft = null;
+  themeDraftSimple = null;
+  themePresetPickerOpen = false;
+  themeEditor.hidden = true;
+  settingsLayout.hidden = false;
+  settingsPage.classList.remove("theme-editing");
+  clearThemePreview();
+}
+
+function renderThemeEditor() {
+  const presets = themeDraft?.presets || {};
+  const activePreset = themeDraft?.activePreset || "paper";
+  themePresetBar.replaceChildren(themeSelectedPreset(activePreset, presets[activePreset]));
+  themePresetPicker.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset, "picker")));
+  themePresetBar.hidden = themePresetPickerOpen;
+  themePresetPicker.hidden = !themePresetPickerOpen;
+  themeEditorLayout.hidden = themePresetPickerOpen;
+  const theme = effectiveTheme({ theme: themeDraft });
+  syncSimpleControls();
+  themeControls.replaceChildren(themeTypographySection(theme.tokens));
+  themeJson.value = JSON.stringify(themeDraft || {}, null, 2);
+  loadGoogleFontsForTheme(theme);
+}
+
+function themeSelectedPreset(value, preset) {
+  const wrapper = themePresetCard(value, preset, "selected");
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.id = "theme-preset-edit";
+  edit.className = "theme-preset-edit";
+  edit.textContent = "edit";
+  wrapper.append(edit);
+  return wrapper;
+}
+
+function themePresetCard(value, preset, variant = "") {
+  const tokens = preset.tokens || {};
+  const card = document.createElement(variant === "selected" ? "div" : "button");
+  if (card instanceof HTMLButtonElement) {
+    card.type = "button";
+  }
+  card.className = ["theme-preset-card", variant ? `theme-preset-card-${variant}` : ""].filter(Boolean).join(" ");
+  card.dataset.preset = value;
+  card.setAttribute("aria-pressed", value === themeDraft?.activePreset ? "true" : "false");
+
+  const preview = document.createElement("span");
+  preview.className = "theme-preset-preview";
+  preview.style.setProperty("--preset-ui-bg", tokens.ui?.bg || "#f7f7f4");
+  preview.style.setProperty("--preset-docs-bg", tokens.docs?.bg || "#fbfaf4");
+  preview.style.setProperty("--preset-terminal-bg", tokens.terminal?.bg || "#272822");
+  preview.style.setProperty("--preset-primary", tokens.ui?.accent || "#276ef1");
+  preview.style.setProperty("--preset-secondary", tokens.docs?.link || tokens.ui?.accent || "#276ef1");
+  preview.innerHTML = "<i></i><b></b><em></em><strong></strong>";
+
+  const text = variant === "selected" ? themeSelectedPresetText(value, preset, tokens) : themeCompactPresetText(value, preset, tokens);
+  card.append(preview, text);
+  return card;
+}
+
+function themeCompactPresetText(value, preset, tokens) {
+  const text = document.createElement("span");
+  text.className = "theme-preset-text";
+  const label = document.createElement("strong");
+  label.textContent = preset.label || value;
+  const docsFont = document.createElement("span");
+  docsFont.className = "theme-preset-body-font";
+  docsFont.textContent = fontLabel(tokens.docs?.serifFont);
+  docsFont.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
+  const uiFont = document.createElement("span");
+  uiFont.className = "theme-preset-mono-font";
+  uiFont.textContent = fontLabel(tokens.ui?.sidebarFont);
+  uiFont.style.fontFamily = tokens.ui?.sidebarFont || "var(--sidebar-font)";
+  text.append(label, docsFont, uiFont);
+  return text;
+}
+
+function themeSelectedPresetText(value, preset, tokens) {
+  const text = document.createElement("span");
+  text.className = "theme-preset-text theme-preset-text-selected";
+  const header = document.createElement("span");
+  header.className = "theme-preset-selected-header";
+  const label = document.createElement("strong");
+  label.textContent = preset.label || value;
+  const previewSentence = "The quick brown fox jumps over the lazy dog...";
+  const bodySpec = document.createElement("span");
+  bodySpec.className = "theme-preset-selected-type theme-preset-selected-body";
+  bodySpec.innerHTML = `<small>Text</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>${previewSentence}</em>`;
+  bodySpec.style.fontFamily = tokens.docs?.serifFont || "var(--docs-serif-font)";
+  const monoSpec = document.createElement("span");
+  monoSpec.className = "theme-preset-selected-type theme-preset-selected-mono";
+  monoSpec.innerHTML = `<small>Mono</small><b>AaBbCcDdEeFfGgHhIiJjKkLlMm</b><em>${previewSentence}</em>`;
+  monoSpec.style.fontFamily = tokens.docs?.monoFont || "var(--docs-mono-font)";
+  header.append(label, bodySpec, monoSpec);
+
+  const chips = document.createElement("span");
+  chips.className = "theme-preset-selected-chips";
+  [
+    ["Background", tokens.docs?.bg],
+    ["Surface", tokens.ui?.panel],
+    ["Accent", tokens.ui?.accent],
+    ["Ink", tokens.docs?.text]
+  ].forEach(([name, color]) => {
+    const chip = document.createElement("span");
+    const swatch = document.createElement("i");
+    swatch.style.background = color || "transparent";
+    const caption = document.createElement("small");
+    caption.textContent = name;
+    chip.append(swatch, caption);
+    chips.append(chip);
+  });
+  text.append(header, chips);
+  return text;
+}
+
+function fontLabel(value) {
+  return fontOptions.find((font) => font.value === value)?.label || "Custom";
+}
+
+function themeTypographySection(tokens) {
+  const section = document.createElement("section");
+  section.className = "theme-control-section theme-typography-controls";
+  const heading = document.createElement("header");
+  const title = document.createElement("strong");
+  title.textContent = "Typography";
+  const description = document.createElement("span");
+  description.textContent = "Body, mono, and sidebar font behavior";
+  heading.append(title, description);
+  const controls = document.createElement("div");
+  controls.className = "theme-typography-grid";
+  const bodyFont = tokens.docs?.serifFont || defaultBodyFont("serif");
+  const monoFont = tokens.docs?.monoFont || defaultTerminalFont();
+  const bodyKind = bodyFont.includes("sans-serif") ? "sans" : "serif";
+  const sidebarSource = tokens.ui?.sidebarFont === bodyFont ? "body" : "mono";
+  controls.append(
+    selectControl("Body Style", [
+      { label: "Serif", value: "serif" },
+      { label: "Sans Serif", value: "sans" }
+    ], bodyKind, (value) => {
+      const nextBody = defaultBodyFont(value);
+      setThemeTypography({
+        bodyFont: nextBody,
+        monoFont: currentThemeTokens().docs?.monoFont || monoFont,
+        sidebarSource: currentSidebarSource(currentThemeTokens(), bodyFont)
+      });
+    }),
+    selectControl("Body Font", bodyFontOptions(bodyKind), bodyFont, (value) => {
+      setThemeTypography({
+        bodyFont: value,
+        monoFont: currentThemeTokens().docs?.monoFont || monoFont,
+        sidebarSource: currentSidebarSource(currentThemeTokens(), bodyFont)
+      });
+    }),
+    selectControl("Mono Font", monoFontOptions, monoFont, (value) => {
+      const current = currentThemeTokens();
+      setThemeTypography({
+        bodyFont: current.docs?.serifFont || bodyFont,
+        monoFont: value,
+        sidebarSource: currentSidebarSource(current, bodyFont)
+      });
+    }),
+    selectControl("Sidebar", [
+      { label: "Body copy font", value: "body" },
+      { label: "Mono font", value: "mono" }
+    ], sidebarSource, (value) => {
+      const current = currentThemeTokens();
+      setThemeTypography({
+        bodyFont: current.docs?.serifFont || bodyFont,
+        monoFont: current.docs?.monoFont || monoFont,
+        sidebarSource: value
+      });
+    })
+  );
+  section.append(heading, controls);
+  return section;
+}
+
+function selectControl(labelText, options, value, onChange) {
+  const label = document.createElement("label");
+  label.className = "settings-field";
+  const name = document.createElement("span");
+  name.textContent = labelText;
+  const select = document.createElement("select");
+  options.forEach((font) => {
+    const option = document.createElement("option");
+    option.value = font.value;
+    option.textContent = font.label;
+    select.append(option);
+  });
+  select.value = options.some((option) => option.value === value) ? value : options[0]?.value;
+  select.addEventListener("change", () => {
+    onChange(select.value);
+  });
+  label.append(name, select);
+  return label;
+}
+
+function setThemeTypography({ bodyFont, monoFont, sidebarSource }) {
+  if (!themeDraft) return;
+  const sidebarFont = sidebarSource === "body" ? bodyFont : monoFont;
+  themeDraftSimple.terminalFont = monoFont;
+  setThemeDraftToken("docs", "serifFont", bodyFont);
+  setThemeDraftToken("docs", "monoFont", monoFont);
+  setThemeDraftToken("terminal", "font", monoFont);
+  setThemeDraftToken("ui", "sidebarFont", sidebarFont);
+  const theme = effectiveTheme({ theme: themeDraft });
+  themeControls.replaceChildren(themeTypographySection(theme.tokens));
+  themeJson.value = JSON.stringify(themeDraft, null, 2);
+  applyThemePreview(theme);
+  loadGoogleFontsForTheme(theme);
+}
+
+function setThemeDraftToken(surface, token, value) {
+  if (!themeDraft) return;
+  themeDraft.customTokens ||= {};
+  themeDraft.customTokens[surface] ||= {};
+  const presetValue = themeDraft.presets?.[themeDraft.activePreset]?.tokens?.[surface]?.[token];
+  if (value === presetValue) {
+    delete themeDraft.customTokens[surface][token];
+    if (Object.keys(themeDraft.customTokens[surface]).length === 0) {
+      delete themeDraft.customTokens[surface];
+    }
+  } else {
+    themeDraft.customTokens[surface][token] = value;
+  }
+}
+
+function currentThemeTokens() {
+  return effectiveTheme({ theme: themeDraft }).tokens;
+}
+
+function currentSidebarSource(tokens, fallbackBodyFont) {
+  return tokens.ui?.sidebarFont === (tokens.docs?.serifFont || fallbackBodyFont) ? "body" : "mono";
+}
+
+function bodyFontOptions(kind) {
+  return kind === "sans" ? sansFontOptions : serifFontOptions;
+}
+
+function defaultBodyFont(kind) {
+  return (kind === "sans" ? sansFontOptions : serifFontOptions)[0]?.value || fontOptions[0].value;
+}
+
+function updateThemeDraftFromSimpleControls() {
+  if (!themeDraft) return;
+  themeDraftSimple = {
+    mode: themeMode.value === "dark" ? "dark" : "light",
+    primary: themePrimary.value,
+    secondary: themeDraftSimple?.secondary === "" ? "" : normalizeColorOrEmpty(themeSecondary.value),
+    terminalMode: ["light", "dark"].includes(themeTerminalMode.value) ? themeTerminalMode.value : "match",
+    terminalFont: themeDraftSimple?.terminalFont || currentThemeTokens().terminal?.font || defaultTerminalFont(),
+    terminalAccent: normalizeColor(themeTerminalAccent.value || themePrimary.value)
+  };
+  applyGeneratedThemeTokens();
+}
+
+function syncSimpleControls() {
+  if (!themeDraftSimple) return;
+  themeMode.value = themeDraftSimple.mode;
+  themePrimary.value = normalizeColor(themeDraftSimple.primary);
+  const derivedSecondary = derivedSecondaryColor(themeDraftSimple.primary, themeDraftSimple.mode);
+  const hasSecondary = Boolean(themeDraftSimple.secondary);
+  themeSecondary.value = normalizeColor(themeDraftSimple.secondary || derivedSecondary);
+  themeSecondaryToggle.classList.toggle("is-empty", !hasSecondary);
+  themeSecondaryToggle.style.setProperty("--secondary-color", hasSecondary ? normalizeColor(themeDraftSimple.secondary) : "transparent");
+  themeSecondaryClear.hidden = !hasSecondary;
+  themeTerminalMode.value = themeDraftSimple.terminalMode || "match";
+  themeTerminalAccent.value = normalizeColor(themeDraftSimple.terminalAccent || themeDraftSimple.primary);
+}
+
+function applyGeneratedThemeTokens() {
+  if (!themeDraft || !themeDraftSimple) return;
+  const generated = generateThemeTokens(themeDraftSimple);
+  themeDraft.customTokens = deepMerge(themeDraft.customTokens || {}, generated);
+  themeJson.value = JSON.stringify(themeDraft, null, 2);
+  const theme = effectiveTheme({ theme: themeDraft });
+  applyThemePreview(theme);
+  loadGoogleFontsForTheme(theme);
+}
+
+async function saveThemeDraft() {
+  if (!settingsState || !themeDraft) return;
+  setSettingsStatus("Saving theme...");
+  const next = {
+    ...settingsState,
+    theme: structuredClone(themeDraft)
+  };
+  settingsState = await api("/api/settings", {
+    method: "PUT",
+    body: JSON.stringify(next)
+  });
+  renderSettings(settingsState);
+  applyTheme(settingsState);
+  closeThemeEditor();
+  setSettingsStatus("Theme saved.");
+}
+
+function setSettingsStatus(message, tone = "") {
+  settingsStatus.textContent = message;
+  settingsStatus.classList.toggle("status-success", tone === "success");
+}
+
+function applyTheme(settings) {
+  const theme = effectiveTheme(settings);
+  loadGoogleFontsForTheme(theme);
+  const root = document.documentElement;
+  root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  setVars(root, {
+    "--bg": theme.tokens.ui.bg,
+    "--panel": theme.tokens.ui.panel,
+    "--border": theme.tokens.ui.border,
+    "--text": theme.tokens.ui.text,
+    "--muted": theme.tokens.ui.muted,
+    "--accent": theme.tokens.ui.accent,
+    "--sidebar-font": theme.tokens.ui.sidebarFont,
+    "--docs-bg": theme.tokens.docs.bg,
+    "--docs-panel": theme.tokens.docs.panel,
+    "--docs-border": theme.tokens.docs.border,
+    "--docs-text": theme.tokens.docs.text,
+    "--docs-muted": theme.tokens.docs.muted,
+    "--docs-link": theme.tokens.docs.link,
+    "--docs-code": theme.tokens.docs.code,
+    "--docs-serif-font": theme.tokens.docs.serifFont,
+    "--docs-mono-font": theme.tokens.docs.monoFont,
+    "--terminal-bg": theme.tokens.terminal.bg,
+    "--terminal-pane": theme.tokens.terminal.pane,
+    "--terminal-toolbar": theme.tokens.terminal.toolbar,
+    "--terminal-header": theme.tokens.terminal.header,
+    "--terminal-border": theme.tokens.terminal.border,
+    "--terminal-text": theme.tokens.terminal.text,
+    "--terminal-muted": theme.tokens.terminal.muted,
+    "--terminal-accent": theme.tokens.terminal.accent,
+    "--terminal-font": theme.tokens.terminal.font || defaultTerminalFont()
+  });
+  applyWikiFrameTheme(theme);
+}
+
+function applyThemePreview(theme) {
+  loadGoogleFontsForTheme(theme);
+  const preview = document.querySelector(".theme-preview-shell");
+  if (!preview) return;
+  preview.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  setVars(preview, {
+    "--bg": theme.tokens.ui.bg,
+    "--panel": theme.tokens.ui.panel,
+    "--border": theme.tokens.ui.border,
+    "--text": theme.tokens.ui.text,
+    "--muted": theme.tokens.ui.muted,
+    "--accent": theme.tokens.ui.accent,
+    "--sidebar-font": theme.tokens.ui.sidebarFont,
+    "--docs-bg": theme.tokens.docs.bg,
+    "--docs-panel": theme.tokens.docs.panel,
+    "--docs-border": theme.tokens.docs.border,
+    "--docs-text": theme.tokens.docs.text,
+    "--docs-muted": theme.tokens.docs.muted,
+    "--docs-link": theme.tokens.docs.link,
+    "--docs-code": theme.tokens.docs.code,
+    "--docs-serif-font": theme.tokens.docs.serifFont,
+    "--docs-mono-font": theme.tokens.docs.monoFont,
+    "--terminal-bg": theme.tokens.terminal.bg,
+    "--terminal-pane": theme.tokens.terminal.pane,
+    "--terminal-toolbar": theme.tokens.terminal.toolbar,
+    "--terminal-header": theme.tokens.terminal.header,
+    "--terminal-border": theme.tokens.terminal.border,
+    "--terminal-text": theme.tokens.terminal.text,
+    "--terminal-muted": theme.tokens.terminal.muted,
+    "--terminal-accent": theme.tokens.terminal.accent,
+    "--terminal-font": theme.tokens.terminal.font || defaultTerminalFont()
+  });
+}
+
+function clearThemePreview() {
+  document.querySelector(".theme-preview-shell")?.removeAttribute("style");
+}
+
+function normalizeColor(value) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "#000000";
+}
+
+function normalizeColorOrEmpty(value) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "";
+}
+
+function simpleThemeFromTokens(theme) {
+  const mode = theme?.mode === "dark" ? "dark" : "light";
+  const terminal = theme?.tokens?.terminal || {};
+  return {
+    mode,
+    primary: normalizeColor(theme?.tokens?.ui?.accent || theme?.tokens?.docs?.link || "#276ef1"),
+    secondary: "",
+    terminalMode: inferTerminalMode(terminal, mode),
+    terminalFont: terminal.font || defaultTerminalFont(),
+    terminalAccent: normalizeColor(terminal.accent || theme?.tokens?.ui?.accent || "#276ef1")
+  };
+}
+
+function generateThemeTokens(simple) {
+  const mode = simple.mode === "dark" ? "dark" : "light";
+  const primary = normalizeColor(simple.primary);
+  const secondary = normalizeColorOrEmpty(simple.secondary) || derivedSecondaryColor(primary, mode);
+  const terminalMode = ["light", "dark"].includes(simple.terminalMode) ? simple.terminalMode : mode;
+  const terminalAccent = ensureAccent(normalizeColor(simple.terminalAccent || primary), terminalMode);
+  const terminalFont = simple.terminalFont || defaultTerminalFont();
+  const terminal = generateTerminalTokens(primary, terminalMode, terminalAccent, terminalFont);
+  if (mode === "dark") {
+    return {
+      ui: {
+        bg: mixHex(primary, "#070807", 0.08),
+        panel: mixHex(primary, "#111310", 0.12),
+        border: mixHex(primary, "#ffffff", 0.24),
+        text: "#f4f5f0",
+        muted: "#aeb5aa",
+        accent: ensureAccent(primary, "dark")
+      },
+      docs: {
+        bg: mixHex(primary, "#0d0e0b", 0.07),
+        panel: mixHex(secondary, "#151611", 0.12),
+        border: mixHex(secondary, "#ffffff", 0.22),
+        text: "#f1ecdf",
+        muted: "#b8b09f",
+        link: ensureAccent(secondary, "dark"),
+        code: mixHex(primary, "#1c1d17", 0.16)
+      },
+      terminal
+    };
+  }
+  return {
+    ui: {
+      bg: mixHex(primary, "#f8f8f4", 0.06),
+      panel: "#ffffff",
+      border: mixHex(primary, "#d8d8d0", 0.14),
+      text: "#20231f",
+      muted: "#62675f",
+      accent: ensureAccent(primary, "light")
+    },
+    docs: {
+      bg: mixHex(secondary, "#fbfaf4", 0.07),
+      panel: "#fffdf8",
+      border: mixHex(secondary, "#ddd7c9", 0.14),
+      text: "#24221d",
+      muted: "#6f695d",
+      link: ensureAccent(secondary, "light"),
+      code: mixHex(secondary, "#efede4", 0.12)
+    },
+    terminal
+  };
+}
+
+function derivedSecondaryColor(primary, mode) {
+  return mixHex(normalizeColor(primary), mode === "dark" ? "#ffffff" : "#000000", 0.32);
+}
+
+function generateTerminalTokens(primary, mode, accent, font) {
+  if (mode === "light") {
+    return {
+      bg: mixHex(primary, "#f8faf7", 0.05),
+      pane: "#ffffff",
+      toolbar: mixHex(primary, "#eff3ef", 0.08),
+      header: mixHex(primary, "#e8eee9", 0.1),
+      border: mixHex(primary, "#cbd5cc", 0.16),
+      text: "#1d241f",
+      muted: "#68736c",
+      accent: ensureAccent(accent, "light"),
+      font
+    };
+  }
+  return {
+    bg: mixHex(primary, "#090b09", 0.08),
+    pane: "#090b09",
+    toolbar: mixHex(primary, "#111410", 0.12),
+    header: mixHex(primary, "#151914", 0.14),
+    border: mixHex(primary, "#ffffff", 0.22),
+    text: "#eff5ed",
+    muted: "#a9b2a5",
+    accent: ensureAccent(accent, "dark"),
+    font
+  };
+}
+
+function inferTerminalMode(terminal, fallbackMode) {
+  if (!terminal?.bg) return fallbackMode;
+  return relativeLuminance(hexToRgb(normalizeColor(terminal.bg))) > 0.55 ? "light" : "dark";
+}
+
+function defaultTerminalFont() {
+  return monoFontOptions.find((font) => font.label === "Sometype Mono")?.value || monoFontOptions[0]?.value || fontOptions[0].value;
+}
+
+function ensureAccent(color, mode) {
+  const normalized = normalizeColor(color);
+  const contrastTarget = mode === "dark" ? "#111312" : "#ffffff";
+  if (contrastRatio(normalized, contrastTarget) >= 4.5) return normalized;
+  return mode === "dark" ? mixHex(normalized, "#ffffff", 0.45) : mixHex(normalized, "#000000", 0.38);
+}
+
+function mixHex(a, b, amount) {
+  const left = hexToRgb(normalizeColor(a));
+  const right = hexToRgb(normalizeColor(b));
+  return rgbToHex({
+    r: Math.round(left.r * (1 - amount) + right.r * amount),
+    g: Math.round(left.g * (1 - amount) + right.g * amount),
+    b: Math.round(left.b * (1 - amount) + right.b * amount)
+  });
+}
+
+function contrastRatio(a, b) {
+  const left = relativeLuminance(hexToRgb(a));
+  const right = relativeLuminance(hexToRgb(b));
+  const light = Math.max(left, right);
+  const dark = Math.min(left, right);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function relativeLuminance(rgb) {
+  const values = [rgb.r, rgb.g, rgb.b].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+}
+
+function hexToRgb(hex) {
+  return {
+    r: Number.parseInt(hex.slice(1, 3), 16),
+    g: Number.parseInt(hex.slice(3, 5), 16),
+    b: Number.parseInt(hex.slice(5, 7), 16)
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function loadGoogleFontsForTheme(theme) {
+  const values = [
+    theme.tokens.ui.sidebarFont,
+    theme.tokens.docs.serifFont,
+    theme.tokens.docs.monoFont,
+    theme.tokens.terminal.font
+  ];
+  const families = fontOptions
+    .filter((font) => font.google && values.includes(font.value))
+    .map((font) => font.google);
+  let link = document.getElementById("hyperwiki-google-fonts");
+  if (families.length === 0) {
+    link?.remove();
+    return;
+  }
+  if (!link) {
+    link = document.createElement("link");
+    link.id = "hyperwiki-google-fonts";
+    link.rel = "stylesheet";
+    document.head.append(link);
+  }
+  link.href = `https://fonts.googleapis.com/css2?${families.map((family) => `family=${family}`).join("&")}&display=swap`;
+}
+
+function effectiveTheme(settings) {
+  const activePreset = settings.theme?.activePreset || "paper";
+  const preset = settings.theme?.presets?.[activePreset] || Object.values(settings.theme?.presets || {})[0] || {};
+  return deepMerge(preset, { tokens: settings.theme?.customTokens || {} });
+}
+
+function applyWikiFrameTheme(theme) {
+  try {
+    const doc = wikiFrame.contentDocument;
+    if (!doc) return;
+    let style = doc.getElementById("hyperwiki-theme-vars");
+    if (!style) {
+      style = doc.createElement("style");
+      style.id = "hyperwiki-theme-vars";
+      doc.head.append(style);
+    }
+    style.textContent = `:root {
+  color-scheme: ${theme.mode === "dark" ? "dark" : "light"};
+  --docs-bg: ${theme.tokens.docs.bg};
+  --docs-panel: ${theme.tokens.docs.panel};
+  --docs-border: ${theme.tokens.docs.border};
+  --docs-text: ${theme.tokens.docs.text};
+  --docs-muted: ${theme.tokens.docs.muted};
+  --docs-link: ${theme.tokens.docs.link};
+  --docs-code: ${theme.tokens.docs.code};
+  --docs-serif-font: ${theme.tokens.docs.serifFont};
+  --docs-mono-font: ${theme.tokens.docs.monoFont};
+}`;
+  } catch {
+    // Ignore frame timing and same-origin races.
+  }
+}
+
+function setVars(target, vars) {
+  Object.entries(vars).forEach(([name, value]) => {
+    if (value) target.style.setProperty(name, value);
+  });
+}
+
+function deepMerge(base, override) {
+  const next = structuredClone(base || {});
+  for (const [key, value] of Object.entries(override || {})) {
+    if (value && typeof value === "object" && !Array.isArray(value) && next[key] && typeof next[key] === "object" && !Array.isArray(next[key])) {
+      next[key] = deepMerge(next[key], value);
+    } else {
+      next[key] = structuredClone(value);
+    }
+  }
+  return next;
 }
 
 function renderDashboardIdeas(ideas) {
@@ -955,7 +2159,7 @@ async function switchProject(project) {
 }
 
 function updatePlanPromptVisibility() {
-  planPrompt.hidden = workspace.classList.contains("dashboard-mode") || !terminalSessions.has("agent");
+  planPrompt.hidden = workspace.classList.contains("dashboard-mode") || workspace.classList.contains("settings-mode") || !terminalSessions.has("agent");
 }
 
 function terminalTemplate(name) {
@@ -1297,15 +2501,18 @@ function setCommandBarCompleted(completed) {
 
 function hideEmbeddedWikiHeader() {
   const documentElement = wikiFrame.contentDocument;
-  if (!documentElement || documentElement.getElementById("hyperwiki-embedded-style")) return;
-  const style = documentElement.createElement("style");
-  style.id = "hyperwiki-embedded-style";
-  style.textContent = `
-    .wiki-header { display: none !important; }
-    .wiki-page { padding-top: 32px !important; }
-    .wiki-page > h1 + p:has(a[href*="/wiki/plans/mvp/stage-"]) { display: none !important; }
-  `;
-  documentElement.head.append(style);
+  if (!documentElement) return;
+  if (!documentElement.getElementById("hyperwiki-embedded-style")) {
+    const style = documentElement.createElement("style");
+    style.id = "hyperwiki-embedded-style";
+    style.textContent = `
+      .wiki-header { display: none !important; }
+      .wiki-page { padding-top: 32px !important; }
+      .wiki-page > h1 + p:has(a[href*="/wiki/plans/mvp/stage-"]) { display: none !important; }
+    `;
+    documentElement.head.append(style);
+  }
+  if (settingsState) applyWikiFrameTheme(effectiveTheme(settingsState));
   renderIdeaActionInFrame(documentElement);
 }
 
@@ -1348,9 +2555,10 @@ function pageFromHash() {
 }
 
 function workspaceLocation() {
+  if (location.pathname === "/dashboard") return "/dashboard";
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
-  if (location.pathname === "/dashboard") return "/dashboard";
+  if (location.pathname === "/settings") return "/settings";
   return currentPlanPath;
 }
 
