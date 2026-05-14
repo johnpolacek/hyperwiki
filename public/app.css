@@ -906,6 +906,11 @@ body {
 }
 
 .theme-preset-card[aria-pressed="true"] {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.theme-preset-card-picker[aria-pressed="true"] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -1066,8 +1071,8 @@ body {
 
 .theme-preset-selected-chips {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 92px));
-  gap: 42px;
+  grid-template-columns: repeat(4, minmax(0, 112px));
+  gap: 34px;
   align-items: start;
 }
 
@@ -1078,8 +1083,8 @@ body {
 }
 
 .theme-preset-selected-chips i {
-  width: 42px;
-  height: 42px;
+  width: 84px;
+  height: 28px;
   border: 1px solid var(--border);
   border-radius: 7px;
 }
