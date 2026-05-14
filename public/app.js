@@ -26,7 +26,6 @@ const dashboardIdeas = document.getElementById("dashboard-ideas");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const dashboardStatus = document.getElementById("dashboard-status");
 const projectsStatus = document.getElementById("projects-status");
-const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
 const manageIdeasLink = document.getElementById("manage-ideas-link");
 const ideasList = document.getElementById("ideas-list");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
@@ -310,10 +309,6 @@ dashboardButton.addEventListener("click", (event) => {
 
 settingsButton.addEventListener("click", (event) => {
   event.stopPropagation();
-  void showSettingsPage();
-});
-
-dashboardSettingsButton.addEventListener("click", () => {
   void showSettingsPage();
 });
 
