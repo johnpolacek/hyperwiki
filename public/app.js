@@ -1035,6 +1035,7 @@ function renderThemeEditor() {
   const activePreset = themeDraft?.activePreset || "paper";
   themePresetBar.replaceChildren(themeSelectedPreset(activePreset, presets[activePreset]));
   themePresetPicker.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset, "picker")));
+  themePresetBar.hidden = themePresetPickerOpen;
   themePresetPicker.hidden = !themePresetPickerOpen;
   themeEditorLayout.hidden = themePresetPickerOpen;
   const theme = effectiveTheme({ theme: themeDraft });
