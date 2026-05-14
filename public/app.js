@@ -2190,7 +2190,7 @@ function nextTerminalName(kind) {
 
 function groupWikiPages(pages) {
   const planTree = renderPlanTree(pages.filter((page) => page.path.includes("/wiki/plans/")));
-  const ideaPages = pages.filter((page) => page.path.includes("/wiki/ideas/"));
+  const ideaPages = pages.filter((page) => page.path.includes("/wiki/ideas/") && !page.path.endsWith("/wiki/ideas/index.html"));
   const projectPages = pages.filter((page) =>
     [
       "/wiki/index.html",
