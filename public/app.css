@@ -670,20 +670,20 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-new-button {
   flex: 0 0 auto;
-  min-height: 30px;
-  border: 1px solid #c6c8c0;
-  border-radius: 6px;
-  padding: 6px 8px;
-  background: #fff;
-  color: #20231f;
+  min-height: 40px;
+  border: 1px solid #20231f;
+  border-radius: 7px;
+  padding: 9px 14px;
+  background: #20231f;
+  color: #fff;
   cursor: pointer;
-  font: 700 11px/1.2 var(--sidebar-font);
+  font: 800 13px/1.2 var(--sidebar-font);
+  box-shadow: 0 2px 0 #d8d8d0;
 }
 
 .dashboard-new-button[aria-expanded="true"] {
-  border-color: #20231f;
-  background: #20231f;
-  color: #fff;
+  border-color: #40483f;
+  background: #40483f;
 }
 
 .dashboard-list {
