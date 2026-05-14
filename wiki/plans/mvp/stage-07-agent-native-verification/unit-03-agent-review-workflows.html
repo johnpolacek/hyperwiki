@@ -24,12 +24,14 @@
 <section class="summary">
   <h2>Summary</h2>
 <ul>
-    <li>Status: pending</li>
+    <li>Status: complete</li>
     <li>Add named review workflows for diff review, architecture consistency, security review, and test-gap review.</li>
     <li>Route review prompts into the visible agent terminal with project contract and current plan context.</li>
     <li>Represent review results as runtime evidence until intentionally recorded in the wiki or Git.</li>
-    <li>Current code state: plan modification, dashboard handoff, and Execute prompts can route instructions into an agent terminal, but named review workflow discovery and review-result evidence are not implemented.</li>
-    <li>Verification: browser smoke coverage for workflow discovery and manual dogfood against an active agent session.</li>
+    <li>Implemented: <code>/api/review-workflows</code> exposes named diff, architecture consistency, security, and test-gap review workflows.</li>
+    <li>Implemented: <code>/api/review-workflows/run</code> builds project-contract-aware review prompts and can route them into the visible agent terminal; dry-run mode exposes prompt construction for smoke coverage.</li>
+    <li>Review results are represented as runtime evidence until intentionally recorded in the wiki or Git.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:review-workflows</code>.</li>
   </ul>
 </section>
   </main>

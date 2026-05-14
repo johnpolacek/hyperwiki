@@ -32,6 +32,42 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-14 implementation | Stage 07 MCP surface contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 04 with a versioned <code>/api/mcp-surface</code> endpoint.</li>
+    <li>The surface defines MCP-style resources for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>The surface defines controlled tools for project contract access, current plan lookup, verification loop discovery, review workflow discovery/preparation, and visible agent prompt submission.</li>
+    <li>Tool entries include local endpoint mappings, JSON schemas, read-only/action flags, idempotency, destructive-operation flags, and Localhost Tooling boundaries.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:mcp-surface</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 agent review workflows</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 03 with versioned <code>/api/review-workflows</code> discovery for diff, architecture consistency, security, and test-gap reviews.</li>
+    <li>Added <code>/api/review-workflows/run</code> to build project-contract-aware review prompts and route them into the visible agent terminal, with dry-run prompt preparation for smoke coverage.</li>
+    <li>Review workflow results remain runtime evidence until intentionally recorded in wiki files or Git.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:review-workflows</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 project contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 02 with a versioned <code>/api/project-contract</code> endpoint.</li>
+    <li>The contract composes project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, wiki page index, runtime boundaries, and copy-pasteable agent context.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:contract</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 verification loop model</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 01 with a versioned <code>/api/verification</code> endpoint and the same verification loop model exposed through <code>/api/workspace</code>.</li>
+    <li>Verification loops include command, scope, trigger, status, last run, evidence, manual/automated kind, source, recorded flag, and runtime boundary metadata.</li>
+    <li>Runtime evidence is read from ignored <code>.hyperwiki/state/verification.json</code> and remains separate from canonical wiki/Git truth until intentionally recorded.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:verification</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 source decision | Localhost Tooling identity</h2>
   <ul>
     <li>Decision: hyperwiki should fully claim and identify as Localhost Tooling.</li>

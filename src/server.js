@@ -178,6 +178,26 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await workspaceSummary(project.root, await readConfig(project.root)));
       return;
     }
+    if (url.pathname === "/api/verification") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await verificationSummary(project.root, await readConfig(project.root)));
+      return;
+    }
+    if (url.pathname === "/api/project-contract") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await projectContract(project.root, await readConfig(project.root)));
+      return;
+    }
+    if (url.pathname === "/api/review-workflows") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await reviewWorkflowSummary(project.root, await readConfig(project.root)));
+      return;
+    }
+    if (url.pathname === "/api/mcp-surface") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await mcpSurfaceSummary(project.root, await readConfig(project.root)));
+      return;
+    }
     if (url.pathname === "/api/guardrails") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, guardrailSummary(project.root));
@@ -212,6 +232,15 @@ async function handleRequest(defaultRoot, request, response, context) {
       const inputs = sessionInputFor(context.sessionInputs, project.root);
       const body = await readJsonBody(request);
       const result = await sendAgentPrompt(project, sessionRegistry, inputs, body);
+      await sendJson(response, result);
+      return;
+    }
+    if (url.pathname === "/api/review-workflows/run" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
+      const inputs = sessionInputFor(context.sessionInputs, project.root);
+      const body = await readJsonBody(request);
+      const result = await runReviewWorkflow(project, sessionRegistry, inputs, body);
       await sendJson(response, result);
       return;
     }
@@ -370,6 +399,146 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   };
 }
 
+const reviewWorkflowDefinitions = [
+  {
+    id: "diff-review",
+    label: "Diff Review",
+    scope: "changed-files",
+    description: "Review the current Git diff for behavioral regressions, missing edge cases, accidental churn, and commit readiness.",
+    evidenceType: "review.findings.diff",
+    instructions: [
+      "Inspect the current Git diff and repo status before giving findings.",
+      "Prioritize bugs, regressions, unintended behavior changes, and missing tests.",
+      "Report findings first with file and line references where possible.",
+      "Call out whether the changes look ready to commit after verification."
+    ]
+  },
+  {
+    id: "architecture-review",
+    label: "Architecture Consistency Review",
+    scope: "project-architecture",
+    description: "Check whether the current work matches the documented wiki architecture, source briefs, plan intent, and existing code patterns.",
+    evidenceType: "review.findings.architecture",
+    instructions: [
+      "Compare the current implementation against the active plan, source briefs, and nearby code patterns.",
+      "Identify drift from documented architecture, duplicated concepts, misplaced responsibilities, or unclear boundaries.",
+      "Prefer small corrective changes that preserve the existing system shape.",
+      "Name any plan or source page that needs a durable update."
+    ]
+  },
+  {
+    id: "security-review",
+    label: "Security Review",
+    scope: "trust-boundaries",
+    description: "Review localhost tooling trust boundaries, filesystem access, terminal handoff behavior, user input handling, and runtime state.",
+    evidenceType: "review.findings.security",
+    instructions: [
+      "Focus on concrete security risks in the changed behavior and exposed local endpoints.",
+      "Check trust boundaries around files, credentials, environment variables, terminal sessions, runtime state, and generated prompts.",
+      "Separate confirmed issues from theoretical concerns.",
+      "Recommend minimal mitigations and tests for each confirmed issue."
+    ]
+  },
+  {
+    id: "test-gap-review",
+    label: "Test Gap Review",
+    scope: "verification-coverage",
+    description: "Find missing automated or manual verification coverage for the current plan, changed code paths, and user-visible workflows.",
+    evidenceType: "review.findings.test-gaps",
+    instructions: [
+      "Map the active plan acceptance criteria to existing checks and smoke tests.",
+      "Identify important paths that are untested or only manually tested.",
+      "Recommend focused tests or manual verification loops, avoiding broad low-value coverage.",
+      "Call out any known failing smoke coverage separately from new gaps."
+    ]
+  }
+];
+
+async function reviewWorkflowSummary(root, config) {
+  const contract = await projectContract(root, config);
+  return {
+    version: 1,
+    kind: "hyperwiki.review-workflows",
+    generatedAt: new Date().toISOString(),
+    boundary: "runtime-only-until-recorded",
+    source: "built-in review workflow definitions plus the current project contract",
+    resultTruth: "Review findings are runtime evidence until a human or agent records them in wiki files or Git.",
+    workflows: reviewWorkflowDefinitions.map((workflow) => reviewWorkflowView(workflow)),
+    project: contract.project,
+    plan: contract.plan
+  };
+}
+
+async function runReviewWorkflow(project, sessionRegistry, inputs, body) {
+  const workflowId = typeof body.workflowId === "string" ? body.workflowId : "";
+  const workflow = reviewWorkflowDefinitions.find((item) => item.id === workflowId);
+  if (!workflow) {
+    const error = new Error("Unknown review workflow.");
+    error.statusCode = 404;
+    throw error;
+  }
+  const contract = await projectContract(project.root, await readConfig(project.root));
+  const currentPage = typeof body.currentPage === "string" ? body.currentPage : contract.plan.currentPath || "/wiki/plans/index.html";
+  const prompt = reviewWorkflowPrompt(workflow, contract, currentPage);
+  const evidence = {
+    workflowId: workflow.id,
+    status: body.dryRun === true ? "prepared" : "queued",
+    boundary: "runtime-evidence",
+    recorded: false,
+    evidenceType: workflow.evidenceType
+  };
+  if (body.dryRun === true) {
+    return {
+      ok: true,
+      sent: false,
+      workflow: reviewWorkflowView(workflow),
+      boundary: "runtime-only-until-recorded",
+      evidence,
+      prompt
+    };
+  }
+  const result = await sendAgentPrompt(project, sessionRegistry, inputs, { prompt, currentPage });
+  return {
+    ...result,
+    sent: true,
+    workflow: reviewWorkflowView(workflow),
+    boundary: "runtime-only-until-recorded",
+    evidence
+  };
+}
+
+function reviewWorkflowView(workflow) {
+  return {
+    id: workflow.id,
+    label: workflow.label,
+    scope: workflow.scope,
+    description: workflow.description,
+    requiresAgent: true,
+    resultBoundary: "runtime-evidence",
+    evidenceType: workflow.evidenceType
+  };
+}
+
+function reviewWorkflowPrompt(workflow, contract, currentPage) {
+  return [
+    `Workflow: ${workflow.label}`,
+    `Workflow ID: ${workflow.id}`,
+    `Scope: ${workflow.scope}`,
+    `Current wiki page: ${currentPage}`,
+    "",
+    "Project contract:",
+    contract.agentContext,
+    "",
+    "Review instructions:",
+    ...workflow.instructions.map((instruction) => `- ${instruction}`),
+    "",
+    "Result boundary:",
+    "- Treat the review result as runtime evidence.",
+    "- Do not edit wiki files, commit, or change code unless the user explicitly asks you to act on a finding.",
+    "- If a finding should become durable project knowledge, say exactly where it should be recorded."
+  ].join("\n");
+}
+
 async function saveDroppedFiles(root, body) {
   const files = Array.isArray(body.files) ? body.files : [];
   const saved = [];
@@ -409,6 +578,7 @@ async function workspaceSummary(root, config) {
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
   const status = workspaceStatus(planDashboard.summary, logEntries, wikiPages.pages);
+  const verification = await verificationLoops(root, config, packageManager);
   return {
     plan: {
       title: planDashboard.title || "Plans",
@@ -424,13 +594,434 @@ async function workspaceSummary(root, config) {
       path: "/wiki/sources.html",
       briefs: sourceBriefs
     },
-    verification: [
-      { label: "Syntax checks", command: `${packageManager} run check` },
-      { label: "Browser workspace smoke", command: `${packageManager} run smoke:browser` },
-      { label: "One-command launch smoke", command: `${packageManager} run smoke:launch` },
-      { label: "Local workspace launch", command: "npx hyperwiki" }
-    ],
+    verification,
     layout: layoutConfig(config)
+  };
+}
+
+async function verificationSummary(root, config) {
+  const packageManager = await packageManagerForRoot(root);
+  const loops = await verificationLoops(root, config, packageManager);
+  return {
+    version: 1,
+    boundary: "runtime-only-until-recorded",
+    source: "derived from package scripts and .hyperwiki/config.json",
+    statePath: ".hyperwiki/state/verification.json",
+    recordedTruth: "Verification runs are runtime evidence until a human or agent records the result into wiki files or Git.",
+    loops
+  };
+}
+
+async function projectContract(root, config) {
+  const [workspace, verification, repo, wiki, sources, guardrails] = await Promise.all([
+    workspaceSummary(root, config),
+    verificationSummary(root, config),
+    repoContext(root),
+    listWikiPages(root),
+    sourceBriefSummary(root),
+    Promise.resolve(guardrailSummary(root))
+  ]);
+  const project = {
+    name: String(config.projectName || path.basename(root)),
+    root,
+    canonicalWiki: String(config.canonicalWiki || "html"),
+    runtimeState: String(config.runtimeState || ".hyperwiki/state"),
+    sessions: String(config.sessions || ".hyperwiki/sessions")
+  };
+  const plan = {
+    dashboard: workspace.plan,
+    status: workspace.status,
+    currentPath: workspace.status.currentPath || workspace.plan.path
+  };
+  const agent = {
+    launchCommand: config.agent?.launchCommand ? String(config.agent.launchCommand) : "",
+    handoff: "Use visible terminal handoffs; do not treat runtime evidence as canonical until it is recorded in wiki files or Git."
+  };
+  const contract = {
+    version: 1,
+    kind: "hyperwiki.project-contract",
+    generatedAt: new Date().toISOString(),
+    boundary: "localhost-tooling",
+    project,
+    repo,
+    plan,
+    sources: {
+      indexPath: "/wiki/sources.html",
+      briefs: sources
+    },
+    verification,
+    guardrails,
+    layout: workspace.layout,
+    wiki: {
+      indexPath: "/wiki/index.html",
+      pages: wiki.pages
+    },
+    agent,
+    canonicalTruth: [
+      "wiki/",
+      ".git"
+    ],
+    runtimeTruth: [
+      project.runtimeState,
+      project.sessions,
+      verification.statePath
+    ]
+  };
+  contract.agentContext = agentContextFromContract(contract);
+  return contract;
+}
+
+async function mcpSurfaceSummary(root, config) {
+  const contract = await projectContract(root, config);
+  return {
+    version: 1,
+    kind: "hyperwiki.mcp-surface",
+    generatedAt: new Date().toISOString(),
+    boundary: "localhost-tooling",
+    transportStatus: "defined-not-served",
+    contract: {
+      sourceEndpoint: "/api/project-contract",
+      kind: contract.kind,
+      version: contract.version
+    },
+    project: contract.project,
+    canonicalTruth: contract.canonicalTruth,
+    runtimeTruth: contract.runtimeTruth,
+    resources: mcpResources(contract),
+    tools: mcpTools(contract),
+    useCases: [
+      "Start an agent with current project, plan, source, guardrail, and verification context.",
+      "Let an MCP-capable agent discover verification loops before finishing work.",
+      "Prepare consistent diff, architecture, security, and test-gap review prompts.",
+      "Expose Localhost Tooling trust boundaries without asking agents to scrape the UI.",
+      "Keep runtime evidence separate from durable wiki and Git truth."
+    ],
+    implementationNotes: [
+      "This is the stable surface contract for a future MCP server.",
+      "Read resources may be served directly from the corresponding local HTTP API payloads.",
+      "Action tools must preserve the same permission boundaries as the local HTTP handlers.",
+      "Prompt submission and review workflow execution require an active visible agent session unless dry-run preparation is requested."
+    ]
+  };
+}
+
+function mcpResources(contract) {
+  return [
+    {
+      uri: "hyperwiki://project-contract",
+      name: "Project Contract",
+      description: "Machine-readable project facts, current plan state, source briefs, guardrails, verification loops, layout, wiki pages, and runtime boundaries.",
+      mimeType: "application/json",
+      boundary: "localhost-tooling",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://current-plan",
+      name: "Current Plan",
+      description: "Current planning dashboard status and active plan/unit path derived from repo-visible wiki HTML.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$.plan"
+    },
+    {
+      uri: "hyperwiki://source-index",
+      name: "Source Index",
+      description: "Source index and generated source briefs that define durable product and technical context.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/project-contract",
+      contractPath: "$.sources"
+    },
+    {
+      uri: "hyperwiki://verification-loops",
+      name: "Verification Loops",
+      description: "Configured or inferred verification loops plus latest local runtime evidence.",
+      mimeType: "application/json",
+      boundary: "runtime-evidence",
+      readOnly: true,
+      sourceEndpoint: "/api/verification",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://guardrails",
+      name: "Guardrails",
+      description: "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.",
+      mimeType: "application/json",
+      boundary: "localhost-tooling",
+      readOnly: true,
+      sourceEndpoint: "/api/guardrails",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://review-workflows",
+      name: "Review Workflows",
+      description: "Named agent review workflows for diff, architecture consistency, security, and test-gap review.",
+      mimeType: "application/json",
+      boundary: "runtime-only-until-recorded",
+      readOnly: true,
+      sourceEndpoint: "/api/review-workflows",
+      contractPath: "$"
+    },
+    {
+      uri: "hyperwiki://wiki-pages",
+      name: "Wiki Pages",
+      description: "Repo-visible HTML wiki page index for canonical project knowledge.",
+      mimeType: "application/json",
+      boundary: "canonical-wiki",
+      readOnly: true,
+      sourceEndpoint: "/api/wiki",
+      contractPath: "$.wiki"
+    }
+  ];
+}
+
+function mcpTools(contract) {
+  return [
+    {
+      name: "get_project_contract",
+      title: "Get Project Contract",
+      description: "Return the complete machine-readable project contract.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "localhost-tooling",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/project-contract"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "get_current_plan",
+      title: "Get Current Plan",
+      description: "Return the active plan and current unit derived from the wiki.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "canonical-wiki",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/project-contract",
+        responsePath: "$.plan"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "list_verification_loops",
+      title: "List Verification Loops",
+      description: "Return verification loops and latest local runtime evidence.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-evidence",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/verification"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "list_review_workflows",
+      title: "List Review Workflows",
+      description: "Return available named agent review workflows.",
+      readOnly: true,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-only-until-recorded",
+      mapsTo: {
+        method: "GET",
+        endpoint: "/api/review-workflows"
+      },
+      inputSchema: objectSchema({})
+    },
+    {
+      name: "prepare_review_workflow",
+      title: "Prepare Review Workflow",
+      description: "Build a project-contract-aware review prompt without sending it to a terminal session.",
+      readOnly: false,
+      idempotent: true,
+      destructive: false,
+      boundary: "runtime-evidence",
+      mapsTo: {
+        method: "POST",
+        endpoint: "/api/review-workflows/run",
+        fixedBody: {
+          dryRun: true
+        }
+      },
+      inputSchema: objectSchema({
+        workflowId: {
+          type: "string",
+          enum: reviewWorkflowDefinitions.map((workflow) => workflow.id),
+          description: "Review workflow to prepare."
+        },
+        currentPage: {
+          type: "string",
+          description: "Current wiki page path to include in the handoff."
+        }
+      }, ["workflowId"])
+    },
+    {
+      name: "submit_agent_prompt",
+      title: "Submit Agent Prompt",
+      description: "Send a bounded prompt into the active visible agent terminal session.",
+      readOnly: false,
+      idempotent: false,
+      destructive: false,
+      boundary: "visible-agent-session",
+      requiresActiveAgentSession: true,
+      mapsTo: {
+        method: "POST",
+        endpoint: "/api/agent/prompt"
+      },
+      inputSchema: objectSchema({
+        prompt: {
+          type: "string",
+          description: "Prompt text to route through the visible terminal handoff."
+        },
+        currentPage: {
+          type: "string",
+          description: "Current wiki page path to include in the handoff."
+        }
+      }, ["prompt"])
+    }
+  ].map((tool) => ({
+    ...tool,
+    projectRoot: contract.project.root
+  }));
+}
+
+function objectSchema(properties, required = []) {
+  return {
+    type: "object",
+    additionalProperties: false,
+    properties,
+    required
+  };
+}
+
+function agentContextFromContract(contract) {
+  const verification = contract.verification.loops
+    .map((loop) => `- ${loop.label}: ${loop.command || "manual"} [${loop.status}; ${loop.trigger}]`)
+    .join("\n");
+  return [
+    `Project: ${contract.project.name}`,
+    `Root: ${contract.project.root}`,
+    `Branch: ${contract.repo.git.branch}`,
+    `Current plan: ${contract.plan.status.current}`,
+    `Current path: ${contract.plan.currentPath || "Unknown"}`,
+    `Boundary: ${contract.boundary}; canonical truth lives in ${contract.canonicalTruth.join(" and ")}.`,
+    "Verification loops:",
+    verification || "- None configured",
+    `Runtime evidence remains local until recorded: ${contract.verification.statePath}.`
+  ].join("\n");
+}
+
+async function verificationLoops(root, config, packageManager) {
+  const configured = Array.isArray(config.verification?.loops) ? config.verification.loops : [];
+  const loops = configured.length > 0 ? configured : await defaultVerificationLoops(root, packageManager);
+  const runState = await verificationRunState(root);
+  return loops.map((loop) => normalizeVerificationLoop(loop, runState.get(String(loop.id || slugify(loop.label || loop.command || "verification")))));
+}
+
+async function defaultVerificationLoops(root, packageManager) {
+  const scripts = await packageScripts(root);
+  const loops = [];
+  if (scripts.has("check")) {
+    loops.push({
+      id: "syntax-checks",
+      label: "Syntax checks",
+      command: `${packageManager} run check`,
+      scope: "codebase",
+      trigger: "before commit and finish",
+      kind: "automated",
+      source: "package.json scripts.check"
+    });
+  }
+  if (scripts.has("smoke:browser")) {
+    loops.push({
+      id: "browser-workspace-smoke",
+      label: "Browser workspace smoke",
+      command: `${packageManager} run smoke:browser`,
+      scope: "workspace-ui",
+      trigger: "after browser-visible workflow changes",
+      kind: "automated",
+      source: "package.json scripts.smoke:browser"
+    });
+  }
+  if (scripts.has("smoke:launch")) {
+    loops.push({
+      id: "one-command-launch-smoke",
+      label: "One-command launch smoke",
+      command: `${packageManager} run smoke:launch`,
+      scope: "launch-flow",
+      trigger: "after launch, registry, or route changes",
+      kind: "automated",
+      source: "package.json scripts.smoke:launch"
+    });
+  }
+  loops.push({
+    id: "local-workspace-launch",
+    label: "Local workspace launch",
+    command: "npx hyperwiki",
+    scope: "local-runtime",
+    trigger: "manual dogfood",
+    kind: "manual",
+    source: "hyperwiki CLI"
+  });
+  return loops;
+}
+
+async function packageScripts(root) {
+  try {
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    return new Set(Object.keys(pkg.scripts || {}));
+  } catch {
+    return new Set();
+  }
+}
+
+async function verificationRunState(root) {
+  const statePath = path.join(root, ".hyperwiki", "state", "verification.json");
+  if (!existsSync(statePath)) return new Map();
+  try {
+    const data = JSON.parse(await readFile(statePath, "utf8"));
+    const runs = Array.isArray(data.runs) ? data.runs : [];
+    const latest = new Map();
+    for (const run of runs) {
+      const loopId = String(run.loopId || run.id || "");
+      if (!loopId) continue;
+      const previous = latest.get(loopId);
+      if (!previous || String(previous.ranAt || "") < String(run.ranAt || "")) {
+        latest.set(loopId, run);
+      }
+    }
+    return latest;
+  } catch {
+    return new Map();
+  }
+}
+
+function normalizeVerificationLoop(loop, run = null) {
+  const id = String(loop.id || slugify(loop.label || loop.command || "verification"));
+  return {
+    id,
+    label: String(loop.label || id),
+    command: String(loop.command || ""),
+    scope: String(loop.scope || "project"),
+    trigger: String(loop.trigger || "manual"),
+    status: String(run?.status || loop.status || "unknown"),
+    lastRun: run?.ranAt || loop.lastRun || null,
+    evidence: run?.evidence || loop.evidence || null,
+    kind: String(run?.kind || loop.kind || "automated"),
+    source: String(loop.source || "configuration"),
+    recorded: Boolean(run?.recorded || loop.recorded || false),
+    boundary: run ? "runtime-evidence" : "defined-loop"
   };
 }
 

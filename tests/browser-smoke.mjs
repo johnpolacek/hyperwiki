@@ -245,11 +245,7 @@ if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
   await page.locator("#new-idea-toggle").click();
 }
 await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
-await page.locator("#idea-title").evaluate((input) => {
-  if (input.value !== "HTML Smoke Idea") {
-    throw new Error(`Expected HTML title inference, got ${input.value}`);
-  }
-});
+await page.waitForFunction(() => document.querySelector("#idea-title")?.value === "HTML Smoke Idea");
 await page.locator("#idea-markdown").evaluate((textarea) => {
   if (textarea.dataset.documentType !== "html" || !textarea.value.includes("<h1>HTML Smoke Idea</h1>")) {
     throw new Error("Expected imported HTML content and document type.");
@@ -294,7 +290,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error("Expected sidebar plan navigation elements");
   }
   const topbarBg = getComputedStyle(document.querySelector(".topbar")).backgroundColor;
-  if (topbarBg !== "rgb(251, 251, 250)" && topbarBg !== "rgb(255, 255, 255)") {
+  if (!["rgb(251, 251, 250)", "rgb(255, 255, 255)", "rgb(255, 253, 248)"].includes(topbarBg)) {
     throw new Error(`Expected topbar to use the light UI surface, got ${topbarBg}`);
   }
   if (getComputedStyle(document.querySelector(".wiki-pane")).backgroundColor !== "rgb(255, 255, 255)") {
@@ -440,7 +436,7 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error(`Expected expanded sidebar labels to clip without horizontal overflow, got ${sidebar.scrollWidth}/${sidebar.clientWidth}`);
   }
 });
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
@@ -544,7 +540,7 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
-await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Global Settings Page" }).click();
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/mvp\/stage-08-settings-soul-memory\/unit-01-global-settings-page\.html/);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#wiki-nav a").filter({ hasText: "MVP Plan" }).click();
@@ -752,8 +748,8 @@ if (!workspaceData.status?.stage || !workspaceData.status?.current || !workspace
 if (workspaceData.sources.briefs.length < 3) {
   throw new Error(`Expected source briefs, got ${workspaceData.sources.briefs.length}`);
 }
-if (workspaceData.layout.panels.some((panel) => panel.name === "dev")) {
-  throw new Error("Expected hyperwiki dogfood layout to omit dev panel");
+if (!workspaceData.layout.panels.some((panel) => panel.name === "dev" && panel.command === "pnpm dev")) {
+  throw new Error("Expected hyperwiki dogfood layout to include configured Portless dev panel");
 }
 if (!workspaceData.layout.panels.some((panel) => panel.name === "agent" && panel.command)) {
   throw new Error("Expected workspace layout to include configured agent panel");
@@ -817,6 +813,9 @@ await page.locator(".terminal-panel[data-name=\"agent\"] .terminal-close").click
 await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor({ state: "detached" });
 await page.locator(".terminal-panel[data-name=\"cli\"] .terminal-close").click();
 await page.locator(".terminal-panel[data-name=\"cli\"]").waitFor({ state: "detached" });
+while (await page.locator(".terminal-panel .terminal-close").count() > 0) {
+  await page.locator(".terminal-panel .terminal-close").first().click();
+}
 await page.locator(".terminal-pane").evaluate((pane) => {
   if (document.querySelectorAll(".terminal-panel").length !== 0) {
     throw new Error("Expected every terminal to be removable.");

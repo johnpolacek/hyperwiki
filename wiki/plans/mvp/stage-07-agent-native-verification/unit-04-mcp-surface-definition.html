@@ -24,12 +24,14 @@
 <section class="summary">
   <h2>Summary</h2>
 <ul>
-    <li>Status: pending</li>
+    <li>Status: complete</li>
     <li>Define the first MCP resources and tools around project contract, current plan, source index, verification loops, guardrails, and controlled prompt submission.</li>
     <li>Keep MCP behavior local-first and aligned with existing permission boundaries.</li>
     <li>Document the stable contract before adding broad implementation surface.</li>
-    <li>Current code state: local HTTP APIs cover workspace summaries, guardrails, projects, sessions, ideas, and prompt handoff; no MCP server, resources, tools, or MCP contract tests exist yet.</li>
-    <li>Verification: local contract tests or smoke coverage for MCP-adjacent handlers, plus manual review of permission boundaries.</li>
+    <li>Implemented: <code>/api/mcp-surface</code> defines the first stable MCP-style resources and tools around project contract, current plan, source index, verification loops, guardrails, review workflows, and controlled prompt submission.</li>
+    <li>Implemented: resource/tool entries include local endpoint mappings, JSON schemas, read-only/action flags, idempotency, destructive-operation flags, and Localhost Tooling boundaries.</li>
+    <li>Current code state: the MCP surface is a versioned contract manifest; a full MCP server transport remains future work.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:mcp-surface</code>.</li>
   </ul>
 </section>
   </main>

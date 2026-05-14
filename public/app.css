@@ -2012,6 +2012,11 @@ body {
   background: transparent;
 }
 
+.plan-tree .plan-subtree .plan-subtree > a.completed-plan-link::before {
+  background: #d3d8cf;
+  box-shadow: none;
+}
+
 .plan-tree > a,
 .plan-subtree > a {
   max-width: 100%;
