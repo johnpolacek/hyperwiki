@@ -102,11 +102,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "Unit 01 - Verification Loop Model") {
+if (workspaceSummary.status.current !== "Unit 01 - Global Settings Page") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
-if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.html") {
-  throw new Error(`Expected workspace current path for Stage 07 Unit 01, got ${workspaceSummary.status.currentPath}`);
+if (workspaceSummary.status.currentPath !== "/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html") {
+  throw new Error(`Expected workspace current path for Stage 08 Unit 01, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
@@ -323,6 +323,10 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   const stageOneLink = stageOneLabel.closest("a");
   const stageSevenLink = stageSevenLabel.closest("a");
   const currentPlanLink = document.querySelector("#wiki-nav a.current-plan");
+  const currentStageLinks = [...document.querySelectorAll("#wiki-nav a.current-stage")];
+  if (currentStageLinks.length !== 1 || !currentStageLinks[0].textContent.includes("Stage-08")) {
+    throw new Error(`Expected exactly one current stage marker for Stage 08, got ${currentStageLinks.map((link) => link.textContent.trim()).join(", ")}`);
+  }
   const stageOneBefore = getComputedStyle(stageOneLink, "::before");
   const stageSevenBefore = getComputedStyle(stageSevenLink, "::before");
   const currentPlanBefore = getComputedStyle(currentPlanLink, "::before");

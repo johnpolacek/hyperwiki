@@ -2213,16 +2213,17 @@ function renderPlanTree(pages) {
   section.append(heading);
 
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const currentTargets = currentPlanTargets(sorted);
   const topLevel = sorted.filter((page) => isTopLevelPlanPage(page));
   for (const page of topLevel) {
-    section.append(renderPlanNode(page, sorted));
+    section.append(renderPlanNode(page, sorted, currentTargets));
   }
   return section;
 }
 
-function renderPlanNode(page, pages) {
+function renderPlanNode(page, pages, currentTargets) {
   const children = childPlanPages(page, pages);
-  const state = currentPlanState(page, pages);
+  const state = currentPlanState(page, pages, currentTargets);
   const completed = isCompletedPage(page);
   if (children.length === 0) {
     return renderWikiLink(page, state, { completed });
@@ -2230,10 +2231,10 @@ function renderPlanNode(page, pages) {
   const group = document.createElement("details");
   group.className = `wiki-nav-group plan-subtree${state ? ` ${state}` : ""}${completed ? " completed-plan" : ""}`;
   group.dataset.path = displayWikiPath(page.path);
-  group.open = state || children.some((child) => currentPlanState(child, pages) || hasCurrentDescendant(child, pages));
+  group.open = state || children.some((child) => currentPlanState(child, pages, currentTargets) || hasCurrentDescendant(child, pages, currentTargets));
   const summary = document.createElement("summary");
   summary.append(renderWikiLink(page, state, { completed }));
-  group.append(summary, ...children.map((child) => renderPlanNode(child, pages)));
+  group.append(summary, ...children.map((child) => renderPlanNode(child, pages, currentTargets)));
   return group;
 }
 
@@ -2287,20 +2288,87 @@ function planSortKey(page) {
   return `02-${path}`;
 }
 
-function currentPlanState(page, pages = []) {
+function currentPlanTargets(pages = []) {
+  const dashboard = pages.find((page) => displayWikiPath(page.path).endsWith("/wiki/plans/index.html"));
+  const currentStage = summaryValue(dashboard?.summary, "Current stage");
+  const currentUnit = summaryValue(dashboard?.summary, "Current unit");
+  const explicitStagePage = findPlanPageByLabel(pages, currentStage);
+  const unitPage = findPlanPageByLabel(pages, currentUnit, explicitStagePage);
+  const stagePage = explicitStagePage || parentStagePageForUnit(unitPage, pages);
+  const hasCanonicalCurrent = Boolean(stagePage || unitPage);
+  return {
+    hasCanonicalCurrent,
+    stagePath: stagePage ? displayWikiPath(stagePage.path) : "",
+    unitPath: unitPage ? displayWikiPath(unitPage.path) : ""
+  };
+}
+
+function currentPlanState(page, pages = [], currentTargets = currentPlanTargets(pages)) {
   const path = displayWikiPath(page.path);
+  if (currentTargets.hasCanonicalCurrent) {
+    if (currentTargets.unitPath && path === currentTargets.unitPath) return "current-unit";
+    if (isStagePlanPath(path) && path === currentTargets.stagePath) return "current-stage";
+    if (isTopLevelPlanPage(page) && planPathContains(path, currentTargets.unitPath || currentTargets.stagePath)) return "current-plan";
+    return "";
+  }
   if (isUnitPage(page) && pageStatus(page) === "active") return "current-unit";
   if (isStagePlanPath(path) && (pageStatus(page) === "active" || hasActiveDescendant(page, pages))) return "current-stage";
   if (isTopLevelPlanPage(page) && (pageStatus(page) === "active" || hasActiveDescendant(page, pages))) return "current-plan";
   return "";
 }
 
-function hasCurrentDescendant(page, pages) {
-  return childPlanPages(page, pages).some((child) => currentPlanState(child, pages) || hasCurrentDescendant(child, pages));
+function hasCurrentDescendant(page, pages, currentTargets = currentPlanTargets(pages)) {
+  return childPlanPages(page, pages).some((child) => currentPlanState(child, pages, currentTargets) || hasCurrentDescendant(child, pages, currentTargets));
 }
 
 function hasActiveDescendant(page, pages) {
   return childPlanPages(page, pages).some((child) => pageStatus(child) === "active" || hasActiveDescendant(child, pages));
+}
+
+function findPlanPageByLabel(pages, label, parentPage = null) {
+  if (!label || /^none|complete$/i.test(label)) return null;
+  const normalized = normalizePlanLabel(label);
+  const parentBase = parentPage ? displayWikiPath(parentPage.path).replace(/\.html$/, "") : "";
+  return pages.find((page) => {
+    const path = displayWikiPath(page.path);
+    if (!path.includes("/wiki/plans/")) return false;
+    if (parentBase && !path.startsWith(`${parentBase}/`)) return false;
+    return normalizePlanLabel(page.title) === normalized;
+  }) || null;
+}
+
+function parentStagePageForUnit(unitPage, pages) {
+  if (!unitPage) return null;
+  const unitPath = displayWikiPath(unitPage.path);
+  const match = unitPath.match(/^(\/wiki\/plans\/mvp\/stage-[^/]+)\/unit-\d+-[^/]+\.html$/);
+  if (!match) return null;
+  const stagePath = `${match[1]}.html`;
+  return pages.find((page) => displayWikiPath(page.path) === stagePath) || null;
+}
+
+function summaryValue(items = [], label) {
+  const prefix = `${label}:`;
+  const item = (Array.isArray(items) ? items : []).find((entry) => entry.toLowerCase().startsWith(prefix.toLowerCase()));
+  return item ? item.slice(prefix.length).trim() : "";
+}
+
+function normalizePlanLabel(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+-\s+/g, " - ")
+    .trim()
+    .toLowerCase();
+}
+
+function planPathContains(parentPath, childPath) {
+  const parent = displayWikiPath(parentPath);
+  const child = displayWikiPath(childPath);
+  if (!parent || !child) return false;
+  if (parent === child) return true;
+  const basePath = parent.endsWith("/index.html")
+    ? parent.replace(/\/index\.html$/, "")
+    : parent.replace(/\.html$/, "");
+  return child.startsWith(`${basePath}/`);
 }
 
 function renderWikiLink(page, state = "", options = {}) {
