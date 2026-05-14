@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "portless",
     "dev:app": "node src/cli.js dev",
-    "check": "node --check src/cli.js && node --check src/launch.js && node --check src/reset.js && node --check src/server.js && node --check src/init.js && node --check src/projects.js && node --check src/pty.js && node --check src/sessions.js && node --check src/settings.js && node --check public/app.js && node --check scripts/worktree.mjs && node --check tests/browser-smoke.mjs && node --check tests/ideas-smoke.mjs && node --check tests/init-smoke.mjs && node --check tests/launch-smoke.mjs && node --check tests/pty-smoke.mjs && node --check tests/reset-smoke.mjs && node --check tests/session-retention-smoke.mjs",
+    "dev:open": "node src/cli.js dev --open",
+    "check": "node --check src/cli.js && node --check src/launch.js && node --check src/open.js && node --check src/reset.js && node --check src/server.js && node --check src/init.js && node --check src/projects.js && node --check src/pty.js && node --check src/sessions.js && node --check src/settings.js && node --check public/app.js && node --check scripts/worktree.mjs && node --check tests/browser-smoke.mjs && node --check tests/ideas-smoke.mjs && node --check tests/init-smoke.mjs && node --check tests/launch-smoke.mjs && node --check tests/pty-smoke.mjs && node --check tests/reset-smoke.mjs && node --check tests/session-retention-smoke.mjs",
     "smoke:browser": "node tests/browser-smoke.mjs",
     "smoke:ideas": "node tests/ideas-smoke.mjs",
     "smoke:init": "node tests/init-smoke.mjs",
@@ -28,7 +29,7 @@
   },
   "portless": {
     "name": "hyperwiki",
-    "script": "dev:app"
+    "script": "dev:open"
   },
   "dependencies": {
     "@wterm/core": "^0.3.0",

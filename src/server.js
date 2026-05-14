@@ -8,6 +8,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
+import { openWorkspace } from "./open.js";
 import { createPtySession } from "./pty.js";
 import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
@@ -82,8 +83,19 @@ export async function startDevServer(root, options = {}) {
   const address = server.address();
   const actualPort = typeof address === "object" && address ? address.port : port;
   const url = `http://${host}:${actualPort}`;
+  const workspaceBaseUrl = process.env.PORTLESS_URL || url;
+  const workspaceUrl = `${workspaceBaseUrl}/workspace/`;
   console.log(`hyperwiki dev server running at ${url}`);
-  return { server, host, port: actualPort, url, workspaceUrl: `${url}/workspace/` };
+  if (process.env.PORTLESS_URL) {
+    console.log(`hyperwiki Portless preview: ${workspaceUrl}`);
+  }
+  if (options.open === true || options.open === "true") {
+    const opened = await openWorkspace(workspaceUrl, options);
+    if (!opened) {
+      console.log("Browser open skipped; open the workspace URL manually.");
+    }
+  }
+  return { server, host, port: actualPort, url, workspaceUrl };
 }
 
 async function handleRequest(defaultRoot, request, response, context) {

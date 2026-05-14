@@ -32,7 +32,7 @@ For local development in this repo, use Portless:
 pnpm dev
 ```
 
-Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`.
+Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`. `pnpm dev` opens the active Portless preview URL automatically. Use `pnpm run dev:app` for the direct non-opening server command.
 
 ## Commands
 

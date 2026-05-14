@@ -39,12 +39,19 @@
       </ul>
     </section>
     <section>
+      <h2>Follow-Up</h2>
+      <ul>
+        <li>Make <code>pnpm dev</code> open the active Portless preview URL automatically while preserving a non-opening direct server command for scripts and tests.</li>
+      </ul>
+    </section>
+    <section>
       <h2>Validation</h2>
       <ul>
         <li><code>pnpm run check</code> passed.</li>
         <li><code>pnpm wt:doctor</code>, <code>pnpm wt:list</code>, and dry-run <code>pnpm wt:open main</code> passed.</li>
         <li><code>pnpm run smoke:init</code> and <code>pnpm run smoke:launch</code> passed.</li>
         <li><code>pnpm dev</code> registered <code>https://hyperwiki.localhost:1355</code> with the current fallback proxy and the workspace returned HTTP 200 through Portless.</li>
+        <li>Auto-open follow-up verified with <code>HYPERWIKI_OPEN_DRY_RUN=1</code> under a temporary Portless route and an HTTP 200 workspace response.</li>
       </ul>
     </section>
   </main>
