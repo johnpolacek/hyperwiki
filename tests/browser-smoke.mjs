@@ -104,6 +104,10 @@ await page.evaluate(() => {
     throw new Error("Expected terminal pane chrome to stay visible before a Dashboard agent handoff.");
   }
 });
+await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
+await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Global Settings Page" }).click();
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {

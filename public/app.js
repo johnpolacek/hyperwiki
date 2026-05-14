@@ -2405,7 +2405,12 @@ function renderWikiLink(page, state = "", options = {}) {
   if (state) {
     link.classList.add(state);
   }
-  link.addEventListener("click", closeTopbarPanels);
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeTopbarPanels();
+    activateWorkspaceLocation(page.path);
+  });
   return link;
 }
 
@@ -2639,9 +2644,9 @@ function pageFromHash() {
 }
 
 function workspaceLocation() {
-  if (location.pathname === "/dashboard") return "/dashboard";
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
+  if (location.pathname === "/dashboard") return "/dashboard";
   if (location.pathname === "/settings") return "/settings";
   return currentPlanPath;
 }
