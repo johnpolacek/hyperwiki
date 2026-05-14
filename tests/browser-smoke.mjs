@@ -473,6 +473,9 @@ await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate
   if (Math.abs(elementRect.bottom - sidebarRect.bottom) > 3) {
     throw new Error(`Expected project navigation pinned to sidebar bottom, got ${elementRect.bottom}/${sidebarRect.bottom}`);
   }
+  if (Math.abs(elementRect.right - sidebarRect.right) > 2) {
+    throw new Error(`Expected Project divider to reach sidebar right border, got ${elementRect.right}/${sidebarRect.right}`);
+  }
   const projectSummary = element.querySelector(":scope > summary");
   const projectChevronStyle = getComputedStyle(projectSummary, "::after");
   if (projectChevronStyle.width !== "22px" || projectChevronStyle.paddingRight !== "3px" || projectChevronStyle.textAlign !== "right") {

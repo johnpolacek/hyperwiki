@@ -854,6 +854,8 @@ body {
   bottom: -18px;
   z-index: 4;
   align-self: stretch;
+  width: calc(100% + 20px);
+  max-width: none;
   margin-top: auto;
   margin-right: -20px;
   margin-bottom: -18px;
