@@ -379,11 +379,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-page-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: 18px;
-  border-bottom: 1px solid #d8d8d0;
-  padding-bottom: 18px;
+  padding-bottom: 8px;
 }
 
 .settings-page-header {
