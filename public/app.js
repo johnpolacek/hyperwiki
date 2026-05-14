@@ -297,7 +297,6 @@ function applyThemePreset(preset) {
   themeDraft.activePreset = preset;
   themeDraft.customTokens = {};
   themeDraftSimple = simpleThemeFromTokens(themeDraft.presets?.[themeDraft.activePreset]);
-  themePresetPickerOpen = false;
   renderThemeEditor();
   applyThemePreview(effectiveTheme({ theme: themeDraft }));
 }
