@@ -22,6 +22,15 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 implementation | Stage 07 verification loop model</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 01 with a versioned <code>/api/verification</code> endpoint and the same verification loop model exposed through <code>/api/workspace</code>.</li>
+    <li>Verification loops include command, scope, trigger, status, last run, evidence, manual/automated kind, source, recorded flag, and runtime boundary metadata.</li>
+    <li>Runtime evidence is read from ignored <code>.hyperwiki/state/verification.json</code> and remains separate from canonical wiki/Git truth until intentionally recorded.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:verification</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 source decision | Localhost Tooling identity</h2>
   <ul>
     <li>Decision: hyperwiki should fully claim and identify as Localhost Tooling.</li>

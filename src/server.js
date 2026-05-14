@@ -165,6 +165,11 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await workspaceSummary(project.root, await readConfig(project.root)));
       return;
     }
+    if (url.pathname === "/api/verification") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await verificationSummary(project.root, await readConfig(project.root)));
+      return;
+    }
     if (url.pathname === "/api/guardrails") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, guardrailSummary(project.root));
@@ -396,6 +401,7 @@ async function workspaceSummary(root, config) {
   const logEntries = await htmlHeadings(root, "wiki/log.html", "h2", 5);
   const sourceBriefs = await sourceBriefSummary(root);
   const status = workspaceStatus(planDashboard.summary, logEntries, wikiPages.pages);
+  const verification = await verificationLoops(root, config, packageManager);
   return {
     plan: {
       title: planDashboard.title || "Plans",
@@ -411,13 +417,124 @@ async function workspaceSummary(root, config) {
       path: "/wiki/sources.html",
       briefs: sourceBriefs
     },
-    verification: [
-      { label: "Syntax checks", command: `${packageManager} run check` },
-      { label: "Browser workspace smoke", command: `${packageManager} run smoke:browser` },
-      { label: "One-command launch smoke", command: `${packageManager} run smoke:launch` },
-      { label: "Local workspace launch", command: "npx hyperwiki" }
-    ],
+    verification,
     layout: layoutConfig(config)
+  };
+}
+
+async function verificationSummary(root, config) {
+  const packageManager = await packageManagerForRoot(root);
+  const loops = await verificationLoops(root, config, packageManager);
+  return {
+    version: 1,
+    boundary: "runtime-only-until-recorded",
+    source: "derived from package scripts and .hyperwiki/config.json",
+    statePath: ".hyperwiki/state/verification.json",
+    recordedTruth: "Verification runs are runtime evidence until a human or agent records the result into wiki files or Git.",
+    loops
+  };
+}
+
+async function verificationLoops(root, config, packageManager) {
+  const configured = Array.isArray(config.verification?.loops) ? config.verification.loops : [];
+  const loops = configured.length > 0 ? configured : await defaultVerificationLoops(root, packageManager);
+  const runState = await verificationRunState(root);
+  return loops.map((loop) => normalizeVerificationLoop(loop, runState.get(String(loop.id || slugify(loop.label || loop.command || "verification")))));
+}
+
+async function defaultVerificationLoops(root, packageManager) {
+  const scripts = await packageScripts(root);
+  const loops = [];
+  if (scripts.has("check")) {
+    loops.push({
+      id: "syntax-checks",
+      label: "Syntax checks",
+      command: `${packageManager} run check`,
+      scope: "codebase",
+      trigger: "before commit and finish",
+      kind: "automated",
+      source: "package.json scripts.check"
+    });
+  }
+  if (scripts.has("smoke:browser")) {
+    loops.push({
+      id: "browser-workspace-smoke",
+      label: "Browser workspace smoke",
+      command: `${packageManager} run smoke:browser`,
+      scope: "workspace-ui",
+      trigger: "after browser-visible workflow changes",
+      kind: "automated",
+      source: "package.json scripts.smoke:browser"
+    });
+  }
+  if (scripts.has("smoke:launch")) {
+    loops.push({
+      id: "one-command-launch-smoke",
+      label: "One-command launch smoke",
+      command: `${packageManager} run smoke:launch`,
+      scope: "launch-flow",
+      trigger: "after launch, registry, or route changes",
+      kind: "automated",
+      source: "package.json scripts.smoke:launch"
+    });
+  }
+  loops.push({
+    id: "local-workspace-launch",
+    label: "Local workspace launch",
+    command: "npx hyperwiki",
+    scope: "local-runtime",
+    trigger: "manual dogfood",
+    kind: "manual",
+    source: "hyperwiki CLI"
+  });
+  return loops;
+}
+
+async function packageScripts(root) {
+  try {
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    return new Set(Object.keys(pkg.scripts || {}));
+  } catch {
+    return new Set();
+  }
+}
+
+async function verificationRunState(root) {
+  const statePath = path.join(root, ".hyperwiki", "state", "verification.json");
+  if (!existsSync(statePath)) return new Map();
+  try {
+    const data = JSON.parse(await readFile(statePath, "utf8"));
+    const runs = Array.isArray(data.runs) ? data.runs : [];
+    const latest = new Map();
+    for (const run of runs) {
+      const loopId = String(run.loopId || run.id || "");
+      if (!loopId) continue;
+      const previous = latest.get(loopId);
+      if (!previous || String(previous.ranAt || "") < String(run.ranAt || "")) {
+        latest.set(loopId, run);
+      }
+    }
+    return latest;
+  } catch {
+    return new Map();
+  }
+}
+
+function normalizeVerificationLoop(loop, run = null) {
+  const id = String(loop.id || slugify(loop.label || loop.command || "verification"));
+  return {
+    id,
+    label: String(loop.label || id),
+    command: String(loop.command || ""),
+    scope: String(loop.scope || "project"),
+    trigger: String(loop.trigger || "manual"),
+    status: String(run?.status || loop.status || "unknown"),
+    lastRun: run?.ranAt || loop.lastRun || null,
+    evidence: run?.evidence || loop.evidence || null,
+    kind: String(run?.kind || loop.kind || "automated"),
+    source: String(loop.source || "configuration"),
+    recorded: Boolean(run?.recorded || loop.recorded || false),
+    boundary: run ? "runtime-evidence" : "defined-loop"
   };
 }
 
