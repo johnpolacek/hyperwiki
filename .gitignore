@@ -5,4 +5,7 @@ npm-debug.log*
 .hyperwiki/sessions/
 .hyperwiki/*.log
 
+wiki/ideas/*.html
+!wiki/ideas/index.html
+
 .DS_Store

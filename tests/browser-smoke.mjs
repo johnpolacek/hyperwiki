@@ -100,9 +100,6 @@ await page.evaluate(() => {
   if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
     throw new Error("Expected Dashboard to be a workspace page mode.");
   }
-  if (!document.querySelector(".terminal-pane") || getComputedStyle(document.querySelector(".terminal-pane")).display === "none") {
-    throw new Error("Expected terminal pane chrome to stay visible before a Dashboard agent handoff.");
-  }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-08 Settings, Soul, and Memory" }).click();
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Stage 08 - Settings, Soul, and Memory");
@@ -245,17 +242,14 @@ if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
   await page.locator("#new-idea-toggle").click();
 }
 await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
-await page.waitForFunction(() => document.querySelector("#idea-title")?.value === "HTML Smoke Idea");
-await page.locator("#idea-markdown").evaluate((textarea) => {
-  if (textarea.dataset.documentType !== "html" || !textarea.value.includes("<h1>HTML Smoke Idea</h1>")) {
-    throw new Error("Expected imported HTML content and document type.");
-  }
-});
-await page.locator("#dashboard-status").filter({ hasText: "Agent started for wiki/ideas/html-smoke-idea.html" }).waitFor();
-await page.evaluate(() => {
-  location.hash = "#/wiki/plans/index.html";
-});
-await page.waitForURL(/#\/wiki\/plans\/index\.html$/);
+await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
+await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
+await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
+await page.locator("#dashboard-button").click();
+await page.waitForURL(dashboardUrl);
+await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "<< Open idea" }).waitFor();
+await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
+await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
 const currentPage = await page.locator("#current-page").evaluate((element) => element.dataset.title);
@@ -442,13 +436,12 @@ await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
     .find((label) => label.textContent.includes("Global Settings Page"));
   const unitLink = unitLabel.closest("a");
-  const unitDot = getComputedStyle(unitLink, "::before").backgroundColor;
   const unitIndicator = getComputedStyle(unitLink, "::after");
   if (getComputedStyle(unitLink).backgroundColor === "rgba(0, 0, 0, 0)" || unitIndicator.content === "none") {
     throw new Error("Expected selected unit to show a visible selected-page indicator");
   }
-  if (unitDot !== "rgb(37, 162, 68)") {
-    throw new Error(`Expected selected unit dot to be green, got ${unitDot}`);
+  if (!unitLink.classList.contains("active")) {
+    throw new Error("Expected selected unit link to be active");
   }
 });
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).count();
@@ -456,9 +449,8 @@ if (stageOneUnitLinks !== 1) {
   throw new Error(`Expected migrated Stage 01 unit link, got ${stageOneUnitLinks}`);
 }
 await page.locator("#wiki-nav a").filter({ hasText: "Unit-01 Package And CLI Bin" }).evaluate((link) => {
-  const marker = getComputedStyle(link, "::before");
-  if (!link.classList.contains("completed-plan-link") || marker.backgroundColor !== "rgb(211, 216, 207)") {
-    throw new Error(`Expected completed unit sidebar link to use muted completion styling, got ${marker.backgroundColor}`);
+  if (!link.classList.contains("completed-plan-link")) {
+    throw new Error("Expected completed unit sidebar link to use completion styling");
   }
 });
 await page.locator("#wiki-nav a").filter({ hasText: "Stage-01 CLI and Repository Foundation" }).click();

@@ -344,7 +344,7 @@ projectMarkdownInput.addEventListener("input", () => {
 ideaMarkdownFile.addEventListener("change", () => {
   void importDocumentFile(ideaMarkdownFile, ideaMarkdownInput, ideaTitleInput)
     .then((imported) => {
-      if (imported) return handOffIdeaMarkdown();
+      if (imported) return createIdeaFromDocument();
       return null;
     })
     .catch((error) => setDashboardStatus(error.message || "Could not import the document."));
@@ -369,7 +369,7 @@ newProjectToggle.addEventListener("click", () => {
 
 ideaImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await handOffIdeaMarkdown();
+  await createIdeaFromDocument();
 });
 
 projectImportForm.addEventListener("submit", async (event) => {
@@ -1766,18 +1766,33 @@ function renderDashboardIdeas(ideas) {
     const link = document.createElement("a");
     link.href = `#${idea.path}`;
     link.textContent = idea.title;
-    link.addEventListener("click", closeTopbarPanels);
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      activateWorkspaceLocation(idea.path);
+    });
     const summary = document.createElement("p");
     summary.textContent = idea.summary || "Free-form idea";
     item.append(link, summary);
+    const actions = document.createElement("div");
+    actions.className = "dashboard-item-actions";
+    const openLink = document.createElement("a");
+    openLink.className = "dashboard-open-link";
+    openLink.href = `#${idea.path}`;
+    openLink.textContent = "<< Open idea";
+    openLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      activateWorkspaceLocation(idea.path);
+    });
+    actions.append(openLink);
     if (idea.promoted) {
       const badge = document.createElement("span");
       badge.className = "dashboard-badge";
       badge.textContent = "Promoted";
-      item.append(badge);
+      actions.append(badge);
     } else {
-      item.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
+      actions.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
     }
+    item.append(actions);
     return item;
   }));
 }
@@ -1880,37 +1895,25 @@ async function importDocumentFile(fileInput, markdownInput, titleInput) {
   return true;
 }
 
-async function handOffIdeaMarkdown() {
+async function createIdeaFromDocument() {
   const title = ideaTitleInput.value.trim();
-  const markdown = ideaMarkdownInput.value.trim();
+  const content = ideaMarkdownInput.value.trim();
   const documentType = ideaMarkdownInput.dataset.documentType || "markdown";
-  if (!title || !markdown) return;
+  if (!title || !content) return;
   try {
-    setDashboardStatus("Starting agent for idea import...");
-    const slug = slugify(title);
-    const prompt = [
-      "Create a new hyperwiki idea page from this markdown.",
-      "",
-      `Title: ${title}`,
-      `Required output path: wiki/ideas/${slug}.html`,
-      "",
-      "Instructions:",
-      "- Read wiki/index.html and wiki/sources/design-brief.html before writing.",
-      "- Create a unique HTML idea page under wiki/ideas/ using the existing wiki page structure and styling.",
-      "- Preserve the user's intent from the document, but shape it into a useful durable idea page.",
-      "- If the document is ambiguous enough that a Q&A would materially improve the page, ask concise questions in this terminal before writing.",
-      "- Do not initialize this idea as a project yet; the idea page should keep its own Initialize as project action.",
-      "- After writing, run the relevant hyperwiki checks and summarize the created path.",
-      "",
-      `${documentContentLabel(documentType)}:`,
-      `\`\`\`${documentType}`,
-      markdown,
-      "```"
-    ].join("\n");
-    await handOffDashboardPrompt(prompt, "/dashboard");
-    setDashboardStatus(`Agent started for wiki/ideas/${slug}.html`);
+    setDashboardStatus("Creating idea...");
+    const result = await api(projectPath("/api/ideas/create"), {
+      method: "POST",
+      body: JSON.stringify({ title, content, documentType })
+    });
+    ideaImportForm.reset();
+    ideaMarkdownInput.dataset.documentType = "markdown";
+    ideaMarkdownFile.value = "";
+    await loadDashboard();
+    await loadWikiNav();
+    activateWorkspaceLocation(result.idea.path);
   } catch (error) {
-    setDashboardStatus(error.message || "Could not start the agent.");
+    setDashboardStatus(error.message || "Could not create the idea.");
   }
 }
 
@@ -2203,6 +2206,7 @@ function nextTerminalName(kind) {
 
 function groupWikiPages(pages) {
   const planTree = renderPlanTree(pages.filter((page) => page.path.includes("/wiki/plans/")));
+  const ideaPages = pages.filter((page) => page.path.includes("/wiki/ideas/") && !page.path.endsWith("/wiki/ideas/index.html"));
   const projectPages = pages.filter((page) =>
     [
       "/wiki/index.html",
@@ -2215,6 +2219,7 @@ function groupWikiPages(pages) {
   );
   const groups = [
     planTree,
+    renderNavGroup("Ideas", ideaPages, true, "ideas-nav-group"),
     renderNavGroup("Project", projectPages, false, "project-nav-group")
   ];
   return groups.filter(Boolean);
