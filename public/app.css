@@ -250,12 +250,10 @@ body {
   cursor: not-allowed;
 }
 
-.workspace.dashboard-mode:not(.dashboard-agent-active),
 .workspace.settings-mode {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
-.workspace.dashboard-mode:not(.dashboard-agent-active) .terminal-pane,
 .workspace.settings-mode .terminal-pane {
   display: none;
 }
@@ -2548,6 +2546,7 @@ body {
   background: var(--terminal-bg);
   display: grid;
   grid-auto-rows: minmax(220px, 1fr);
+  align-content: start;
   gap: 1px;
   min-height: 0;
   overflow: auto;
@@ -2558,9 +2557,10 @@ body {
 }
 
 .terminal-empty {
-  align-self: center;
-  justify-self: center;
+  align-self: start;
+  justify-self: start;
   margin: 0;
+  padding: 14px 20px;
   color: #abb5ad;
   font: 12px/1.4 var(--mono-font);
 }

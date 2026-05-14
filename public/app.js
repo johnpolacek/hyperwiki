@@ -18,6 +18,7 @@ const newAgentTerminalButton = document.getElementById("new-agent-terminal");
 const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
 const dashboardButton = document.getElementById("dashboard-button");
+const settingsButton = document.getElementById("settings-button");
 const dashboardPage = document.getElementById("dashboard-page");
 const dashboardIdeas = document.getElementById("dashboard-ideas");
 const dashboardProjects = document.getElementById("dashboard-projects");
@@ -296,6 +297,11 @@ projectToggle.addEventListener("click", (event) => {
 dashboardButton.addEventListener("click", async (event) => {
   event.stopPropagation();
   showDashboardPage();
+});
+
+settingsButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  void showSettingsPage();
 });
 
 dashboardSettingsButton.addEventListener("click", () => {
@@ -623,6 +629,7 @@ async function showDashboardPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   dashboardButton.classList.add("active");
+  settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
   workspace.classList.remove("settings-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
@@ -645,7 +652,8 @@ async function showSettingsPage(options = {}) {
   settingsPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
-  dashboardButton.classList.add("active");
+  dashboardButton.classList.remove("active");
+  settingsButton.classList.add("active");
   workspace.classList.remove("dashboard-mode", "dashboard-agent-active");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
@@ -663,6 +671,7 @@ function hideDashboardPage() {
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   dashboardButton.classList.remove("active");
+  settingsButton.classList.remove("active");
   workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
   dashboardAgentActive = false;
   updatePlanPromptVisibility();
@@ -2986,7 +2995,7 @@ function isRecentLocalInput(lastLocalInputAt) {
 
 function closeTerminal(name) {
   const session = terminalSessions.get(name);
-  if (!session || terminalSessions.size <= 1) return;
+  if (!session) return;
   session.transport.close();
   session.term.destroy();
   session.panel.remove();
@@ -3004,10 +3013,9 @@ function closeTerminal(name) {
 }
 
 function updateTerminalCloseButtons() {
-  const canClose = terminalSessions.size > 1;
   terminalSessions.forEach((session) => {
-    session.closeButton.disabled = !canClose;
-    session.closeButton.title = canClose ? "Close terminal" : "At least one terminal must stay open";
+    session.closeButton.disabled = false;
+    session.closeButton.title = "Close terminal";
   });
 }
 

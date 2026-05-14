@@ -39,12 +39,15 @@ await page.locator("#dashboard-page").evaluate((panel) => {
     throw new Error("Expected dashboard forms to start collapsed.");
   }
 });
-await page.locator("#dashboard-settings-button").click();
+await page.locator("#settings-button").click();
 await page.waitForURL(`${origin}/settings`);
 await page.locator("#settings-page").evaluate((panel) => {
   const text = panel.textContent || "";
   if (!text.includes("Theme") || !text.includes("Agent Instructions")) {
     throw new Error(`Expected Settings to include Theme and Agent Instructions, got ${text}`);
+  }
+  if (!document.querySelector("#settings-button")?.classList.contains("active")) {
+    throw new Error("Expected topbar Settings button to be active on Settings.");
   }
   if (!document.querySelector(".workspace")?.classList.contains("settings-mode")) {
     throw new Error("Expected Settings to be a workspace page mode.");
@@ -87,10 +90,8 @@ await page.evaluate(() => {
     throw new Error("Expected terminal pane chrome to stay visible before a Dashboard agent handoff.");
   }
 });
-await page.evaluate(() => {
-  location.hash = "#/wiki/plans/index.html";
-});
-await page.waitForURL(/#\/wiki\/plans\/index\.html$/);
+await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
+await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 await page.locator("#up-next-button svg path").nth(1).evaluate((element) => {
   const path = element.getAttribute("d") || "";
   if (!path.includes("M13 5v4H8v6h5v4l7-7Z")) {
@@ -154,9 +155,17 @@ await page.locator("#execute-button").click();
 await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
-if (await page.locator(".terminal-panel-header[data-name=\"dev\"]").count()) {
-  throw new Error("Expected hyperwiki dogfood layout to omit the conflicting dev panel");
-}
+await page.locator(".terminal-panel[data-name=\"dev\"].collapsed").waitFor();
+await page.locator(".terminal-pane").evaluate((pane) => {
+  const toolbar = pane.querySelector(".terminal-toolbar");
+  const firstPanel = pane.querySelector(".terminal-panel");
+  if (!toolbar || !firstPanel) {
+    throw new Error("Expected terminal toolbar and panels after Execute.");
+  }
+  if (firstPanel.getBoundingClientRect().top - toolbar.getBoundingClientRect().bottom > 2) {
+    throw new Error("Expected terminal panels to align directly below the toolbar.");
+  }
+});
 await page.locator("#plan-prompt").evaluate((element) => {
   if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
 });
@@ -786,10 +795,24 @@ await page.locator(".terminal-panel[data-name=\"cli-1\"] .terminal-close").click
 await page.locator(".terminal-panel[data-name=\"cli-1\"]").waitFor({ state: "detached" });
 await page.locator(".terminal-panel[data-name=\"agent\"] .terminal-close").click();
 await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor({ state: "detached" });
-const finalCloseDisabled = await page.locator(".terminal-panel[data-name=\"cli\"] .terminal-close").evaluate((button) => button.disabled);
-if (!finalCloseDisabled) {
-  throw new Error("Expected the last remaining terminal close button to be disabled.");
-}
+await page.locator(".terminal-panel[data-name=\"cli\"] .terminal-close").click();
+await page.locator(".terminal-panel[data-name=\"cli\"]").waitFor({ state: "detached" });
+await page.locator(".terminal-pane").evaluate((pane) => {
+  if (document.querySelectorAll(".terminal-panel").length !== 0) {
+    throw new Error("Expected every terminal to be removable.");
+  }
+  if (!pane.textContent.includes("No terminals running")) {
+    throw new Error(`Expected empty terminal pane message after closing every terminal, got ${pane.textContent}`);
+  }
+  const empty = pane.querySelector(".terminal-empty");
+  const toolbar = pane.querySelector(".terminal-toolbar");
+  if (!empty || !toolbar) {
+    throw new Error("Expected terminal empty state and toolbar.");
+  }
+  if (empty.getBoundingClientRect().top - toolbar.getBoundingClientRect().bottom > 24) {
+    throw new Error("Expected empty terminal state to align near the top of the pane.");
+  }
+});
 
 if (errors.length > 0) {
   throw new Error(`Browser console errors: ${errors.join(" | ")}`);
