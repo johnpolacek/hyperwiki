@@ -216,6 +216,9 @@ await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
 await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
 await page.locator("#wiki-nav a").filter({ hasText: "HTML Smoke Idea" }).waitFor();
+await page.locator("#dashboard-button").click();
+await page.waitForURL(dashboardUrl);
+await page.locator("#dashboard-ideas .dashboard-item").filter({ hasText: "HTML Smoke Idea" }).locator(".dashboard-open-link").filter({ hasText: "Open idea" }).waitFor();
 await page.evaluate(() => {
   location.hash = "#/wiki/plans/index.html";
 });

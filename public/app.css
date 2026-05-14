@@ -617,6 +617,21 @@ body {
   overflow-wrap: anywhere;
 }
 
+.dashboard-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.dashboard-item .dashboard-open-link {
+  border: 1px solid #dedfd8;
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .dashboard-item .promote-idea-button {
   width: auto;
   border: 1px solid #171916;
@@ -2845,6 +2860,12 @@ body {
   border-color: var(--text);
   background: var(--text);
   color: var(--panel);
+}
+
+.dashboard-item .dashboard-open-link {
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--text);
 }
 
 .dashboard-inventory::before {

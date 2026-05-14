@@ -1750,18 +1750,33 @@ function renderDashboardIdeas(ideas) {
     const link = document.createElement("a");
     link.href = `#${idea.path}`;
     link.textContent = idea.title;
-    link.addEventListener("click", closeTopbarPanels);
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      activateWorkspaceLocation(idea.path);
+    });
     const summary = document.createElement("p");
     summary.textContent = idea.summary || "Free-form idea";
     item.append(link, summary);
+    const actions = document.createElement("div");
+    actions.className = "dashboard-item-actions";
+    const openLink = document.createElement("a");
+    openLink.className = "dashboard-open-link";
+    openLink.href = `#${idea.path}`;
+    openLink.textContent = "Open idea";
+    openLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      activateWorkspaceLocation(idea.path);
+    });
+    actions.append(openLink);
     if (idea.promoted) {
       const badge = document.createElement("span");
       badge.className = "dashboard-badge";
       badge.textContent = "Promoted";
-      item.append(badge);
+      actions.append(badge);
     } else {
-      item.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
+      actions.append(promoteIdeaButton(idea.path, idea.title, idea.targetRoot));
     }
+    item.append(actions);
     return item;
   }));
 }
