@@ -12,14 +12,26 @@ const themeFonts = {
   workSans: "\"Work Sans\", ui-sans-serif, system-ui, sans-serif",
   sourceSans: "\"Source Sans 3\", ui-sans-serif, system-ui, sans-serif",
   montserrat: "\"Montserrat\", ui-sans-serif, system-ui, sans-serif",
+  dmSans: "\"DM Sans\", ui-sans-serif, system-ui, sans-serif",
+  notoSans: "\"Noto Sans\", ui-sans-serif, system-ui, sans-serif",
+  poppins: "\"Poppins\", ui-sans-serif, system-ui, sans-serif",
+  nunito: "\"Nunito\", ui-sans-serif, system-ui, sans-serif",
   instrument: "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
   sourceSerif: "\"Source Serif 4\", ui-serif, Georgia, serif",
   lora: "\"Lora\", ui-serif, Georgia, serif",
   newsreader: "\"Newsreader\", ui-serif, Georgia, serif",
   merriweather: "\"Merriweather\", ui-serif, Georgia, serif",
+  ebGaramond: "\"EB Garamond\", ui-serif, Georgia, serif",
+  cormorant: "\"Cormorant Garamond\", ui-serif, Georgia, serif",
+  literata: "\"Literata\", ui-serif, Georgia, serif",
+  fraunces: "\"Fraunces\", ui-serif, Georgia, serif",
   sometype: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
   ibmMono: "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-  spaceMono: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+  spaceMono: "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  jetBrainsMono: "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  firaCode: "\"Fira Code\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  sourceCodePro: "\"Source Code Pro\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  robotoMono: "\"Roboto Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
 };
 
 function themePreset({
@@ -127,6 +139,18 @@ export const defaultSettings = Object.freeze({
         docs: { bg: "#fbfbff", panel: "#ffffff", border: "#d8d9e6", text: "#202133", muted: "#666a7e", link: "#3f5bf6", code: "#eceef8" },
         terminal: { bg: "#181b29", pane: "#0e1019", toolbar: "#141725", header: "#1a1f32", border: "#333b5a", text: "#f1f3ff", muted: "#aeb4cc", accent: "#8ea0ff" }
       }),
+      daybreak: themePreset({
+        label: "Daybreak", mode: "light", bodyFont: themeFonts.dmSans, monoFont: themeFonts.jetBrainsMono,
+        ui: { bg: "#f4f8fb", panel: "#ffffff", border: "#cddbe7", text: "#172432", muted: "#607284", accent: "#2563eb" },
+        docs: { bg: "#fbfdff", panel: "#ffffff", border: "#d7e3ef", text: "#182536", muted: "#667589", link: "#2563eb", code: "#eaf2fb" },
+        terminal: { bg: "#f8fafc", pane: "#eef4fa", toolbar: "#e6edf5", header: "#f1f6fb", border: "#cad7e4", text: "#17202c", muted: "#64748b", accent: "#2563eb" }
+      }),
+      archive: themePreset({
+        label: "Archive", mode: "light", bodyFont: themeFonts.ebGaramond, monoFont: themeFonts.sourceCodePro,
+        ui: { bg: "#f7f3ea", panel: "#fffdf8", border: "#ddd2bf", text: "#28221a", muted: "#766b5e", accent: "#9a5f2d" },
+        docs: { bg: "#fffaf1", panel: "#fffdf7", border: "#e2d5c0", text: "#2b2318", muted: "#766855", link: "#8e5528", code: "#f0e6d7" },
+        terminal: { bg: "#fffaf2", pane: "#f2eadf", toolbar: "#ece1d3", header: "#f6eee4", border: "#dbcbb6", text: "#2b241b", muted: "#776a5b", accent: "#9a5f2d" }
+      }),
       obsidian: themePreset({
         label: "Obsidian", mode: "dark", bodyFont: themeFonts.merriweather, monoFont: themeFonts.sometype,
         ui: { bg: "#141516", panel: "#1d1f20", border: "#363a3b", text: "#eeeeea", muted: "#a5aaa8", accent: "#9dc4ff" },
@@ -162,6 +186,18 @@ export const defaultSettings = Object.freeze({
         ui: { bg: "#111827", panel: "#1b2433", border: "#334158", text: "#eff4ff", muted: "#a7b2c7", accent: "#60a5fa" },
         docs: { bg: "#121a2a", panel: "#1c2638", border: "#34445f", text: "#eef4ff", muted: "#aab6cd", link: "#93c5fd", code: "#253149" },
         terminal: { bg: "#0b1020", pane: "#070b16", toolbar: "#10172a", header: "#17213a", border: "#33415f", text: "#eff6ff", muted: "#a9b7cf", accent: "#60a5fa" }
+      }),
+      basalt: themePreset({
+        label: "Basalt", mode: "dark", bodyFont: themeFonts.notoSans, monoFont: themeFonts.firaCode,
+        ui: { bg: "#121417", panel: "#1c2024", border: "#343b42", text: "#eef2f4", muted: "#a8b0b7", accent: "#38bdf8" },
+        docs: { bg: "#13161a", panel: "#1f2429", border: "#374049", text: "#edf3f6", muted: "#a9b3bb", link: "#7dd3fc", code: "#293039" },
+        terminal: { bg: "#090c10", pane: "#07090c", toolbar: "#10151a", header: "#171e25", border: "#303b45", text: "#eff6fb", muted: "#a9b4bd", accent: "#38bdf8" }
+      }),
+      velvet: themePreset({
+        label: "Velvet", mode: "dark", bodyFont: themeFonts.cormorant, monoFont: themeFonts.robotoMono,
+        ui: { bg: "#19131a", panel: "#241c26", border: "#44364a", text: "#f5eff7", muted: "#b7a8be", accent: "#c084fc" },
+        docs: { bg: "#1a141c", panel: "#261f2a", border: "#47394e", text: "#f3edf5", muted: "#b8aabc", link: "#d8b4fe", code: "#322938" },
+        terminal: { bg: "#100b12", pane: "#0b080d", toolbar: "#18101b", header: "#211729", border: "#44324e", text: "#f7effa", muted: "#b9a8c2", accent: "#c084fc" }
       })
     },
     customTokens: {}
