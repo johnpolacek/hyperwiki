@@ -22,6 +22,15 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-14 workflow | Portless worktree runtime</h2>
+  <ul>
+    <li>Decision: repo development should start through Portless by default with <code>pnpm dev</code>, keeping <code>pnpm run dev:app</code> as the direct server command.</li>
+    <li>Added a durable plan for Portless-backed worktree runtime behavior and documented main and feature preview URLs.</li>
+    <li>Added repo-local worktree command guidance for doctor, create, list, resume, open, finish, and prune workflows.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm wt:doctor</code>, <code>pnpm wt:list</code>, dry-run <code>pnpm wt:open main</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:launch</code>, and a live Portless HTTP 200 check.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-14 source decision | Localhost Tooling identity</h2>
   <ul>
     <li>Decision: hyperwiki should fully claim and identify as Localhost Tooling.</li>

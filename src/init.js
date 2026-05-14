@@ -47,7 +47,7 @@ export async function inithyperwiki(root, options = {}) {
       dev: {
         host: "127.0.0.1",
         port: 4177,
-        command: context.scripts.includes("dev") ? "portless" : "",
+        command: context.scripts.includes("dev") ? packageRun(context, "dev") : "",
         previewUrl: `https://${slugify(context.projectName)}.localhost`
       },
       worktrees: {
@@ -82,7 +82,7 @@ function defaultPanels(context) {
     panels.push({ name: "agent", role: "agent", command: context.agentLaunchCommand });
   }
   if (context.scripts.includes("dev")) {
-    panels.push({ name: "dev", role: "dev", command: "portless" });
+    panels.push({ name: "dev", role: "dev", command: packageRun(context, "dev") });
   }
   panels.push({ name: "cli", role: "shell", command: null });
   return panels;
@@ -140,8 +140,9 @@ async function ensurePortlessPackage(root, context, options) {
       "dev:app": packageJson.scripts.dev,
       dev: "portless"
     };
+    const existingPortless = typeof packageJson.portless === "object" && !Array.isArray(packageJson.portless) ? packageJson.portless : {};
     packageJson.portless = {
-      ...(packageJson.portless || {}),
+      ...existingPortless,
       script: "dev:app"
     };
   }
@@ -177,7 +178,7 @@ Read \`wiki/index.html\` before project-specific work and use \`wiki/sources.htm
 
 Use \`pnpm\` when this repository declares pnpm; otherwise follow the package manager in \`package.json\`.
 
-Use Portless for local dev previews. Prefer \`portless\` / \`${context.packageManager} run dev\` over fixed localhost ports so main and worktree previews get stable .localhost URLs.
+Use Portless for local dev previews. Prefer \`${context.packageManager} run dev\` over fixed localhost ports so main and worktree previews get stable .localhost URLs.
 
 Use the \`parallel-dev-worktrees\` skill for worktree execution. Feature worktrees should use the preview pattern \`https://<branch-slug>.${slugify(context.projectName)}.localhost\`.
 
@@ -456,7 +457,7 @@ function technicalBriefPage(context) {
   <li>Package manifest present: <code>${context.hasPackageJson ? "yes" : "no"}</code>.</li>
   <li>Known scripts: <code>${escapeHtml(context.scripts.join(", ") || "Unknown")}</code>.</li>
   <li>Git branch at initialization: <code>${escapeHtml(context.git.branch || "Unknown")}</code>.</li>
-  <li>Dev preview command: <code>${context.scripts.includes("dev") ? "portless" : "Unknown"}</code>.</li>
+  <li>Dev preview command: <code>${context.scripts.includes("dev") ? escapeHtml(packageRun(context, "dev")) : "Unknown"}</code>.</li>
   <li>Worktree preview pattern: <code>https://&lt;branch-slug&gt;.${escapeHtml(slugify(context.projectName))}.localhost</code>.</li>
   <li>Canonical wiki files are HTML under <code>wiki/</code>.</li>
   <li>Local runtime state belongs under ignored <code>.hyperwiki/</code> paths.</li>

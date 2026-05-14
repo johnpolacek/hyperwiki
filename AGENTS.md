@@ -10,6 +10,18 @@ Use Portless for local app previews and prefer named `.localhost` URLs over fixe
 
 Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree previews should use `https://<branch-slug>.hyperwiki.localhost`.
 
+Use repo-local worktree commands when operating parallel feature work:
+
+- `pnpm wt:doctor`
+- `pnpm wt:create <branch>`
+- `pnpm wt:list`
+- `pnpm wt:resume <branch>`
+- `pnpm wt:open <branch>`
+- `pnpm wt:finish <branch>`
+- `pnpm wt:prune`
+
+Feature worktrees live under `../hyperwiki.worktrees/<branch-slug>`. The finish policy is merge, preserving feature branch history.
+
 ## hyperwiki Agent Guide
 
 ### Project Wiki

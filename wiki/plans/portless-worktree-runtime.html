@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portless Worktree Runtime - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/ideas/index.html">Ideas</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Portless Worktree Runtime</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: completed</li>
+        <li>Goal: make local previews use Portless by default and add repo-local commands for parallel worktree development.</li>
+        <li>Preview pattern: <code>https://hyperwiki.localhost</code> on main and <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code> in feature worktrees.</li>
+        <li>Finish policy: merge feature branches into the integration branch to preserve history.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Implementation</h2>
+      <ul>
+        <li>Move the real app dev command behind a Portless-backed <code>pnpm dev</code>.</li>
+        <li>Make the hyperwiki dev server honor Portless-assigned app ports while keeping localhost-only binding.</li>
+        <li>Add worktree commands for doctor, create, list, resume, open, finish, and prune flows.</li>
+        <li>Document Portless and worktree usage in repo guidance and durable wiki pages.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Validation</h2>
+      <ul>
+        <li><code>pnpm run check</code> passed.</li>
+        <li><code>pnpm wt:doctor</code>, <code>pnpm wt:list</code>, and dry-run <code>pnpm wt:open main</code> passed.</li>
+        <li><code>pnpm run smoke:init</code> and <code>pnpm run smoke:launch</code> passed.</li>
+        <li><code>pnpm dev</code> registered <code>https://hyperwiki.localhost:1355</code> with the current fallback proxy and the workspace returned HTTP 200 through Portless.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

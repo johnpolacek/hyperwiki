@@ -27,7 +27,8 @@ export async function startDevServer(root, options = {}) {
   if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
     throw new Error("hyperwiki dev server only binds to localhost addresses.");
   }
-  const port = options.port === 0 || options.port === "0" ? 0 : Number(options.port || 4177);
+  const configuredPort = options.port ?? process.env.PORT ?? 4177;
+  const port = configuredPort === 0 || configuredPort === "0" ? 0 : Number(configuredPort);
   const projectRegistry = new ProjectRegistry();
   let activeProjectId = options.projectId || null;
   if (!activeProjectId) {

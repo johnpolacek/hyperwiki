@@ -3,7 +3,15 @@
   "canonicalWiki": "html",
   "dev": {
     "host": "127.0.0.1",
-    "port": 4177
+    "port": 4177,
+    "command": "pnpm dev",
+    "previewUrl": "https://hyperwiki.localhost"
+  },
+  "worktrees": {
+    "previewUrlPattern": "https://<branch-slug>.hyperwiki.localhost",
+    "workflow": "parallel-dev-worktrees",
+    "directory": "../hyperwiki.worktrees",
+    "finishPolicy": "merge"
   },
   "agent": {
     "launchCommand": "codex --yolo"
@@ -14,6 +22,11 @@
         "name": "agent",
         "role": "agent",
         "command": "codex --yolo"
+      },
+      {
+        "name": "dev",
+        "role": "dev",
+        "command": "pnpm dev"
       },
       {
         "name": "cli",

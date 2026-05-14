@@ -23,6 +23,7 @@
 <h2>Commands</h2>
 <pre><code>pnpm install
 pnpm run check
+pnpm wt:doctor
 pnpm run smoke:browser
 pnpm run smoke:launch
 pnpm run smoke:reset
@@ -31,6 +32,21 @@ npx hyperwiki init
 npx hyperwiki reset --dry-run
 npx hyperwiki reset
 npx hyperwiki</code></pre>
+<h2>Portless Preview</h2>
+<ul>
+  <li>Main preview: <code>https://hyperwiki.localhost</code>.</li>
+  <li>Feature worktree preview: <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
+  <li>Start previews with <code>pnpm dev</code>; the direct server command is <code>pnpm run dev:app</code>.</li>
+</ul>
+<h2>Parallel Worktrees</h2>
+<pre><code>pnpm wt:doctor
+pnpm wt:create feature/my-change
+pnpm wt:list
+pnpm wt:resume feature/my-change
+pnpm wt:open feature/my-change
+pnpm wt:finish feature/my-change
+pnpm wt:prune</code></pre>
+<p>Feature worktrees live under <code>../hyperwiki.worktrees/&lt;branch-slug&gt;</code>. The finish policy is merge, preserving feature branch history.</p>
 <h2>Published Package Smoke Test</h2>
 <pre><code>tmp=$(mktemp -d)
 cd "$tmp"

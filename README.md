@@ -26,6 +26,14 @@ The command registers the current hyperwiki-initialized project in your user-lev
 http://127.0.0.1:4177
 ```
 
+For local development in this repo, use Portless:
+
+```bash
+pnpm dev
+```
+
+Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`.
+
 ## Commands
 
 ```bash
@@ -65,9 +73,19 @@ Local verification:
 
 ```bash
 pnpm run check
+pnpm wt:doctor
 pnpm run smoke:browser
 pnpm run smoke:init
 pnpm run smoke:launch
 pnpm run smoke:pty
 pnpm run smoke:sessions
+```
+
+Parallel feature worktrees:
+
+```bash
+pnpm wt:create feature/my-change
+cd ../hyperwiki.worktrees/feature-my-change
+pnpm dev
+pnpm wt:finish feature/my-change
 ```
