@@ -28,6 +28,7 @@ const dashboardStatus = document.getElementById("dashboard-status");
 const projectsStatus = document.getElementById("projects-status");
 const dashboardSettingsButton = document.getElementById("dashboard-settings-button");
 const manageIdeasLink = document.getElementById("manage-ideas-link");
+const ideasList = document.getElementById("ideas-list");
 const newIdeaToggle = document.getElementById("new-idea-toggle");
 const newProjectToggle = document.getElementById("new-project-toggle");
 const ideaImportForm = document.getElementById("idea-import-form");
@@ -299,8 +300,11 @@ projectToggle.addEventListener("click", (event) => {
   setTopbarPanelOpen("projects", projectPanel.hidden);
 });
 
-dashboardButton.addEventListener("click", async (event) => {
+dashboardButton.addEventListener("click", (event) => {
   event.stopPropagation();
+  if (ideasPanel.hidden) {
+    void loadIdeasMenu();
+  }
   setTopbarPanelOpen("ideas", ideasPanel.hidden);
 });
 
@@ -797,6 +801,10 @@ async function loadProjects() {
   }
   projectToggle.hidden = false;
   workspace.classList.add("has-projects");
+  if (data.projects.length === 0) {
+    projectList.replaceChildren(topbarEmpty("No projects registered."));
+    return;
+  }
   projectList.replaceChildren(
     ...data.projects.map((project) => {
       const button = document.createElement("button");
@@ -811,6 +819,41 @@ async function loadProjects() {
       return button;
     })
   );
+}
+
+async function loadIdeasMenu() {
+  try {
+    const data = await api(projectPath("/api/ideas"));
+    renderIdeasMenu(data.ideas || []);
+  } catch {
+    ideasList.replaceChildren(topbarEmpty("Ideas are unavailable."));
+  }
+}
+
+function renderIdeasMenu(ideas) {
+  if (ideas.length === 0) {
+    ideasList.replaceChildren(topbarEmpty("No ideas yet."));
+    return;
+  }
+  ideasList.replaceChildren(...ideas.map((idea) => {
+    const link = document.createElement("a");
+    link.href = `#${idea.path}`;
+    link.textContent = idea.title;
+    link.title = idea.summary || idea.path;
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      closeTopbarPanels();
+      activateWorkspaceLocation(idea.path);
+    });
+    return link;
+  }));
+}
+
+function topbarEmpty(text) {
+  const item = document.createElement("p");
+  item.className = "topbar-empty";
+  item.textContent = text;
+  return item;
 }
 
 async function loadDashboard() {

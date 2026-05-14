@@ -147,6 +147,7 @@ body {
 
 .topbar-button:focus-visible,
 .topbar-manage-link:focus-visible,
+.topbar-list a:focus-visible,
 .project-list button:focus-visible,
 .dashboard-list button:focus-visible,
 .dashboard-list a:focus-visible,
@@ -225,7 +226,24 @@ body {
   gap: 4px;
 }
 
-.project-list button {
+.topbar-list {
+  display: grid;
+  gap: 4px;
+}
+
+.topbar-empty {
+  margin: 0;
+  border: 1px dashed #d8d8d0;
+  border-radius: 6px;
+  padding: 13px 12px;
+  background: #f7f7f4;
+  color: #747970;
+  font: 12px/1.35 var(--sidebar-font);
+  text-align: center;
+}
+
+.project-list button,
+.topbar-list a {
   min-width: 0;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -238,6 +256,11 @@ body {
   text-overflow: ellipsis;
   text-align: left;
   white-space: nowrap;
+}
+
+.topbar-list a {
+  display: block;
+  text-decoration: none;
 }
 
 .project-list button.active {
