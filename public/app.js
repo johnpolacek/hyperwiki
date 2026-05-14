@@ -1895,18 +1895,56 @@ function renderDashboardProjects(projects) {
   }
   dashboardProjects.replaceChildren(...projects.map((project) => {
     const item = document.createElement("article");
-    item.className = "dashboard-item";
+    item.className = `dashboard-item project-card${project.active ? " active" : ""}`;
     const button = document.createElement("button");
     button.type = "button";
+    button.className = "project-card-title";
     button.textContent = project.name;
     button.disabled = !project.available;
     button.title = project.available ? project.root : `${project.root} unavailable`;
     button.addEventListener("click", () => switchProject(project));
+
+    const status = document.createElement("span");
+    status.className = `project-card-status${project.available ? "" : " unavailable"}`;
+    status.textContent = project.available ? (project.active ? "Active" : "Available") : "Unavailable";
+
+    const header = document.createElement("div");
+    header.className = "project-card-header";
+    header.append(button, status);
+
     const meta = document.createElement("p");
+    meta.className = "project-card-path";
     meta.textContent = project.available ? project.root : "Unavailable";
-    item.append(button, meta);
+
+    const details = document.createElement("div");
+    details.className = "project-card-details";
+    details.append(
+      projectDetail("Slug", project.projectSlug || "project"),
+      projectDetail("Worktree", project.worktreeSlug || "main"),
+      projectDetail("Last opened", formatProjectDate(project.lastOpenedAt))
+    );
+
+    item.append(header, meta, details);
     return item;
   }));
+}
+
+function projectDetail(label, value) {
+  const item = document.createElement("span");
+  item.className = "project-detail";
+  const labelElement = document.createElement("span");
+  labelElement.textContent = label;
+  const valueElement = document.createElement("strong");
+  valueElement.textContent = value || "Unknown";
+  item.append(labelElement, valueElement);
+  return item;
+}
+
+function formatProjectDate(value) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function emptyDashboardItem(text) {
