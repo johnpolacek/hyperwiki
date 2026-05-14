@@ -1777,11 +1777,12 @@ body {
 
 .wiki-nav a.active::after,
 .primary-nav a.active::after {
-  content: none;
-}
-
-.plan-subtree > summary a.active::after {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: 4px auto 4px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent);
 }
 
 .plan-subtree > a.active::after {
@@ -1790,11 +1791,16 @@ body {
 
 .plan-subtree > summary:has(a.active) {
   position: relative;
-  background: transparent;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .plan-subtree > summary:has(a.active)::after {
-  content: none;
+  content: "";
+  position: absolute;
+  inset: 4px auto 4px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--accent);
 }
 
 .plan-subtree > summary:has(a.active) a.active {
@@ -2029,7 +2035,7 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree > a.active {
-  background: transparent;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .plan-tree .wiki-nav-group {
@@ -2070,7 +2076,7 @@ body {
 .wiki-nav a.active,
 .primary-nav a:hover,
 .primary-nav a.active {
-  background: transparent;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .up-next-popover dl {
@@ -2903,7 +2909,7 @@ body {
 .wiki-nav a.active,
 .primary-nav a:hover,
 .primary-nav a.active {
-  background: transparent;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .wiki-nav a.current-plan::before,

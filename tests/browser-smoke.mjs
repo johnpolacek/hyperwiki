@@ -375,8 +375,8 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   ) {
     throw new Error("Expected non-expandable plan links to align with expandable plan labels");
   }
-  if (getComputedStyle(stageSevenLink, "::after").backgroundColor !== "rgba(0, 0, 0, 0)") {
-    throw new Error("Expected selected rail to be reserved for the active page, not the current-stage marker");
+  if (getComputedStyle(stageSevenLink, "::after").content !== "none") {
+    throw new Error("Expected current-stage marker not to show the selected-page indicator before the stage is selected");
   }
   const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
@@ -412,14 +412,15 @@ await page.locator("#wiki-nav").evaluate(() => {
   const selectedSummary = stageEightLabel.closest("summary");
   const selectedSummaryBg = getComputedStyle(selectedSummary).backgroundColor;
   const selectedDot = getComputedStyle(selectedSummary.querySelector("a"), "::before").backgroundColor;
+  const selectedIndicator = getComputedStyle(selectedSummary, "::after");
   if (!stageEightGroup?.open) {
     throw new Error("Expected selected Stage 08 to expand");
   }
   if (selectedDot !== "rgb(37, 162, 68)") {
     throw new Error(`Expected selected stage dot to be green, got ${selectedDot}`);
   }
-  if (selectedSummaryBg !== "rgba(0, 0, 0, 0)") {
-    throw new Error(`Expected selected stage to avoid rail/background highlight, got ${selectedSummaryBg}`);
+  if (selectedSummaryBg === "rgba(0, 0, 0, 0)" || selectedIndicator.content === "none") {
+    throw new Error("Expected selected stage to show a visible selected-page indicator");
   }
   const containingPlanGroup = stageEightGroup.closest(".plan-tree > .plan-subtree");
   if (getComputedStyle(containingPlanGroup).borderBottomStyle !== "solid" || getComputedStyle(containingPlanGroup).paddingBottom !== "10px") {
@@ -446,8 +447,9 @@ await page.locator("#wiki-nav").evaluate(() => {
     .find((label) => label.textContent.includes("Global Settings Page"));
   const unitLink = unitLabel.closest("a");
   const unitDot = getComputedStyle(unitLink, "::before").backgroundColor;
-  if (getComputedStyle(unitLink).backgroundColor !== "rgba(0, 0, 0, 0)") {
-    throw new Error("Expected selected unit to avoid rail/background highlight");
+  const unitIndicator = getComputedStyle(unitLink, "::after");
+  if (getComputedStyle(unitLink).backgroundColor === "rgba(0, 0, 0, 0)" || unitIndicator.content === "none") {
+    throw new Error("Expected selected unit to show a visible selected-page indicator");
   }
   if (unitDot !== "rgb(37, 162, 68)") {
     throw new Error(`Expected selected unit dot to be green, got ${unitDot}`);
