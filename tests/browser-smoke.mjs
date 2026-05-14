@@ -264,21 +264,16 @@ await page.locator("#wiki-nav").evaluate(() => {
   const longExpandedUnitLabel = navLabels.find((label) => label.textContent.includes("Soul and Memory Controls"));
   const stageSevenGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-08-settings-soul-memory.html\"]");
   const selectedSummary = stageSevenLabel.closest("summary");
-  const selectedRail = getComputedStyle(selectedSummary, "::after").backgroundColor;
-  const selectedRailLeft = Number.parseFloat(getComputedStyle(selectedSummary, "::after").left);
-  const selectedRailWidth = Number.parseFloat(getComputedStyle(selectedSummary, "::after").width);
   const selectedSummaryBg = getComputedStyle(selectedSummary).backgroundColor;
+  const selectedDot = getComputedStyle(selectedSummary.querySelector("a"), "::before").backgroundColor;
   if (!stageSevenGroup?.open) {
     throw new Error("Expected selected Stage 08 to expand");
   }
-  if (selectedRail !== "rgb(23, 25, 22)" && selectedRail !== "rgb(32, 35, 31)") {
-    throw new Error(`Expected selected stage to show a dark left rail, got ${selectedRail}`);
+  if (selectedDot !== "rgb(37, 162, 68)") {
+    throw new Error(`Expected selected stage dot to be green, got ${selectedDot}`);
   }
-  if (selectedRailLeft !== 0 || selectedRailWidth !== 2) {
-    throw new Error(`Expected selected stage rail to reach the window edge, got ${selectedRailLeft}`);
-  }
-  if (selectedSummaryBg === "rgba(0, 0, 0, 0)") {
-    throw new Error(`Expected selected stage background to span the whole summary row, got ${selectedSummaryBg}`);
+  if (selectedSummaryBg !== "rgba(0, 0, 0, 0)") {
+    throw new Error(`Expected selected stage to avoid rail/background highlight, got ${selectedSummaryBg}`);
   }
   const containingPlanGroup = stageSevenGroup.closest(".plan-tree > .plan-subtree");
   if (getComputedStyle(containingPlanGroup).borderBottomStyle !== "solid" || getComputedStyle(containingPlanGroup).paddingBottom !== "10px") {
@@ -304,13 +299,12 @@ await page.locator("#wiki-nav").evaluate(() => {
   const unitLabel = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")]
     .find((label) => label.textContent.includes("Global Settings Page"));
   const unitLink = unitLabel.closest("a");
-  const unitBox = unitLink.getBoundingClientRect();
-  const unitRail = getComputedStyle(unitLink, "::after");
-  if (Math.round(unitBox.left) !== 0 || getComputedStyle(unitLink).backgroundColor === "rgba(0, 0, 0, 0)") {
-    throw new Error("Expected selected unit background to reach the window edge");
+  const unitDot = getComputedStyle(unitLink, "::before").backgroundColor;
+  if (getComputedStyle(unitLink).backgroundColor !== "rgba(0, 0, 0, 0)") {
+    throw new Error("Expected selected unit to avoid rail/background highlight");
   }
-  if (!["rgb(23, 25, 22)", "rgb(32, 35, 31)"].includes(unitRail.backgroundColor) || Number.parseFloat(unitRail.left) !== 0 || Number.parseFloat(unitRail.width) !== 2) {
-    throw new Error("Expected selected unit to show a 2px black left rail at the window edge");
+  if (unitDot !== "rgb(37, 162, 68)") {
+    throw new Error(`Expected selected unit dot to be green, got ${unitDot}`);
   }
 });
 const stageOneUnitLinks = await page.locator("#wiki-nav a").filter({ hasText: "Unit 01 · Package And CLI Bin" }).count();

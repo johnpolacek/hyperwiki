@@ -1594,7 +1594,7 @@ body {
 .wiki-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
@@ -1620,7 +1620,7 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1628,6 +1628,7 @@ body {
   border-radius: 0;
   color: var(--text);
   font-size: 13px;
+  line-height: 1.25;
   text-decoration: none;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1637,23 +1638,17 @@ body {
 .wiki-nav a::before {
   content: "";
   flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: transparent;
-  box-shadow: 0 0 0 2px transparent;
+  box-shadow: 0 0 0 3px transparent;
   transition: background-color 160ms ease, box-shadow 160ms ease;
 }
 
 .wiki-nav a.active::after,
 .primary-nav a.active::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 2px;
-  background: #171916;
+  content: none;
 }
 
 .plan-subtree > summary a.active::after {
@@ -1666,17 +1661,11 @@ body {
 
 .plan-subtree > summary:has(a.active) {
   position: relative;
-  background: #f0f0ed;
+  background: transparent;
 }
 
 .plan-subtree > summary:has(a.active)::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 2px;
-  background: #171916;
+  content: none;
 }
 
 .plan-subtree > summary:has(a.active) a.active {
@@ -1804,7 +1793,7 @@ body {
   min-width: 0;
   overflow: hidden;
   padding: 0;
-  color: var(--text);
+  color: color-mix(in srgb, var(--text) 44%, var(--muted));
   font-size: 13px;
   font-weight: 400;
   text-transform: none;
@@ -1832,14 +1821,42 @@ body {
   flex: 1 1 0;
   max-width: calc(100% - 22px);
   min-width: 0;
+  color: inherit;
 }
 
 .wiki-nav a.current-plan::before,
 .wiki-nav a.current-stage::before,
 .wiki-nav a.current-unit::before {
   background: #25a244;
-  box-shadow: 0 0 0 2px rgba(37, 162, 68, 0.14);
+  box-shadow: 0 0 0 3px rgba(37, 162, 68, 0.14);
 }
+
+.plan-tree > .plan-subtree > summary a::before,
+.plan-tree > a::before,
+.plan-tree > .plan-subtree > a::before {
+  background: color-mix(in srgb, var(--muted) 24%, transparent);
+}
+
+.plan-tree > .plan-subtree > summary a.current-plan::before,
+.plan-tree > .plan-subtree > summary a.current-stage::before,
+.plan-tree > a.current-plan::before,
+.plan-tree > .plan-subtree > a.current-stage::before,
+.plan-tree .plan-subtree .plan-subtree > a.current-unit::before {
+  background: #25a244;
+  box-shadow: 0 0 0 3px rgba(37, 162, 68, 0.14);
+}
+
+.plan-tree > .plan-subtree > summary:has(a.current-plan) a,
+.plan-tree > .plan-subtree > summary:has(a.current-stage) a,
+.plan-tree > a.current-plan,
+.plan-tree > .plan-subtree > a.current-stage {
+  color: var(--text);
+}
+
+.plan-tree .plan-subtree .plan-subtree > a::before {
+  background: transparent;
+}
+
 
 .plan-tree > a,
 .plan-subtree > a {
@@ -1864,7 +1881,7 @@ body {
 }
 
 .plan-tree .plan-subtree .plan-subtree > a.active {
-  background: #f0f0ed;
+  background: transparent;
 }
 
 .plan-tree .wiki-nav-group {
@@ -1905,7 +1922,7 @@ body {
 .wiki-nav a.active,
 .primary-nav a:hover,
 .primary-nav a.active {
-  background: #f0f0ed;
+  background: transparent;
 }
 
 .up-next-popover dl {
@@ -2473,14 +2490,14 @@ body {
 .wiki-nav a.active,
 .primary-nav a:hover,
 .primary-nav a.active {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: transparent;
 }
 
 .wiki-nav a.current-plan::before,
 .wiki-nav a.current-stage::before,
 .wiki-nav a.current-unit::before {
   background: #25a244;
-  box-shadow: 0 0 0 2px rgba(37, 162, 68, 0.14);
+  box-shadow: 0 0 0 3px rgba(37, 162, 68, 0.14);
 }
 
 .wiki-nav-label {
