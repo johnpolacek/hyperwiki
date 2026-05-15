@@ -2547,6 +2547,25 @@ body {
   gap: 8px;
 }
 
+.terminal-effort-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #9da79f;
+  white-space: nowrap;
+}
+
+.terminal-effort-picker select {
+  min-width: 64px;
+  border: 1px solid #3a403b;
+  border-radius: 4px;
+  padding: 1px 18px 1px 6px;
+  background: #111312;
+  color: #eef2ec;
+  font: inherit;
+}
+
 .terminal-branch strong {
   overflow: hidden;
   color: #eef2ec;
@@ -2979,13 +2998,24 @@ body {
 
 .terminal-branch strong,
 .terminal-toolbar button,
+.terminal-effort-picker select,
 .terminal-tab,
 .terminal-panel-header {
   color: var(--terminal-text);
 }
 
+.terminal-effort-picker {
+  color: var(--terminal-muted);
+}
+
+.terminal-effort-picker select {
+  border-color: var(--terminal-border);
+  background: var(--terminal-pane);
+}
+
 .terminal-toolbar button:hover,
-.terminal-toolbar button:focus-visible {
+.terminal-toolbar button:focus-visible,
+.terminal-effort-picker select:focus-visible {
   color: var(--terminal-accent);
 }
 

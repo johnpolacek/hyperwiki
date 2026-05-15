@@ -14,6 +14,7 @@ const executeMenu = document.getElementById("execute-menu");
 const previewLink = document.getElementById("preview-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
+const thinkingEffort = document.getElementById("thinking-effort");
 const newAgentTerminalButton = document.getElementById("new-agent-terminal");
 const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
@@ -106,6 +107,8 @@ let themeDraftSimple = null;
 let themePresetPickerOpen = false;
 let agentDraft = null;
 let agentsFileDraft = "";
+const thinkingEffortStorageKey = "hyperwiki.thinkingEffort";
+const thinkingEffortLevels = new Set(["low", "medium", "high", "xhigh"]);
 
 const themeSurfaces = [
   {
@@ -184,11 +187,12 @@ await loadRepoContext();
 await loadWikiNav();
 await loadWorkspaceSummary();
 await loadGuardrails();
+initThinkingEffortPicker();
 activateWorkspaceLocation(workspaceLocation() || currentPlanPath);
 await restoreTerminals();
 
 newAgentTerminalButton.addEventListener("click", async () => {
-  const template = terminalTemplate("agent");
+  const template = agentTerminalTemplate();
   const name = nextTerminalName("agent");
   await createTerminal(name, { ...template, name });
   activateTerminal(name);
@@ -2074,7 +2078,7 @@ async function ensureAgentTerminal() {
   if (terminalSessions.has("agent")) {
     return terminalSessions.get("agent");
   }
-  const template = terminalTemplate("agent");
+  const template = agentTerminalTemplate();
   const session = await createTerminal("agent", { ...template, name: "agent", role: "agent" });
   updatePlanPromptVisibility();
   return session;
@@ -2235,6 +2239,39 @@ function terminalTemplate(name) {
   if (name === "agent") return { role: "agent", command: null };
   if (name === "dev") return { role: "dev", command: null };
   return { role: "shell", command: null };
+}
+
+function agentTerminalTemplate() {
+  const template = terminalTemplate("agent");
+  return { ...template, command: commandWithThinkingEffort(template.command) };
+}
+
+function initThinkingEffortPicker() {
+  if (!thinkingEffort) return;
+  thinkingEffort.value = normalizedThinkingEffort(localStorage.getItem(thinkingEffortStorageKey));
+  thinkingEffort.addEventListener("change", () => {
+    localStorage.setItem(thinkingEffortStorageKey, normalizedThinkingEffort(thinkingEffort.value));
+  });
+}
+
+function selectedThinkingEffort() {
+  return normalizedThinkingEffort(thinkingEffort?.value);
+}
+
+function normalizedThinkingEffort(value) {
+  const normalized = String(value || "low").trim().toLowerCase();
+  return thinkingEffortLevels.has(normalized) ? normalized : "low";
+}
+
+function commandWithThinkingEffort(command) {
+  const value = String(command || "").trim();
+  if (!value || !/(^|\s)codex(\s|$)/.test(value)) return command;
+  const effort = selectedThinkingEffort();
+  const override = `-c model_reasoning_effort=\\"${effort}\\"`;
+  if (/model_reasoning_effort\s*=/.test(value)) {
+    return value.replace(/-c\s+model_reasoning_effort=(?:"[^"]*"|'[^']*'|\\?"[^"]*\\?"|\S+)/, override);
+  }
+  return `${value} ${override}`;
 }
 
 function nextTerminalName(kind) {
