@@ -334,7 +334,7 @@ function workspaceRoute(pathname) {
 }
 
 function appShellRoute(pathname) {
-  return /^\/(?:dashboard|ideas|projects|settings)\/?$/.test(pathname);
+  return /^\/(?:dashboard|ideas|projects(?:\/new)?|settings)\/?$/.test(pathname);
 }
 
 function sessionRegistryFor(registries, root) {

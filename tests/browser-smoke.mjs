@@ -3,6 +3,7 @@ import { chromium } from "playwright";
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
 const origin = new URL(url).origin;
 const projectsUrl = `${origin}/projects`;
+const newProjectUrl = `${origin}/projects/new`;
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -24,14 +25,14 @@ await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" 
 await page.waitForURL(projectsUrl);
 await page.locator("#projects-page").evaluate((panel) => {
   const text = panel.textContent || "";
-  if (!text.includes("Projects") || !text.includes("+ New Project") || !text.includes("New Project")) {
+  if (!text.includes("Projects") || text.includes("Project Brief")) {
     throw new Error(`Expected Projects management page, got ${text}`);
   }
   if (!document.querySelector("#up-next-button")?.hidden) {
     throw new Error("Expected Up Next to be hidden on Projects.");
   }
-  if (!document.querySelector("#project-import-form")?.hidden) {
-    throw new Error("Expected project form to start collapsed.");
+  if (!document.querySelector("#new-project-page")?.hidden) {
+    throw new Error("Expected New Project page to be hidden on Manage Projects.");
   }
 });
 await page.goto(`${projectsUrl}/`, { waitUntil: "networkidle" });
@@ -97,9 +98,31 @@ await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
 await page.locator("#agent-cancel").click();
 await page.locator("#project-toggle").click();
+await page.locator("#new-project-link").filter({ hasText: "New Project" }).click();
+await page.waitForURL(newProjectUrl);
+await page.locator("#new-project-page").evaluate((panel) => {
+  const text = panel.textContent || "";
+  if (panel.hidden || !text.includes("New Project") || !text.includes("Project Brief")) {
+    throw new Error(`Expected New Project page, got ${text}`);
+  }
+  if (!document.querySelector("#projects-page")?.hidden) {
+    throw new Error("Expected Manage Projects page to be hidden on New Project.");
+  }
+});
+await page.goto(`${newProjectUrl}/`, { waitUntil: "networkidle" });
+await page.waitForURL(newProjectUrl);
+await page.locator("#new-project-page").evaluate((panel) => {
+  if (panel.hidden) throw new Error("Expected /projects/new/ refresh to show the New Project page.");
+  if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
+    throw new Error("Expected /projects/new/ refresh to keep the wiki iframe hidden.");
+  }
+});
+await page.locator("#project-toggle").click();
 await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
 await page.waitForURL(projectsUrl);
-await page.locator("#new-project-toggle").click();
+await page.locator("#project-toggle").click();
+await page.locator("#new-project-link").filter({ hasText: "New Project" }).click();
+await page.waitForURL(newProjectUrl);
 await page.locator("#project-import-form").evaluate((form) => {
   const text = form.textContent || "";
   const fileInput = form.querySelector("#project-markdown-file");

@@ -297,23 +297,30 @@ body {
 }
 
 html[data-initial-route="projects"] #wiki-frame,
+html[data-initial-route="new-project"] #wiki-frame,
 html[data-initial-route="settings"] #wiki-frame,
 html[data-initial-route="projects"] .plan-prompt,
+html[data-initial-route="new-project"] .plan-prompt,
 html[data-initial-route="settings"] .plan-prompt,
+html[data-initial-route="new-project"] .terminal-pane,
 html[data-initial-route="settings"] .terminal-pane,
+html[data-initial-route="new-project"] .wiki-command-bar,
 html[data-initial-route="settings"] .wiki-command-bar {
   display: none;
 }
 
 html[data-initial-route="projects"] #projects-page[hidden],
+html[data-initial-route="new-project"] #new-project-page[hidden],
 html[data-initial-route="settings"] #settings-page[hidden] {
   display: block;
 }
 
+html[data-initial-route="new-project"] .workspace,
 html[data-initial-route="settings"] .workspace {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
+html[data-initial-route="new-project"] .wiki-pane,
 html[data-initial-route="settings"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
 }
@@ -3168,7 +3175,15 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--text);
 }
 
-#new-project-toggle {
+.new-project-form {
+  max-width: 760px;
+}
+
+.new-project-form:not([hidden]) {
+  display: grid;
+}
+
+#new-project-link {
   border-color: var(--text);
   background: var(--text);
   color: var(--panel);

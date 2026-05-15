@@ -22,9 +22,10 @@ const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
 const settingsButton = document.getElementById("settings-button");
 const projectsPage = document.getElementById("projects-page");
+const newProjectPage = document.getElementById("new-project-page");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const projectsStatus = document.getElementById("projects-status");
-const newProjectToggle = document.getElementById("new-project-toggle");
+const newProjectStatus = document.getElementById("new-project-status");
 const projectImportForm = document.getElementById("project-import-form");
 const projectTitleInput = document.getElementById("project-title");
 const projectMarkdownInput = document.getElementById("project-markdown");
@@ -79,6 +80,7 @@ const projectToggle = document.getElementById("project-toggle");
 const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
 const manageProjectsLink = document.getElementById("manage-projects-link");
+const newProjectLink = document.getElementById("new-project-link");
 const terminalSessions = new Map();
 const wikiPageTitles = new Map();
 const wikiPageStatus = new Map();
@@ -335,6 +337,10 @@ manageProjectsLink.addEventListener("click", () => {
   void showProjectsPage();
 });
 
+newProjectLink.addEventListener("click", () => {
+  void showNewProjectPage();
+});
+
 upNextPopover.addEventListener("click", (event) => {
   event.stopPropagation();
 });
@@ -361,11 +367,7 @@ projectMarkdownFile.addEventListener("change", () => {
       if (imported) return createProjectFromMarkdown();
       return null;
     })
-    .catch((error) => setProjectsStatus(error.message || "Could not import the document."));
-});
-
-newProjectToggle.addEventListener("click", () => {
-  toggleDashboardForm(projectImportForm, newProjectToggle);
+    .catch((error) => setNewProjectStatus(error.message || "Could not import the document."));
 });
 
 projectImportForm.addEventListener("submit", async (event) => {
@@ -625,6 +627,7 @@ async function showProjectsPage(options = {}) {
   await loadProjectManagement();
   setUpNextAvailable(false);
   settingsPage.hidden = true;
+  newProjectPage.hidden = true;
   projectsPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
@@ -643,11 +646,35 @@ async function showProjectsPage(options = {}) {
   }
 }
 
+async function showNewProjectPage(options = {}) {
+  closeTopbarPanels();
+  setUpNextAvailable(false);
+  settingsPage.hidden = true;
+  projectsPage.hidden = true;
+  newProjectPage.hidden = false;
+  wikiFrame.hidden = true;
+  planPrompt.hidden = true;
+  settingsButton.classList.remove("active");
+  workspace.classList.add("projects-mode");
+  workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  setCurrentPage("/projects/new", "New Project");
+  openPage.href = "/projects/new";
+  modifyPlanUi.hidden = true;
+  modifyButton.setAttribute("aria-expanded", "false");
+  setCommandBarCompleted(false);
+  wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  if (`${location.pathname}${location.hash}` !== "/projects/new") {
+    const method = options.replace ? "replaceState" : "pushState";
+    history[method](null, "", "/projects/new");
+  }
+}
+
 async function showSettingsPage(options = {}) {
   closeTopbarPanels();
   await loadSettings();
   setUpNextAvailable(false);
   projectsPage.hidden = true;
+  newProjectPage.hidden = true;
   settingsPage.hidden = false;
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
@@ -667,6 +694,7 @@ async function showSettingsPage(options = {}) {
 function hideAppPages() {
   setUpNextAvailable(true);
   projectsPage.hidden = true;
+  newProjectPage.hidden = true;
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   settingsButton.classList.remove("active");
@@ -687,6 +715,10 @@ function activateWorkspaceLocation(path) {
     void showProjectsPage({ replace: true });
     return;
   }
+  if (isNewProjectPath(path)) {
+    void showNewProjectPage({ replace: true });
+    return;
+  }
   if (isSettingsPath(path)) {
     void showSettingsPage({ replace: true });
     return;
@@ -704,6 +736,10 @@ function isProjectsPath(path) {
   return normalized === "/projects" || normalized === "/ideas" || normalized === "/dashboard";
 }
 
+function isNewProjectPath(path) {
+  return normalizeAppPath(path) === "/projects/new";
+}
+
 function isSettingsPath(path) {
   return normalizeAppPath(path) === "/settings";
 }
@@ -713,7 +749,7 @@ function normalizeAppPath(path) {
 }
 
 function isAppShellPath(path) {
-  return isProjectsPath(path) || isSettingsPath(path);
+  return isProjectsPath(path) || isNewProjectPath(path) || isSettingsPath(path);
 }
 
 function setTopbarPanelOpen(panel, open) {
@@ -1847,16 +1883,6 @@ function emptyDashboardItem(text) {
   return item;
 }
 
-function toggleDashboardForm(form, button) {
-  const open = form.hidden;
-  form.hidden = !open;
-  button.setAttribute("aria-expanded", String(open));
-  if (open) {
-    const firstInput = form.querySelector("input, textarea");
-    requestAnimationFrame(() => firstInput?.focus());
-  }
-}
-
 async function importDocumentFile(fileInput, markdownInput, titleInput) {
   const [file] = fileInput.files || [];
   if (!file) return false;
@@ -1874,7 +1900,7 @@ async function createProjectFromMarkdown() {
   const documentType = projectMarkdownInput.dataset.documentType || "markdown";
   if (!title || !markdown) return;
   try {
-    setProjectsStatus("Initializing project...");
+    setNewProjectStatus("Initializing project...");
     const result = await api(projectPath("/api/projects/create"), {
       method: "POST",
       body: JSON.stringify({ title, summary: documentSummary(markdown, documentType) })
@@ -1912,8 +1938,9 @@ async function createProjectFromMarkdown() {
     ].join("\n");
     await handOffDashboardPrompt(prompt, "/projects");
     setProjectsStatus(`Agent started in ${result.project.name}`);
+    setNewProjectStatus("");
   } catch (error) {
-    setProjectsStatus(error.message || "Could not create the project.");
+    setNewProjectStatus(error.message || "Could not create the project.");
   }
 }
 
@@ -2028,6 +2055,10 @@ async function waitForAgentPromptReady() {
 
 function setProjectsStatus(message) {
   projectsStatus.textContent = message;
+}
+
+function setNewProjectStatus(message) {
+  newProjectStatus.textContent = message;
 }
 
 function titleFromMarkdown(markdown) {
@@ -2683,6 +2714,7 @@ function pageFromHash() {
 function workspaceLocation() {
   const hashPath = pageFromHash();
   if (hashPath) return hashPath;
+  if (isNewProjectPath(location.pathname)) return "/projects/new";
   if (isProjectsPath(location.pathname)) return "/projects";
   if (isSettingsPath(location.pathname)) return "/settings";
   return "/projects";
@@ -2748,6 +2780,7 @@ function breadcrumbItems(path, title) {
 
 function planBreadcrumbs(path, title) {
   if (path === "/dashboard" || path === "/ideas" || path === "/projects") return [{ label: "Projects", path: "/projects" }];
+  if (path === "/projects/new") return [{ label: "New Project", path }];
   if (path === "/projects") return [{ label: "Projects", path }];
   if (path.endsWith("/wiki/plans/mvp/index.html")) {
     return [{ label: "MVP Plan", path: "/wiki/plans/mvp/index.html" }];
