@@ -153,8 +153,8 @@ async function handleRequest(defaultRoot, request, response, context) {
       });
       return;
     }
-    if (url.pathname === "/favicon.svg") {
-      await sendFile(response, path.join(publicRoot, "favicon.svg"), publicRoot);
+    if (url.pathname === "/favicon.ico") {
+      await sendFile(response, path.join(publicRoot, "favicon.ico"), publicRoot);
       return;
     }
     if (url.pathname === "/api/projects") {
@@ -1242,7 +1242,7 @@ function wikiLayout(projectName, title, body) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)} - ${escapeHtml(projectName)}</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/assets/wiki.css">
   <link rel="stylesheet" href="/assets/theme.css">
 </head>
@@ -1437,8 +1437,8 @@ async function sendWikiFile(response, filePath, allowedRoot) {
     return;
   }
   let html = await readFile(resolved, "utf8");
-  if (!html.includes("/favicon.svg")) {
-    html = html.replace("</head>", "  <link rel=\"icon\" href=\"/favicon.svg\" type=\"image/svg+xml\">\n</head>");
+  if (!html.includes("/favicon.ico")) {
+    html = html.replace("</head>", "  <link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\">\n</head>");
   }
   if (!html.includes("/assets/theme.css")) {
     html = html.replace("</head>", "  <link rel=\"stylesheet\" href=\"/assets/theme.css\">\n</head>");
@@ -1481,6 +1481,7 @@ function contentType(filePath) {
   if (ext === ".css") return "text/css; charset=utf-8";
   if (ext === ".js" || ext === ".mjs") return "text/javascript; charset=utf-8";
   if (ext === ".svg") return "image/svg+xml";
+  if (ext === ".ico") return "image/x-icon";
   if (ext === ".wasm") return "application/wasm";
   if (ext === ".json") return "application/json; charset=utf-8";
   return "application/octet-stream";

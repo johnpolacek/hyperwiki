@@ -208,7 +208,7 @@ function layout(context, title, body) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escapeHtml(title)} - ${escapeHtml(context.projectName)}</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="stylesheet" href="/assets/wiki.css">
 </head>
 <body>
