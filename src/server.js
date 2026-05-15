@@ -399,7 +399,7 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
     prompt,
     ""
   ].join("\n");
-  inputs.get(agentSession.id)(`${message}\n`);
+  inputs.get(agentSession.id)(codexSubmitInput(message));
   return {
     ok: true,
     session: {
@@ -407,6 +407,10 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
       name: agentSession.name
     }
   };
+}
+
+function codexSubmitInput(message) {
+  return `\x1b[200~${message}\x1b[201~\r`;
 }
 
 const reviewWorkflowDefinitions = [
