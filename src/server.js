@@ -399,7 +399,9 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
     prompt,
     ""
   ].join("\n");
-  inputs.get(agentSession.id)(codexSubmitInput(message));
+  const writeAgentInput = inputs.get(agentSession.id);
+  writeAgentInput(codexPasteInput(message));
+  setTimeout(() => writeAgentInput("\r"), 75);
   return {
     ok: true,
     session: {
@@ -409,8 +411,8 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   };
 }
 
-function codexSubmitInput(message) {
-  return `\x1b[200~${message}\x1b[201~\r`;
+function codexPasteInput(message) {
+  return `\x1b[200~${message}\x1b[201~`;
 }
 
 const reviewWorkflowDefinitions = [

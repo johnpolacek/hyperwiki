@@ -2551,6 +2551,10 @@ html[data-initial-route="settings"] .wiki-pane {
   box-shadow: 0 18px 44px rgba(32, 35, 31, 0.08);
 }
 
+.workspace.non-plan-wiki-mode .plan-prompt[hidden] {
+  display: none;
+}
+
 .workspace.non-plan-wiki-mode .plan-prompt label {
   align-self: end;
   color: var(--text);
