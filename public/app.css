@@ -3123,6 +3123,14 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--text);
 }
 
+#new-idea-toggle,
+#new-project-toggle {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--panel);
+  box-shadow: 0 2px 0 var(--border);
+}
+
 .topbar-button.active,
 .dashboard-new-button[aria-expanded="true"] {
   border-color: var(--text);
