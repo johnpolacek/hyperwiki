@@ -14,6 +14,8 @@ const executeMenu = document.getElementById("execute-menu");
 const previewLink = document.getElementById("preview-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
+const terminalPane = document.querySelector(".terminal-pane");
+const wikiPane = document.querySelector(".wiki-pane");
 const newAgentTerminalButton = document.getElementById("new-agent-terminal");
 const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
@@ -102,6 +104,7 @@ let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let currentPlanPath = "/wiki/plans/index.html";
 let dashboardAgentActive = false;
+let nonPlanPromptSubmitted = false;
 let settingsState = null;
 let themeDraft = null;
 let themeDraftSimple = null;
@@ -191,6 +194,7 @@ delete document.documentElement.dataset.initialRoute;
 await restoreTerminals();
 
 newAgentTerminalButton.addEventListener("click", async () => {
+  if (workspace.classList.contains("non-plan-wiki-mode")) return;
   const template = terminalTemplate("agent");
   const name = nextTerminalName("agent");
   await createTerminal(name, { ...template, name });
@@ -198,6 +202,7 @@ newAgentTerminalButton.addEventListener("click", async () => {
 });
 
 newCliTerminalButton.addEventListener("click", async () => {
+  if (workspace.classList.contains("non-plan-wiki-mode")) return;
   const template = terminalTemplate("cli");
   const name = nextTerminalName("cli");
   await createTerminal(name, { ...template, name });
@@ -258,19 +263,30 @@ planPrompt.addEventListener("submit", async (event) => {
   if (!prompt) return;
   planPromptStatus.textContent = "Sending...";
   try {
-    await api(projectPath("/api/agent/prompt"), {
-      method: "POST",
-      body: JSON.stringify({
-        prompt,
-        currentPage: currentPage.title || requestedWikiPath
-      })
-    });
+    const pagePath = currentPage.title || requestedWikiPath;
+    const agentPrompt = isNonPlanWikiPath(pagePath)
+      ? modifyIdeaPrompt(prompt)
+      : prompt;
+    if (isNonPlanWikiPath(pagePath)) {
+      nonPlanPromptSubmitted = true;
+      planPrompt.hidden = true;
+      workspace.classList.add("non-plan-agent-active");
+      closeAllTerminals();
+      await ensureAgentTerminal();
+      activateTerminal("agent");
+    }
+    await postAgentPromptWithRetry(agentPrompt, pagePath);
     planPromptInput.value = "";
     resizePlanPromptInput();
     planPromptStatus.textContent = "Sent to agent.";
-    activateTerminal("agent");
+    if (terminalSessions.has("agent")) activateTerminal("agent");
   } catch (error) {
+    if (isNonPlanWikiPath(currentPage.title || requestedWikiPath)) {
+      nonPlanPromptSubmitted = false;
+      workspace.classList.remove("non-plan-agent-active");
+    }
     planPromptStatus.textContent = error.message || "Agent unavailable.";
+    updatePlanPromptVisibility();
   }
 });
 
@@ -654,7 +670,7 @@ async function showDashboardPage(options = {}) {
   dashboardButton.classList.add("active");
   settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
-  workspace.classList.remove("settings-mode", "projects-mode");
+  workspace.classList.remove("settings-mode", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
   setCurrentPage("/ideas", "Ideas");
   openPage.href = "/ideas";
@@ -680,7 +696,7 @@ async function showProjectsPage(options = {}) {
   dashboardButton.classList.remove("active");
   settingsButton.classList.remove("active");
   workspace.classList.add("projects-mode");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects", "Projects");
   openPage.href = "/projects";
   modifyPlanUi.hidden = true;
@@ -704,7 +720,7 @@ async function showSettingsPage(options = {}) {
   planPrompt.hidden = true;
   dashboardButton.classList.remove("active");
   settingsButton.classList.add("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "projects-mode");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
   currentPage.title = "/settings";
@@ -2087,38 +2103,10 @@ async function createIdeaFromDocument() {
     await loadDashboard();
     await loadWikiNav();
     activateWorkspaceLocation(result.idea.path);
-    try {
-      setDashboardStatus("Starting agent for the imported idea...");
-      await handOffIdeaPrompt(title, result.idea.path, content, documentType);
-      setDashboardStatus(`Agent started for ${result.idea.title}`);
-    } catch (error) {
-      setDashboardStatus(`Idea created, but the agent did not start: ${error.message || "agent unavailable"}`);
-    }
+    setDashboardStatus(`Idea created: ${result.idea.title}`);
   } catch (error) {
     setDashboardStatus(error.message || "Could not create the idea.");
   }
-}
-
-async function handOffIdeaPrompt(title, ideaPath, content, documentType) {
-  const prompt = [
-    "Turn this imported document into a useful hyperwiki idea page.",
-    "",
-    `Idea: ${title}`,
-    `Current path: ${displayWikiPath(ideaPath)}`,
-    "",
-    "Instructions:",
-    "- Read AGENTS.md, wiki/index.html, wiki/sources.html, and the current idea page before writing.",
-    "- Refine the idea page directly under wiki/ideas/ without promoting it to a project unless the user asks.",
-    "- Preserve concrete product, technical, and validation details from the imported document.",
-    "- Ask concise Q&A in this terminal if the document lacks critical decisions.",
-    "- Run relevant hyperwiki checks before finishing if you change files.",
-    "",
-    `${documentContentLabel(documentType)}:`,
-    `\`\`\`${documentType}`,
-    content,
-    "```"
-  ].join("\n");
-  await handOffDashboardPrompt(prompt, ideaPath);
 }
 
 async function createProjectFromMarkdown() {
@@ -2387,6 +2375,10 @@ async function switchProject(project) {
 }
 
 function updatePlanPromptVisibility() {
+  if (workspace.classList.contains("non-plan-wiki-mode")) {
+    planPrompt.hidden = nonPlanPromptSubmitted || terminalSessions.has("agent");
+    return;
+  }
   planPrompt.hidden = workspace.classList.contains("dashboard-mode")
     || workspace.classList.contains("projects-mode")
     || workspace.classList.contains("settings-mode")
@@ -2669,6 +2661,7 @@ function isCompletedPage(page) {
 
 function activateWikiPage(path) {
   const nextPath = normalizeWikiPath(path);
+  configureWikiPageMode(nextPath);
   requestedWikiPath = nextPath;
   if (wikiFrame.getAttribute("src") !== nextPath) {
     wikiFrame.setAttribute("src", nextPath);
@@ -2680,6 +2673,7 @@ function activateWikiPage(path) {
     link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
   });
   syncPlanTreeOpenState(nextPath);
+  updatePlanPromptVisibility();
   const nextUrl = `${currentWorkspacePath()}#${nextPath}`;
   if (isAppShellPath(location.pathname) || `${location.pathname}${location.hash}` !== nextUrl) {
     history.replaceState(null, "", nextUrl);
@@ -2704,6 +2698,53 @@ function modifyPlanPrompt(prompt) {
     "Requested modification:",
     prompt
   ].join("\n");
+}
+
+function modifyIdeaPrompt(prompt) {
+  const pagePath = currentPage.title || requestedWikiPath;
+  const pageTitle = currentPage.dataset.title || titleForWikiPath(pagePath);
+  return [
+    "Revise this hyperwiki idea page from the user's instruction.",
+    "",
+    `Current page: ${pageTitle}`,
+    `Current path: ${displayWikiPath(pagePath)}`,
+    "",
+    "Instructions:",
+    "- Read AGENTS.md, wiki/index.html, wiki/sources.html, and the current idea page before editing.",
+    "- Apply the requested change directly to this wiki HTML file.",
+    "- Preserve concrete product, technical, and validation details already present on the page.",
+    "- Do not promote the idea to a project unless the user explicitly asks.",
+    "- Run relevant checks after editing.",
+    "",
+    "Requested idea revision:",
+    prompt
+  ].join("\n");
+}
+
+function configureWikiPageMode(path) {
+  const nonPlan = isNonPlanWikiPath(path);
+  workspace.classList.toggle("non-plan-wiki-mode", nonPlan);
+  workspace.classList.remove("non-plan-agent-active");
+  if (nonPlan) {
+    nonPlanPromptSubmitted = false;
+    setUpNextAvailable(false);
+    closeAllTerminals();
+    terminalPane.insertBefore(planPrompt, terminalPane.firstChild);
+    planPrompt.querySelector("label").textContent = "Modify Idea";
+    planPromptInput.setAttribute("placeholder", "Describe how the agent should revise this idea...");
+    return;
+  }
+  setUpNextAvailable(true);
+  if (planPrompt.parentElement !== wikiPane) {
+    wikiPane.append(planPrompt);
+  }
+  planPrompt.querySelector("label").textContent = "Plan Prompt";
+  planPromptInput.setAttribute("placeholder", "Ask the agent to revise this plan...");
+}
+
+function isNonPlanWikiPath(path) {
+  const displayPath = displayWikiPath(path);
+  return isWikiPath(displayPath) && !displayPath.includes("/wiki/plans/");
 }
 
 function syncPlanTreeOpenState(selectedPath) {

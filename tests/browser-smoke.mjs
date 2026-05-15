@@ -307,7 +307,42 @@ const importedIdeaPath = await page.evaluate(() => {
 });
 await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
 await page.locator("#wiki-nav a.active").filter({ hasText: "HTML Smoke Idea" }).waitFor();
-await page.waitForFunction(() => /Agent started for HTML Smoke Idea|Idea created, but the agent did not start/.test(document.querySelector("#dashboard-status")?.textContent || ""));
+await page.locator(".workspace").evaluate((workspaceElement) => {
+  if (!workspaceElement.classList.contains("non-plan-wiki-mode")) {
+    throw new Error("Expected imported idea to use non-plan wiki mode.");
+  }
+  if (document.querySelectorAll(".terminal-panel").length !== 0) {
+    throw new Error("Expected imported idea page not to auto-open terminals.");
+  }
+  if (getComputedStyle(document.querySelector(".terminal-toolbar")).display !== "none") {
+    throw new Error("Expected terminal creation toolbar to be hidden on idea pages.");
+  }
+  if (!document.querySelector("#up-next-button")?.hidden) {
+    throw new Error("Expected Up Next to be hidden on idea pages.");
+  }
+  const prompt = document.querySelector("#plan-prompt");
+  if (!prompt || prompt.hidden || !prompt.textContent.includes("Modify Idea")) {
+    throw new Error(`Expected right-side Modify Idea prompt, got ${prompt?.textContent}`);
+  }
+});
+await page.locator("#plan-prompt-input").fill("Tighten the audience language.");
+await page.locator("#plan-prompt-submit").click();
+await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
+await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
+await page.locator(".workspace").evaluate((workspaceElement) => {
+  if (!workspaceElement.classList.contains("non-plan-agent-active")) {
+    throw new Error("Expected submitted idea prompt to activate the single agent terminal.");
+  }
+  if (!document.querySelector("#plan-prompt")?.hidden) {
+    throw new Error("Expected idea prompt to be replaced by the agent terminal.");
+  }
+  if (document.querySelectorAll(".terminal-panel").length !== 1) {
+    throw new Error("Expected exactly one terminal on idea prompt submission.");
+  }
+  if (getComputedStyle(document.querySelector(".terminal-toolbar")).display !== "none") {
+    throw new Error("Expected no terminal creation toolbar after idea prompt submission.");
+  }
+});
 await page.locator("#dashboard-button").click();
 await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
 await page.waitForURL(ideasUrl);

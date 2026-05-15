@@ -383,6 +383,35 @@ html[data-initial-route="settings"] .wiki-pane {
   display: none;
 }
 
+.workspace.non-plan-wiki-mode .terminal-pane {
+  grid-template-rows: minmax(0, 1fr);
+  border-left: 1px solid var(--border);
+  background:
+    linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(239, 234, 222, 0.82)),
+    repeating-linear-gradient(90deg, rgba(32, 35, 31, 0.05) 0 1px, transparent 1px 72px);
+}
+
+.workspace.non-plan-wiki-mode .terminal-toolbar,
+.workspace.non-plan-wiki-mode .terminal-tabs,
+.workspace.non-plan-wiki-mode .terminal-empty,
+.workspace.non-plan-wiki-mode .terminal-actions {
+  display: none;
+}
+
+.workspace.non-plan-wiki-mode:not(.terminal-active) .terminals {
+  display: none;
+}
+
+.workspace.non-plan-wiki-mode.terminal-active .terminals {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+}
+
+.workspace.non-plan-wiki-mode .terminal-panel {
+  min-height: 100%;
+}
+
 .dashboard-page-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -2483,6 +2512,70 @@ html[data-initial-route="settings"] .wiki-pane {
   margin: 0;
   color: var(--muted);
   font-size: 11px;
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt {
+  grid-row: auto;
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "label"
+    "note"
+    "input"
+    "button"
+    "status";
+  align-items: stretch;
+  gap: 14px;
+  height: 100%;
+  padding: 24px;
+  border-top: 0;
+  background: transparent;
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt::before {
+  content: "Work on this wiki page with one deliberate agent pass. The terminal opens only after you send the instruction.";
+  grid-area: note;
+  display: block;
+  max-width: 34ch;
+  color: var(--muted);
+  font: 13px/1.5 var(--sidebar-font);
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt label {
+  align-self: end;
+  color: var(--text);
+  font: 700 30px/0.95 var(--docs-serif-font);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt textarea {
+  height: auto;
+  --plan-prompt-min-lines: 12;
+  --plan-prompt-max-lines: 18;
+  border-color: rgba(32, 35, 31, 0.22);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(255, 253, 248, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 253, 248, 0.5);
+  font-size: 14px;
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt button {
+  justify-self: stretch;
+  justify-content: center;
+  min-height: 46px;
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--panel);
+  font-weight: 800;
+}
+
+.workspace.non-plan-wiki-mode .plan-prompt p {
+  justify-self: start;
+  min-height: 18px;
 }
 
 .wiki-pane {
