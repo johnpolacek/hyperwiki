@@ -670,7 +670,7 @@ async function showDashboardPage(options = {}) {
   dashboardButton.classList.add("active");
   settingsButton.classList.remove("active");
   workspace.classList.add("dashboard-mode");
-  workspace.classList.remove("settings-mode", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("settings-mode", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active", "idea-wiki-mode");
   workspace.classList.toggle("dashboard-agent-active", dashboardAgentActive);
   setCurrentPage("/ideas", "Ideas");
   openPage.href = "/ideas";
@@ -696,7 +696,7 @@ async function showProjectsPage(options = {}) {
   dashboardButton.classList.remove("active");
   settingsButton.classList.remove("active");
   workspace.classList.add("projects-mode");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "settings-mode", "non-plan-wiki-mode", "non-plan-agent-active", "idea-wiki-mode");
   setCurrentPage("/projects", "Projects");
   openPage.href = "/projects";
   modifyPlanUi.hidden = true;
@@ -720,7 +720,7 @@ async function showSettingsPage(options = {}) {
   planPrompt.hidden = true;
   dashboardButton.classList.remove("active");
   settingsButton.classList.add("active");
-  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("dashboard-mode", "dashboard-agent-active", "projects-mode", "non-plan-wiki-mode", "non-plan-agent-active", "idea-wiki-mode");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
   currentPage.title = "/settings";
@@ -2735,7 +2735,10 @@ function modifyIdeaPrompt(prompt) {
 
 function configureWikiPageMode(path) {
   const nonPlan = isNonPlanWikiPath(path);
+  const displayPath = displayWikiPath(path);
+  const ideaPage = /^\/wiki\/ideas\/[^/]+\.html$/.test(displayPath) && !displayPath.endsWith("/index.html");
   workspace.classList.toggle("non-plan-wiki-mode", nonPlan);
+  workspace.classList.toggle("idea-wiki-mode", ideaPage);
   workspace.classList.remove("non-plan-agent-active");
   if (nonPlan) {
     nonPlanPromptSubmitted = false;

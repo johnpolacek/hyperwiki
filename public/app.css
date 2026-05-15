@@ -389,6 +389,10 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #f7f7f4;
 }
 
+.workspace.idea-wiki-mode .wiki-command-bar {
+  display: none;
+}
+
 .workspace.non-plan-wiki-mode .terminal-toolbar,
 .workspace.non-plan-wiki-mode .terminal-tabs,
 .workspace.non-plan-wiki-mode .terminal-empty,
