@@ -111,6 +111,7 @@ let themeDraftSimple = null;
 let themePresetPickerOpen = false;
 let agentDraft = null;
 let agentsFileDraft = "";
+let agentWikiRefreshTimer = null;
 
 const themeSurfaces = [
   {
@@ -3189,11 +3190,23 @@ async function createTerminal(name, options = {}) {
 function recordTerminalOutput(session, data) {
   if (!session) return;
   session.outputBuffer = `${session.outputBuffer || ""}${String(data)}`.slice(-20000);
+  scheduleAgentWikiRefresh(session);
   if (!shouldWaitForCodexReady(session) || session.codexReady || !codexReadyFromOutput(session.outputBuffer)) return;
   session.codexReady = true;
   const waiters = session.codexReadyWaiters || [];
   session.codexReadyWaiters = [];
   waiters.forEach((resolve) => resolve());
+}
+
+function scheduleAgentWikiRefresh(session) {
+  if (session.name !== "agent" || !workspace.classList.contains("idea-wiki-mode")) return;
+  clearTimeout(agentWikiRefreshTimer);
+  agentWikiRefreshTimer = setTimeout(() => {
+    if (!workspace.classList.contains("idea-wiki-mode") || wikiFrame.hidden) return;
+    const path = displayWikiPath(requestedWikiPath);
+    if (!/^\/wiki\/ideas\/[^/]+\.html$/.test(path)) return;
+    wikiFrame.setAttribute("src", `${path}?agentRefresh=${Date.now()}`);
+  }, 1500);
 }
 
 function shouldWaitForCodexReady(session) {
