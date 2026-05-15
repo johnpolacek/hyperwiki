@@ -236,6 +236,7 @@ modifyButton.addEventListener("click", () => {
 });
 
 modifyPlanInput.addEventListener("input", () => resizePlanTextarea(modifyPlanInput));
+modifyPlanInput.addEventListener("keydown", submitFormWithCommandEnter);
 resizePlanTextarea(modifyPlanInput);
 
 modifyPlanUi.addEventListener("submit", async (event) => {
@@ -256,6 +257,7 @@ modifyPlanUi.addEventListener("submit", async (event) => {
 });
 
 planPromptInput.addEventListener("input", resizePlanPromptInput);
+planPromptInput.addEventListener("keydown", submitFormWithCommandEnter);
 resizePlanPromptInput();
 
 planPrompt.addEventListener("submit", async (event) => {
@@ -310,6 +312,12 @@ function resizePlanTextarea(textarea) {
   const nextHeight = Math.max(minHeight, Math.min(contentHeight, maxHeight));
   textarea.style.height = `${nextHeight}px`;
   textarea.style.overflowY = contentHeight > nextHeight ? "auto" : "hidden";
+}
+
+function submitFormWithCommandEnter(event) {
+  if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
 }
 
 projectToggle.addEventListener("click", (event) => {
