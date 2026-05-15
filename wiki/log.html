@@ -13,7 +13,6 @@
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
       <a href="/wiki/plans/index.html">Plans</a>
-      <a href="/wiki/ideas/index.html">Ideas</a>
       <a href="/wiki/log.html">Log</a>
       <a href="/wiki/sources.html">Sources</a>
     </nav>
@@ -21,6 +20,14 @@
 <main class="wiki-page">
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
+<article>
+  <h2>2026-05-15 implementation | Projects-only workspace</h2>
+  <ul>
+    <li>Removed idea incubation from the active product model: no Ideas route, topbar item, wiki scaffold, API endpoints, smoke script, or idea files remain.</li>
+    <li>Changed the default workspace surface to Projects and kept imported briefs on the direct project creation path.</li>
+    <li>Legacy <code>/ideas</code> and <code>/dashboard</code> app-shell paths resolve to the Projects surface for compatibility.</li>
+  </ul>
+</article>
 <article>
   <h2>2026-05-14 fix | Non-plan wiki prompt rail</h2>
   <ul>

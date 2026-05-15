@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remove Ideas - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Remove Ideas</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: active</li>
+        <li>Shape: product simplification</li>
+        <li>Current unit: remove idea incubation and route project creation directly through projects</li>
+        <li>Next action: delete idea files, APIs, navigation, tests, and docs references; make Projects the default workspace surface.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>hyperwiki should only manage projects. Imported briefs should create a project directly instead of becoming intermediate idea pages that later need promotion.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Delete the Ideas workspace route, topbar button, dropdown, page, sidebar group, and idea files.</li>
+        <li>Remove idea create/list/promote endpoints and tests.</li>
+        <li>Keep project import and project creation as the sole new-workflow path.</li>
+        <li>Default app-shell navigation to <code>/projects</code>.</li>
+        <li>Update wiki durable context to describe project-only behavior.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

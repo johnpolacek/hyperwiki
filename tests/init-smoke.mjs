@@ -25,7 +25,6 @@ const index = await readFile(path.join(root, "wiki", "index.html"), "utf8");
 const dev = await readFile(path.join(root, "wiki", "dev.html"), "utf8");
 const generatedStage = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation.html"), "utf8");
 const generatedUnit = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation", "unit-01-confirm-project-direction.html"), "utf8");
-const ideas = await readFile(path.join(root, "wiki", "ideas", "index.html"), "utf8");
 const prd = await readFile(path.join(root, "wiki", "sources", "prd.html"), "utf8");
 const config = JSON.parse(await readFile(path.join(root, ".hyperwiki", "config.json"), "utf8"));
 
@@ -46,9 +45,6 @@ if (!generatedStage.includes("unit-01-confirm-project-direction.html")) {
 }
 if (!generatedUnit.includes("<h1>Unit 01 - Confirm Project Direction</h1>")) {
   throw new Error("Generated unit page did not render its own HTML page.");
-}
-if (!ideas.includes("<h1>Ideas</h1>") || !ideas.includes("free-form concepts")) {
-  throw new Error("Generated wiki did not include the idea incubation page.");
 }
 if (prd.includes("hyperwiki turns repo-local project docs")) {
   throw new Error("Generated PRD still contains hyperwiki-specific product copy.");

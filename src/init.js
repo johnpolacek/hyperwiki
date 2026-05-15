@@ -8,7 +8,6 @@ const pages = new Map([
   ["wiki/AGENTS.html", agentsPage],
   ["wiki/log.html", logPage],
   ["wiki/sources.html", sourcesPage],
-  ["wiki/ideas/index.html", ideasIndexPage],
   ["wiki/roadmap.html", roadmapPage],
   ["wiki/architecture.html", architecturePage],
   ["wiki/dev.html", devPage],
@@ -218,7 +217,6 @@ function layout(context, title, body) {
       <a href="/wiki/architecture.html">Architecture</a>
       <a href="/wiki/dev.html">Dev</a>
       <a href="/wiki/plans/index.html">Plans</a>
-      <a href="/wiki/ideas/index.html">Ideas</a>
       <a href="/wiki/log.html">Log</a>
       <a href="/wiki/sources.html">Sources</a>
     </nav>
@@ -244,7 +242,6 @@ function indexPage(context) {
     <li><a href="/wiki/architecture.html">Architecture</a></li>
     <li><a href="/wiki/dev.html">Development workflow</a></li>
     <li><a href="/wiki/plans/index.html">Planning dashboard</a></li>
-    <li><a href="/wiki/ideas/index.html">Idea incubation</a></li>
     <li><a href="/wiki/log.html">Project-context log</a></li>
     <li><a href="/wiki/sources.html">Source index</a></li>
   </ul>
@@ -298,19 +295,6 @@ function sourcesPage(context) {
   <li>Project audience, scope, and non-goals need confirmation if they are not already documented in source files.</li>
   <li>Architecture and verification expectations should be refined as implementation evidence grows.</li>
 </ul>`);
-}
-
-function ideasIndexPage(context) {
-  return layout(context, "Ideas", `<h1>Ideas</h1>
-<p>Use this area for free-form concepts that are not full projects yet. When an idea is ready, initialize it as a hyperwiki project from the workspace dashboard.</p>
-<section class="summary">
-  <h2>Summary</h2>
-  <ul>
-    <li>Status: incubating</li>
-    <li>Shape: free-form idea pages</li>
-    <li>Next action: add one HTML page per idea under <code>wiki/ideas/</code>.</li>
-  </ul>
-</section>`);
 }
 
 function roadmapPage(context) {

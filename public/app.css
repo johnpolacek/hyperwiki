@@ -296,10 +296,8 @@ body {
   display: none;
 }
 
-html[data-initial-route="ideas"] #wiki-frame,
 html[data-initial-route="projects"] #wiki-frame,
 html[data-initial-route="settings"] #wiki-frame,
-html[data-initial-route="ideas"] .plan-prompt,
 html[data-initial-route="projects"] .plan-prompt,
 html[data-initial-route="settings"] .plan-prompt,
 html[data-initial-route="settings"] .terminal-pane,
@@ -307,7 +305,6 @@ html[data-initial-route="settings"] .wiki-command-bar {
   display: none;
 }
 
-html[data-initial-route="ideas"] #dashboard-page[hidden],
 html[data-initial-route="projects"] #projects-page[hidden],
 html[data-initial-route="settings"] #settings-page[hidden] {
   display: block;
@@ -367,18 +364,15 @@ html[data-initial-route="settings"] .wiki-pane {
   stroke-width: 2;
 }
 
-.workspace.dashboard-mode,
 .workspace.projects-mode {
   grid-template-columns: 300px minmax(0, 1fr);
 }
 
-.workspace.dashboard-mode #up-next-button,
 .workspace.projects-mode #up-next-button,
 .workspace.settings-mode #up-next-button {
   display: none;
 }
 
-.workspace.dashboard-mode .terminal-pane,
 .workspace.projects-mode .terminal-pane {
   display: none;
 }
@@ -387,10 +381,6 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
   border-left: 1px solid var(--border);
   background: #f7f7f4;
-}
-
-.workspace.idea-wiki-mode .wiki-command-bar {
-  display: none;
 }
 
 .workspace.non-plan-wiki-mode .terminal-toolbar,
@@ -722,18 +712,12 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 8px;
 }
 
-#dashboard-ideas {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-}
-
 #dashboard-projects {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
 }
 
 @media (max-width: 1280px) {
-  #dashboard-ideas,
   #dashboard-projects {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -789,29 +773,6 @@ html[data-initial-route="settings"] .wiki-pane {
   text-decoration: none;
 }
 
-.dashboard-item .promote-idea-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  width: auto;
-  border: 1px solid #171916;
-  border-radius: 5px;
-  padding: 7px 10px;
-  background: #171916;
-  color: #fff;
-  font-weight: 600;
-}
-
-.dashboard-item .promote-idea-button svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-
 .dashboard-badge {
   width: fit-content;
   border: 1px solid #c6c8c0;
@@ -820,42 +781,6 @@ html[data-initial-route="settings"] .wiki-pane {
   color: #596158;
   font-size: 10px;
   line-height: 1;
-}
-
-.dashboard-item.idea-card {
-  gap: 11px;
-  min-height: 118px;
-  border-color: #d8d1c1;
-  padding: 14px 16px 15px 18px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, #c28d3a 18%, transparent) 0 4px, transparent 4px),
-    #fffdfa;
-}
-
-.idea-card-header {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-}
-
-.dashboard-item .idea-card-title {
-  width: auto;
-  font: 700 22px/1.05 var(--docs-serif-font);
-  text-decoration: none;
-}
-
-.dashboard-item .idea-card-summary {
-  max-width: 76ch;
-  color: #4f564d;
-  font-size: 12px;
-}
-
-.idea-card-details {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr);
-  gap: 8px;
 }
 
 .dashboard-item.project-card {
@@ -3178,15 +3103,10 @@ html[data-initial-route="settings"] .wiki-pane {
     gap: 4px;
   }
 
-  #dashboard-ideas {
-    grid-template-columns: 1fr;
-  }
-
   #dashboard-projects {
     grid-template-columns: 1fr;
   }
 
-  .idea-card-details,
   .project-card-details {
     grid-template-columns: 1fr;
   }
@@ -3229,7 +3149,6 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--text);
 }
 
-#new-idea-toggle,
 #new-project-toggle {
   border-color: var(--text);
   background: var(--text);
@@ -3279,8 +3198,7 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--text);
 }
 
-.dashboard-action-form button,
-.dashboard-item .promote-idea-button {
+.dashboard-action-form button {
   border-color: var(--text);
   background: var(--text);
   color: var(--panel);

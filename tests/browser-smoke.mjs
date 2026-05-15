@@ -1,15 +1,8 @@
 import { chromium } from "playwright";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 
 const url = process.env.HYPERWIKI_SMOKE_URL || "http://127.0.0.1:4177/workspace/";
 const origin = new URL(url).origin;
-const ideasUrl = `${origin}/ideas`;
 const projectsUrl = `${origin}/projects`;
-const tempRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-browser-smoke-"));
-const ideaHtmlPath = path.join(tempRoot, "imported-idea.html");
-await writeFile(ideaHtmlPath, "<!doctype html><html><head><title>Fallback Title</title></head><body><h1>HTML Smoke Idea</h1><p>A brief imported from HTML.</p></body></html>");
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -25,34 +18,7 @@ page.on("pageerror", (error) => errors.push(error.message));
 await page.goto(url, { waitUntil: "networkidle" });
 
 await page.locator(".topbar-brand").filter({ hasText: "hyperwiki" }).waitFor();
-await page.locator("#dashboard-button").filter({ hasText: "Ideas" }).click();
-await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
-await page.waitForURL(ideasUrl);
-await page.locator("#new-idea-toggle").filter({ hasText: "+ New Idea" }).waitFor();
-await page.locator("#dashboard-page").evaluate((panel) => {
-  const text = panel.textContent || "";
-  if (!text.includes("New Idea") || !text.includes("Ideas") || text.includes("New Project") || text.includes("Projects")) {
-    throw new Error(`Expected Ideas page without Projects inventory, got ${text}`);
-  }
-  if (!document.querySelector("#up-next-button")?.hidden) {
-    throw new Error("Expected Up Next to be hidden on Ideas.");
-  }
-  const ideasHeader = panel.querySelector(".dashboard-page-header");
-  if (!ideasHeader || !ideasHeader.textContent.includes("Ideas") || !ideasHeader.textContent.includes("+ New Idea")) {
-    throw new Error("Expected Ideas page header with a New Idea button.");
-  }
-  if (!document.querySelector("#idea-import-form")?.hidden) {
-    throw new Error("Expected idea form to start collapsed.");
-  }
-});
-await page.goto(`${ideasUrl}/`, { waitUntil: "networkidle" });
-await page.waitForURL(ideasUrl);
-await page.locator("#dashboard-page").evaluate((panel) => {
-  if (panel.hidden) throw new Error("Expected /ideas/ refresh to show the Ideas page.");
-  if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
-    throw new Error("Expected /ideas/ refresh to keep the wiki iframe hidden.");
-  }
-});
+await page.waitForURL(projectsUrl);
 await page.locator("#project-toggle").click();
 await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
 await page.waitForURL(projectsUrl);
@@ -130,19 +96,19 @@ await page.locator("#agent-edit").click();
 await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
 await page.locator("#agent-cancel").click();
-await page.locator("#dashboard-button").click();
-await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
-await page.waitForURL(ideasUrl);
-await page.locator("#new-idea-toggle").click();
-await page.locator("#idea-import-form").evaluate((form) => {
+await page.locator("#project-toggle").click();
+await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
+await page.waitForURL(projectsUrl);
+await page.locator("#new-project-toggle").click();
+await page.locator("#project-import-form").evaluate((form) => {
   const text = form.textContent || "";
-  const fileInput = form.querySelector("#idea-markdown-file");
+  const fileInput = form.querySelector("#project-markdown-file");
   const importButton = form.querySelector(".dashboard-import-button");
-  if (!text.includes("OR") || !text.includes("Import idea") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
+  if (!text.includes("OR") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
     throw new Error(`Expected custom document import affordance without Send to agent, got ${text}`);
   }
   if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
-    throw new Error(`Expected idea import to accept HTML, got ${fileInput?.accept}`);
+    throw new Error(`Expected project import to accept HTML, got ${fileInput?.accept}`);
   }
   if (getComputedStyle(importButton).backgroundColor !== "rgb(251, 251, 248)") {
     throw new Error(`Expected import button to match dashboard surface, got ${getComputedStyle(importButton).backgroundColor}`);
@@ -151,11 +117,11 @@ await page.locator("#idea-import-form").evaluate((form) => {
     throw new Error("Expected native file input to be visually hidden.");
   }
 });
-await page.locator("#idea-title").fill("Smoke Test Idea");
-await page.locator("#idea-markdown").fill("# Smoke Test Idea\n\nA test markdown brief.");
+await page.locator("#project-title").fill("Smoke Test Project");
+await page.locator("#project-markdown").fill("# Smoke Test Project\n\nA test markdown brief.");
 await page.evaluate(() => {
-  if (!document.querySelector(".workspace")?.classList.contains("dashboard-mode")) {
-    throw new Error("Expected Ideas to be a workspace page mode.");
+  if (!document.querySelector(".workspace")?.classList.contains("projects-mode")) {
+    throw new Error("Expected Projects to be a workspace page mode.");
   }
 });
 await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory.html`, { waitUntil: "networkidle" });
@@ -293,60 +259,6 @@ if (contractedPromptHeight >= expandedPromptMetrics.clientHeight) {
 await page.locator("#plan-prompt-submit").click();
 await page.locator("#plan-prompt-status").filter({ hasText: "Sent to agent." }).waitFor();
 
-await page.locator("#dashboard-button").click();
-await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
-await page.waitForURL(ideasUrl);
-if (await page.locator("#idea-import-form").evaluate((form) => form.hidden)) {
-  await page.locator("#new-idea-toggle").click();
-}
-await page.locator("#idea-markdown-file").setInputFiles(ideaHtmlPath);
-await page.waitForURL(/#.*\/wiki\/ideas\/html-smoke-idea(?:-\d+)?\.html$/);
-const importedIdeaPath = await page.evaluate(() => {
-  const hashPath = location.hash.replace(/^#/, "");
-  return hashPath.replace(/^\/projects\/[^/]+/, "");
-});
-await page.frameLocator("#wiki-frame").locator("main").filter({ hasText: "A brief imported from HTML." }).waitFor();
-await page.locator("#wiki-nav a.active").filter({ hasText: "HTML Smoke Idea" }).waitFor();
-await page.locator(".workspace").evaluate((workspaceElement) => {
-  if (!workspaceElement.classList.contains("non-plan-wiki-mode")) {
-    throw new Error("Expected imported idea to use non-plan wiki mode.");
-  }
-  if (document.querySelectorAll(".terminal-panel").length !== 0) {
-    throw new Error("Expected imported idea page not to auto-open terminals.");
-  }
-  if (getComputedStyle(document.querySelector(".terminal-toolbar")).display !== "none") {
-    throw new Error("Expected terminal creation toolbar to be hidden on idea pages.");
-  }
-  if (!document.querySelector("#up-next-button")?.hidden) {
-    throw new Error("Expected Up Next to be hidden on idea pages.");
-  }
-  const prompt = document.querySelector("#plan-prompt");
-  if (!prompt || prompt.hidden || !prompt.textContent.includes("Modify Idea")) {
-    throw new Error(`Expected right-side Modify Idea prompt, got ${prompt?.textContent}`);
-  }
-});
-await page.locator("#plan-prompt-input").fill("Tighten the audience language.");
-await page.locator("#plan-prompt-submit").click();
-await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
-await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
-await page.locator(".workspace").evaluate((workspaceElement) => {
-  if (!workspaceElement.classList.contains("non-plan-agent-active")) {
-    throw new Error("Expected submitted idea prompt to activate the single agent terminal.");
-  }
-  if (!document.querySelector("#plan-prompt")?.hidden) {
-    throw new Error("Expected idea prompt to be replaced by the agent terminal.");
-  }
-  if (document.querySelectorAll(".terminal-panel").length !== 1) {
-    throw new Error("Expected exactly one terminal on idea prompt submission.");
-  }
-  if (getComputedStyle(document.querySelector(".terminal-toolbar")).display !== "none") {
-    throw new Error("Expected no terminal creation toolbar after idea prompt submission.");
-  }
-});
-await page.locator("#dashboard-button").click();
-await page.locator("#manage-ideas-link").filter({ hasText: "Manage Ideas" }).click();
-await page.waitForURL(ideasUrl);
-await page.locator(`#dashboard-ideas .dashboard-open-link[href$="${importedIdeaPath}"]`).filter({ hasText: "Open idea >>" }).waitFor();
 await page.goto(`${origin}/workspace/#/wiki/plans/index.html`, { waitUntil: "networkidle" });
 await page.waitForURL(/\/workspace\/.*#\/(projects\/[^/]+\/)?wiki\/plans\/index\.html$/);
 
@@ -425,10 +337,9 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
   const navLabels = [...document.querySelectorAll("#wiki-nav .wiki-nav-label")];
   const stageOneLabel = navLabels.find((label) => label.textContent.includes("Stage-01"));
   const stageSevenLabel = navLabels.find((label) => label.textContent.includes("Stage-08"));
-  const ideaIncubationLabel = navLabels.find((label) => label.textContent.includes("Idea Incubation"));
   const terminalHeaderLabel = navLabels.find((label) => label.textContent.includes("Terminal Header Simplification"));
   const longUnitLabel = navLabels.find((label) => label.textContent.includes("Unit-03"));
-  if (!stageOneLabel || !stageSevenLabel || !ideaIncubationLabel || !terminalHeaderLabel || !longUnitLabel) {
+  if (!stageOneLabel || !stageSevenLabel || !terminalHeaderLabel || !longUnitLabel) {
     throw new Error("Expected stage and unit labels in plan navigation");
   }
   if (stageOneLabel.getBoundingClientRect().top >= stageSevenLabel.getBoundingClientRect().top) {
@@ -457,8 +368,7 @@ await page.locator(".workspace").evaluate((workspaceElement) => {
     throw new Error("Expected active and inactive stage labels to align");
   }
   if (
-    Math.round(ideaIncubationLabel.getBoundingClientRect().left) !== Math.round(stageOneLabel.getBoundingClientRect().left)
-    || Math.round(terminalHeaderLabel.getBoundingClientRect().left) !== Math.round(stageOneLabel.getBoundingClientRect().left)
+    Math.round(terminalHeaderLabel.getBoundingClientRect().left) !== Math.round(stageOneLabel.getBoundingClientRect().left)
   ) {
     throw new Error("Expected non-expandable plan links to align with expandable plan labels");
   }

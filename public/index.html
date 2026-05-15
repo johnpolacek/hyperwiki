@@ -7,8 +7,9 @@
   <script>
     (() => {
       const path = window.location.pathname.replace(/^\/+|\/+$/g, "");
-      if (path === "ideas" || path === "dashboard") document.documentElement.dataset.initialRoute = "ideas";
-      if (path === "projects") document.documentElement.dataset.initialRoute = "projects";
+      if (path === "" || path === "workspace" || path.startsWith("workspace/") || path === "projects" || path === "ideas" || path === "dashboard") {
+        document.documentElement.dataset.initialRoute = "projects";
+      }
       if (path === "settings") document.documentElement.dataset.initialRoute = "settings";
     })();
   </script>
@@ -48,15 +49,7 @@
           </svg>
           <span>Up Next</span>
         </button>
-        <button type="button" id="dashboard-button" class="topbar-button" aria-expanded="false" aria-controls="ideas-panel">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 14c.2-1 .7-1.7 1.5-2.5A5.1 5.1 0 0 0 18 8a6 6 0 1 0-12 0c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"></path>
-            <path d="M9 18h6"></path>
-            <path d="M10 22h4"></path>
-          </svg>
-          <span>Ideas</span>
-        </button>
-        <button type="button" id="project-toggle" class="topbar-button" aria-expanded="false" aria-controls="project-panel" hidden>
+        <button type="button" id="project-toggle" class="topbar-button" aria-expanded="false" aria-controls="project-panel">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="8" cy="8" r="3"></circle>
             <circle cx="16" cy="8" r="3"></circle>
@@ -73,17 +66,6 @@
           <span>Settings</span>
         </button>
       </div>
-      <section id="ideas-panel" class="topbar-panel" role="dialog" aria-label="Ideas" hidden>
-        <button type="button" id="manage-ideas-link" class="topbar-manage-link">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 14c.2-1 .7-1.7 1.5-2.5A5.1 5.1 0 0 0 18 8a6 6 0 1 0-12 0c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"></path>
-            <path d="M9 18h6"></path>
-            <path d="M10 22h4"></path>
-          </svg>
-          <span>Manage Ideas</span>
-        </button>
-        <div id="ideas-list" class="topbar-list" aria-label="Ideas"></div>
-      </section>
       <section id="project-panel" class="topbar-panel" role="dialog" aria-label="Projects" hidden>
         <button type="button" id="manage-projects-link" class="topbar-manage-link">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -154,42 +136,6 @@
         </button>
         <p id="modify-plan-status" role="status"></p>
       </form>
-      <section id="dashboard-page" class="dashboard-page" aria-label="hyperwiki Ideas" hidden>
-        <header class="dashboard-page-header">
-          <div>
-            <h1>Ideas</h1>
-            <p>Capture imported briefs as local idea pages, then open or promote them when they are ready.</p>
-          </div>
-          <button type="button" id="new-idea-toggle" class="dashboard-new-button" aria-expanded="false" aria-controls="idea-import-form">+ New Idea</button>
-          <p id="dashboard-status" class="dashboard-status" role="status"></p>
-        </header>
-        <div class="dashboard-inventory">
-          <section class="dashboard-section">
-            <div id="dashboard-ideas" class="dashboard-list" aria-label="Ideas"></div>
-            <form id="idea-import-form" class="dashboard-action-form" hidden>
-              <header>
-                <h3>New Idea</h3>
-                <p>Create or import a brief. The agent will turn it into a unique page under <code>wiki/ideas/</code>.</p>
-              </header>
-              <label>
-                <span>Title</span>
-                <input id="idea-title" name="title" autocomplete="off" required>
-              </label>
-              <label>
-                <span>Brief</span>
-                <textarea id="idea-markdown" name="markdown" rows="9" required></textarea>
-              </label>
-              <div class="dashboard-import-separator" aria-hidden="true"><span>OR</span></div>
-              <p class="dashboard-import-label">Import idea</p>
-              <label class="dashboard-file-input dashboard-import-button">
-                <span>Choose File</span>
-                <small>Markdown or HTML</small>
-                <input id="idea-markdown-file" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain">
-              </label>
-            </form>
-          </section>
-        </div>
-      </section>
       <section id="projects-page" class="dashboard-page projects-page" aria-label="hyperwiki Projects" hidden>
         <header class="dashboard-page-header">
           <div>
