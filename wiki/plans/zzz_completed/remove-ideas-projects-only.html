@@ -22,10 +22,10 @@
     <section class="summary">
       <h2>Summary</h2>
       <ul>
-        <li>Status: active</li>
+        <li>Status: complete</li>
         <li>Shape: product simplification</li>
-        <li>Current unit: remove idea incubation and route project creation directly through projects</li>
-        <li>Next action: delete idea files, APIs, navigation, tests, and docs references; make Projects the default workspace surface.</li>
+        <li>Completed: 2026-05-15 in commit <code>2a479b29c89af10b58d285a3be4261699273e8d2</code></li>
+        <li>Result: Ideas were removed and Projects became the only new-workspace surface.</li>
       </ul>
     </section>
     <section>
@@ -40,6 +40,14 @@
         <li>Keep project import and project creation as the sole new-workflow path.</li>
         <li>Default app-shell navigation to <code>/projects</code>.</li>
         <li>Update wiki durable context to describe project-only behavior.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Completion Notes</h2>
+      <ul>
+        <li>Removed the Ideas workspace route, topbar item, wiki scaffold, API endpoints, smoke script, and idea files.</li>
+        <li>Kept imported briefs on the direct project creation path.</li>
+        <li>Preserved legacy <code>/ideas</code> and <code>/dashboard</code> app-shell routes by resolving them to Projects.</li>
       </ul>
     </section>
   </main>
