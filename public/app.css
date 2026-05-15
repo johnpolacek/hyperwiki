@@ -386,9 +386,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .workspace.non-plan-wiki-mode .terminal-pane {
   grid-template-rows: minmax(0, 1fr);
   border-left: 1px solid var(--border);
-  background:
-    linear-gradient(135deg, rgba(255, 253, 248, 0.92), rgba(239, 234, 222, 0.82)),
-    repeating-linear-gradient(90deg, rgba(32, 35, 31, 0.05) 0 1px, transparent 1px 72px);
+  background: #f7f7f4;
 }
 
 .workspace.non-plan-wiki-mode .terminal-toolbar,
@@ -2516,10 +2514,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .workspace.non-plan-wiki-mode .plan-prompt {
   grid-row: auto;
-  align-self: stretch;
+  align-self: start;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto auto auto;
   grid-template-areas:
     "label"
     "note"
@@ -2527,20 +2525,23 @@ html[data-initial-route="settings"] .wiki-pane {
     "button"
     "status";
   align-items: stretch;
-  gap: 14px;
-  height: 100%;
-  padding: 24px;
-  border-top: 0;
-  background: transparent;
+  gap: 16px;
+  width: min(680px, calc(100% - 48px));
+  margin: 28px auto;
+  padding: 28px;
+  border: 1px solid #d8d8d0;
+  border-radius: 10px;
+  background: #fffdfa;
+  box-shadow: 0 18px 44px rgba(32, 35, 31, 0.08);
 }
 
 .workspace.non-plan-wiki-mode .plan-prompt::before {
   content: "Work on this wiki page with one deliberate agent pass. The terminal opens only after you send the instruction.";
   grid-area: note;
   display: block;
-  max-width: 34ch;
+  max-width: 46ch;
   color: var(--muted);
-  font: 13px/1.5 var(--sidebar-font);
+  font: 13px/1.55 var(--sidebar-font);
 }
 
 .workspace.non-plan-wiki-mode .plan-prompt label {
@@ -2553,6 +2554,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .workspace.non-plan-wiki-mode .plan-prompt textarea {
   height: auto;
+  min-height: 180px;
   --plan-prompt-min-lines: 12;
   --plan-prompt-max-lines: 18;
   border-color: rgba(32, 35, 31, 0.22);
@@ -2560,7 +2562,7 @@ html[data-initial-route="settings"] .wiki-pane {
   padding: 16px;
   background: rgba(255, 253, 248, 0.72);
   box-shadow: inset 0 0 0 1px rgba(255, 253, 248, 0.5);
-  font-size: 14px;
+  font: 14px/1.55 var(--sidebar-font);
 }
 
 .workspace.non-plan-wiki-mode .plan-prompt button {
