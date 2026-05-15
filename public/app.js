@@ -2245,6 +2245,7 @@ async function ensureAgentTerminal() {
 }
 
 async function postAgentPromptWithRetry(prompt, currentPagePath) {
+  await waitForAgentPromptReady();
   let lastError;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
@@ -2259,6 +2260,26 @@ async function postAgentPromptWithRetry(prompt, currentPagePath) {
     }
   }
   throw lastError || new Error("Agent unavailable.");
+}
+
+async function waitForAgentPromptReady() {
+  const session = terminalSessions.get("agent");
+  if (!shouldWaitForCodexReady(session)) return;
+  if (session.codexReady || codexReadyFromOutput(session.outputBuffer || "")) {
+    session.codexReady = true;
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      session.codexReadyWaiters = (session.codexReadyWaiters || []).filter((waiter) => waiter !== resolveReady);
+      reject(new Error("Codex is still starting. Try sending again after the prompt appears."));
+    }, 30000);
+    function resolveReady() {
+      clearTimeout(timer);
+      resolve();
+    }
+    session.codexReadyWaiters = [...(session.codexReadyWaiters || []), resolveReady];
+  });
 }
 
 function setDashboardStatus(message) {
@@ -3101,6 +3122,7 @@ async function createTerminal(name, options = {}) {
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
     }
   });
+  let session;
   term._scrollToBottom = () => {
     if (!isRecentLocalInput(lastLocalInputAt)) {
       scrollTerminalToBottom(el);
@@ -3129,6 +3151,7 @@ async function createTerminal(name, options = {}) {
     url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
     reconnect: false,
     onData: (data) => {
+      recordTerminalOutput(session, data);
       const shouldFollowOutput = isTerminalNearBottom(el);
       const shouldHoldForLocalEcho = isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter);
       const scrollTopBeforeEcho = el.scrollTop;
@@ -3153,15 +3176,39 @@ async function createTerminal(name, options = {}) {
     }
   });
 
+  session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  terminalSessions.set(name, session);
   await term.init();
   transport.connect();
-
-  const session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport };
-  terminalSessions.set(name, session);
   workspace.classList.add("terminal-active");
   setTerminalCollapsed(name, Boolean(options.collapsed));
   updateTerminalCloseButtons();
   return session;
+}
+
+function recordTerminalOutput(session, data) {
+  if (!session) return;
+  session.outputBuffer = `${session.outputBuffer || ""}${String(data)}`.slice(-20000);
+  if (!shouldWaitForCodexReady(session) || session.codexReady || !codexReadyFromOutput(session.outputBuffer)) return;
+  session.codexReady = true;
+  const waiters = session.codexReadyWaiters || [];
+  session.codexReadyWaiters = [];
+  waiters.forEach((resolve) => resolve());
+}
+
+function shouldWaitForCodexReady(session) {
+  return session?.role === "agent" && /\bcodex\b/.test(String(session.command || ""));
+}
+
+function codexReadyFromOutput(output) {
+  const clean = stripTerminalControl(String(output || ""));
+  const bannerIndex = clean.lastIndexOf("OpenAI Codex");
+  if (bannerIndex === -1) return false;
+  return clean.slice(bannerIndex).includes("›");
+}
+
+function stripTerminalControl(value) {
+  return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, "");
 }
 
 function normalizeTerminalInput(data) {
