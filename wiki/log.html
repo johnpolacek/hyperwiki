@@ -21,6 +21,15 @@
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-15 implementation | Thinking effort picker</h2>
+  <ul>
+    <li>Added a terminal toolbar picker for the default thinking effort used by newly opened Codex agent terminals.</li>
+    <li>The picker stores its default in browser-local workspace state and applies <code>model_reasoning_effort</code> through Codex CLI config overrides.</li>
+    <li>Existing terminal sessions are not mutated when the picker changes, and non-Codex agent launch commands remain unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and an <code>agent-browser</code> toolbar/agent-launch check against the worktree preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-15 implementation | Projects-only workspace</h2>
   <ul>
     <li>Removed idea incubation from the active product model: no Ideas route, topbar item, wiki scaffold, API endpoints, smoke script, or idea files remain.</li>

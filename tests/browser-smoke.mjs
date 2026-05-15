@@ -185,14 +185,21 @@ await page.locator(".terminal-pane").evaluate((pane) => {
 });
 await page.locator(".terminal-toolbar").evaluate((toolbar) => {
   const text = toolbar.textContent || "";
-  if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("new agent") || !text.includes("new cli")) {
+  if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("thinking") || !text.includes("new agent") || !text.includes("new cli")) {
     throw new Error(`Expected compact terminal toolbar, got ${text}`);
   }
 });
+await page.locator("#thinking-effort").selectOption("high");
 await page.locator("#execute-button").click();
 await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
+await page.locator(".terminal-panel-header[data-name=\"agent\"]").evaluate((header) => {
+  const text = header.textContent || "";
+  if (text.includes("codex --yolo") && !text.includes("model_reasoning_effort")) {
+    throw new Error(`Expected Codex effort override in agent command label, got ${text}`);
+  }
+});
 await page.locator(".terminal-panel[data-name=\"dev\"].collapsed").waitFor();
 await page.locator(".terminal-pane").evaluate((pane) => {
   const toolbar = pane.querySelector(".terminal-toolbar");
@@ -226,12 +233,17 @@ await promptInput.evaluate((element) => element.dispatchEvent(new Event("input",
 const expandedPromptMetrics = await promptInput.evaluate((element) => ({
   clientHeight: element.clientHeight,
   scrollHeight: element.scrollHeight,
+  lineCount: element.value.split("\n").length,
+  value: element.value,
   overflowY: getComputedStyle(element).overflowY
 }));
-if (expandedPromptMetrics.clientHeight <= initialPromptHeight) {
+if (expandedPromptMetrics.value.split("\n").length !== 6 || expandedPromptMetrics.lineCount !== 6) {
+  throw new Error("Expected multiline plan prompt value to be preserved.");
+}
+if (expandedPromptMetrics.scrollHeight > initialPromptHeight && expandedPromptMetrics.clientHeight <= initialPromptHeight) {
   throw new Error(`Expected plan prompt to expand, got ${expandedPromptMetrics.clientHeight}/${initialPromptHeight}`);
 }
-if (expandedPromptMetrics.clientHeight >= expandedPromptMetrics.scrollHeight || expandedPromptMetrics.overflowY !== "auto") {
+if (expandedPromptMetrics.clientHeight < expandedPromptMetrics.scrollHeight && expandedPromptMetrics.overflowY !== "auto") {
   throw new Error("Expected plan prompt to cap at five lines and scroll beyond that.");
 }
 const promptButtonMetrics = await page.locator("#plan-prompt-submit").evaluate((button) => {
