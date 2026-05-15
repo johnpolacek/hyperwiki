@@ -2027,7 +2027,7 @@ function promoteIdeaButton(ideaPath, title, targetRoot = "") {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "promote-idea-button";
-  button.textContent = "Initialize as project";
+  button.append(chevronsLeftRightEllipsisIcon(), document.createTextNode("Initialize Project"));
   button.addEventListener("click", async () => {
     await promoteIdea(ideaPath, title, button, targetRoot);
   });
@@ -2057,9 +2057,21 @@ async function promoteIdea(ideaPath, title, button, targetRoot = "") {
     }
   } catch (error) {
     button.disabled = false;
-    button.textContent = "Initialize as project";
+    button.replaceChildren(chevronsLeftRightEllipsisIcon(), document.createTextNode("Initialize Project"));
     window.alert(error.message || "Could not initialize project.");
   }
+}
+
+function chevronsLeftRightEllipsisIcon() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ["m7 7-5 5 5 5", "m17 7 5 5-5 5", "m13 12h.01", "m17 12h.01", "m9 12h.01"]) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+  }
+  return svg;
 }
 
 async function targetRootForIdea(ideaPath) {
@@ -2879,14 +2891,26 @@ function renderIdeaActionInFrame(documentElement) {
   const button = documentElement.createElement("button");
   button.id = "hyperwiki-promote-idea";
   button.type = "button";
-  button.textContent = "Initialize as project";
+  button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7-5 5 5 5"></path><path d="m17 7 5 5-5 5"></path><path d="m13 12h.01"></path><path d="m17 12h.01"></path><path d="m9 12h.01"></path></svg><span>Initialize Project</span>`;
+  button.style.display = "inline-flex";
+  button.style.alignItems = "center";
+  button.style.gap = "8px";
   button.style.margin = "0 0 24px";
-  button.style.padding = "8px 12px";
+  button.style.padding = "9px 13px";
   button.style.border = "1px solid #171916";
+  button.style.borderRadius = "5px";
   button.style.background = "#171916";
   button.style.color = "#fff";
-  button.style.font = "13px/1.2 var(--docs-mono-font)";
+  button.style.font = "700 13px/1.2 var(--docs-mono-font)";
   button.style.cursor = "pointer";
+  const icon = button.querySelector("svg");
+  icon.style.width = "16px";
+  icon.style.height = "16px";
+  icon.style.fill = "none";
+  icon.style.stroke = "currentColor";
+  icon.style.strokeLinecap = "round";
+  icon.style.strokeLinejoin = "round";
+  icon.style.strokeWidth = "2";
   button.addEventListener("click", () => promoteIdea(framePath, heading.textContent.trim(), button));
   heading.insertAdjacentElement("afterend", button);
 }
