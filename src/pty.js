@@ -7,6 +7,51 @@ import path from "node:path";
 import pty from "node-pty";
 
 const require = createRequire(import.meta.url);
+const CODEX_READY_BUFFER_LIMIT = 20000;
+
+export function codexReadyFromOutput(output) {
+  const clean = stripAnsi(String(output || ""));
+  const bannerIndex = clean.lastIndexOf("OpenAI Codex");
+  if (bannerIndex === -1) return false;
+  return clean.slice(bannerIndex).includes("›");
+}
+
+function stripAnsi(value) {
+  return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, "");
+}
+
+function createAgentWriteGate(metadata, writeDirect) {
+  const command = String(metadata.command || "");
+  const shouldWaitForCodex = metadata.role === "agent" && /\bcodex\b/.test(command);
+  let ready = !shouldWaitForCodex;
+  let outputBuffer = "";
+  const pendingWrites = [];
+
+  function flushPendingWrites() {
+    while (pendingWrites.length > 0) {
+      writeDirect(pendingWrites.shift());
+    }
+  }
+
+  return {
+    observe(data) {
+      if (ready) return;
+      outputBuffer = `${outputBuffer}${String(data)}`.slice(-CODEX_READY_BUFFER_LIMIT);
+      if (codexReadyFromOutput(outputBuffer)) {
+        ready = true;
+        flushPendingWrites();
+      }
+    },
+    write(data) {
+      const value = String(data);
+      if (ready) {
+        writeDirect(value);
+        return;
+      }
+      pendingWrites.push(value);
+    }
+  };
+}
 
 export function createPtySession(root, ws, metadata = {}) {
   const shell = process.env.SHELL || (os.platform() === "win32" ? "powershell.exe" : "bash");
@@ -43,10 +88,13 @@ export function createPtySession(root, ws, metadata = {}) {
     });
   }
 
+  const writeGate = createAgentWriteGate(metadata, (data) => terminal.write(data));
+
   terminal.onData((data) => {
     if (ws.readyState === 1) {
       ws.send(data);
     }
+    writeGate.observe(data);
   });
 
   ws.on("message", (raw) => {
@@ -71,7 +119,7 @@ export function createPtySession(root, ws, metadata = {}) {
   return {
     id,
     write(data) {
-      terminal.write(String(data));
+      writeGate.write(data);
     },
     close() {
       void registry?.upsert(id, { status: "closed" });
@@ -111,8 +159,15 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
     cwd: root
   });
 
-  child.stdout.on("data", (data) => ws.readyState === 1 && ws.send(data));
-  child.stderr.on("data", (data) => ws.readyState === 1 && ws.send(data));
+  const writeGate = createAgentWriteGate(metadata, (data) => child.stdin.write(data));
+  child.stdout.on("data", (data) => {
+    if (ws.readyState === 1) ws.send(data);
+    writeGate.observe(data);
+  });
+  child.stderr.on("data", (data) => {
+    if (ws.readyState === 1) ws.send(data);
+    writeGate.observe(data);
+  });
   child.on("exit", (code) => {
     void metadata.registry?.upsert(metadata.id, { status: "closed" });
     if (ws.readyState === 1) {
@@ -142,7 +197,7 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
   return {
     id: metadata.id,
     write(data) {
-      child.stdin.write(String(data));
+      writeGate.write(data);
     },
     close() {
       void metadata.registry?.upsert(metadata.id, { status: "closed" });

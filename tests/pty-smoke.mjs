@@ -3,8 +3,15 @@ import WebSocket from "ws";
 import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { createPtySession } from "../src/pty.js";
+import { codexReadyFromOutput, createPtySession } from "../src/pty.js";
 import { SessionRegistry } from "../src/sessions.js";
+
+if (!codexReadyFromOutput("\u001B[32mOpenAI Codex\u001B[0m\r\n› ")) {
+  throw new Error("Expected Codex ready detector to recognize the ready prompt.");
+}
+if (codexReadyFromOutput("codex --yolo\r\nPlease handle this request.\r\n")) {
+  throw new Error("Expected Codex ready detector to reject pre-banner output.");
+}
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-pty-smoke-"));
 const registry = new SessionRegistry(root);
