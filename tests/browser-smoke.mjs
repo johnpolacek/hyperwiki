@@ -25,7 +25,7 @@ await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" 
 await page.waitForURL(projectsUrl);
 await page.locator("#projects-page").evaluate((panel) => {
   const text = panel.textContent || "";
-  if (!text.includes("Projects") || text.includes("Project Brief")) {
+  if (!text.includes("Projects") || !text.includes("+ New Project") || text.includes("Project Brief")) {
     throw new Error(`Expected Projects management page, got ${text}`);
   }
   if (!document.querySelector("#up-next-button")?.hidden) {
@@ -35,6 +35,11 @@ await page.locator("#projects-page").evaluate((panel) => {
     throw new Error("Expected New Project page to be hidden on Manage Projects.");
   }
 });
+await page.locator("#new-project-page-link").click();
+await page.waitForURL(newProjectUrl);
+await page.locator("#project-toggle").click();
+await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();
+await page.waitForURL(projectsUrl);
 await page.goto(`${projectsUrl}/`, { waitUntil: "networkidle" });
 await page.waitForURL(projectsUrl);
 await page.locator("#projects-page").evaluate((panel) => {

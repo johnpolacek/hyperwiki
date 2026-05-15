@@ -26,6 +26,7 @@ const newProjectPage = document.getElementById("new-project-page");
 const dashboardProjects = document.getElementById("dashboard-projects");
 const projectsStatus = document.getElementById("projects-status");
 const newProjectStatus = document.getElementById("new-project-status");
+const newProjectPageLink = document.getElementById("new-project-page-link");
 const projectImportForm = document.getElementById("project-import-form");
 const projectTitleInput = document.getElementById("project-title");
 const projectMarkdownInput = document.getElementById("project-markdown");
@@ -338,6 +339,10 @@ manageProjectsLink.addEventListener("click", () => {
 });
 
 newProjectLink.addEventListener("click", () => {
+  void showNewProjectPage();
+});
+
+newProjectPageLink.addEventListener("click", () => {
   void showNewProjectPage();
 });
 
