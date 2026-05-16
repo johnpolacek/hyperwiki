@@ -491,7 +491,8 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.manage-projects-mode .new-project-form {
-  margin: 24px 42px 44px;
+  width: min(760px, calc(100% - 84px));
+  margin: 24px auto 44px;
 }
 
 .workspace.settings-mode .settings-layout {
@@ -3373,6 +3374,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-project-form {
+  width: 100%;
   max-width: 760px;
 }
 
