@@ -613,7 +613,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-action-form header {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
 
 .dashboard-action-form h3,
@@ -626,14 +626,14 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-action-form h3 {
+  font: 400 28px/1 var(--docs-serif-font);
   text-transform: none;
 }
 
 .dashboard-action-form p {
   margin: 0;
   color: #596158;
-  font-size: 12px;
-  line-height: 1.45;
+  font: 16px/1.4 var(--docs-serif-font);
 }
 
 .dashboard-action-form label {
