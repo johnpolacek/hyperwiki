@@ -811,9 +811,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .planning-stepper li {
   position: relative;
+  isolation: isolate;
   min-width: 0;
-  padding: 13px 10px 2px 0;
-  border-top: 1px solid color-mix(in srgb, var(--border) 82%, var(--bg));
+  padding: 18px 10px 2px 0;
+  border-top: 0;
   color: color-mix(in srgb, var(--muted) 78%, var(--bg));
   font: 800 10px/1.2 var(--sidebar-font);
   overflow: hidden;
@@ -825,19 +826,35 @@ html[data-initial-route="settings"] .wiki-pane {
 .planning-stepper li::before {
   content: "";
   position: absolute;
-  top: -5px;
+  top: 1px;
   left: 0;
   width: 8px;
   height: 8px;
   border: 1px solid color-mix(in srgb, var(--border) 76%, var(--muted));
   border-radius: 50%;
   background: var(--bg);
+  z-index: 1;
+}
+
+.planning-stepper li::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 82%, var(--bg));
+  z-index: 0;
 }
 
 .planning-stepper li.complete,
 .planning-stepper li.current {
-  border-top-color: color-mix(in srgb, var(--accent) 72%, var(--text));
   color: var(--text);
+}
+
+.planning-stepper li.complete::after,
+.planning-stepper li.current::after {
+  background: color-mix(in srgb, var(--accent) 72%, var(--text));
 }
 
 .planning-stepper li.complete::before,
