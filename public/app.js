@@ -1911,6 +1911,10 @@ function projectRemovalConfirmation(project) {
 
   const actions = document.createElement("div");
   actions.className = "project-remove-confirm-actions";
+  const status = document.createElement("p");
+  status.className = "project-remove-status";
+  status.setAttribute("role", "status");
+
   const cancel = document.createElement("button");
   cancel.type = "button";
   cancel.className = "project-remove-cancel";
@@ -1928,28 +1932,38 @@ function projectRemovalConfirmation(project) {
     confirm.textContent = deleteFiles.checked ? "Confirm Delete" : "Confirm Remove";
   });
   confirm.addEventListener("click", async () => {
+    const deletingFiles = deleteFiles.checked;
     confirm.disabled = true;
     cancel.disabled = true;
+    deleteFiles.disabled = true;
+    confirm.textContent = deletingFiles ? "Deleting..." : "Removing...";
+    status.textContent = deletingFiles ? "Deleting project files..." : "Removing project...";
     try {
-      await removeProject(project, deleteFiles.checked);
+      await removeProject(project, deletingFiles);
     } catch (error) {
       confirm.disabled = false;
       cancel.disabled = false;
+      deleteFiles.disabled = !project.available;
+      confirm.textContent = deleteFiles.checked ? "Confirm Delete" : "Confirm Remove";
+      status.textContent = error.message || "Project removal failed.";
       setProjectsStatus(error.message || "Project removal failed.");
     }
   });
   actions.append(cancel, confirm);
 
-  panel.append(warning, deleteFilesLabel, actions);
+  panel.append(warning, deleteFilesLabel, status, actions);
   return panel;
 }
 
 async function removeProject(project, deleteFiles) {
   setProjectsStatus(deleteFiles ? "Deleting project files..." : "Removing project...");
-  await api(`/api/projects/${encodeURIComponent(project.id)}`, {
+  const result = await api(`/api/projects/${encodeURIComponent(project.id)}`, {
     method: "DELETE",
     body: JSON.stringify({ deleteFiles })
   });
+  if (deleteFiles && result.deletedFiles !== true) {
+    throw new Error("Project was removed from Hyperwiki, but file deletion was not confirmed.");
+  }
   pendingProjectRemovalId = null;
   setProjectsStatus(deleteFiles ? "Project removed and files deleted." : "Project removed from Hyperwiki.");
   await loadProjects();

@@ -118,6 +118,10 @@ async function removeProjectCard(page, title, options) {
     await card.getByRole("button", { name: "Confirm Delete" }).waitFor();
   }
   await card.getByRole("button", { name: options.deleteFiles ? "Confirm Delete" : "Confirm Remove" }).click();
+  await card.getByText(options.deleteFiles ? "Deleting project files..." : "Removing project...").waitFor();
+  if (await deleteFiles.isEnabled()) {
+    throw new Error("Expected delete-files checkbox to be disabled while removal is in progress.");
+  }
   await page.waitForFunction((projectTitle) =>
     ![...document.querySelectorAll(".project-card")].some((card) => card.textContent.includes(projectTitle)),
   title);

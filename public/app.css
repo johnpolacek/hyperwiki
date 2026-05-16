@@ -1000,6 +1000,13 @@ html[data-initial-route="new-project"] .wiki-pane {
   accent-color: #c8271f;
 }
 
+.project-remove-status {
+  min-height: 15px;
+  margin: -2px 0 0;
+  color: #7a211a;
+  font: 800 11px/1.35 var(--sidebar-font);
+}
+
 .project-remove-confirm-actions {
   display: flex;
   justify-content: flex-end;
