@@ -50,6 +50,7 @@
   <li><code>/api/mcp-surface</code> defines MCP-style resources and tools for project contract, current plan, source index, verification loops, guardrails, review workflows, wiki pages, review preparation, and controlled prompt submission.</li>
   <li><code>hyperwiki mcp</code> serves a local stdio MCP transport for read-only resources and read-only tools over Content-Length framed JSON-RPC messages.</li>
   <li>It does not yet expose action-oriented MCP tools for terminal prompt submission or review workflow execution.</li>
+  <li>The Hyperwiki scaffold contract keeps <code>wiki/sources.html</code> as the source index, <code>wiki/AGENTS.html</code> as the visible wiki guide, and app-served <code>/assets/wiki.css</code> as the default generated-page stylesheet.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
   <li>Hosted sync, telemetry, remote execution, and cloud-backed project memory are not default assumptions; any future hosted integration must be explicit and subordinate to local repo truth.</li>

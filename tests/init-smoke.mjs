@@ -25,7 +25,10 @@ const index = await readFile(path.join(root, "wiki", "index.html"), "utf8");
 const dev = await readFile(path.join(root, "wiki", "dev.html"), "utf8");
 const generatedStage = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation.html"), "utf8");
 const generatedUnit = await readFile(path.join(root, "wiki", "plans", "mvp", "stage-01-foundation", "unit-01-confirm-project-direction.html"), "utf8");
+const scaffoldContract = await readFile(path.join(root, "wiki", "scaffold-contract.html"), "utf8");
 const prd = await readFile(path.join(root, "wiki", "sources", "prd.html"), "utf8");
+const sources = await readFile(path.join(root, "wiki", "sources.html"), "utf8");
+const agents = await readFile(path.join(root, "AGENTS.md"), "utf8");
 const config = JSON.parse(await readFile(path.join(root, ".hyperwiki", "config.json"), "utf8"));
 
 if (!index.includes("<h1>sample-product</h1>")) {
@@ -45,6 +48,15 @@ if (!generatedStage.includes("unit-01-confirm-project-direction.html")) {
 }
 if (!generatedUnit.includes("<h1>Unit 01 - Confirm Project Direction</h1>")) {
   throw new Error("Generated unit page did not render its own HTML page.");
+}
+if (!scaffoldContract.includes("wiki/sources.html") || !scaffoldContract.includes("wiki/AGENTS.html")) {
+  throw new Error("Generated scaffold contract page did not document Hyperwiki wiki conventions.");
+}
+if (!sources.includes("lowercase <code>wiki/sources.html</code>")) {
+  throw new Error("Generated sources page did not document the canonical lowercase source index.");
+}
+if (!agents.includes("Do not add a duplicate `wiki/Sources.html`")) {
+  throw new Error("Generated AGENTS.md did not preserve the Hyperwiki source-index convention.");
 }
 if (prd.includes("hyperwiki turns repo-local project docs")) {
   throw new Error("Generated PRD still contains hyperwiki-specific product copy.");

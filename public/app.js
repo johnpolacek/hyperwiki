@@ -1924,13 +1924,16 @@ async function createProjectFromMarkdown() {
     await showProjectsPage({ replace: true });
     setProjectsStatus("Starting agent in the new project...");
     const prompt = [
-      "Turn this markdown into the initial hyperwiki project pages.",
+      "Turn this document into the initial Hyperwiki project pages.",
       "",
       `Project: ${title}`,
       `Repo root: ${result.project.root}`,
       "",
       "Instructions:",
       "- Read AGENTS.md, wiki/index.html, wiki/sources.html, wiki/sources/prd.html, wiki/sources/technical-brief.html, and wiki/sources/design-brief.html before writing.",
+      "- Use the project-html-wiki workflow for source briefs, planning, log policy, and wiki maintenance when available.",
+      "- Preserve Hyperwiki scaffold conventions: lowercase wiki/sources.html is canonical, wiki/AGENTS.html is the app-visible wiki guide, and generated pages use the app-served /assets/wiki.css unless the user asks for a standalone artifact.",
+      "- Treat Hyperwiki as Localhost Tooling: the user's local machine, repo files, Git state, terminal sessions, credentials, and environment variables are the trust boundary.",
       "- Update the project wiki pages as if the user had typed this brief directly to you.",
       "- Create or revise source briefs, roadmap, and planning pages only where the document supports durable project context.",
       "- Ask concise Q&A in this terminal if the document lacks critical product, technical, or validation decisions.",
@@ -2550,6 +2553,7 @@ function modifyWikiPagePrompt(prompt) {
     "",
     "Instructions:",
     "- Read AGENTS.md, wiki/index.html, wiki/sources.html, and the current wiki page before editing.",
+    "- Preserve Hyperwiki scaffold conventions: lowercase wiki/sources.html, app-visible wiki/AGENTS.html, and app-served /assets/wiki.css unless the user explicitly asks for a standalone artifact.",
     "- Apply the requested change directly to this wiki HTML file.",
     "- Preserve concrete product, technical, and validation details already present on the page.",
     "- Run relevant checks after editing.",
