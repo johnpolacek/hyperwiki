@@ -1036,20 +1036,31 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-wizard-actions button {
-  min-height: 34px;
+  min-height: 42px;
   border: 1px solid #20231f;
   border-radius: 6px;
-  padding: 8px 11px;
+  padding: 11px 17px;
   background: #20231f;
   color: #ffffff;
   cursor: pointer;
-  font: 700 11px/1.2 var(--sidebar-font);
+  font: 800 12px/1.2 var(--sidebar-font);
 }
 
-.planning-wizard-actions button:first-child {
+.planning-wizard-actions button:first-of-type {
+  border-color: transparent;
+  background: transparent;
+  color: color-mix(in srgb, var(--text) 80%, var(--muted));
+  font-weight: 700;
+}
+
+.planning-wizard-actions button:first-of-type:hover {
   border-color: var(--border);
-  background: #ffffff;
+  background: color-mix(in srgb, var(--panel) 52%, transparent);
   color: var(--text);
+}
+
+.planning-wizard-actions button:not(:first-of-type) {
+  min-width: 88px;
 }
 
 .new-project-page.planning-active .new-project-form {
