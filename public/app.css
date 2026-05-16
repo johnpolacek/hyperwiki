@@ -287,6 +287,7 @@ body {
 }
 
 .workspace.settings-mode .wiki-pane {
+  grid-column: 1;
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -330,8 +331,12 @@ html[data-initial-route="new-project"] .workspace {
 }
 
 html[data-initial-route="projects"] .wiki-pane,
-html[data-initial-route="new-project"] .wiki-pane,
 html[data-initial-route="settings"] .wiki-pane {
+  grid-column: 1;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+html[data-initial-route="new-project"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -403,6 +408,10 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
 }
 
+.workspace.manage-projects-mode .wiki-pane {
+  grid-column: 1;
+}
+
 .workspace.projects-mode .wiki-command-bar,
 .workspace.projects-mode .modify-plan-ui,
 .workspace.projects-mode .plan-prompt {
@@ -451,7 +460,46 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .workspace.settings-mode .settings-page {
   grid-row: 1 / -1;
-  padding: 34px 42px 44px;
+  padding: 0;
+}
+
+.workspace.manage-projects-mode .dashboard-page,
+.workspace.settings-mode .settings-page {
+  padding: 0;
+  background:
+    linear-gradient(#d9d1bf 1px, transparent 1px) 0 0 / 100% 48px,
+    var(--bg);
+}
+
+.workspace.manage-projects-mode .dashboard-page-header,
+.workspace.settings-mode .settings-page-header {
+  align-items: center;
+  min-height: 132px;
+  border-bottom: 1px solid #d6d0c2;
+  padding: 30px 42px 26px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 54%),
+    #f8f4ea;
+}
+
+.workspace.manage-projects-mode .dashboard-page-header h1,
+.workspace.settings-mode .settings-page-header h1 {
+  line-height: 0.95;
+}
+
+.workspace.manage-projects-mode .dashboard-page-header p,
+.workspace.settings-mode .settings-page-header p {
+  max-width: 680px;
+}
+
+.workspace.manage-projects-mode .dashboard-inventory {
+  margin: 0;
+  padding: 24px 32px 42px;
+}
+
+.workspace.settings-mode .settings-layout {
+  margin: 0;
+  padding: 24px 42px 44px;
 }
 
 .dashboard-page-header h1 {
@@ -745,7 +793,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 #dashboard-projects {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
   align-items: stretch;
 }
 

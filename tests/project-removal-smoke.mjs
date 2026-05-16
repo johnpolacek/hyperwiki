@@ -35,6 +35,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
+  await expectManagementShellFullWidth(page, "#projects-page");
   await page.getByRole("button", { name: "Open project" }).click();
   await page.waitForURL(/\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/index\.html$/);
   await expectSidebarVisible(page);
@@ -55,6 +56,7 @@ try {
 
   await page.goto(`${serverInfo.url}/settings`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
+  await expectManagementShellFullWidth(page, "#settings-page");
   await page.goto(`${serverInfo.url}/projects/new`, { waitUntil: "networkidle" });
   await expectSidebarVisible(page);
 } finally {
@@ -127,6 +129,21 @@ async function expectSidebarVisible(page) {
   await page.locator(".sidebar").evaluate((sidebar) => {
     if (getComputedStyle(sidebar).display === "none") {
       throw new Error("Expected project pages to keep the wiki sidebar visible.");
+    }
+  });
+}
+
+async function expectManagementShellFullWidth(page, pageSelector) {
+  await page.locator(pageSelector).evaluate((pageElement) => {
+    const topbar = document.querySelector(".topbar");
+    const viewportWidth = window.innerWidth;
+    const topbarRect = topbar.getBoundingClientRect();
+    const pageRect = pageElement.getBoundingClientRect();
+    if (Math.abs(topbarRect.left) > 1 || Math.abs(topbarRect.width - viewportWidth) > 2) {
+      throw new Error(`Expected topbar to span viewport, got left ${topbarRect.left} width ${topbarRect.width} viewport ${viewportWidth}.`);
+    }
+    if (Math.abs(pageRect.left) > 1 || Math.abs(pageRect.width - viewportWidth) > 2) {
+      throw new Error(`Expected management page to span viewport, got left ${pageRect.left} width ${pageRect.width} viewport ${viewportWidth}.`);
     }
   });
 }
