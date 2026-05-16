@@ -285,7 +285,7 @@ async function handleRequest(defaultRoot, request, response, context) {
     if (projectWikiMatch) {
       const project = await context.projectRegistry.resolve(projectWikiMatch[1], defaultRoot);
       const wikiRoot = path.join(project.root, "wiki");
-      await sendWikiFile(response, path.join(wikiRoot, projectWikiMatch[2]), wikiRoot);
+      await sendWikiFile(response, path.join(wikiRoot, projectWikiMatch[2]), wikiRoot, { projectId: project.id });
       return;
     }
     if (url.pathname.startsWith("/wiki/")) {
@@ -1424,7 +1424,7 @@ function sendText(response, value, contentTypeHeader) {
   response.end(value);
 }
 
-async function sendWikiFile(response, filePath, allowedRoot) {
+async function sendWikiFile(response, filePath, allowedRoot, options = {}) {
   const resolved = path.resolve(filePath);
   const root = path.resolve(allowedRoot);
   if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
@@ -1443,7 +1443,15 @@ async function sendWikiFile(response, filePath, allowedRoot) {
   if (!html.includes("/assets/theme.css")) {
     html = html.replace("</head>", "  <link rel=\"stylesheet\" href=\"/assets/theme.css\">\n</head>");
   }
+  if (options.projectId) {
+    html = rewriteProjectScopedWikiLinks(html, options.projectId);
+  }
   sendText(response, html, "text/html; charset=utf-8");
+}
+
+function rewriteProjectScopedWikiLinks(html, projectId) {
+  const projectWikiPrefix = `/projects/${encodeURIComponent(projectId)}/wiki/`;
+  return html.replaceAll(/(href|src)="\/wiki\//g, `$1="${projectWikiPrefix}`);
 }
 
 async function sendFile(response, filePath, allowedRoot) {

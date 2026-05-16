@@ -173,6 +173,7 @@ window.addEventListener("hashchange", () => {
 });
 
 wikiFrame.addEventListener("load", () => {
+  installEmbeddedWikiNavigation();
   syncFrameLocation();
 });
 
@@ -2705,6 +2706,24 @@ function hideEmbeddedWikiHeader() {
     documentElement.head.append(style);
   }
   if (settingsState) applyWikiFrameTheme(effectiveTheme(settingsState));
+}
+
+function installEmbeddedWikiNavigation() {
+  const documentElement = wikiFrame.contentDocument;
+  if (!documentElement || documentElement.documentElement.dataset.hyperwikiNavigation === "installed") return;
+  documentElement.documentElement.dataset.hyperwikiNavigation = "installed";
+  documentElement.addEventListener("click", (event) => {
+    const link = event.target?.closest?.("a[href]");
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const url = new URL(link.getAttribute("href"), wikiFrame.contentWindow.location.href);
+    if (url.origin !== window.location.origin || !isWikiPath(url.pathname)) {
+      return;
+    }
+    event.preventDefault();
+    activateWorkspaceLocation(url.pathname);
+  });
 }
 
 function currentWikiTitle() {
