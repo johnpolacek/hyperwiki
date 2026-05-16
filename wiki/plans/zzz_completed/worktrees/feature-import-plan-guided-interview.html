@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import Plan Guided Interview - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Import Plan Guided Interview</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: implemented with guided wizard refinements</li>
+        <li>Branch: <code>feature/import-plan-guided-interview</code></li>
+        <li>Goal: test a source brief review and in-app planning interview before HyperWiki writes the imported project's MVP plan.</li>
+        <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:project-links</code>, and agent-browser import/interview loops against <code>markdownstack.html</code>.</li>
+      </ul>
+    </section>
+    <h2>Implementation Shape</h2>
+    <ul>
+      <li>Show a planning interview after imported document content is available on the New Project page.</li>
+      <li>Extract and display a source brief in the app before project creation.</li>
+      <li>Capture steering answers for MVP promise, prototype shape, community scope, and validation target.</li>
+      <li>Pass the imported document and planning answers into initialization so source briefs and MVP pages preserve human direction.</li>
+      <li>Keep New Project in a global one-column context without the active project sidebar.</li>
+      <li>Replace the planning form with a one-question-at-a-time wizard where each answer explains the choice and its tradeoff.</li>
+      <li>Generate detailed unit pages that explain what each unit is, why it exists, included work, acceptance, and verification.</li>
+    </ul>
+  <section>
+      <h2>Finish</h2>
+      <ul>
+        <li>Finish date: 2026-05-16</li>
+        <li>Branch: <code>feature/import-plan-guided-interview</code></li>
+        <li>Finish policy: merge</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

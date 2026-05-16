@@ -1237,7 +1237,10 @@ async function createProjectFromDashboard(projectRegistry, body) {
   await inithyperwiki(projectRoot, {
     yes: true,
     project_name: title,
-    summary
+    summary,
+    source_document: typeof body?.document === "string" ? body.document : "",
+    source_document_type: typeof body?.documentType === "string" ? body.documentType : "",
+    planning_answers: body?.planningAnswers && typeof body.planningAnswers === "object" ? body.planningAnswers : null
   });
   const record = await projectRegistry.register(projectRoot);
   const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
