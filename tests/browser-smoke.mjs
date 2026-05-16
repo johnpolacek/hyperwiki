@@ -550,6 +550,90 @@ await page.locator("#wiki-nav").evaluate(() => {
     throw new Error(`Expected completed stage to be lighter, got ${getComputedStyle(stageOneLink).color}`);
   }
 });
+await page.locator("#wiki-nav").evaluate(() => {
+  const tabbableRows = [...document.querySelectorAll("#wiki-nav a, #wiki-nav summary")]
+    .filter((row) => row.tabIndex === 0);
+  if (tabbableRows.length !== 1) {
+    throw new Error(`Expected one roving sidebar tab stop, got ${tabbableRows.length}`);
+  }
+  const stageOneLink = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"] > summary a");
+  stageOneLink.focus();
+});
+await page.keyboard.press("ArrowRight");
+await page.locator("#wiki-nav").evaluate(() => {
+  const activeLabel = document.activeElement?.querySelector?.(".wiki-nav-label")?.textContent || document.activeElement?.textContent || "";
+  if (!activeLabel.includes("Unit-01 Package And CLI Bin")) {
+    throw new Error(`Expected ArrowRight on an open stage to focus the first visible unit, got ${activeLabel}`);
+  }
+});
+await page.keyboard.press("ArrowLeft");
+await page.locator("#wiki-nav").evaluate(() => {
+  const activeLabel = document.activeElement?.querySelector?.(".wiki-nav-label")?.textContent || document.activeElement?.textContent || "";
+  if (!activeLabel.includes("Stage-01 CLI and Repository Foundation")) {
+    throw new Error(`Expected ArrowLeft from a unit to focus its parent stage, got ${activeLabel}`);
+  }
+});
+await page.keyboard.press("ArrowLeft");
+await page.locator("#wiki-nav").evaluate(() => {
+  const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
+  const stageOneLink = stageOneGroup.querySelector(":scope > summary a");
+  if (stageOneGroup.open) {
+    throw new Error("Expected ArrowLeft on an expanded stage to collapse it.");
+  }
+  if (stageOneLink.getAttribute("aria-expanded") !== "false") {
+    throw new Error(`Expected collapsed stage aria-expanded=false, got ${stageOneLink.getAttribute("aria-expanded")}`);
+  }
+});
+await page.keyboard.press("ArrowRight");
+await page.locator("#wiki-nav").evaluate(() => {
+  const stageOneGroup = document.querySelector("details.plan-subtree[data-path=\"/wiki/plans/mvp/stage-01-foundation.html\"]");
+  const stageOneLink = stageOneGroup.querySelector(":scope > summary a");
+  if (!stageOneGroup.open) {
+    throw new Error("Expected ArrowRight on a collapsed stage to expand it.");
+  }
+  if (stageOneLink.getAttribute("aria-expanded") !== "true") {
+    throw new Error(`Expected expanded stage aria-expanded=true, got ${stageOneLink.getAttribute("aria-expanded")}`);
+  }
+});
+await page.keyboard.press("End");
+await page.locator("#wiki-nav").evaluate(() => {
+  const activeText = document.activeElement?.textContent || "";
+  if (!activeText.includes("Project")) {
+    throw new Error(`Expected End to focus the bottom Project group, got ${activeText}`);
+  }
+});
+await page.keyboard.press(" ");
+await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
+  if (!element.open) throw new Error("Expected Space on Project summary to expand the group.");
+  const summary = element.querySelector(":scope > summary");
+  if (summary.getAttribute("aria-expanded") !== "true") {
+    throw new Error(`Expected Project summary aria-expanded=true, got ${summary.getAttribute("aria-expanded")}`);
+  }
+});
+await page.keyboard.press("ArrowDown");
+await page.locator("#wiki-nav").evaluate(() => {
+  const activeText = document.activeElement?.textContent || "";
+  if (!document.activeElement?.closest(".project-nav-group") || activeText.includes("Project")) {
+    throw new Error(`Expected ArrowDown from Project to focus the first Project link, got ${activeText}`);
+  }
+});
+await page.keyboard.press("Home");
+await page.locator("#wiki-nav").evaluate(() => {
+  const activeText = document.activeElement?.textContent || "";
+  if (!activeText.includes("MVP Plan")) {
+    throw new Error(`Expected Home to focus the first visible plan row, got ${activeText}`);
+  }
+  const tabbableRows = [...document.querySelectorAll("#wiki-nav a, #wiki-nav summary")]
+    .filter((row) => row.tabIndex === 0);
+  if (tabbableRows.length !== 1 || tabbableRows[0] !== document.activeElement) {
+    throw new Error("Expected roving tab stop to follow the keyboard-focused sidebar row.");
+  }
+});
+await page.keyboard.press("Enter");
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "MVP Plan");
+await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
+  element.open = false;
+});
 await page.locator("#wiki-nav details").filter({ hasText: /^Project/ }).evaluate((element) => {
   if (element.open) throw new Error("Expected project navigation group to be collapsed by default");
   if (!element.classList.contains("project-nav-group")) {

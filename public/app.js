@@ -107,6 +107,7 @@ let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let pendingProjectRemovalId = null;
 let currentPlanPath = "/wiki/plans/index.html";
+let sidebarFocusKey = "";
 let nonPlanPromptSubmitted = false;
 let settingsState = null;
 let themeDraft = null;
@@ -703,6 +704,7 @@ async function loadWikiNav() {
     });
     currentPlanPath = data.pages.find((page) => page.path.endsWith("/wiki/plans/index.html"))?.path || currentPlanPath;
     wikiNav.replaceChildren(...groupWikiPages(data.pages));
+    syncSidebarKeyboardState();
   } catch {
     document.getElementById("server-status").textContent = "Offline";
   }
@@ -822,6 +824,7 @@ async function showProjectsPage(options = {}) {
   modifyButton.setAttribute("aria-expanded", "false");
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  syncSidebarKeyboardState();
   if (`${location.pathname}${location.hash}` !== "/projects") {
     const method = options.replace ? "replaceState" : "pushState";
     history[method](null, "", "/projects");
@@ -837,14 +840,15 @@ async function showNewProjectPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
-  workspace.classList.add("projects-mode", "new-project-mode");
-  workspace.classList.remove("settings-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.add("projects-mode", "manage-projects-mode", "new-project-mode");
+  workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects/new", "New Project");
   openPage.href = "/projects/new";
   modifyPlanUi.hidden = true;
   modifyButton.setAttribute("aria-expanded", "false");
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  syncSidebarKeyboardState();
   if (`${location.pathname}${location.hash}` !== "/projects/new") {
     const method = options.replace ? "replaceState" : "pushState";
     history[method](null, "", "/projects/new");
@@ -867,6 +871,7 @@ async function showSettingsPage(options = {}) {
   currentPage.title = "/settings";
   openPage.href = "/settings";
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
+  syncSidebarKeyboardState();
   if (`${location.pathname}${location.hash}` !== "/settings") {
     const method = options.replace ? "replaceState" : "pushState";
     history[method](null, "", "/settings");
@@ -2816,6 +2821,180 @@ function renderNavGroup(title, pages, open, className = "") {
   return details;
 }
 
+wikiNav.addEventListener("focusin", (event) => {
+  const row = sidebarRowFromTarget(event.target);
+  if (!row) return;
+  sidebarFocusKey = sidebarRowKey(row);
+  syncSidebarKeyboardState({ preferredRow: row });
+});
+
+wikiNav.addEventListener("keydown", (event) => {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const row = sidebarRowFromTarget(event.target);
+  if (!row) return;
+  const handled = handleSidebarKeyboard(event, row);
+  if (!handled) return;
+  event.preventDefault();
+  event.stopPropagation();
+  syncSidebarKeyboardState({ preferredRow: document.activeElement });
+});
+
+wikiNav.addEventListener("toggle", (event) => {
+  if (!(event.target instanceof HTMLDetailsElement)) return;
+  syncSidebarKeyboardState({ preferredRow: document.activeElement });
+}, true);
+
+function handleSidebarKeyboard(event, row) {
+  const rows = visibleSidebarRows();
+  const index = rows.indexOf(row);
+  if (index === -1) return false;
+  if (event.key === "ArrowDown") {
+    focusSidebarRow(rows[Math.min(index + 1, rows.length - 1)]);
+    return true;
+  }
+  if (event.key === "ArrowUp") {
+    focusSidebarRow(rows[Math.max(index - 1, 0)]);
+    return true;
+  }
+  if (event.key === "Home") {
+    focusSidebarRow(rows[0]);
+    return true;
+  }
+  if (event.key === "End") {
+    focusSidebarRow(rows[rows.length - 1]);
+    return true;
+  }
+  if (event.key === "ArrowRight") {
+    expandOrEnterSidebarGroup(row);
+    return true;
+  }
+  if (event.key === "ArrowLeft") {
+    collapseOrFocusSidebarParent(row);
+    return true;
+  }
+  if (event.key === "Enter" || event.key === " ") {
+    activateSidebarRow(row);
+    return true;
+  }
+  return false;
+}
+
+function syncSidebarKeyboardState(options = {}) {
+  wikiNav.querySelectorAll("a, summary").forEach((row) => {
+    row.tabIndex = -1;
+    syncSidebarRowExpandedState(row);
+  });
+  const rows = visibleSidebarRows();
+  if (rows.length === 0) return;
+  const preferred = sidebarVisibleRow(options.preferredRow)
+    || sidebarRowByKey(sidebarFocusKey)
+    || activeSidebarRow()
+    || rows[0];
+  preferred.tabIndex = 0;
+}
+
+function visibleSidebarRows() {
+  return [...wikiNav.querySelectorAll("a, summary")]
+    .filter((row) => row.matches("a, .project-nav-group > summary"))
+    .filter(sidebarVisibleRow);
+}
+
+function sidebarVisibleRow(row) {
+  if (!(row instanceof HTMLElement) || !wikiNav.contains(row)) return null;
+  if (row.hidden || row.closest("[hidden]")) return null;
+  const details = row.closest("details");
+  if (details && !details.open && !row.closest("summary")) return null;
+  if (row.offsetParent === null && getComputedStyle(row).position !== "fixed") return null;
+  return row;
+}
+
+function sidebarRowFromTarget(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return null;
+  return sidebarVisibleRow(element.closest("a, summary"));
+}
+
+function sidebarRowByKey(key) {
+  if (!key) return null;
+  return visibleSidebarRows().find((row) => sidebarRowKey(row) === key) || null;
+}
+
+function sidebarRowKey(row) {
+  if (!row) return "";
+  if (row.matches("a")) return `link:${row.dataset.path || row.getAttribute("href") || row.textContent.trim()}`;
+  const group = row.closest("details");
+  return `group:${group?.dataset.path || row.textContent.trim()}`;
+}
+
+function activeSidebarRow() {
+  return sidebarVisibleRow(wikiNav.querySelector("a.active"))
+    || sidebarVisibleRow(wikiNav.querySelector("summary:has(a.active)"));
+}
+
+function focusSidebarRow(row) {
+  if (!sidebarVisibleRow(row)) return;
+  row.tabIndex = 0;
+  sidebarFocusKey = sidebarRowKey(row);
+  row.focus();
+}
+
+function expandableSidebarGroup(row) {
+  if (!row) return null;
+  const group = row.matches("summary") ? row.closest("details") : row.closest("summary")?.closest("details");
+  return group instanceof HTMLDetailsElement ? group : null;
+}
+
+function expandOrEnterSidebarGroup(row) {
+  const group = expandableSidebarGroup(row);
+  if (!group) return;
+  if (!group.open) {
+    group.open = true;
+    syncSidebarRowExpandedState(row);
+    return;
+  }
+  const child = visibleSidebarRows().find((candidate) => candidate !== row && group.contains(candidate));
+  if (child) focusSidebarRow(child);
+}
+
+function collapseOrFocusSidebarParent(row) {
+  const group = expandableSidebarGroup(row);
+  if (group?.open && group.querySelector(":scope > summary") === row.closest("summary")) {
+    group.open = false;
+    syncSidebarRowExpandedState(row);
+    return;
+  }
+  const parentGroup = row.closest("details");
+  const parentSummary = parentGroup?.querySelector(":scope > summary");
+  if (parentSummary && parentSummary !== row) {
+    focusSidebarRow(sidebarRowFromSummary(parentSummary));
+  }
+}
+
+function sidebarRowFromSummary(summary) {
+  return summary.querySelector(":scope > a") || summary;
+}
+
+function activateSidebarRow(row) {
+  if (row.matches("a")) {
+    row.click();
+    return;
+  }
+  const group = expandableSidebarGroup(row);
+  if (group) {
+    group.open = !group.open;
+    syncSidebarRowExpandedState(row);
+  }
+}
+
+function syncSidebarRowExpandedState(row) {
+  const group = expandableSidebarGroup(row);
+  if (!group) {
+    row.removeAttribute("aria-expanded");
+    return;
+  }
+  row.setAttribute("aria-expanded", String(group.open));
+}
+
 function isTopLevelPlanPage(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
@@ -3015,6 +3194,7 @@ function activateWikiPage(path) {
     link.classList.toggle("active", link.dataset.path === displayWikiPath(nextPath));
   });
   syncPlanTreeOpenState(nextPath);
+  syncSidebarKeyboardState();
   updatePlanPromptVisibility();
   const nextUrl = `${currentWorkspacePath()}#${nextPath}`;
   if (isAppShellPath(location.pathname) || `${location.pathname}${location.hash}` !== nextUrl) {
@@ -3153,6 +3333,7 @@ function syncFrameLocation() {
     wikiNav.querySelectorAll("a").forEach((link) => {
       link.classList.toggle("active", link.dataset.path === displayWikiPath(framePath));
     });
+    syncSidebarKeyboardState();
     if (location.hash !== `#${framePath}`) {
       history.replaceState(null, "", `#${framePath}`);
     }

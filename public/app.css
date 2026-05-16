@@ -160,6 +160,7 @@ body {
 .dashboard-action-form textarea:focus-visible,
 .settings-panel button:focus-visible,
 .wiki-nav a:focus-visible,
+.wiki-nav summary:focus-visible,
 .primary-nav a:focus-visible {
   outline: 2px solid rgba(39, 110, 241, 0.65);
   outline-offset: 2px;
