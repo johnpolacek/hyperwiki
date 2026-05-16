@@ -35,6 +35,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
+  await page.getByRole("button", { name: "Open project" }).click();
+  await page.waitForURL(/\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/index\.html$/);
+  await expectSidebarVisible(page);
+  await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
+  await expectSidebarHidden(page);
 
   await removeProjectCard(page, "Registry Only Project", { deleteFiles: false });
   if (!existsSync(registryOnly.project.root)) {
@@ -50,6 +55,8 @@ try {
 
   await page.goto(`${serverInfo.url}/settings`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
+  await page.goto(`${serverInfo.url}/projects/new`, { waitUntil: "networkidle" });
+  await expectSidebarVisible(page);
 } finally {
   if (browser) {
     await browser.close();
@@ -112,6 +119,14 @@ async function expectSidebarHidden(page) {
   await page.locator(".sidebar").evaluate((sidebar) => {
     if (getComputedStyle(sidebar).display !== "none") {
       throw new Error("Expected management pages to hide the wiki sidebar.");
+    }
+  });
+}
+
+async function expectSidebarVisible(page) {
+  await page.locator(".sidebar").evaluate((sidebar) => {
+    if (getComputedStyle(sidebar).display === "none") {
+      throw new Error("Expected project pages to keep the wiki sidebar visible.");
     }
   });
 }

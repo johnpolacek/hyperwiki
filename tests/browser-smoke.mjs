@@ -127,6 +127,9 @@ await page.locator("#new-project-page").evaluate((panel) => {
   if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
     throw new Error("Expected /projects/new/ refresh to keep the wiki iframe hidden.");
   }
+  if (getComputedStyle(document.querySelector(".sidebar")).display === "none") {
+    throw new Error("Expected /projects/new/ refresh to keep the project sidebar visible.");
+  }
 });
 await page.locator("#project-toggle").click();
 await page.locator("#manage-projects-link").filter({ hasText: "Manage Projects" }).click();

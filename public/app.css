@@ -301,7 +301,6 @@ html[data-initial-route="projects"] #wiki-frame,
 html[data-initial-route="new-project"] #wiki-frame,
 html[data-initial-route="settings"] #wiki-frame,
 html[data-initial-route="projects"] .sidebar,
-html[data-initial-route="new-project"] .sidebar,
 html[data-initial-route="settings"] .sidebar,
 html[data-initial-route="projects"] .plan-prompt,
 html[data-initial-route="new-project"] .plan-prompt,
@@ -322,9 +321,12 @@ html[data-initial-route="settings"] #settings-page[hidden] {
 }
 
 html[data-initial-route="projects"] .workspace,
-html[data-initial-route="new-project"] .workspace,
 html[data-initial-route="settings"] .workspace {
   grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-initial-route="new-project"] .workspace {
+  grid-template-columns: 300px minmax(0, 1fr);
 }
 
 html[data-initial-route="projects"] .wiki-pane,
@@ -380,6 +382,10 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.projects-mode {
+  grid-template-columns: 300px minmax(0, 1fr);
+}
+
+.workspace.manage-projects-mode {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -388,7 +394,7 @@ html[data-initial-route="settings"] .wiki-pane {
   display: none;
 }
 
-.workspace.projects-mode .sidebar,
+.workspace.manage-projects-mode .sidebar,
 .workspace.projects-mode .terminal-pane {
   display: none;
 }

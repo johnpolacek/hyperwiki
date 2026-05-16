@@ -639,7 +639,7 @@ async function showProjectsPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
-  workspace.classList.add("projects-mode");
+  workspace.classList.add("projects-mode", "manage-projects-mode");
   workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects", "Projects");
   openPage.href = "/projects";
@@ -663,7 +663,7 @@ async function showNewProjectPage(options = {}) {
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
   workspace.classList.add("projects-mode");
-  workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("settings-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects/new", "New Project");
   openPage.href = "/projects/new";
   modifyPlanUi.hidden = true;
@@ -686,7 +686,7 @@ async function showSettingsPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.add("active");
-  workspace.classList.remove("projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("projects-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
   currentPage.title = "/settings";
@@ -705,7 +705,7 @@ function hideAppPages() {
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   settingsButton.classList.remove("active");
-  workspace.classList.remove("settings-mode", "projects-mode");
+  workspace.classList.remove("settings-mode", "projects-mode", "manage-projects-mode");
   updatePlanPromptVisibility();
 }
 
@@ -2272,7 +2272,12 @@ function delay(ms) {
 }
 
 async function switchProject(project) {
-  if (project.id === activeProjectId) return;
+  if (project.id === activeProjectId) {
+    closeTopbarPanels();
+    history.pushState(null, "", `${workspacePath(project)}#/wiki/index.html`);
+    activateWorkspaceLocation("/wiki/index.html");
+    return;
+  }
   closeAllTerminals();
   hidePreviewLink();
   activeProjectId = project.id;
