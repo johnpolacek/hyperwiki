@@ -113,6 +113,12 @@ await page.locator("#new-project-page").evaluate((panel) => {
   if (!document.querySelector("#projects-page")?.hidden) {
     throw new Error("Expected Manage Projects page to be hidden on New Project.");
   }
+  if (getComputedStyle(document.querySelector(".wiki-command-bar")).display !== "none") {
+    throw new Error("Expected New Project page to hide the wiki command bar.");
+  }
+  if (getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
+    throw new Error("Expected New Project page to hide the terminal pane.");
+  }
 });
 await page.goto(`${newProjectUrl}/`, { waitUntil: "networkidle" });
 await page.waitForURL(newProjectUrl);

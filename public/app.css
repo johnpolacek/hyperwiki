@@ -384,6 +384,16 @@ html[data-initial-route="settings"] .wiki-pane {
   display: none;
 }
 
+.workspace.projects-mode .wiki-pane {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.workspace.projects-mode .wiki-command-bar,
+.workspace.projects-mode .modify-plan-ui,
+.workspace.projects-mode .plan-prompt {
+  display: none;
+}
+
 .workspace.non-plan-wiki-mode .terminal-pane {
   grid-template-rows: minmax(0, 1fr);
   border-left: 1px solid var(--border);

@@ -42,6 +42,7 @@
   <ul>
     <li>Moved project creation out of the Manage Projects page into a dedicated <code>/projects/new</code> app-shell page.</li>
     <li>Added a New Project action to the topbar Projects dropdown alongside Manage Projects.</li>
+    <li>Hid the wiki command bar and terminal pane in project-management app mode so <code>/projects/new</code> does not show redundant Modify/Execute controls or empty terminal space.</li>
     <li>Kept successful creation returning to <code>/projects</code> before starting the visible agent handoff.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, and targeted <code>agent-browser</code> checks for the dropdown and direct <code>/projects/new/</code> refresh.</li>
   </ul>
