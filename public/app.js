@@ -2272,8 +2272,8 @@ function delay(ms) {
 }
 
 async function switchProject(project) {
+  closeTopbarPanels();
   if (project.id === activeProjectId) {
-    closeTopbarPanels();
     history.pushState(null, "", `${workspacePath(project)}#/wiki/index.html`);
     activateWorkspaceLocation("/wiki/index.html");
     return;

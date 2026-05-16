@@ -39,6 +39,13 @@ try {
   await page.getByRole("button", { name: "Open project" }).click();
   await page.waitForURL(/\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/index\.html$/);
   await expectSidebarVisible(page);
+  await page.getByRole("button", { name: "Projects" }).click();
+  await page.locator("#project-panel").waitFor();
+  await page.getByRole("button", { name: "Registry Only Project" }).click();
+  await page.waitForURL(/\/workspace\/registry-only-project\/main#\/wiki\/index\.html$/);
+  await page.locator("#project-panel").evaluate((panel) => {
+    if (!panel.hidden) throw new Error("Expected project dropdown to close after selecting a project.");
+  });
   await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
 
