@@ -31,7 +31,8 @@ const pages = new Map([
   ["wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html", stageUnitPage("Stage 03 - Hardening And Release Readiness", "wiki/plans/mvp/stage-03-dogfood-hardening.html", "Unit 04 - Record Handoff Notes", "Record completion criteria and release or handoff notes.")],
   ["wiki/sources/prd.html", prdPage],
   ["wiki/sources/technical-brief.html", technicalBriefPage],
-  ["wiki/sources/design-brief.html", designBriefPage]
+  ["wiki/sources/design-brief.html", designBriefPage],
+  ["wiki/sources/import.html", importedSourcePage]
 ]);
 
 export async function inithyperwiki(root, options = {}) {
@@ -100,6 +101,10 @@ async function inspectProject(root, options) {
       packageJson?.description ||
       "Project summary is not known yet. Update this page after the repository purpose is clarified."
   );
+  const sourceDocument = String(options.source_document || "");
+  const sourceDocumentType = String(options.source_document_type || "");
+  const sourceEvidence = extractSourceEvidence(sourceDocument, sourceDocumentType, summary);
+  const planningAnswers = normalizePlanningAnswers(options.planning_answers);
   const scripts = packageJson?.scripts ? Object.keys(packageJson.scripts).sort() : [];
   const readme = ["README.md", "readme.md", "README"].find((file) => existsSync(path.join(root, file))) || null;
   const gitBranch = await git(root, ["branch", "--show-current"]);
@@ -108,6 +113,10 @@ async function inspectProject(root, options) {
   return {
     projectName,
     summary,
+    sourceDocument,
+    sourceDocumentType,
+    sourceEvidence,
+    planningAnswers,
     date: new Date().toISOString().slice(0, 10),
     scripts,
     readme,
@@ -121,6 +130,111 @@ async function inspectProject(root, options) {
       status: gitStatus.ok ? gitStatus.stdout.split("\n").filter(Boolean) : []
     }
   };
+}
+
+function normalizePlanningAnswers(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    promise: String(source.promise || ""),
+    prototype: String(source.prototype || ""),
+    community: String(source.community || ""),
+    validation: String(source.validation || "")
+  };
+}
+
+function extractSourceEvidence(sourceDocument, sourceDocumentType, fallbackSummary) {
+  const sections = sectionMap(sourceDocument, sourceDocumentType);
+  return {
+    hasSource: Boolean(sourceDocument.trim()),
+    basis: sourceDocument.trim() ? `imported ${sourceDocumentType || "document"} with ${sections.length} detected sections plus human planning answers` : "repository metadata and init prompt",
+    problem: sectionText(sections, "problem"),
+    audience: sectionText(sections, "audience"),
+    shape: sectionText(sections, "shape"),
+    features: listItemsFor(sections, ["shape", "core features", "features"]),
+    implementationNotes: listItemsFor(sections, ["implementation notes", "implementation"]),
+    promotionCriteria: listItemsFor(sections, ["promotion criteria", "validation", "success criteria"]),
+    summary: fallbackSummary
+  };
+}
+
+function sectionMap(sourceDocument, sourceDocumentType) {
+  if (!sourceDocument.trim()) return [];
+  if (sourceDocumentType === "html" || /^\s*(<!doctype html|<html[\s>])/i.test(sourceDocument)) return htmlSections(sourceDocument);
+  return markdownSections(sourceDocument);
+}
+
+function htmlSections(html) {
+  const sections = [];
+  for (const match of String(html).matchAll(/<section\b[^>]*>([\s\S]*?)<\/section>/gi)) {
+    const chunk = match[1];
+    const heading = textFromHtml((chunk.match(/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/i) || [""])[0]);
+    if (!heading) continue;
+    sections.push({
+      heading: normalizeHeading(heading),
+      text: textFromHtml(chunk),
+      items: [...chunk.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map((item) => textFromHtml(item[1])).filter(Boolean)
+    });
+  }
+  return sections;
+}
+
+function markdownSections(markdown) {
+  const sections = [];
+  let current = null;
+  for (const line of String(markdown).split(/\r?\n/)) {
+    const heading = line.match(/^#{1,6}\s+(.+)$/);
+    if (heading) {
+      current = { heading: normalizeHeading(heading[1]), text: "", items: [] };
+      sections.push(current);
+      continue;
+    }
+    if (!current) continue;
+    current.text += `${line}\n`;
+    const item = line.match(/^\s*[-*]\s+(.+)$/);
+    if (item) current.items.push(item[1].trim());
+  }
+  return sections.map((section) => ({ ...section, text: section.text.trim() }));
+}
+
+function textFromHtml(html) {
+  return String(html || "")
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeHeading(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function sectionText(sections, heading) {
+  const section = sections.find((item) => item.heading === heading);
+  return section ? section.text.replace(new RegExp(`^${heading}\\s*`, "i"), "").trim() : "";
+}
+
+function listItemsFor(sections, headings) {
+  const normalized = headings.map(normalizeHeading);
+  return sections
+    .filter((section) => normalized.includes(section.heading))
+    .flatMap((section) => section.items.length ? section.items : [section.text])
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function hasGuidedPlan(context) {
+  return Boolean(context.sourceEvidence?.hasSource && context.planningAnswers?.promise);
+}
+
+function listHtml(items) {
+  return items.length ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>Unknown.</li>";
 }
 
 async function ensurePortlessPackage(root, context, options) {
@@ -309,6 +423,7 @@ function logPage(context) {
 }
 
 function sourcesPage(context) {
+  const evidence = context.sourceEvidence;
   return layout(context, "Sources", `<h1>Sources</h1>
 <section class="summary">
   <h2>Scaffold Contract</h2>
@@ -320,9 +435,17 @@ function sourcesPage(context) {
 <h2>Source Material</h2>
 <ul>
   <li>Initialization context: generated by <code>hyperwiki init</code> on ${context.date}.</li>
+  ${evidence?.hasSource ? `<li>Imported document: <a href="/wiki/sources/import.html">source import</a>.</li>` : ""}
   ${context.readme ? `<li>Repository README: <code>${escapeHtml(context.readme)}</code>.</li>` : "<li>Repository README: Unknown.</li>"}
   ${context.hasPackageJson ? "<li>Repository manifest: <code>package.json</code>.</li>" : "<li>Repository manifest: Unknown.</li>"}
 </ul>
+${hasGuidedPlan(context) ? `<h2>Planning Interview Answers</h2>
+<ul>
+  <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise)}</li>
+  <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype)}</li>
+  <li>Community scope: ${escapeHtml(context.planningAnswers.community)}</li>
+  <li>Validation target: ${escapeHtml(context.planningAnswers.validation)}</li>
+</ul>` : ""}
 <h2>Generated Source Briefs</h2>
 <ul>
   <li><a href="/wiki/sources/prd.html">Product brief</a></li>
@@ -374,6 +497,20 @@ function devPage(context) {
 }
 
 function plansIndexPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Plans", `<h1>Planning Dashboard</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: active</li>
+    <li>Shape: human-steered multi-stage MVP</li>
+    <li>Current unit: Unit 01 - Lock Interview Decisions And Taxonomy</li>
+    <li>Next action: implement the prototype path selected in the planning interview.</li>
+    <li>Planning source: imported document plus in-app steering answers</li>
+  </ul>
+</section>
+<p>Read the <a href="/wiki/plans/mvp/index.html">MVP plan</a>.</p>`);
+  }
   return layout(context, "Plans", `<h1>Planning Dashboard</h1>
 <section class="summary">
   <h2>Summary</h2>
@@ -390,6 +527,26 @@ function plansIndexPage(context) {
 }
 
 function mvpIndexPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "MVP Plan", `<h1>MVP Plan</h1>
+<p>This plan was created after a source brief review and human planning interview. It treats the user's answers as durable product direction, not a transient prompt.</p>
+<section class="summary">
+  <h2>Interview Decisions</h2>
+  <ul>
+    <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise)}</li>
+    <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype)}</li>
+    <li>Community scope: ${escapeHtml(context.planningAnswers.community)}</li>
+    <li>Validation target: ${escapeHtml(context.planningAnswers.validation)}</li>
+  </ul>
+</section>
+<ol>
+  <li><a href="/wiki/plans/mvp/stage-01-foundation.html">Stage 01 - Interview decisions and taxonomy</a></li>
+  <li><a href="/wiki/plans/mvp/stage-02-dev-workspace.html">Stage 02 - Selected prototype path</a></li>
+  <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening.html">Stage 03 - Trust and validation readiness</a></li>
+</ol>
+<h2>Source-Grounded Direction</h2>
+<p>${escapeHtml(context.sourceEvidence.shape || context.sourceEvidence.summary)}</p>`);
+  }
   return layout(context, "MVP Plan", `<h1>MVP Plan</h1>
 <p>This plan tracks the first useful project outcome for ${escapeHtml(context.projectName)}. Refine it after confirming product intent, technical constraints, and verification commands.</p>
 <ol>
@@ -400,6 +557,14 @@ function mvpIndexPage(context) {
 }
 
 function stageOnePage(context) {
+  if (hasGuidedPlan(context)) {
+    return stagePage(context, "Stage 01 - Interview Decisions And Taxonomy", [
+      ["Unit 01 - Lock Interview Decisions And Taxonomy", "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html"],
+      ["Unit 02 - Define Pattern Entry Requirements", "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html"],
+      ["Unit 03 - Sync Source Briefs With Answers", "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html"],
+      ["Unit 04 - Define Prototype Acceptance Criteria", "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html"]
+    ], "Turn the imported source and human steering answers into a decision-complete taxonomy, content model, and first prototype gate.");
+  }
   return stagePage(context, "Stage 01 - Project Direction And Setup", [
     ["Unit 01 - Confirm Project Direction", "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html"],
     ["Unit 02 - Review Repository Setup", "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html"],
@@ -409,6 +574,14 @@ function stageOnePage(context) {
 }
 
 function stageTwoPage(context) {
+  if (hasGuidedPlan(context)) {
+    return stagePage(context, "Stage 02 - Selected Prototype Path", [
+      ["Unit 01 - Build The Selected MVP Promise", "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html"],
+      ["Unit 02 - Add Source And Preview Detail Pages", "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html"],
+      ["Unit 03 - Seed Examples For The Validation Target", "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html"],
+      ["Unit 04 - Keep Content Canonical In Repo Files", "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html"]
+    ], context.planningAnswers.prototype);
+  }
   return stagePage(context, "Stage 02 - First Implementation Track", [
     ["Unit 01 - Implement First Slice", "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html"],
     ["Unit 02 - Sync Plan Status", "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html"],
@@ -418,6 +591,14 @@ function stageTwoPage(context) {
 }
 
 function stageThreePage(context) {
+  if (hasGuidedPlan(context)) {
+    return stagePage(context, "Stage 03 - Trust And Validation Readiness", [
+      ["Unit 01 - Close Prototype Verification Gaps", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html"],
+      ["Unit 02 - Apply Community Scope Decision", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html"],
+      ["Unit 03 - Update Durable Docs From Validation", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html"],
+      ["Unit 04 - Record Comparison And Handoff Notes", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html"]
+    ], `${context.planningAnswers.community}; validate against ${context.planningAnswers.validation}.`);
+  }
   return stagePage(context, "Stage 03 - Hardening And Release Readiness", [
     ["Unit 01 - Close Verification Gaps", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html"],
     ["Unit 02 - Harden Workflows", "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html"],
@@ -437,19 +618,67 @@ function stagePage(context, title, units, intent) {
 }
 
 function stageUnitPage(stageTitle, stagePath, unitTitle, intent) {
-  return (context) => layout(context, unitTitle, `<h1>${escapeHtml(unitTitle)}</h1>
-<p><a href="/${stagePath}">${escapeHtml(stageTitle)}</a></p>
+  return (context) => {
+    const guidedUnit = hasGuidedPlan(context) ? guidedUnitFor(stagePath, unitTitle, intent, context) : { stageTitle, unitTitle, intent };
+    return layout(context, guidedUnit.unitTitle, `<h1>${escapeHtml(guidedUnit.unitTitle)}</h1>
+<p><a href="/${stagePath}">${escapeHtml(guidedUnit.stageTitle)}</a></p>
 <section class="summary">
   <h2>Summary</h2>
   <ul>
     <li>Status: pending</li>
-    <li>${escapeHtml(intent)}</li>
+    <li>${escapeHtml(guidedUnit.intent)}</li>
     <li>Verification: record automated or manual validation in <a href="/wiki/log.html">log.html</a>.</li>
   </ul>
 </section>`);
+  };
+}
+
+function guidedUnitFor(stagePath, unitTitle, fallbackIntent, context) {
+  const answers = context.planningAnswers;
+  const key = `${stagePath}::${unitTitle}`;
+  const units = {
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 01 - Confirm Project Direction": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 01 - Lock Interview Decisions And Taxonomy", `Preserve the selected MVP promise: ${answers.promise}.`],
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 02 - Review Repository Setup": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 02 - Define Pattern Entry Requirements", "Define fields for task, tool, stack, file type, maturity, source URL, author, license, freshness, source Markdown, rendered preview, explanation, tradeoffs, and assumptions."],
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 03 - Update Source Briefs": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 03 - Sync Source Briefs With Answers", "Update source briefs so the imported source and interview answers both remain visible to future agents."],
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 04 - Define First Implementation Unit": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 04 - Define Prototype Acceptance Criteria", `Lock acceptance around this selected prototype shape: ${answers.prototype}.`],
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 01 - Implement First Slice": ["Stage 02 - Selected Prototype Path", "Unit 01 - Build The Selected MVP Promise", answers.promise],
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 02 - Sync Plan Status": ["Stage 02 - Selected Prototype Path", "Unit 02 - Add Source And Preview Detail Pages", "Show source Markdown, rendered preview, explanation, tradeoffs, assumptions, author, license, and freshness together."],
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 03 - Record Validation": ["Stage 02 - Selected Prototype Path", "Unit 03 - Seed Examples For The Validation Target", answers.validation],
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 04 - Preserve Canonical Truth": ["Stage 02 - Selected Prototype Path", "Unit 04 - Keep Content Canonical In Repo Files", "Store examples as repo-visible Markdown or structured files instead of hidden UI-only state."],
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 01 - Close Verification Gaps": ["Stage 03 - Trust And Validation Readiness", "Unit 01 - Close Prototype Verification Gaps", "Verify browse, search, comparison, and copy/adapt workflows against the selected MVP promise."],
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 02 - Harden Workflows": ["Stage 03 - Trust And Validation Readiness", "Unit 02 - Apply Community Scope Decision", answers.community],
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 03 - Update Durable Docs": ["Stage 03 - Trust And Validation Readiness", "Unit 03 - Update Durable Docs From Validation", "Update product, technical, design, and roadmap docs from prototype evidence."],
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 04 - Record Handoff Notes": ["Stage 03 - Trust And Validation Readiness", "Unit 04 - Record Comparison And Handoff Notes", "Record whether this human-steered flow produced a more trustworthy MVP plan than automatic generation."]
+  };
+  const fallbackStageTitle = stagePath.includes("stage-01")
+    ? "Stage 01 - Interview Decisions And Taxonomy"
+    : stagePath.includes("stage-02")
+      ? "Stage 02 - Selected Prototype Path"
+      : "Stage 03 - Trust And Validation Readiness";
+  const [nextStageTitle, nextUnitTitle, nextIntent] = units[key] || [fallbackStageTitle, unitTitle, fallbackIntent];
+  return { stageTitle: nextStageTitle, unitTitle: nextUnitTitle, intent: nextIntent };
 }
 
 function prdPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Product Brief", `<h1>Product Brief</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: ${context.date}</li>
+  <li>Evidence basis: ${escapeHtml(context.sourceEvidence.basis)}</li>
+  <li>Confidence: medium</li>
+</ul>
+<h2>Problem</h2>
+<p>${escapeHtml(context.sourceEvidence.problem || context.sourceEvidence.summary)}</p>
+<h2>Audience</h2>
+<p>${escapeHtml(context.sourceEvidence.audience || "Unknown.")}</p>
+<h2>Human-Steered MVP Promise</h2>
+<p>${escapeHtml(context.planningAnswers.promise)}</p>
+<h2>Core Features</h2>
+<ul>${listHtml(context.sourceEvidence.features)}</ul>
+<h2>Validation Target</h2>
+<p>${escapeHtml(context.planningAnswers.validation)}</p>`);
+  }
   return layout(context, "Product Brief", `<h1>Product Brief</h1>
 <h2>Status</h2>
 <ul>
@@ -468,6 +697,25 @@ function prdPage(context) {
 }
 
 function technicalBriefPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Technical Brief", `<h1>Technical Brief</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: ${context.date}</li>
+  <li>Evidence basis: imported source plus planning interview</li>
+  <li>Confidence: medium</li>
+</ul>
+<h2>Selected Prototype Shape</h2>
+<p>${escapeHtml(context.planningAnswers.prototype)}</p>
+<h2>Imported Implementation Notes</h2>
+<ul>${listHtml(context.sourceEvidence.implementationNotes)}</ul>
+<h2>Technical Defaults</h2>
+<ul>
+  <li>Keep content canonical in repo-visible Markdown or structured files.</li>
+  <li>Start with local indexed content before crawler or GitHub import workflows.</li>
+  <li>Defer backend-heavy community features unless the interview selected them explicitly.</li>
+</ul>`);
+  }
   return layout(context, "Technical Brief", `<h1>Technical Brief</h1>
 <h2>Status</h2>
 <ul>
@@ -490,6 +738,21 @@ function technicalBriefPage(context) {
 }
 
 function designBriefPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Design Brief", `<h1>Design Brief</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: ${context.date}</li>
+  <li>Evidence basis: imported source plus human-steered plan</li>
+  <li>Confidence: medium</li>
+</ul>
+<h2>Interface Direction</h2>
+<ul>
+  <li>Design direction: developer planning desk, optimized for comparing Markdown source, rendered preview, and workflow context.</li>
+  <li>Browse surfaces should support fast scanning by task, tool, stack, maturity, freshness, and license.</li>
+  <li>The UI should feel like a reference library for project infrastructure, not a generic prompt marketplace.</li>
+</ul>`);
+  }
   return layout(context, "Design Brief", `<h1>Design Brief</h1>
 <h2>Status</h2>
 <ul>
@@ -512,4 +775,21 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function importedSourcePage(context) {
+  if (!context.sourceEvidence?.hasSource) {
+    return layout(context, "Imported Source", `<h1>Imported Source</h1><p>No imported source document was provided during initialization.</p>`);
+  }
+  return layout(context, "Imported Source", `<h1>Imported Source</h1>
+<section class="summary">
+  <h2>Planning Interview</h2>
+  <ul>
+    <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise || "Unknown")}</li>
+    <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype || "Unknown")}</li>
+    <li>Community scope: ${escapeHtml(context.planningAnswers.community || "Unknown")}</li>
+    <li>Validation target: ${escapeHtml(context.planningAnswers.validation || "Unknown")}</li>
+  </ul>
+</section>
+<pre><code>${escapeHtml(context.sourceDocument)}</code></pre>`);
 }

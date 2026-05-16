@@ -31,6 +31,13 @@ const projectImportForm = document.getElementById("project-import-form");
 const projectTitleInput = document.getElementById("project-title");
 const projectMarkdownInput = document.getElementById("project-markdown");
 const projectMarkdownFile = document.getElementById("project-markdown-file");
+const planningInterview = document.getElementById("planning-interview");
+const planningSourceBrief = document.getElementById("planning-source-brief");
+const planningPromise = document.getElementById("planning-promise");
+const planningPrototype = document.getElementById("planning-prototype");
+const planningCommunity = document.getElementById("planning-community");
+const planningValidation = document.getElementById("planning-validation");
+const planningCreateProject = document.getElementById("planning-create-project");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
 const settingsPage = document.getElementById("settings-page");
@@ -365,13 +372,17 @@ document.addEventListener("keydown", (event) => {
 });
 
 projectMarkdownInput.addEventListener("input", () => {
-  projectMarkdownInput.dataset.documentType = "markdown";
+  projectMarkdownInput.dataset.documentType = isHtmlDocument({ name: "" }, projectMarkdownInput.value) ? "html" : "markdown";
+  renderPlanningInterview();
 });
 
 projectMarkdownFile.addEventListener("change", () => {
   void importDocumentFile(projectMarkdownFile, projectMarkdownInput, projectTitleInput)
     .then((imported) => {
-      if (imported) return createProjectFromMarkdown();
+      if (imported) {
+        renderPlanningInterview();
+        setNewProjectStatus("Review the source brief and answer the MVP planning questions.");
+      }
       return null;
     })
     .catch((error) => setNewProjectStatus(error.message || "Could not import the document."));
@@ -379,6 +390,10 @@ projectMarkdownFile.addEventListener("change", () => {
 
 projectImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  await createProjectFromMarkdown();
+});
+
+planningCreateProject?.addEventListener("click", async () => {
   await createProjectFromMarkdown();
 });
 
@@ -2003,6 +2018,100 @@ async function importDocumentFile(fileInput, markdownInput, titleInput) {
   return true;
 }
 
+function renderPlanningInterview() {
+  if (!planningInterview || !planningSourceBrief) return;
+  const content = projectMarkdownInput.value.trim();
+  if (!content) {
+    planningInterview.hidden = true;
+    return;
+  }
+  const type = projectMarkdownInput.dataset.documentType || "markdown";
+  const brief = extractedPlanningBrief(content, type);
+  planningSourceBrief.replaceChildren(
+    briefRow("Problem", brief.problem),
+    briefRow("Audience", brief.audience),
+    briefRow("Shape", brief.shape),
+    briefRow("Features", brief.features.join("; ")),
+    briefRow("Validation", brief.validation.join("; "))
+  );
+  planningInterview.hidden = false;
+}
+
+function briefRow(label, value) {
+  const fragment = document.createDocumentFragment();
+  const term = document.createElement("dt");
+  term.textContent = label;
+  const detail = document.createElement("dd");
+  detail.textContent = value || "Unknown";
+  fragment.append(term, detail);
+  return fragment;
+}
+
+function planningAnswers() {
+  return {
+    promise: planningPromise?.value || "",
+    prototype: planningPrototype?.value || "",
+    community: planningCommunity?.value || "",
+    validation: planningValidation?.value || ""
+  };
+}
+
+function extractedPlanningBrief(content, type) {
+  const sections = type === "html" ? htmlPlanningSections(content) : markdownPlanningSections(content);
+  return {
+    problem: planningSectionText(sections, "problem") || documentSummary(content, type),
+    audience: planningSectionText(sections, "audience"),
+    shape: planningSectionText(sections, "shape"),
+    features: planningSectionItems(sections, ["shape", "core features", "features"]).slice(0, 6),
+    validation: planningSectionItems(sections, ["promotion criteria", "validation", "success criteria"]).slice(0, 5)
+  };
+}
+
+function htmlPlanningSections(html) {
+  const doc = new DOMParser().parseFromString(String(html), "text/html");
+  return [...doc.querySelectorAll("section")].map((section) => ({
+    heading: normalizePlanningHeading(section.querySelector("h1,h2,h3,h4,h5,h6")?.textContent || ""),
+    text: section.textContent.trim().replace(/\s+/g, " "),
+    items: [...section.querySelectorAll("li")].map((item) => item.textContent.trim()).filter(Boolean)
+  })).filter((section) => section.heading);
+}
+
+function markdownPlanningSections(markdown) {
+  const sections = [];
+  let current = null;
+  for (const line of String(markdown).split(/\r?\n/)) {
+    const heading = line.match(/^#{1,6}\s+(.+)$/);
+    if (heading) {
+      current = { heading: normalizePlanningHeading(heading[1]), text: "", items: [] };
+      sections.push(current);
+      continue;
+    }
+    if (!current) continue;
+    current.text += `${line} `;
+    const item = line.match(/^\s*[-*]\s+(.+)$/);
+    if (item) current.items.push(item[1].trim());
+  }
+  return sections;
+}
+
+function normalizePlanningHeading(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function planningSectionText(sections, heading) {
+  const normalized = normalizePlanningHeading(heading);
+  const section = sections.find((item) => item.heading === normalized);
+  return section ? section.text.replace(new RegExp(`^${normalized}\\s*`, "i"), "").trim() : "";
+}
+
+function planningSectionItems(sections, headings) {
+  const normalized = headings.map(normalizePlanningHeading);
+  return sections
+    .filter((section) => normalized.includes(section.heading))
+    .flatMap((section) => section.items.length ? section.items : [section.text])
+    .filter(Boolean);
+}
+
 async function createProjectFromMarkdown() {
   const title = projectTitleInput.value.trim();
   const markdown = projectMarkdownInput.value.trim();
@@ -2012,7 +2121,13 @@ async function createProjectFromMarkdown() {
     setNewProjectStatus("Initializing project...");
     const result = await api(projectPath("/api/projects/create"), {
       method: "POST",
-      body: JSON.stringify({ title, summary: documentSummary(markdown, documentType) })
+      body: JSON.stringify({
+        title,
+        summary: documentSummary(markdown, documentType),
+        document: markdown,
+        documentType,
+        planningAnswers: planningAnswers()
+      })
     });
     closeAllTerminals();
     activeProjectId = result.project.id;
