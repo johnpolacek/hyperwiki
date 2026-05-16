@@ -171,7 +171,7 @@
         <form id="project-import-form" class="dashboard-action-form new-project-form">
           <header>
             <h3>Project Brief</h3>
-            <p>HyperWiki will create the project, switch to it, and ask the agent to build the first wiki pages from this context.</p>
+            <p>Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.</p>
           </header>
           <label>
             <span>Project name</span>
@@ -187,60 +187,32 @@
             <small>Markdown or HTML</small>
             <input id="project-markdown-file" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain">
           </label>
-          <section id="planning-interview" class="planning-interview" aria-label="MVP planning interview" hidden>
-            <header>
-              <div>
-                <h3>Plan the MVP</h3>
-                <p>Review the imported source brief, then choose the product strategy HyperWiki should use before it writes the MVP plan.</p>
-              </div>
-              <span>Human-steered</span>
-            </header>
-            <div class="planning-interview-grid">
-              <section class="source-brief-card">
-                <h4>Extracted Source Brief</h4>
-                <dl id="planning-source-brief"></dl>
-              </section>
-              <section class="planning-question-card">
-                <h4>Steering Choices</h4>
-                <label>
-                  <span>First MVP promise</span>
-                  <select id="planning-promise">
-                    <option value="Help developers discover curated Markdown-for-agent examples">Discover curated examples</option>
-                    <option value="Help developers submit and share Markdown workflow patterns">Submit and share examples</option>
-                    <option value="Help developers copy and adapt reusable Markdown templates">Copy and adapt templates</option>
-                    <option value="Help developers compare complete agentic coding workflows">Compare complete workflows</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Prototype shape</span>
-                  <select id="planning-prototype">
-                    <option value="Static gallery with seeded examples, local search, and pattern detail pages">Static searchable gallery</option>
-                    <option value="Taxonomy-first reference with content model and example criteria">Taxonomy-first reference</option>
-                    <option value="Submission queue and manual review flow">Submission queue</option>
-                    <option value="Starter-template export workflow">Starter-template export</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Community scope</span>
-                  <select id="planning-community">
-                    <option value="Curated only; defer accounts and public submissions">Curated only</option>
-                    <option value="Lightweight submission form with manual review">Manual submissions</option>
-                    <option value="Full accounts and profiles">Accounts and profiles</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Validation target</span>
-                  <select id="planning-validation">
-                    <option value="30 strong examples from different tools, repos, and workflows">30 strong examples</option>
-                    <option value="10 excellent examples and developer feedback on search and comparison">10 excellent examples</option>
-                    <option value="UX prototype validation before scaling the content library">Validate UX first</option>
-                  </select>
-                </label>
-                <button id="planning-create-project" type="button">Create Project And MVP Plan</button>
-              </section>
-            </div>
-          </section>
+          <button type="submit">Review Source And Plan MVP</button>
         </form>
+        <section id="planning-interview" class="planning-interview" aria-label="MVP planning interview" hidden>
+          <header>
+            <div>
+              <p id="planning-step-label" class="planning-step-label">Step 1 of 4</p>
+              <h2 id="planning-question-title">Plan the MVP</h2>
+              <p id="planning-question-description">Choose the product strategy HyperWiki should use before it writes the MVP plan.</p>
+            </div>
+            <span>Human-steered</span>
+          </header>
+          <div class="planning-interview-grid">
+            <section class="source-brief-card">
+              <h3>Extracted Source Brief</h3>
+              <dl id="planning-source-brief"></dl>
+            </section>
+            <section class="planning-question-card">
+              <div id="planning-option-list" class="planning-option-list" role="radiogroup" aria-labelledby="planning-question-title"></div>
+              <footer class="planning-wizard-actions">
+                <button id="planning-back" type="button">Back</button>
+                <button id="planning-next" type="button">Next</button>
+                <button id="planning-create-project" type="button" hidden>Create Project And MVP Plan</button>
+              </footer>
+            </section>
+          </div>
+        </section>
       </section>
       <section id="settings-page" class="settings-page" aria-label="hyperwiki Settings" hidden>
         <header class="dashboard-page-header settings-page-header">

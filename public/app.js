@@ -33,10 +33,12 @@ const projectMarkdownInput = document.getElementById("project-markdown");
 const projectMarkdownFile = document.getElementById("project-markdown-file");
 const planningInterview = document.getElementById("planning-interview");
 const planningSourceBrief = document.getElementById("planning-source-brief");
-const planningPromise = document.getElementById("planning-promise");
-const planningPrototype = document.getElementById("planning-prototype");
-const planningCommunity = document.getElementById("planning-community");
-const planningValidation = document.getElementById("planning-validation");
+const planningStepLabel = document.getElementById("planning-step-label");
+const planningQuestionTitle = document.getElementById("planning-question-title");
+const planningQuestionDescription = document.getElementById("planning-question-description");
+const planningOptionList = document.getElementById("planning-option-list");
+const planningBack = document.getElementById("planning-back");
+const planningNext = document.getElementById("planning-next");
 const planningCreateProject = document.getElementById("planning-create-project");
 const upNextButton = document.getElementById("up-next-button");
 const upNextPopover = document.getElementById("up-next-popover");
@@ -111,8 +113,129 @@ let themePresetPickerOpen = false;
 let agentDraft = null;
 let agentsFileDraft = "";
 let agentWikiRefreshTimer = null;
+let planningWizard = {
+  active: false,
+  stepIndex: 0,
+  brief: null,
+  answers: {}
+};
 const thinkingEffortStorageKey = "hyperwiki.thinkingEffort";
 const thinkingEffortLevels = new Set(["low", "medium", "high", "xhigh"]);
+
+const planningQuestions = [
+  {
+    key: "promise",
+    title: "What should the first MVP prove?",
+    description: "Pick the product promise that should guide the first implementation plan.",
+    options: [
+      {
+        label: "Discover curated examples",
+        value: "Help developers discover curated Markdown-for-agent examples",
+        detail: "Build the first version around finding strong, trustworthy examples fast.",
+        tradeoff: "Best for proving demand and taxonomy. It postpones creator workflows."
+      },
+      {
+        label: "Submit and share examples",
+        value: "Help developers submit and share Markdown workflow patterns",
+        detail: "Make contribution and review the center of the MVP.",
+        tradeoff: "Best for community signal. It requires moderation and trust work earlier."
+      },
+      {
+        label: "Copy and adapt templates",
+        value: "Help developers copy and adapt reusable Markdown templates",
+        detail: "Prioritize practical reuse through templates and starter patterns.",
+        tradeoff: "Best for utility. It may under-test discovery and comparison behavior."
+      },
+      {
+        label: "Compare complete workflows",
+        value: "Help developers compare complete agentic coding workflows",
+        detail: "Frame the product as a decision aid for workflow design.",
+        tradeoff: "Best for depth. It requires richer examples and more editorial structure."
+      }
+    ]
+  },
+  {
+    key: "prototype",
+    title: "What should the first prototype contain?",
+    description: "Choose the concrete surface the MVP plan should build first.",
+    options: [
+      {
+        label: "Static searchable gallery",
+        value: "Static gallery with seeded examples, local search, and pattern detail pages",
+        detail: "A mostly static gallery with local search, filters, and durable pattern pages.",
+        tradeoff: "Fastest path to a usable product. Dynamic community features wait."
+      },
+      {
+        label: "Taxonomy-first reference",
+        value: "Taxonomy-first reference with content model and example criteria",
+        detail: "Define the classification system, metadata, and example quality bar first.",
+        tradeoff: "Strong foundation, but less immediately product-like for users."
+      },
+      {
+        label: "Submission queue",
+        value: "Submission queue and manual review flow",
+        detail: "Let users propose examples and route them through a lightweight review process.",
+        tradeoff: "Tests contributor appetite, but adds trust and abuse concerns early."
+      },
+      {
+        label: "Starter-template export",
+        value: "Starter-template export workflow",
+        detail: "Help users turn discovered patterns into files they can drop into their repos.",
+        tradeoff: "High utility, but it depends on strong source examples and content modeling."
+      }
+    ]
+  },
+  {
+    key: "community",
+    title: "How much community belongs in the MVP?",
+    description: "Set the boundary between curated quality and public contribution.",
+    options: [
+      {
+        label: "Curated only",
+        value: "Curated only; defer accounts and public submissions",
+        detail: "Keep the MVP editorial and controlled while validating discovery and content quality.",
+        tradeoff: "Lowest implementation risk. It does not validate contributor workflows."
+      },
+      {
+        label: "Manual submissions",
+        value: "Lightweight submission form with manual review",
+        detail: "Accept proposed examples, but keep publishing gated by human review.",
+        tradeoff: "Good signal for demand. Requires licensing, attribution, and safety review."
+      },
+      {
+        label: "Accounts and profiles",
+        value: "Full accounts and profiles",
+        detail: "Treat contributors as first-class users from the beginning.",
+        tradeoff: "Best for community identity. Highest scope and backend burden."
+      }
+    ]
+  },
+  {
+    key: "validation",
+    title: "What proves the MVP is worth continuing?",
+    description: "Choose the acceptance target the generated plan should optimize around.",
+    options: [
+      {
+        label: "30 strong examples",
+        value: "30 strong examples from different tools, repos, and workflows",
+        detail: "Match the imported promotion criterion and prove breadth across the category.",
+        tradeoff: "Strongest content signal. It requires more curation before launch."
+      },
+      {
+        label: "10 excellent examples",
+        value: "10 excellent examples and developer feedback on search and comparison",
+        detail: "Use fewer, higher-quality examples to test whether the UI helps real developers.",
+        tradeoff: "Faster to validate UX. It may under-test taxonomy breadth."
+      },
+      {
+        label: "Validate UX first",
+        value: "UX prototype validation before scaling the content library",
+        detail: "Focus on navigation, comparison, and copy/adapt flows before content scale.",
+        tradeoff: "Best for interaction learning. It delays proof that enough examples exist."
+      }
+    ]
+  }
+];
 
 const themeSurfaces = [
   {
@@ -373,15 +496,16 @@ document.addEventListener("keydown", (event) => {
 
 projectMarkdownInput.addEventListener("input", () => {
   projectMarkdownInput.dataset.documentType = isHtmlDocument({ name: "" }, projectMarkdownInput.value) ? "html" : "markdown";
-  renderPlanningInterview();
+  if (planningWizard.active) {
+    startPlanningInterview();
+  }
 });
 
 projectMarkdownFile.addEventListener("change", () => {
   void importDocumentFile(projectMarkdownFile, projectMarkdownInput, projectTitleInput)
     .then((imported) => {
       if (imported) {
-        renderPlanningInterview();
-        setNewProjectStatus("Review the source brief and answer the MVP planning questions.");
+        startPlanningInterview();
       }
       return null;
     })
@@ -390,11 +514,41 @@ projectMarkdownFile.addEventListener("change", () => {
 
 projectImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await createProjectFromMarkdown();
+  startPlanningInterview();
+});
+
+planningOptionList?.addEventListener("click", (event) => {
+  const option = event.target.closest(".planning-option-card");
+  if (!option) return;
+  selectPlanningOption(option.dataset.optionValue);
 });
 
 planningCreateProject?.addEventListener("click", async () => {
   await createProjectFromMarkdown();
+});
+
+planningBack?.addEventListener("click", () => {
+  if (planningWizard.stepIndex > 0) {
+    planningWizard.stepIndex -= 1;
+    renderPlanningInterview();
+    return;
+  }
+  planningWizard.active = false;
+  newProjectPage.classList.remove("planning-active");
+  planningInterview.hidden = true;
+  projectImportForm.hidden = false;
+  setNewProjectStatus("");
+});
+
+planningNext?.addEventListener("click", () => {
+  const question = planningQuestions[planningWizard.stepIndex];
+  if (!planningWizard.answers[question.key]) {
+    selectPlanningOption(question.options[0].value);
+  }
+  if (planningWizard.stepIndex < planningQuestions.length - 1) {
+    planningWizard.stepIndex += 1;
+    renderPlanningInterview();
+  }
 });
 
 themePresetBar.addEventListener("click", (event) => {
@@ -655,7 +809,7 @@ async function showProjectsPage(options = {}) {
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
   workspace.classList.add("projects-mode", "manage-projects-mode");
-  workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("settings-mode", "new-project-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects", "Projects");
   openPage.href = "/projects";
   modifyPlanUi.hidden = true;
@@ -677,7 +831,7 @@ async function showNewProjectPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
-  workspace.classList.add("projects-mode");
+  workspace.classList.add("projects-mode", "new-project-mode");
   workspace.classList.remove("settings-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects/new", "New Project");
   openPage.href = "/projects/new";
@@ -701,7 +855,7 @@ async function showSettingsPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.add("active");
-  workspace.classList.remove("projects-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.remove("projects-mode", "manage-projects-mode", "new-project-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   workspace.classList.add("settings-mode");
   currentPage.textContent = "Settings";
   currentPage.title = "/settings";
@@ -720,7 +874,7 @@ function hideAppPages() {
   settingsPage.hidden = true;
   wikiFrame.hidden = false;
   settingsButton.classList.remove("active");
-  workspace.classList.remove("settings-mode", "projects-mode", "manage-projects-mode");
+  workspace.classList.remove("settings-mode", "projects-mode", "manage-projects-mode", "new-project-mode");
   updatePlanPromptVisibility();
 }
 
@@ -2026,7 +2180,7 @@ function renderPlanningInterview() {
     return;
   }
   const type = projectMarkdownInput.dataset.documentType || "markdown";
-  const brief = extractedPlanningBrief(content, type);
+  const brief = planningWizard.brief || extractedPlanningBrief(content, type);
   planningSourceBrief.replaceChildren(
     briefRow("Problem", brief.problem),
     briefRow("Audience", brief.audience),
@@ -2034,6 +2188,7 @@ function renderPlanningInterview() {
     briefRow("Features", brief.features.join("; ")),
     briefRow("Validation", brief.validation.join("; "))
   );
+  renderPlanningStep();
   planningInterview.hidden = false;
 }
 
@@ -2047,15 +2202,6 @@ function briefRow(label, value) {
   return fragment;
 }
 
-function planningAnswers() {
-  return {
-    promise: planningPromise?.value || "",
-    prototype: planningPrototype?.value || "",
-    community: planningCommunity?.value || "",
-    validation: planningValidation?.value || ""
-  };
-}
-
 function extractedPlanningBrief(content, type) {
   const sections = type === "html" ? htmlPlanningSections(content) : markdownPlanningSections(content);
   return {
@@ -2065,6 +2211,57 @@ function extractedPlanningBrief(content, type) {
     features: planningSectionItems(sections, ["shape", "core features", "features"]).slice(0, 6),
     validation: planningSectionItems(sections, ["promotion criteria", "validation", "success criteria"]).slice(0, 5)
   };
+}
+
+function renderPlanningStep() {
+  const question = planningQuestions[planningWizard.stepIndex] || planningQuestions[0];
+  const selected = planningWizard.answers[question.key] || question.options[0];
+  planningStepLabel.textContent = `Step ${planningWizard.stepIndex + 1} of ${planningQuestions.length}`;
+  planningQuestionTitle.textContent = question.title;
+  planningQuestionDescription.textContent = question.description;
+  planningOptionList.replaceChildren(...question.options.map((option) => planningOptionCard(option, selected.value)));
+  planningBack.textContent = planningWizard.stepIndex === 0 ? "Back to source" : "Back";
+  planningNext.hidden = planningWizard.stepIndex === planningQuestions.length - 1;
+  planningCreateProject.hidden = planningWizard.stepIndex !== planningQuestions.length - 1;
+}
+
+function planningOptionCard(option, selectedValue) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "planning-option-card";
+  button.dataset.optionValue = option.value;
+  button.setAttribute("role", "radio");
+  button.setAttribute("aria-checked", String(option.value === selectedValue));
+  if (option.value === selectedValue) button.classList.add("selected");
+
+  const header = document.createElement("span");
+  header.className = "planning-option-header";
+  const label = document.createElement("strong");
+  label.textContent = option.label;
+  const marker = document.createElement("span");
+  marker.textContent = option.value === selectedValue ? "Selected" : "Choose";
+  header.append(label, marker);
+
+  const detail = document.createElement("span");
+  detail.className = "planning-option-detail";
+  detail.textContent = option.detail;
+
+  const tradeoff = document.createElement("span");
+  tradeoff.className = "planning-option-tradeoff";
+  tradeoff.textContent = option.tradeoff;
+
+  button.append(header, detail, tradeoff);
+  return button;
+}
+
+function selectPlanningOption(value) {
+  const question = planningQuestions[planningWizard.stepIndex];
+  const option = question.options.find((item) => item.value === value) || question.options[0];
+  planningWizard.answers = {
+    ...planningWizard.answers,
+    [question.key]: option
+  };
+  renderPlanningStep();
 }
 
 function htmlPlanningSections(html) {
@@ -2112,6 +2309,46 @@ function planningSectionItems(sections, headings) {
     .filter(Boolean);
 }
 
+function startPlanningInterview() {
+  const title = projectTitleInput.value.trim();
+  const markdown = projectMarkdownInput.value.trim();
+  if (!title || !markdown) {
+    setNewProjectStatus("Add a project name and source brief before planning the MVP.");
+    return;
+  }
+  const documentType = projectMarkdownInput.dataset.documentType || "markdown";
+  planningWizard = {
+    active: true,
+    stepIndex: 0,
+    brief: extractedPlanningBrief(markdown, documentType),
+    answers: defaultPlanningAnswers()
+  };
+  projectImportForm.hidden = true;
+  newProjectPage.classList.add("planning-active");
+  planningInterview.hidden = false;
+  setNewProjectStatus("Answer the planning interview to create the MVP plan.");
+  renderPlanningInterview();
+}
+
+function defaultPlanningAnswers() {
+  return Object.fromEntries(planningQuestions.map((question) => [question.key, question.options[0]]));
+}
+
+function selectedPlanningAnswers() {
+  const answers = planningWizard.answers && Object.keys(planningWizard.answers).length
+    ? planningWizard.answers
+    : defaultPlanningAnswers();
+  return Object.fromEntries(planningQuestions.map((question) => {
+    const option = answers[question.key] || question.options[0];
+    return [question.key, {
+      value: option.value,
+      label: option.label,
+      detail: option.detail,
+      tradeoff: option.tradeoff
+    }];
+  }));
+}
+
 async function createProjectFromMarkdown() {
   const title = projectTitleInput.value.trim();
   const markdown = projectMarkdownInput.value.trim();
@@ -2126,7 +2363,7 @@ async function createProjectFromMarkdown() {
         summary: documentSummary(markdown, documentType),
         document: markdown,
         documentType,
-        planningAnswers: planningAnswers()
+        planningAnswers: selectedPlanningAnswers()
       })
     });
     closeAllTerminals();

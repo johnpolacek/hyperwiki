@@ -134,11 +134,37 @@ async function inspectProject(root, options) {
 
 function normalizePlanningAnswers(value) {
   const source = value && typeof value === "object" ? value : {};
+  const details = {
+    promise: normalizePlanningAnswer(source.promise),
+    prototype: normalizePlanningAnswer(source.prototype),
+    community: normalizePlanningAnswer(source.community),
+    validation: normalizePlanningAnswer(source.validation)
+  };
   return {
-    promise: String(source.promise || ""),
-    prototype: String(source.prototype || ""),
-    community: String(source.community || ""),
-    validation: String(source.validation || "")
+    promise: details.promise.value,
+    prototype: details.prototype.value,
+    community: details.community.value,
+    validation: details.validation.value,
+    details
+  };
+}
+
+function normalizePlanningAnswer(value) {
+  if (value && typeof value === "object") {
+    const answerValue = String(value.value || value.label || "");
+    return {
+      value: answerValue,
+      label: String(value.label || answerValue),
+      detail: String(value.detail || ""),
+      tradeoff: String(value.tradeoff || "")
+    };
+  }
+  const answerValue = String(value || "");
+  return {
+    value: answerValue,
+    label: answerValue,
+    detail: "",
+    tradeoff: ""
   };
 }
 
@@ -235,6 +261,12 @@ function hasGuidedPlan(context) {
 
 function listHtml(items) {
   return items.length ? items.map((item) => `<li>${escapeHtml(item)}</li>`).join("") : "<li>Unknown.</li>";
+}
+
+function planningAnswerHtml(context, key, fallbackLabel) {
+  const answer = context.planningAnswers?.details?.[key] || normalizePlanningAnswer(context.planningAnswers?.[key]);
+  const title = answer.label || fallbackLabel;
+  return `<li><strong>${escapeHtml(fallbackLabel)}:</strong> ${escapeHtml(title || "Unknown")}${answer.detail ? `<br><span>${escapeHtml(answer.detail)}</span>` : ""}${answer.tradeoff ? `<br><span>Tradeoff: ${escapeHtml(answer.tradeoff)}</span>` : ""}</li>`;
 }
 
 async function ensurePortlessPackage(root, context, options) {
@@ -441,10 +473,10 @@ function sourcesPage(context) {
 </ul>
 ${hasGuidedPlan(context) ? `<h2>Planning Interview Answers</h2>
 <ul>
-  <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise)}</li>
-  <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype)}</li>
-  <li>Community scope: ${escapeHtml(context.planningAnswers.community)}</li>
-  <li>Validation target: ${escapeHtml(context.planningAnswers.validation)}</li>
+  ${planningAnswerHtml(context, "promise", "First MVP promise")}
+  ${planningAnswerHtml(context, "prototype", "Prototype shape")}
+  ${planningAnswerHtml(context, "community", "Community scope")}
+  ${planningAnswerHtml(context, "validation", "Validation target")}
 </ul>` : ""}
 <h2>Generated Source Briefs</h2>
 <ul>
@@ -533,10 +565,10 @@ function mvpIndexPage(context) {
 <section class="summary">
   <h2>Interview Decisions</h2>
   <ul>
-    <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise)}</li>
-    <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype)}</li>
-    <li>Community scope: ${escapeHtml(context.planningAnswers.community)}</li>
-    <li>Validation target: ${escapeHtml(context.planningAnswers.validation)}</li>
+    ${planningAnswerHtml(context, "promise", "First MVP promise")}
+    ${planningAnswerHtml(context, "prototype", "Prototype shape")}
+    ${planningAnswerHtml(context, "community", "Community scope")}
+    ${planningAnswerHtml(context, "validation", "Validation target")}
   </ul>
 </section>
 <ol>
@@ -619,7 +651,7 @@ function stagePage(context, title, units, intent) {
 
 function stageUnitPage(stageTitle, stagePath, unitTitle, intent) {
   return (context) => {
-    const guidedUnit = hasGuidedPlan(context) ? guidedUnitFor(stagePath, unitTitle, intent, context) : { stageTitle, unitTitle, intent };
+    const guidedUnit = hasGuidedPlan(context) ? guidedUnitFor(stagePath, unitTitle, intent, context) : defaultUnit(stageTitle, unitTitle, intent);
     return layout(context, guidedUnit.unitTitle, `<h1>${escapeHtml(guidedUnit.unitTitle)}</h1>
 <p><a href="/${stagePath}">${escapeHtml(guidedUnit.stageTitle)}</a></p>
 <section class="summary">
@@ -627,36 +659,63 @@ function stageUnitPage(stageTitle, stagePath, unitTitle, intent) {
   <ul>
     <li>Status: pending</li>
     <li>${escapeHtml(guidedUnit.intent)}</li>
-    <li>Verification: record automated or manual validation in <a href="/wiki/log.html">log.html</a>.</li>
   </ul>
-</section>`);
+</section>
+<h2>Why This Unit Exists</h2>
+<p>${escapeHtml(guidedUnit.why)}</p>
+<h2>Work Included</h2>
+<ul>${listHtml(guidedUnit.work)}</ul>
+<h2>Acceptance</h2>
+<ul>${listHtml(guidedUnit.acceptance)}</ul>
+<h2>Verification</h2>
+<p>${escapeHtml(guidedUnit.verification)} Record evidence in <a href="/wiki/log.html">log.html</a>.</p>`);
+  };
+}
+
+function defaultUnit(stageTitle, unitTitle, intent) {
+  return {
+    stageTitle,
+    unitTitle,
+    intent,
+    why: "This unit narrows the generated plan into a concrete next step that can be implemented and verified without relying on hidden context.",
+    work: ["Review the relevant source material.", "Make the smallest durable repo or wiki change that advances this unit.", "Update plan status and source notes when new evidence appears."],
+    acceptance: ["The unit outcome is represented in repo-visible files.", "Open questions are explicit instead of implied.", "The next unit remains actionable."],
+    verification: "Run the relevant project checks or document the manual review performed."
   };
 }
 
 function guidedUnitFor(stagePath, unitTitle, fallbackIntent, context) {
   const answers = context.planningAnswers;
+  const details = answers.details || {};
+  const promiseDetail = details.promise?.detail || answers.promise;
+  const prototypeDetail = details.prototype?.detail || answers.prototype;
+  const communityDetail = details.community?.detail || answers.community;
+  const validationDetail = details.validation?.detail || answers.validation;
   const key = `${stagePath}::${unitTitle}`;
   const units = {
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 01 - Confirm Project Direction": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 01 - Lock Interview Decisions And Taxonomy", `Preserve the selected MVP promise: ${answers.promise}.`],
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 02 - Review Repository Setup": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 02 - Define Pattern Entry Requirements", "Define fields for task, tool, stack, file type, maturity, source URL, author, license, freshness, source Markdown, rendered preview, explanation, tradeoffs, and assumptions."],
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 03 - Update Source Briefs": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 03 - Sync Source Briefs With Answers", "Update source briefs so the imported source and interview answers both remain visible to future agents."],
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 04 - Define First Implementation Unit": ["Stage 01 - Interview Decisions And Taxonomy", "Unit 04 - Define Prototype Acceptance Criteria", `Lock acceptance around this selected prototype shape: ${answers.prototype}.`],
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 01 - Implement First Slice": ["Stage 02 - Selected Prototype Path", "Unit 01 - Build The Selected MVP Promise", answers.promise],
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 02 - Sync Plan Status": ["Stage 02 - Selected Prototype Path", "Unit 02 - Add Source And Preview Detail Pages", "Show source Markdown, rendered preview, explanation, tradeoffs, assumptions, author, license, and freshness together."],
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 03 - Record Validation": ["Stage 02 - Selected Prototype Path", "Unit 03 - Seed Examples For The Validation Target", answers.validation],
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 04 - Preserve Canonical Truth": ["Stage 02 - Selected Prototype Path", "Unit 04 - Keep Content Canonical In Repo Files", "Store examples as repo-visible Markdown or structured files instead of hidden UI-only state."],
-    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 01 - Close Verification Gaps": ["Stage 03 - Trust And Validation Readiness", "Unit 01 - Close Prototype Verification Gaps", "Verify browse, search, comparison, and copy/adapt workflows against the selected MVP promise."],
-    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 02 - Harden Workflows": ["Stage 03 - Trust And Validation Readiness", "Unit 02 - Apply Community Scope Decision", answers.community],
-    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 03 - Update Durable Docs": ["Stage 03 - Trust And Validation Readiness", "Unit 03 - Update Durable Docs From Validation", "Update product, technical, design, and roadmap docs from prototype evidence."],
-    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 04 - Record Handoff Notes": ["Stage 03 - Trust And Validation Readiness", "Unit 04 - Record Comparison And Handoff Notes", "Record whether this human-steered flow produced a more trustworthy MVP plan than automatic generation."]
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 01 - Confirm Project Direction": guidedUnit("Stage 01 - Interview Decisions And Taxonomy", "Unit 01 - Lock Interview Decisions And Taxonomy", `Preserve the selected MVP promise: ${answers.promise}.`, `This unit turns the interview answer into the plan's north star so later implementation work does not drift back to a generic imported-document interpretation. ${promiseDetail}`, ["Copy the selected promise, prototype, community, and validation answers into durable source pages.", "Name any contradiction between the imported source and the interview answers.", "Mark which answer controls when source evidence is ambiguous."], ["The MVP plan states the selected promise in plain language.", "The source brief links the answer to the imported evidence.", "Open questions are listed if source and interview direction conflict."], "Review the generated sources and MVP index for the selected promise and recorded tradeoffs."),
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 02 - Review Repository Setup": guidedUnit("Stage 01 - Interview Decisions And Taxonomy", "Unit 02 - Define Pattern Entry Requirements", "Define fields for task, tool, stack, file type, maturity, source URL, author, license, freshness, source Markdown, rendered preview, explanation, tradeoffs, and assumptions.", "The imported MarkdownStack brief depends on trustable examples. This unit defines what counts as a usable entry before UI work turns vague content into permanent structure.", ["Define the minimum fields every example or pattern entry needs.", "Separate required launch fields from fields that can wait.", "Document how explanation and tradeoffs appear beside source material."], ["Every content field has a reason and owner.", "Launch-blocking fields are distinct from nice-to-have metadata.", "The model supports the selected prototype shape."], "Inspect the content model against at least two representative examples from the source brief."),
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 03 - Update Source Briefs": guidedUnit("Stage 01 - Interview Decisions And Taxonomy", "Unit 03 - Sync Source Briefs With Answers", "Update source briefs so the imported source and interview answers both remain visible to future agents.", "Future agents need to understand which direction came from the import and which came from human steering. This prevents regeneration from flattening the plan back into generic stages.", ["Update product, technical, and design briefs with the selected answers.", "Record answer tradeoffs where they change scope.", "Keep source evidence excerpts separate from decisions."], ["Briefs show imported evidence and human decisions side by side.", "Tradeoffs are visible without reading the original interview UI.", "The roadmap points to the selected prototype path."], "Open each generated source brief and confirm the selected answers are visible."),
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 04 - Define First Implementation Unit": guidedUnit("Stage 01 - Interview Decisions And Taxonomy", "Unit 04 - Define Prototype Acceptance Criteria", `Lock acceptance around this selected prototype shape: ${answers.prototype}.`, `The prototype choice controls what should be built first and what should be deliberately deferred. ${prototypeDetail}`, ["Translate the prototype choice into launchable user flows.", "Define what the prototype must show on first load.", "List explicit non-goals for the first slice."], ["Acceptance criteria describe user-visible behavior.", "Deferred community or backend scope is named.", "The next implementation unit can start without another planning pass."], "Review acceptance against the selected prototype answer and the imported validation criteria."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 01 - Implement First Slice": guidedUnit("Stage 02 - Selected Prototype Path", "Unit 01 - Build The Selected MVP Promise", answers.promise, `This is the first product-bearing unit. It should prove the selected promise through the smallest usable surface instead of building around every imported feature. ${promiseDetail}`, ["Create the primary surface for the selected promise.", "Seed enough representative content to exercise the flow.", "Keep the flow usable without accounts unless the community answer requires them."], ["A user can complete the main MVP task end to end.", "The result matches the selected promise and prototype shape.", "The UI exposes example explanation and tradeoffs where relevant."], "Run the app locally and complete the primary user flow manually or with browser automation."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 02 - Sync Plan Status": guidedUnit("Stage 02 - Selected Prototype Path", "Unit 02 - Add Source And Preview Detail Pages", "Show source Markdown, rendered preview, explanation, tradeoffs, assumptions, author, license, and freshness together.", "MarkdownStack value depends on seeing both the source artifact and the reason it matters. This unit makes each example inspectable enough to earn user trust.", ["Build or define detail pages for example entries.", "Show raw source beside rendered output or summary.", "Include explanation, assumptions, tradeoffs, freshness, attribution, and license."], ["Each detail page answers what the pattern is and why it belongs.", "Users can compare source and explanation without losing context.", "Missing attribution or license data is visible as an unknown."], "Open representative detail pages and verify source, explanation, and metadata render together."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 03 - Record Validation": guidedUnit("Stage 02 - Selected Prototype Path", "Unit 03 - Seed Examples For The Validation Target", answers.validation, `The validation answer defines how much content or feedback is enough to continue. ${validationDetail}`, ["Create a seed list that matches the validation target.", "Cover different tools, repositories, or workflows as required by the target.", "Record which examples are ready, partial, or blocked."], ["The seed set supports the selected validation target.", "Coverage gaps are explicit.", "The plan states what signal decides whether to continue."], "Count seeded examples or feedback sessions against the selected validation target."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 04 - Preserve Canonical Truth": guidedUnit("Stage 02 - Selected Prototype Path", "Unit 04 - Keep Content Canonical In Repo Files", "Store examples as repo-visible Markdown or structured files instead of hidden UI-only state.", "The imported-source workflow is valuable only if future agents can read and maintain the content. This unit prevents the MVP from trapping project knowledge inside runtime state.", ["Choose the repo-visible storage format for examples and metadata.", "Make generated or curated content diffable.", "Document how agents should update content safely."], ["Content can be reviewed in Git.", "Runtime state is not the only source of truth.", "A future import or edit can preserve existing examples."], "Inspect the repository after edits and confirm the content source is versionable."),
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 01 - Close Verification Gaps": guidedUnit("Stage 03 - Trust And Validation Readiness", "Unit 01 - Close Prototype Verification Gaps", "Verify browse, search, comparison, and copy/adapt workflows against the selected MVP promise.", "Before expanding scope, the selected prototype needs evidence that the main workflow works under realistic use.", ["Run browser checks for the primary flow.", "Test empty, partial, and populated content states.", "Record usability or accessibility issues that block the validation target."], ["The main flow passes on desktop and mobile widths.", "Known blockers are fixed or logged with owner and priority.", "Verification evidence is linked from the log."], "Run automated checks where available and complete a manual browser pass."),
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 02 - Harden Workflows": guidedUnit("Stage 03 - Trust And Validation Readiness", "Unit 02 - Apply Community Scope Decision", answers.community, `The community answer determines how much submission, account, moderation, and trust work belongs before launch. ${communityDetail}`, ["Implement or explicitly defer the selected community scope.", "Add review, attribution, and safety notes for any submission flow.", "Keep curated-only workflows simple if community contribution is deferred."], ["The app behavior matches the selected community scope.", "Deferred community work is listed as future scope.", "Moderation and attribution expectations are documented when submissions exist."], "Exercise the selected community path or confirm the curated-only boundary in docs and UI."),
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 03 - Update Durable Docs": guidedUnit("Stage 03 - Trust And Validation Readiness", "Unit 03 - Update Durable Docs From Validation", "Update product, technical, design, and roadmap docs from prototype evidence.", "Validation changes what the team actually knows. This unit moves those learnings from transient notes into durable project context.", ["Update product claims based on observed evidence.", "Record technical constraints discovered during implementation.", "Revise roadmap and non-goals from validation results."], ["Docs distinguish facts from assumptions.", "The roadmap reflects the next best investment.", "Completed validation is easy for a future agent to audit."], "Read the source pages and roadmap after validation and confirm they match current evidence."),
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 04 - Record Handoff Notes": guidedUnit("Stage 03 - Trust And Validation Readiness", "Unit 04 - Record Comparison And Handoff Notes", "Record whether this human-steered flow produced a more trustworthy MVP plan than automatic generation.", "This branch is being compared against a more automatic import flow. The final unit captures what worked, what was heavy, and whether guided planning should become the default.", ["Summarize the generated plan quality.", "Note where human steering improved or slowed the result.", "Recommend whether to keep, revise, or reject this flow."], ["The comparison is specific enough to inform product direction.", "Open risks and follow-up work are named.", "A future implementer can understand why this flow was chosen or rejected."], "Review this guided output against the alternate branch and record the decision.")
   };
   const fallbackStageTitle = stagePath.includes("stage-01")
     ? "Stage 01 - Interview Decisions And Taxonomy"
     : stagePath.includes("stage-02")
       ? "Stage 02 - Selected Prototype Path"
       : "Stage 03 - Trust And Validation Readiness";
-  const [nextStageTitle, nextUnitTitle, nextIntent] = units[key] || [fallbackStageTitle, unitTitle, fallbackIntent];
-  return { stageTitle: nextStageTitle, unitTitle: nextUnitTitle, intent: nextIntent };
+  return units[key] || defaultUnit(fallbackStageTitle, unitTitle, fallbackIntent);
+}
+
+function guidedUnit(stageTitle, unitTitle, intent, why, work, acceptance, verification) {
+  return { stageTitle, unitTitle, intent, why, work, acceptance, verification };
 }
 
 function prdPage(context) {
@@ -785,10 +844,10 @@ function importedSourcePage(context) {
 <section class="summary">
   <h2>Planning Interview</h2>
   <ul>
-    <li>First MVP promise: ${escapeHtml(context.planningAnswers.promise || "Unknown")}</li>
-    <li>Prototype shape: ${escapeHtml(context.planningAnswers.prototype || "Unknown")}</li>
-    <li>Community scope: ${escapeHtml(context.planningAnswers.community || "Unknown")}</li>
-    <li>Validation target: ${escapeHtml(context.planningAnswers.validation || "Unknown")}</li>
+    ${planningAnswerHtml(context, "promise", "First MVP promise")}
+    ${planningAnswerHtml(context, "prototype", "Prototype shape")}
+    ${planningAnswerHtml(context, "community", "Community scope")}
+    ${planningAnswerHtml(context, "validation", "Validation target")}
   </ul>
 </section>
 <pre><code>${escapeHtml(context.sourceDocument)}</code></pre>`);
