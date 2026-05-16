@@ -119,6 +119,12 @@ await page.locator("#new-project-page").evaluate((panel) => {
   if (getComputedStyle(document.querySelector(".terminal-pane")).display !== "none") {
     throw new Error("Expected New Project page to hide the terminal pane.");
   }
+  if (getComputedStyle(document.querySelector(".sidebar")).display !== "none") {
+    throw new Error("Expected New Project page to hide the project sidebar.");
+  }
+  if (!document.querySelector(".workspace")?.classList.contains("manage-projects-mode")) {
+    throw new Error("Expected New Project page to use the global management shell.");
+  }
 });
 await page.goto(`${newProjectUrl}/`, { waitUntil: "networkidle" });
 await page.waitForURL(newProjectUrl);
@@ -127,8 +133,8 @@ await page.locator("#new-project-page").evaluate((panel) => {
   if (getComputedStyle(document.querySelector("#wiki-frame")).display !== "none") {
     throw new Error("Expected /projects/new/ refresh to keep the wiki iframe hidden.");
   }
-  if (getComputedStyle(document.querySelector(".sidebar")).display === "none") {
-    throw new Error("Expected /projects/new/ refresh to keep the project sidebar visible.");
+  if (getComputedStyle(document.querySelector(".sidebar")).display !== "none") {
+    throw new Error("Expected /projects/new/ refresh to keep the project sidebar hidden.");
   }
 });
 await page.locator("#project-toggle").click();

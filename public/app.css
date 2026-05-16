@@ -302,6 +302,7 @@ html[data-initial-route="projects"] #wiki-frame,
 html[data-initial-route="new-project"] #wiki-frame,
 html[data-initial-route="settings"] #wiki-frame,
 html[data-initial-route="projects"] .sidebar,
+html[data-initial-route="new-project"] .sidebar,
 html[data-initial-route="settings"] .sidebar,
 html[data-initial-route="projects"] .plan-prompt,
 html[data-initial-route="new-project"] .plan-prompt,
@@ -322,21 +323,15 @@ html[data-initial-route="settings"] #settings-page[hidden] {
 }
 
 html[data-initial-route="projects"] .workspace,
+html[data-initial-route="new-project"] .workspace,
 html[data-initial-route="settings"] .workspace {
   grid-template-columns: minmax(0, 1fr);
 }
 
-html[data-initial-route="new-project"] .workspace {
-  grid-template-columns: 300px minmax(0, 1fr);
-}
-
 html[data-initial-route="projects"] .wiki-pane,
+html[data-initial-route="new-project"] .wiki-pane,
 html[data-initial-route="settings"] .wiki-pane {
   grid-column: 1;
-  grid-template-rows: minmax(0, 1fr);
-}
-
-html[data-initial-route="new-project"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
 }
 
@@ -493,6 +488,10 @@ html[data-initial-route="new-project"] .wiki-pane {
 .workspace.manage-projects-mode .dashboard-inventory {
   margin: 0;
   padding: 24px 32px 42px;
+}
+
+.workspace.manage-projects-mode .new-project-form {
+  margin: 24px 42px 44px;
 }
 
 .workspace.settings-mode .settings-layout {

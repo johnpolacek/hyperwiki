@@ -662,8 +662,8 @@ async function showNewProjectPage(options = {}) {
   wikiFrame.hidden = true;
   planPrompt.hidden = true;
   settingsButton.classList.remove("active");
-  workspace.classList.add("projects-mode");
-  workspace.classList.remove("settings-mode", "manage-projects-mode", "non-plan-wiki-mode", "non-plan-agent-active");
+  workspace.classList.add("projects-mode", "manage-projects-mode");
+  workspace.classList.remove("settings-mode", "non-plan-wiki-mode", "non-plan-agent-active");
   setCurrentPage("/projects/new", "New Project");
   openPage.href = "/projects/new";
   modifyPlanUi.hidden = true;

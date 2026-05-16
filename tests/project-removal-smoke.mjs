@@ -78,7 +78,7 @@ try {
   await expectSidebarHidden(page);
   await expectManagementShellFullWidth(page, "#settings-page");
   await page.goto(`${serverInfo.url}/projects/new`, { waitUntil: "networkidle" });
-  await expectSidebarVisible(page);
+  await expectSidebarHidden(page);
 } finally {
   if (browser) {
     await browser.close();
