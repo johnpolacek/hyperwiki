@@ -2363,6 +2363,7 @@ function startPlanningInterview() {
   projectImportForm.hidden = true;
   newProjectPage.classList.add("planning-active");
   planningInterview.hidden = false;
+  document.activeElement?.blur?.();
   requestAnimationFrame(() => newProjectPage.scrollTo({ top: 0, behavior: "instant" }));
   setNewProjectStatus("Answer the planning interview to create the MVP plan.");
   renderPlanningInterview();

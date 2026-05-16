@@ -481,9 +481,7 @@ html[data-initial-route="settings"] .wiki-pane {
   min-height: 132px;
   border-bottom: 1px solid #d6d0c2;
   padding: 30px 42px 26px;
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 54%),
-    #f8f4ea;
+  background: #f8f4ea;
 }
 
 .workspace.new-project-mode .new-project-page.planning-active .dashboard-page-header {
@@ -532,8 +530,8 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.new-project-mode .planning-interview {
-  width: min(1360px, calc(100% - 84px));
-  margin: 24px auto 44px;
+  width: auto;
+  margin: 24px 42px 44px;
 }
 
 .workspace.settings-mode .settings-layout {
@@ -758,14 +756,12 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .planning-interview {
   display: grid;
-  gap: 15px;
-  max-width: 1360px;
+  gap: 20px;
+  max-width: none;
   border: 0;
   border-radius: 0;
   padding: 0;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 3%, transparent), transparent 300px),
-    transparent;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -783,17 +779,17 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-interview > header h2 {
-  max-width: 680px;
-  margin: 5px 0 6px;
+  max-width: 900px;
+  margin: 6px 0 8px;
   color: var(--text);
-  font: 800 clamp(22px, 2.55vw, 36px)/1.04 var(--sidebar-font);
+  font: 400 clamp(38px, 4.1vw, 68px)/0.92 var(--docs-serif-font);
 }
 
 .planning-interview > header p {
   max-width: 760px;
   margin: 0;
   color: var(--muted);
-  font: 13px/1.45 var(--sidebar-font);
+  font: 17px/1.35 var(--docs-serif-font);
 }
 
 .planning-step-label {
@@ -863,9 +859,9 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .planning-interview-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 0.3fr) minmax(620px, 0.7fr);
+  grid-template-columns: minmax(340px, 0.27fr) minmax(780px, 0.73fr);
   align-items: start;
-  gap: 18px;
+  gap: 22px;
 }
 
 .source-brief-card,
@@ -881,8 +877,8 @@ html[data-initial-route="settings"] .wiki-pane {
 .source-brief-card {
   position: sticky;
   top: 18px;
-  gap: 11px;
-  padding: 13px;
+  gap: 14px;
+  padding: 18px;
   background: color-mix(in srgb, var(--panel) 56%, var(--bg));
 }
 
@@ -896,7 +892,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .planning-question-card h3 {
   margin: 0;
   color: var(--text);
-  font: 700 11px/1.2 var(--sidebar-font);
+  font: 700 13px/1.2 var(--sidebar-font);
 }
 
 .source-brief-card h3 {
@@ -905,14 +901,14 @@ html[data-initial-route="settings"] .wiki-pane {
 
 #planning-source-brief {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   margin: 0;
 }
 
 #planning-source-brief dt {
   margin-top: 2px;
   color: color-mix(in srgb, var(--text) 46%, var(--muted));
-  font: 800 10px/1.35 var(--sidebar-font);
+  font: 800 11px/1.35 var(--sidebar-font);
   text-transform: uppercase;
 }
 
@@ -921,7 +917,7 @@ html[data-initial-route="settings"] .wiki-pane {
   margin: 0;
   color: color-mix(in srgb, var(--text) 86%, var(--muted));
   display: -webkit-box;
-  font: 12px/1.42 var(--docs-serif-font);
+  font: 16px/1.42 var(--docs-serif-font);
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -935,25 +931,25 @@ html[data-initial-route="settings"] .wiki-pane {
 .planning-option-list {
   display: grid;
   gap: 0;
-  padding: 10px;
+  padding: 14px;
 }
 
 .planning-option-card {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   border: 1px solid transparent;
   border-radius: 7px;
-  padding: 12px 14px;
+  padding: 16px 18px;
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  font: 12px/1.42 var(--sidebar-font);
+  font: 15px/1.45 var(--docs-serif-font);
   text-align: left;
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .planning-option-card + .planning-option-card {
-  margin-top: 5px;
+  margin-top: 9px;
 }
 
 .planning-option-card:hover {
@@ -973,13 +969,13 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   justify-content: start;
-  gap: 9px;
+  gap: 11px;
 }
 
 .planning-option-header strong {
   min-width: 0;
   color: var(--text);
-  font: 800 14px/1.25 var(--sidebar-font);
+  font: 800 18px/1.22 var(--sidebar-font);
 }
 
 .planning-option-header span {
@@ -1027,7 +1023,7 @@ html[data-initial-route="settings"] .wiki-pane {
   min-width: 0;
   margin: 0;
   color: color-mix(in srgb, var(--text) 72%, var(--muted));
-  font: 700 11px/1.35 var(--sidebar-font);
+  font: 700 13px/1.35 var(--sidebar-font);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1071,6 +1067,8 @@ html[data-initial-route="settings"] .wiki-pane {
   .workspace.new-project-mode .new-project-form,
   .workspace.new-project-mode .planning-interview {
     width: min(760px, calc(100% - 32px));
+    margin-right: auto;
+    margin-left: auto;
   }
 
   .planning-interview {
@@ -1085,7 +1083,7 @@ html[data-initial-route="settings"] .wiki-pane {
   .planning-interview > header h2 {
     max-width: 340px;
     margin: 4px 0 0;
-    font-size: 22px;
+    font: 400 32px/0.95 var(--docs-serif-font);
   }
 
   .planning-interview > header p:not(.planning-step-label) {
