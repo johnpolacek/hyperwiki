@@ -951,9 +951,7 @@ html[data-initial-route="new-project"] .wiki-pane {
   color: #b8251c;
 }
 
-.project-remove-button svg,
-.project-remove-cancel svg,
-.project-remove-confirm svg {
+.project-remove-button svg {
   width: 15px;
   height: 15px;
   fill: none;
@@ -1010,12 +1008,14 @@ html[data-initial-route="new-project"] .wiki-pane {
 
 .project-remove-cancel,
 .project-remove-confirm {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
   border-radius: 6px;
+  padding: 7px 10px;
   cursor: pointer;
+  font: 800 11px/1.2 var(--sidebar-font);
 }
 
 .project-remove-cancel {

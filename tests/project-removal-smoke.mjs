@@ -104,14 +104,20 @@ async function removeProjectCard(page, title, options) {
   const card = page.locator(".project-card").filter({ hasText: title });
   await card.getByRole("button", { name: `Remove ${title}` }).click();
   await card.locator(".project-remove-warning").waitFor();
+  if (await card.getByRole("button", { name: `Remove ${title}` }).count() !== 0) {
+    throw new Error("Expected trash remove button to be hidden while confirming removal.");
+  }
   const deleteFiles = card.getByRole("checkbox", { name: /delete project files/i });
   if (await deleteFiles.isChecked()) {
     throw new Error("Expected delete-files checkbox to default to unchecked.");
   }
+  await card.getByRole("button", { name: "Cancel" }).waitFor();
+  await card.getByRole("button", { name: "Confirm Remove" }).waitFor();
   if (options.deleteFiles) {
     await deleteFiles.check();
+    await card.getByRole("button", { name: "Confirm Delete" }).waitFor();
   }
-  await card.getByRole("button", { name: `Confirm removing ${title}` }).click();
+  await card.getByRole("button", { name: options.deleteFiles ? "Confirm Delete" : "Confirm Remove" }).click();
   await page.waitForFunction((projectTitle) =>
     ![...document.querySelectorAll(".project-card")].some((card) => card.textContent.includes(projectTitle)),
   title);

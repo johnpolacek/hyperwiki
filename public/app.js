@@ -1877,9 +1877,11 @@ function renderDashboardProjects(projects) {
       renderDashboardProjects(projects);
     });
 
-    item.append(header, meta, details, actions, removeButton);
+    item.append(header, meta, details, actions);
     if (pendingProjectRemovalId === project.id) {
       item.append(projectRemovalConfirmation(project));
+    } else {
+      item.append(removeButton);
     }
     return item;
   }));
@@ -1912,9 +1914,7 @@ function projectRemovalConfirmation(project) {
   const cancel = document.createElement("button");
   cancel.type = "button";
   cancel.className = "project-remove-cancel";
-  cancel.setAttribute("aria-label", `Cancel removing ${project.name}`);
-  cancel.title = "Cancel";
-  cancel.append(icon(["m18 6-12 12", "m6 6 12 12"]));
+  cancel.textContent = "Cancel";
   cancel.addEventListener("click", () => {
     pendingProjectRemovalId = null;
     void loadProjectManagement();
@@ -1923,9 +1923,10 @@ function projectRemovalConfirmation(project) {
   const confirm = document.createElement("button");
   confirm.type = "button";
   confirm.className = "project-remove-confirm";
-  confirm.setAttribute("aria-label", `Confirm removing ${project.name}`);
-  confirm.title = "Confirm remove";
-  confirm.append(icon(["m20 6-11 11-5-5"]));
+  confirm.textContent = "Confirm Remove";
+  deleteFiles.addEventListener("change", () => {
+    confirm.textContent = deleteFiles.checked ? "Confirm Delete" : "Confirm Remove";
+  });
   confirm.addEventListener("click", async () => {
     confirm.disabled = true;
     cancel.disabled = true;
