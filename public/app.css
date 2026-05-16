@@ -468,12 +468,14 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.manage-projects-mode .dashboard-page,
+.workspace.new-project-mode .dashboard-page,
 .workspace.settings-mode .settings-page {
   padding: 0;
   background: var(--bg);
 }
 
 .workspace.manage-projects-mode .dashboard-page-header,
+.workspace.new-project-mode .dashboard-page-header,
 .workspace.settings-mode .settings-page-header {
   align-items: center;
   min-height: 132px;
@@ -485,11 +487,13 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.manage-projects-mode .dashboard-page-header h1,
+.workspace.new-project-mode .dashboard-page-header h1,
 .workspace.settings-mode .settings-page-header h1 {
   line-height: 0.95;
 }
 
 .workspace.manage-projects-mode .dashboard-page-header p,
+.workspace.new-project-mode .dashboard-page-header p,
 .workspace.settings-mode .settings-page-header p {
   max-width: 680px;
 }
@@ -500,6 +504,12 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.manage-projects-mode .new-project-form {
+  width: min(760px, calc(100% - 84px));
+  margin: 24px auto 44px;
+}
+
+.workspace.new-project-mode .new-project-form,
+.workspace.new-project-mode .planning-interview {
   width: min(760px, calc(100% - 84px));
   margin: 24px auto 44px;
 }
