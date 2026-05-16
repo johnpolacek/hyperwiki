@@ -1047,7 +1047,11 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #20231f;
   color: #ffffff;
   cursor: pointer;
-  font: 800 12px/1.2 var(--sidebar-font);
+  font: 800 14px/1.2 var(--sidebar-font);
+}
+
+.planning-wizard-actions button[hidden] {
+  display: none;
 }
 
 .planning-wizard-actions button svg {
