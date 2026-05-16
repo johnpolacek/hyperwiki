@@ -531,7 +531,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .workspace.new-project-mode .planning-interview {
   width: auto;
-  margin: 24px 42px 44px;
+  margin: 14px 42px 44px;
 }
 
 .workspace.settings-mode .settings-layout {
@@ -793,21 +793,10 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-step-label {
-  margin: 0;
+  justify-self: end;
+  margin: 8px 0 0;
   color: color-mix(in srgb, var(--text) 62%, var(--muted));
-  font: 800 11px/1.2 var(--sidebar-font);
-  text-transform: uppercase;
-}
-
-.planning-interview > header span {
-  flex: 0 0 auto;
-  align-self: start;
-  border: 1px solid color-mix(in srgb, var(--text) 18%, var(--border));
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: color-mix(in srgb, var(--panel) 78%, transparent);
-  color: var(--muted);
-  font: 700 10px/1 var(--sidebar-font);
+  font: 800 12px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
 
@@ -1073,15 +1062,16 @@ html[data-initial-route="settings"] .wiki-pane {
 
   .planning-interview {
     gap: 10px;
-    margin-top: 16px;
+    margin-top: 10px;
   }
 
   .planning-interview > header {
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
   }
 
   .planning-interview > header h2 {
-    max-width: 340px;
+    max-width: 250px;
     margin: 4px 0 0;
     font: 400 32px/0.95 var(--docs-serif-font);
   }
@@ -1090,8 +1080,10 @@ html[data-initial-route="settings"] .wiki-pane {
     display: none;
   }
 
-  .planning-interview > header span {
-    display: none;
+  .planning-step-label {
+    justify-self: end;
+    margin-top: 5px;
+    font-size: 10px;
   }
 
   .planning-stepper li {
@@ -1099,7 +1091,6 @@ html[data-initial-route="settings"] .wiki-pane {
     font-size: 9px;
   }
 
-  .planning-interview > header,
   .planning-option-header,
   .planning-wizard-actions {
     align-items: flex-start;
