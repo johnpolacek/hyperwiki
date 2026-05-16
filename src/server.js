@@ -169,7 +169,10 @@ async function handleRequest(defaultRoot, request, response, context) {
     const projectRemoveMatch = url.pathname.match(/^\/api\/projects\/([^/]+)$/);
     if (projectRemoveMatch && request.method === "DELETE") {
       const body = await readJsonBody(request);
-      await sendJson(response, await context.projectRegistry.remove(projectRemoveMatch[1], { deleteFiles: body.deleteFiles === true }));
+      await sendJson(response, await context.projectRegistry.remove(projectRemoveMatch[1], {
+        deleteFiles: body.deleteFiles === true,
+        root: typeof body.root === "string" ? body.root : null
+      }));
       return;
     }
     if (url.pathname === "/api/workspace") {

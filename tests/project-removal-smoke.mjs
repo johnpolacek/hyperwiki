@@ -30,6 +30,7 @@ try {
 
   const registryOnly = await createProject(serverInfo.url, "Registry Only Project");
   const deleteFiles = await createProject(serverInfo.url, "Delete Files Project");
+  const staleCard = await createProject(serverInfo.url, "Stale Card Project");
 
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -60,6 +61,18 @@ try {
     throw new Error("Expected checked delete-files removal to delete the project directory.");
   }
   await expectProjectMissing(serverInfo.url, deleteFiles.project.id);
+
+  const staleRemoval = await json(`${serverInfo.url}/api/projects/stale-card-id`, {
+    method: "DELETE",
+    body: JSON.stringify({ deleteFiles: true, root: staleCard.project.root })
+  });
+  if (staleRemoval.project.id !== staleCard.project.id || staleRemoval.deletedFiles !== true) {
+    throw new Error(`Expected stale-id removal to match by root, got ${JSON.stringify(staleRemoval)}`);
+  }
+  if (existsSync(staleCard.project.root)) {
+    throw new Error("Expected stale-id delete-files removal to delete the project directory.");
+  }
+  await expectProjectMissing(serverInfo.url, staleCard.project.id);
 
   await page.goto(`${serverInfo.url}/settings`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);

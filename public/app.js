@@ -1959,7 +1959,7 @@ async function removeProject(project, deleteFiles) {
   setProjectsStatus(deleteFiles ? "Deleting project files..." : "Removing project...");
   const result = await api(`/api/projects/${encodeURIComponent(project.id)}`, {
     method: "DELETE",
-    body: JSON.stringify({ deleteFiles })
+    body: JSON.stringify({ deleteFiles, root: project.root })
   });
   if (deleteFiles && result.deletedFiles !== true) {
     throw new Error("Project was removed from Hyperwiki, but file deletion was not confirmed.");
@@ -3311,7 +3311,8 @@ async function api(path, options = {}) {
     ...options
   });
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const message = await response.text();
+    throw new Error(message || `Request failed: ${response.status}`);
   }
   return response.json();
 }

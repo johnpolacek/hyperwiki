@@ -113,7 +113,9 @@ export class ProjectRegistry {
 
   async remove(id, options = {}) {
     const registry = await this.#read();
-    const record = registry.projects.find((item) => item.id === id);
+    const requestedRoot = options.root ? path.resolve(options.root) : null;
+    const record = registry.projects.find((item) => item.id === id)
+      || (requestedRoot ? registry.projects.find((item) => samePath(item.root, requestedRoot)) : null);
     if (!record) {
       const error = new Error("Project not found.");
       error.statusCode = 404;
@@ -127,7 +129,7 @@ export class ProjectRegistry {
         throw error;
       }
     }
-    registry.projects = registry.projects.filter((item) => item.id !== id);
+    registry.projects = registry.projects.filter((item) => item.id !== record.id);
     await this.#write(registry);
     if (options.deleteFiles) {
       await rm(root, { recursive: true, force: true });
