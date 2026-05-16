@@ -166,6 +166,12 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await createProjectFromDashboard(context.projectRegistry, body));
       return;
     }
+    const projectRemoveMatch = url.pathname.match(/^\/api\/projects\/([^/]+)$/);
+    if (projectRemoveMatch && request.method === "DELETE") {
+      const body = await readJsonBody(request);
+      await sendJson(response, await context.projectRegistry.remove(projectRemoveMatch[1], { deleteFiles: body.deleteFiles === true }));
+      return;
+    }
     if (url.pathname === "/api/workspace") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, await workspaceSummary(project.root, await readConfig(project.root)));
@@ -1031,6 +1037,14 @@ function normalizeVerificationLoop(loop, run = null) {
 function workspaceStatus(planSummary, logEntries, pages = []) {
   const currentUnit = summaryValue(planSummary, "Current unit");
   const currentStage = summaryValue(planSummary, "Current stage");
+  if (isNoneStatus(currentUnit) && isNoneStatus(currentStage || "none")) {
+    return {
+      completed: completedStatus(planSummary, logEntries),
+      stage: "none",
+      current: "none",
+      currentPath: ""
+    };
+  }
   const currentStagePage = findPlanPageByLabel(pages, currentStage) || findActivePlanPage(pages, isStagePath);
   const currentUnitPage = findPlanPageByLabel(pages, currentUnit, currentStagePage)
     || findActivePlanPage(pages, isUnitPath, currentStagePage)
@@ -1042,6 +1056,10 @@ function workspaceStatus(planSummary, logEntries, pages = []) {
     current,
     currentPath: currentUnitPage?.path || currentStagePage?.path || ""
   };
+}
+
+function isNoneStatus(value) {
+  return /^none$/i.test(String(value || "").trim());
 }
 
 function findPlanPageByLabel(pages, label, parentPage = null) {

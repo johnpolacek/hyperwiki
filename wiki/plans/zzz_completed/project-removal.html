@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Removal - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Project Removal</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact feature plan</li>
+        <li>Current unit: Unit 01 - Remove Project From Manage Projects</li>
+        <li>Next action: monitor dogfooding feedback for remove/delete wording and deletion safety.</li>
+        <li>Blockers: none</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Let users remove stale or unwanted projects from Hyperwiki's registry from the Manage Projects page, with an explicit opt-in path for deleting the underlying project files.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Add a small remove action at the bottom-right of each project card.</li>
+        <li>Use inline confirmation on the card, including a destructive warning box.</li>
+        <li>Default to registry-only removal; leave project files untouched unless the user checks an explicit delete-files checkbox.</li>
+        <li>Hide the wiki sidebar on Projects, New Project, and Settings so management pages feel global rather than bound to a current wiki page.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Non-goals</h2>
+      <ul>
+        <li>No undo or trash/archive workflow.</li>
+        <li>No bulk project management.</li>
+        <li>No deletion of active terminal sessions beyond registry/file cleanup behavior already implied by project removal.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Unit 01 - Remove Project From Manage Projects</h2>
+      <ul>
+        <li>Add server registry removal and optional recursive project-root deletion.</li>
+        <li>Add inline confirmation UI and reload the project lists after removal.</li>
+        <li>Add smoke coverage for registry-only removal, opt-in file deletion, and management-page sidebar hiding.</li>
+      </ul>
+      <h3>Verification</h3>
+      <ul>
+        <li>Passed: <code>pnpm check</code>.</li>
+        <li>Passed: <code>pnpm smoke:project-removal</code>.</li>
+        <li>Passed: <code>pnpm smoke:browser</code>.</li>
+        <li>Passed: agent-browser visual/interaction check on the Manage Projects page.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

@@ -278,9 +278,10 @@ body {
 }
 
 .workspace.settings-mode {
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace.settings-mode .sidebar,
 .workspace.settings-mode .terminal-pane {
   display: none;
 }
@@ -299,11 +300,16 @@ body {
 html[data-initial-route="projects"] #wiki-frame,
 html[data-initial-route="new-project"] #wiki-frame,
 html[data-initial-route="settings"] #wiki-frame,
+html[data-initial-route="projects"] .sidebar,
+html[data-initial-route="new-project"] .sidebar,
+html[data-initial-route="settings"] .sidebar,
 html[data-initial-route="projects"] .plan-prompt,
 html[data-initial-route="new-project"] .plan-prompt,
 html[data-initial-route="settings"] .plan-prompt,
+html[data-initial-route="projects"] .terminal-pane,
 html[data-initial-route="new-project"] .terminal-pane,
 html[data-initial-route="settings"] .terminal-pane,
+html[data-initial-route="projects"] .wiki-command-bar,
 html[data-initial-route="new-project"] .wiki-command-bar,
 html[data-initial-route="settings"] .wiki-command-bar {
   display: none;
@@ -315,11 +321,13 @@ html[data-initial-route="settings"] #settings-page[hidden] {
   display: block;
 }
 
+html[data-initial-route="projects"] .workspace,
 html[data-initial-route="new-project"] .workspace,
 html[data-initial-route="settings"] .workspace {
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
+html[data-initial-route="projects"] .wiki-pane,
 html[data-initial-route="new-project"] .wiki-pane,
 html[data-initial-route="settings"] .wiki-pane {
   grid-template-rows: minmax(0, 1fr);
@@ -372,7 +380,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.projects-mode {
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .workspace.projects-mode #up-next-button,
@@ -380,6 +388,7 @@ html[data-initial-route="settings"] .wiki-pane {
   display: none;
 }
 
+.workspace.projects-mode .sidebar,
 .workspace.projects-mode .terminal-pane {
   display: none;
 }
@@ -805,7 +814,7 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 11px;
   min-height: 112px;
   border-color: #d6d3c7;
-  padding: 14px 16px 15px 18px;
+  padding: 14px 16px 42px 18px;
   background:
     linear-gradient(90deg, color-mix(in srgb, #25a244 15%, transparent) 0 4px, transparent 4px),
     #fffdfa;
@@ -866,6 +875,113 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #171916;
   color: #fff;
   font-weight: 600;
+}
+
+.project-remove-button {
+  position: absolute;
+  right: 12px;
+  bottom: 11px;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #e2d8d0;
+  border-radius: 6px;
+  background: #fff9f5;
+  color: #8f342c;
+  cursor: pointer;
+}
+
+.project-remove-button:hover,
+.project-remove-button:focus-visible {
+  border-color: #c7372f;
+  background: #fff0eb;
+  color: #b8251c;
+}
+
+.project-remove-button svg,
+.project-remove-cancel svg,
+.project-remove-confirm svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.project-remove-confirmation {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #d63d34;
+  border-radius: 7px;
+  padding: 11px;
+  background: #fff5f2;
+  box-shadow: inset 4px 0 0 #c8271f;
+}
+
+.project-remove-warning {
+  display: grid;
+  gap: 4px;
+  color: #5f1712;
+}
+
+.project-remove-warning strong {
+  font: 800 11px/1.2 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.project-remove-warning span,
+.project-delete-files-toggle {
+  font: 12px/1.45 var(--sidebar-font);
+}
+
+.project-delete-files-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #5f1712;
+}
+
+.project-delete-files-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: #c8271f;
+}
+
+.project-remove-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.project-remove-cancel,
+.project-remove-confirm {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.project-remove-cancel {
+  border: 1px solid #d3cbc2;
+  background: #fffdfa;
+  color: #4f554c;
+}
+
+.project-remove-confirm {
+  border: 1px solid #a51d17;
+  background: #c8271f;
+  color: #fff;
+}
+
+.project-remove-confirm:disabled,
+.project-remove-cancel:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .project-detail {

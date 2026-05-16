@@ -94,6 +94,7 @@ let terminalLayout = [];
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
+let pendingProjectRemovalId = null;
 let currentPlanPath = "/wiki/plans/index.html";
 let nonPlanPromptSubmitted = false;
 let settingsState = null;
@@ -1823,6 +1824,12 @@ function renderDashboardProjects(projects) {
   dashboardProjects.replaceChildren(...projects.map((project) => {
     const item = document.createElement("article");
     item.className = `dashboard-item project-card${project.active ? " active" : ""}`;
+    item.dataset.projectId = project.id;
+    item.dataset.projectName = project.name;
+    item.dataset.projectRoot = project.root;
+    item.dataset.projectAvailable = String(project.available);
+    item.dataset.projectActive = String(project.active);
+    item.dataset.projectLastOpenedAt = project.lastOpenedAt || "";
     const button = document.createElement("button");
     button.type = "button";
     button.className = "project-card-title";
@@ -1859,9 +1866,93 @@ function renderDashboardProjects(projects) {
     openButton.addEventListener("click", () => switchProject(project));
     actions.append(openButton);
 
-    item.append(header, meta, details, actions);
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "project-remove-button";
+    removeButton.setAttribute("aria-label", `Remove ${project.name}`);
+    removeButton.title = "Remove project";
+    removeButton.append(icon(["m3 6 18 0", "m8 6 0-2 8 0 0 2", "m6 6 1 14 10 0 1-14", "m10 11 0 5", "m14 11 0 5"]));
+    removeButton.addEventListener("click", () => {
+      pendingProjectRemovalId = project.id;
+      renderDashboardProjects(projects);
+    });
+
+    item.append(header, meta, details, actions, removeButton);
+    if (pendingProjectRemovalId === project.id) {
+      item.append(projectRemovalConfirmation(project));
+    }
     return item;
   }));
+}
+
+function projectRemovalConfirmation(project) {
+  const panel = document.createElement("div");
+  panel.className = "project-remove-confirmation";
+
+  const warning = document.createElement("div");
+  warning.className = "project-remove-warning";
+  const warningTitle = document.createElement("strong");
+  warningTitle.textContent = "Destructive option";
+  const warningText = document.createElement("span");
+  warningText.textContent = "Removing the project only forgets it in Hyperwiki. Checking file deletion permanently deletes the project folder.";
+  warning.append(warningTitle, warningText);
+
+  const deleteFilesLabel = document.createElement("label");
+  deleteFilesLabel.className = "project-delete-files-toggle";
+  const deleteFiles = document.createElement("input");
+  deleteFiles.type = "checkbox";
+  deleteFiles.checked = false;
+  deleteFiles.disabled = !project.available;
+  const deleteFilesText = document.createElement("span");
+  deleteFilesText.textContent = project.available ? "Also delete project files" : "Project files unavailable";
+  deleteFilesLabel.append(deleteFiles, deleteFilesText);
+
+  const actions = document.createElement("div");
+  actions.className = "project-remove-confirm-actions";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "project-remove-cancel";
+  cancel.setAttribute("aria-label", `Cancel removing ${project.name}`);
+  cancel.title = "Cancel";
+  cancel.append(icon(["m18 6-12 12", "m6 6 12 12"]));
+  cancel.addEventListener("click", () => {
+    pendingProjectRemovalId = null;
+    void loadProjectManagement();
+  });
+
+  const confirm = document.createElement("button");
+  confirm.type = "button";
+  confirm.className = "project-remove-confirm";
+  confirm.setAttribute("aria-label", `Confirm removing ${project.name}`);
+  confirm.title = "Confirm remove";
+  confirm.append(icon(["m20 6-11 11-5-5"]));
+  confirm.addEventListener("click", async () => {
+    confirm.disabled = true;
+    cancel.disabled = true;
+    try {
+      await removeProject(project, deleteFiles.checked);
+    } catch (error) {
+      confirm.disabled = false;
+      cancel.disabled = false;
+      setProjectsStatus(error.message || "Project removal failed.");
+    }
+  });
+  actions.append(cancel, confirm);
+
+  panel.append(warning, deleteFilesLabel, actions);
+  return panel;
+}
+
+async function removeProject(project, deleteFiles) {
+  setProjectsStatus(deleteFiles ? "Deleting project files..." : "Removing project...");
+  await api(`/api/projects/${encodeURIComponent(project.id)}`, {
+    method: "DELETE",
+    body: JSON.stringify({ deleteFiles })
+  });
+  pendingProjectRemovalId = null;
+  setProjectsStatus(deleteFiles ? "Project removed and files deleted." : "Project removed from Hyperwiki.");
+  await loadProjects();
+  await loadProjectManagement();
 }
 
 function projectDetail(label, value) {
@@ -1873,6 +1964,18 @@ function projectDetail(label, value) {
   valueElement.textContent = value || "Unknown";
   item.append(labelElement, valueElement);
   return item;
+}
+
+function icon(paths) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  for (const pathData of paths) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", pathData);
+    svg.append(path);
+  }
+  return svg;
 }
 
 function formatProjectDate(value) {

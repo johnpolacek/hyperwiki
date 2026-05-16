@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -111,6 +111,30 @@ export class ProjectRegistry {
     return this.resolve(record.id, fallbackRoot);
   }
 
+  async remove(id, options = {}) {
+    const registry = await this.#read();
+    const record = registry.projects.find((item) => item.id === id);
+    if (!record) {
+      const error = new Error("Project not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+    const root = path.resolve(record.root);
+    if (options.deleteFiles) {
+      if (unsafeRemovalRoot(root)) {
+        const error = new Error("Refusing to delete unsafe project root.");
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+    registry.projects = registry.projects.filter((item) => item.id !== id);
+    await this.#write(registry);
+    if (options.deleteFiles) {
+      await rm(root, { recursive: true, force: true });
+    }
+    return { project: record, deletedFiles: Boolean(options.deleteFiles) };
+  }
+
   async readRaw() {
     return this.#read();
   }
@@ -176,6 +200,12 @@ async function projectName(root, configPath) {
 
 function samePath(left, right) {
   return path.resolve(left) === path.resolve(right);
+}
+
+function unsafeRemovalRoot(root) {
+  const parsed = path.parse(root);
+  const home = path.resolve(os.homedir());
+  return root === parsed.root || root === home || root === path.dirname(home);
 }
 
 function missingWorktree(project) {
