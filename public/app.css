@@ -466,9 +466,7 @@ html[data-initial-route="new-project"] .wiki-pane {
 .workspace.manage-projects-mode .dashboard-page,
 .workspace.settings-mode .settings-page {
   padding: 0;
-  background:
-    linear-gradient(#d9d1bf 1px, transparent 1px) 0 0 / 100% 48px,
-    var(--bg);
+  background: var(--bg);
 }
 
 .workspace.manage-projects-mode .dashboard-page-header,
@@ -793,7 +791,7 @@ html[data-initial-route="new-project"] .wiki-pane {
 }
 
 #dashboard-projects {
-  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
 }
 
