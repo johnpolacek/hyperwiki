@@ -161,8 +161,12 @@ const guidedPrd = await readFile(path.join(guidedRoot, "wiki", "sources", "prd.h
 const guidedTechnical = await readFile(path.join(guidedRoot, "wiki", "sources", "technical-brief.html"), "utf8");
 const guidedDesign = await readFile(path.join(guidedRoot, "wiki", "sources", "design-brief.html"), "utf8");
 const guidedInterview = await readFile(path.join(guidedRoot, "wiki", "sources", "planning-interview.html"), "utf8");
+const guidedImplementationSpec = await readFile(path.join(guidedRoot, "wiki", "plans", "mvp", "implementation-spec.html"), "utf8");
 const guidedStageTwo = await readFile(path.join(guidedRoot, "wiki", "plans", "mvp", "stage-02-dev-workspace.html"), "utf8");
 const guidedStageThreeUnit = await readFile(path.join(guidedRoot, "wiki", "plans", "mvp", "stage-03-dogfood-hardening", "unit-02-harden-workflows.html"), "utf8");
+const guidedRoadmap = await readFile(path.join(guidedRoot, "wiki", "roadmap.html"), "utf8");
+const guidedArchitecture = await readFile(path.join(guidedRoot, "wiki", "architecture.html"), "utf8");
+const guidedDev = await readFile(path.join(guidedRoot, "wiki", "dev.html"), "utf8");
 
 if (!guidedMvp.includes("Concrete MVP") || !guidedMvp.includes("static gallery with seeded examples")) {
   throw new Error("Guided MVP plan did not name the concrete first slice.");
@@ -182,11 +186,23 @@ if (!guidedDesign.includes("Primary Screens") || !guidedDesign.includes("Compare
 if (!guidedInterview.includes("Selected Decisions") || !guidedInterview.includes("outside runtime terminal session metadata")) {
   throw new Error("Guided project did not preserve planning answers in a durable wiki page.");
 }
+if (!guidedImplementationSpec.includes("MVP Implementation Spec") || !guidedImplementationSpec.includes("content/patterns/*.md") || !guidedImplementationSpec.includes("Frontmatter Contract")) {
+  throw new Error("Guided project did not generate a decision-complete implementation spec.");
+}
+if (!guidedImplementationSpec.includes("First Seed Categories") || !guidedImplementationSpec.includes("Search And Filter Behavior") || !guidedImplementationSpec.includes("Copy And Compare Behavior")) {
+  throw new Error("Guided implementation spec did not capture seed categories and interaction behavior.");
+}
+if (!guidedImplementationSpec.includes("Promotion threshold") || !guidedImplementationSpec.includes("30 strong examples")) {
+  throw new Error("Guided implementation spec did not preserve the source promotion threshold.");
+}
 if (!guidedStageTwo.includes("Stage 02 - Static Gallery And Pattern Details")) {
   throw new Error("Guided stage titles remained generic.");
 }
 if (!guidedStageThreeUnit.includes("Document Licensing Moderation And Submission Boundaries")) {
   throw new Error("Guided trust/moderation unit was not generated.");
+}
+if (!guidedRoadmap.includes("Ship the first slice") || !guidedArchitecture.includes("content/taxonomy.json") || !guidedDev.includes("Implementation Order")) {
+  throw new Error("Guided roadmap, architecture, and dev pages remained too generic.");
 }
 
 console.log("init smoke test passed");

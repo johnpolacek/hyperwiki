@@ -14,6 +14,7 @@ const pages = new Map([
   ["wiki/dev.html", devPage],
   ["wiki/plans/index.html", plansIndexPage],
   ["wiki/plans/mvp/index.html", mvpIndexPage],
+  ["wiki/plans/mvp/implementation-spec.html", implementationSpecPage],
   ["wiki/plans/mvp/stage-01-foundation.html", stageOnePage],
   ["wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 01 - Confirm Project Direction", "Confirm project goals, audience, non-goals, and success criteria.")],
   ["wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html", stageUnitPage("Stage 01 - Project Direction And Setup", "wiki/plans/mvp/stage-01-foundation.html", "Unit 02 - Review Repository Setup", "Review repository setup and development commands.")],
@@ -428,6 +429,28 @@ function layout(context, title, body) {
 }
 
 function indexPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Home", `<h1>${escapeHtml(context.projectName)}</h1>
+<p>${escapeHtml(context.summary)}</p>
+<section>
+  <h2>Current Focus</h2>
+  <p>${escapeHtml(selectedMvpPromise(context))}</p>
+</section>
+<section>
+  <h2>First Implementation Slice</h2>
+  <p>Build the static curated gallery, content schema, pattern detail pages, local search filters, compare/copy affordances, and validation loop described in the <a href="/wiki/plans/mvp/implementation-spec.html">implementation spec</a>.</p>
+</section>
+<section>
+  <h2>Core Pages</h2>
+  <ul>
+    <li><a href="/wiki/plans/mvp/index.html">MVP plan</a></li>
+    <li><a href="/wiki/plans/mvp/implementation-spec.html">Implementation spec</a></li>
+    <li><a href="/wiki/sources/prd.html">Product brief</a></li>
+    <li><a href="/wiki/sources/technical-brief.html">Technical brief</a></li>
+    <li><a href="/wiki/sources/design-brief.html">Design brief</a></li>
+  </ul>
+</section>`);
+  }
   return layout(context, "Home", `<h1>${escapeHtml(context.projectName)}</h1>
 <p>${escapeHtml(context.summary)}</p>
 <section>
@@ -537,6 +560,16 @@ ${hasGuidedPlan(context) ? `<h2>Planning Interview Answers</h2>
 }
 
 function roadmapPage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Roadmap", `<h1>Roadmap</h1>
+<ol>
+  <li>Ship the first slice: content schema, seed taxonomy, static gallery, pattern details, local search, compare, and copy/adapt.</li>
+  <li>Validate with ${escapeHtml(lowerFirst(context.planningAnswers.validation))}; promotion threshold: ${escapeHtml(promotionThreshold(context))}</li>
+  <li>Document licensing, attribution, secrets review, and moderation boundaries before accepting public submissions.</li>
+  <li>After validation, decide whether to expand toward submissions, account profiles, crawler/GitHub import, or starter-template export.</li>
+</ol>
+<p>Implementation detail lives in the <a href="/wiki/plans/mvp/implementation-spec.html">MVP implementation spec</a>.</p>`);
+  }
   return layout(context, "Roadmap", `<h1>Roadmap</h1>
 <ol>
   <li>Confirm project goals, non-goals, and source material.</li>
@@ -547,6 +580,24 @@ function roadmapPage(context) {
 }
 
 function architecturePage(context) {
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Architecture", `<h1>Architecture</h1>
+<p>${escapeHtml(context.projectName)} starts as a static, repo-visible pattern library. Content files are canonical; generated views and search indexes are derived from those files.</p>
+<h2>First Slice Boundaries</h2>
+<ul>
+  <li>Content source: <code>content/patterns/*.md</code> with frontmatter and Markdown body.</li>
+  <li>Taxonomy source: <code>content/taxonomy.json</code> for task, agent/tool, stack, file type, maturity, freshness, and license facets.</li>
+  <li>Generated index: <code>public/search-index.json</code> or equivalent build artifact derived from pattern files.</li>
+  <li>Primary routes: gallery, pattern detail, compare tray, and copy/adapt affordance.</li>
+  <li>Deferred systems: accounts, public submissions, moderation queue, crawler import, GitHub import, and backend persistence.</li>
+</ul>
+<h2>Trust Boundary</h2>
+<ul>
+  <li>Every example must expose source URL or repo path, author, license, freshness, and unknown provenance states.</li>
+  <li>Submissions remain deferred until licensing, attribution, proprietary-content, and secrets-review policy is documented.</li>
+  <li>Runtime state stays outside canonical content; future agents update repo-visible files.</li>
+</ul>`);
+  }
   return layout(context, "Architecture", `<h1>Architecture</h1>
 <p>This page maps durable architecture decisions and repository boundaries for ${escapeHtml(context.projectName)}.</p>
 <h2>Boundaries</h2>
@@ -564,6 +615,24 @@ function devPage(context) {
   const commands = context.scripts.length
     ? context.scripts.map((script) => packageRun(context, script))
     : ["Project commands are unknown. Add setup, development, test, and verification commands here."];
+  if (hasGuidedPlan(context)) {
+    return layout(context, "Development", `<h1>Development</h1>
+<h2>Bootstrap Expectation</h2>
+<p>The first implementation agent should create the app scaffold, package manifest, and dev/test scripts if they do not exist yet.</p>
+<h2>Recommended First Commands</h2>
+<pre><code>pnpm install
+pnpm run dev
+pnpm run check</code></pre>
+<h2>Implementation Order</h2>
+<ol>
+  <li>Create canonical content files and taxonomy before building UI.</li>
+  <li>Render gallery and pattern detail pages from the same content source.</li>
+  <li>Add local search/filter behavior and compare/copy interactions.</li>
+  <li>Run browser verification against empty, partial, and seeded states.</li>
+</ol>
+<h2>Acceptance Source</h2>
+<p>Use <a href="/wiki/plans/mvp/implementation-spec.html">implementation-spec.html</a> as the build contract for the first slice.</p>`);
+  }
   return layout(context, "Development", `<h1>Development</h1>
 <h2>Commands</h2>
 <pre><code>${commands.map(escapeHtml).join("\n")}</code></pre>
@@ -624,6 +693,8 @@ function mvpIndexPage(context) {
   <li><a href="/wiki/plans/mvp/stage-02-dev-workspace.html">Stage 02 - Static gallery and pattern details</a></li>
   <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening.html">Stage 03 - Search, reuse, trust, and validation</a></li>
 </ol>
+<h2>Implementation Contract</h2>
+<p>Use <a href="/wiki/plans/mvp/implementation-spec.html">Implementation Spec</a> as the decision-complete build contract for the first slice.</p>
 <h2>Done Means</h2>
 <ul>${listHtml(mvpAcceptanceItems(context))}</ul>
 <h2>Explicit MVP Tradeoff</h2>
@@ -697,6 +768,8 @@ function stagePage(context, title, units, intent) {
 <p>${escapeHtml(intent)}</p>
 <h2>Execution Units</h2>
 <ol>${units.map(([label, href]) => `<li><a href="/${href}">${escapeHtml(label)}</a></li>`).join("")}</ol>
+${hasGuidedPlan(context) ? `<h2>Build Contract</h2>
+<p>Implement against <a href="/wiki/plans/mvp/implementation-spec.html">the MVP implementation spec</a> before adding broader scope.</p>` : ""}
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.html">log.html</a> before marking this stage complete.</p>`);
 }
@@ -745,15 +818,15 @@ function guidedUnitFor(stagePath, unitTitle, fallbackIntent, context) {
   const validationDetail = details.validation?.detail || answers.validation;
   const key = `${stagePath}::${unitTitle}`;
   const units = {
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 01 - Confirm Project Direction": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 01 - Lock Interview Decisions And Taxonomy", `Preserve the selected MVP promise: ${answers.promise}.`, `This unit turns the interview answer into the plan's north star so later implementation work does not drift back to a generic imported-document interpretation. ${promiseDetail}`, ["Copy the selected promise, prototype, community, and validation answers into durable source pages.", "Define the taxonomy axes: task, agent/tool, stack, file type, maturity, source quality, and license.", "Mark which answer controls when source evidence is ambiguous."], ["The MVP plan states the selected promise in plain language.", "The source brief links the answer to the imported evidence.", "Taxonomy terms are specific enough to classify the first seed examples."], "Review the generated sources and MVP index for the selected promise and recorded tradeoffs."),
-    "wiki/plans/mvp/stage-01-foundation.html::Unit 02 - Review Repository Setup": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 02 - Define Pattern Entry Requirements", "Define fields for task, tool, stack, file type, maturity, source URL, author, license, freshness, source Markdown, rendered preview, explanation, tradeoffs, and assumptions.", "The imported brief depends on trustable examples. This unit defines what counts as a usable entry before UI work turns vague content into permanent structure.", ["Define the minimum fields every example or pattern entry needs.", "Separate required launch fields from fields that can wait.", "Document how explanation and tradeoffs appear beside source material."], ["Every content field has a reason and owner.", "Launch-blocking fields are distinct from nice-to-have metadata.", "The model supports search, compare, source preview, and copy/adapt workflows."], "Inspect the content model against at least two representative examples from the source brief."),
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 01 - Confirm Project Direction": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 01 - Lock Interview Decisions And Taxonomy", `Preserve the selected MVP promise: ${answers.promise}.`, `This unit turns the interview answer into the plan's north star so later implementation work does not drift back to a generic imported-document interpretation. ${promiseDetail}`, ["Copy the selected promise, prototype, community, and validation answers into durable source pages.", "Define the taxonomy axes: task, agent/tool, stack, file type, maturity, source quality, and license.", "Record the source's broader promotion criteria separately from the interview-selected MVP validation target."], ["The MVP plan states the selected promise in plain language.", "The source brief links the answer to the imported evidence.", "Taxonomy terms are specific enough to classify the first seed examples.", "The implementation spec distinguishes MVP validation from later promotion thresholds."], "Review the generated sources, planning interview, and implementation spec for the selected promise and recorded tradeoffs."),
+    "wiki/plans/mvp/stage-01-foundation.html::Unit 02 - Review Repository Setup": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 02 - Define Pattern Entry Requirements", "Define fields for task, tool, stack, file type, maturity, source URL, author, license, freshness, source Markdown, rendered preview, explanation, tradeoffs, and assumptions.", "The imported brief depends on trustable examples. This unit defines what counts as a usable entry before UI work turns vague content into permanent structure.", ["Create `content/taxonomy.json` with the generated taxonomy axes and starter values.", "Create pattern entries under `content/patterns/*.md` using the generated frontmatter contract.", "Separate required launch fields from optional fields and document unknown provenance states."], ["Every content field has a reason and owner.", "Launch-blocking fields are distinct from nice-to-have metadata.", "The model supports search, compare, source preview, and copy/adapt workflows.", "`content/taxonomy.json` and representative pattern files can be reviewed in Git."], "Inspect the content model against at least two representative examples from the source brief."),
     "wiki/plans/mvp/stage-01-foundation.html::Unit 03 - Update Source Briefs": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 03 - Sync Source Briefs With Answers", "Update source briefs so the imported source and interview answers both remain visible to future agents.", "Future agents need to understand which direction came from the import and which came from human steering. This prevents regeneration from flattening the plan back into generic stages.", ["Update product, technical, and design briefs with the selected answers.", "Record answer tradeoffs where they change scope.", "Keep source evidence excerpts separate from decisions."], ["Briefs show imported evidence and human decisions side by side.", "Tradeoffs are visible without reading the original interview UI.", "The roadmap points to the selected prototype path."], "Open each generated source brief and confirm the selected answers are visible."),
     "wiki/plans/mvp/stage-01-foundation.html::Unit 04 - Define First Implementation Unit": guidedUnit("Stage 01 - Taxonomy And Content Schema", "Unit 04 - Define Prototype Acceptance Criteria", `Lock acceptance around this selected prototype shape: ${answers.prototype}.`, `The prototype choice controls what should be built first and what should be deliberately deferred. ${prototypeDetail}`, ["Translate the prototype choice into launchable user flows.", "Define what the prototype must show on first load.", "List explicit non-goals for accounts, open submissions, crawler import, and backend moderation."], ["Acceptance criteria describe user-visible behavior.", "Deferred community or backend scope is named.", "The next implementation unit can start without another planning pass."], "Review acceptance against the selected prototype answer and the imported validation criteria."),
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 01 - Implement First Slice": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 01 - Build The Searchable Gallery", answers.promise, `This is the first product-bearing unit. It should prove the selected promise through the smallest usable surface instead of building around every imported feature. ${promiseDetail}`, ["Create a browse page for curated Markdown-for-agent examples.", "Add filters for task, tool, stack, file type, maturity, freshness, and license.", "Keep the flow usable without accounts unless the community answer requires them."], ["A user can browse and search seeded examples end to end.", "The result matches the selected promise and prototype shape.", "The UI exposes example explanation and tradeoffs where relevant."], "Run the app locally and complete the primary user flow manually or with browser automation."),
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 02 - Sync Plan Status": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 02 - Add Source Rendered Explanation Detail Pages", "Show source Markdown, rendered preview, explanation, tradeoffs, assumptions, author, license, and freshness together.", "The product value depends on seeing both the source artifact and the reason it matters. This unit makes each example inspectable enough to earn user trust.", ["Build or define detail pages for example entries.", "Show raw source beside rendered output or summary.", "Include explanation, assumptions, tradeoffs, freshness, attribution, and license."], ["Each detail page answers what the pattern is and why it belongs.", "Users can compare source and explanation without losing context.", "Missing attribution or license data is visible as an unknown."], "Open representative detail pages and verify source, explanation, and metadata render together."),
-    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 03 - Record Validation": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 03 - Seed Examples For The Validation Target", answers.validation, `The validation answer defines how much content or feedback is enough to continue. ${validationDetail}`, ["Create a seed list that matches the validation target.", "Cover different tools, repositories, or workflows as required by the target.", "Record which examples are ready, partial, or blocked."], ["The seed set supports the selected validation target.", "Coverage gaps are explicit.", "The plan states what signal decides whether to continue."], "Count seeded examples or feedback sessions against the selected validation target."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 01 - Implement First Slice": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 01 - Build The Searchable Gallery", answers.promise, `This is the first product-bearing unit. It should prove the selected promise through the smallest usable surface instead of building around every imported feature. ${promiseDetail}`, ["Create `/patterns` or the app's root gallery page for curated Markdown-for-agent examples.", "Add filters for task, tool, stack, file type, maturity, freshness, and license.", "Render from `content/patterns/*.md` and `content/taxonomy.json`; do not hard-code cards in UI state.", "Keep the flow usable without accounts unless the community answer requires them."], ["A user can browse and search seeded examples end to end.", "The result matches the selected promise and prototype shape.", "The UI exposes example explanation and tradeoffs where relevant.", "Empty, partial, and seeded content states are handled visibly."], "Run the app locally and complete the primary user flow manually or with browser automation."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 02 - Sync Plan Status": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 02 - Add Source Rendered Explanation Detail Pages", "Show source Markdown, rendered preview, explanation, tradeoffs, assumptions, author, license, and freshness together.", "The product value depends on seeing both the source artifact and the reason it matters. This unit makes each example inspectable enough to earn user trust.", ["Build `/patterns/:slug` detail pages for example entries.", "Show raw source beside rendered output or summary.", "Include explanation, assumptions, tradeoffs, freshness, attribution, license, and source URL.", "Expose unknown attribution or license status as visible metadata, not hidden defaults."], ["Each detail page answers what the pattern is and why it belongs.", "Users can compare source and explanation without losing context.", "Missing attribution or license data is visible as an unknown.", "Copy/adapt preserves source context and does not imply universal safety."], "Open representative detail pages and verify source, explanation, and metadata render together."),
+    "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 03 - Record Validation": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 03 - Seed Examples For The Validation Target", answers.validation, `The validation answer defines how much content or feedback is enough to continue. ${validationDetail}`, ["Create seed entries for the generated first example categories.", "Cover different tools, repositories, or workflows as required by the target.", "Record which examples are ready, partial, blocked, or license-unknown.", "Preserve the source's broader 30-example promotion target when the MVP uses a smaller validation set."], ["The seed set supports the selected validation target.", "Coverage gaps are explicit.", "The plan states what signal decides whether to continue.", "The next promotion threshold is visible when validation target is smaller than source promotion criteria."], "Count seeded examples or feedback sessions against the selected validation target."),
     "wiki/plans/mvp/stage-02-dev-workspace.html::Unit 04 - Preserve Canonical Truth": guidedUnit("Stage 02 - Static Gallery And Pattern Details", "Unit 04 - Keep Content Canonical In Repo Files", "Store examples as repo-visible Markdown or structured files instead of hidden UI-only state.", "The imported-source workflow is valuable only if future agents can read and maintain the content. This unit prevents the MVP from trapping project knowledge inside runtime state.", ["Choose the repo-visible storage format for examples and metadata.", "Make generated or curated content diffable.", "Document how agents should update content safely."], ["Content can be reviewed in Git.", "Runtime state is not the only source of truth.", "A future import or edit can preserve existing examples."], "Inspect the repository after edits and confirm the content source is versionable."),
-    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 01 - Close Verification Gaps": guidedUnit("Stage 03 - Search Reuse Trust And Validation", "Unit 01 - Verify Browse Search Compare And Copy", "Verify browse, search, comparison, and copy/adapt workflows against the selected MVP promise.", "Before expanding scope, the selected prototype needs evidence that the main workflow works under realistic use.", ["Run browser checks for the primary flow.", "Test empty, partial, and populated content states.", "Record usability or accessibility issues that block the validation target."], ["The main flow passes on desktop and mobile widths.", "Known blockers are fixed or logged with owner and priority.", "Verification evidence is linked from the log."], "Run automated checks where available and complete a manual browser pass."),
+    "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 01 - Close Verification Gaps": guidedUnit("Stage 03 - Search Reuse Trust And Validation", "Unit 01 - Verify Browse Search Compare And Copy", "Verify browse, search, comparison, and copy/adapt workflows against the selected MVP promise.", "Before expanding scope, the selected prototype needs evidence that the main workflow works under realistic use.", ["Run browser checks for gallery load, filter/search, detail navigation, compare selection, and copy/adapt.", "Test empty, partial, and populated content states.", "Record usability or accessibility issues that block the validation target.", "Capture feedback on whether developers found a pattern they would bookmark, copy, or adapt."], ["The main flow passes on desktop and mobile widths.", "Known blockers are fixed or logged with owner and priority.", "Verification evidence is linked from the log.", "Validation records include qualitative feedback, not only seeded example count."], "Run automated checks where available and complete a manual browser pass."),
     "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 02 - Harden Workflows": guidedUnit("Stage 03 - Search Reuse Trust And Validation", "Unit 02 - Document Licensing Moderation And Submission Boundaries", answers.community, `The community answer determines how much submission, account, moderation, and trust work belongs before launch. ${communityDetail}`, ["Implement or explicitly defer the selected community scope.", "Document licensing, attribution, secrets review, and proprietary-content boundaries.", "Keep curated-only workflows simple if community contribution is deferred."], ["The app behavior matches the selected community scope.", "Deferred community work is listed as future scope.", "Moderation and attribution expectations are documented before submissions exist."], "Exercise the selected community path or confirm the curated-only boundary in docs and UI."),
     "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 03 - Update Durable Docs": guidedUnit("Stage 03 - Search Reuse Trust And Validation", "Unit 03 - Update Durable Docs From Validation", "Update product, technical, design, and roadmap docs from prototype evidence.", "Validation changes what the team actually knows. This unit moves those learnings from transient notes into durable project context.", ["Update product claims based on observed evidence.", "Record technical constraints discovered during implementation.", "Revise roadmap and non-goals from validation results."], ["Docs distinguish facts from assumptions.", "The roadmap reflects the next best investment.", "Completed validation is easy for a future agent to audit."], "Read the source pages and roadmap after validation and confirm they match current evidence."),
     "wiki/plans/mvp/stage-03-dogfood-hardening.html::Unit 04 - Record Handoff Notes": guidedUnit("Stage 03 - Search Reuse Trust And Validation", "Unit 04 - Record Comparison And Handoff Notes", "Record whether this human-steered flow produced a more trustworthy MVP plan than automatic generation.", "The final unit captures what worked, what was heavy, and whether guided planning should become the default.", ["Summarize the generated plan quality.", "Note where human steering improved or slowed the result.", "Recommend whether to keep, revise, or reject this flow."], ["The comparison is specific enough to inform product direction.", "Open risks and follow-up work are named.", "A future implementer can understand why this flow was chosen or rejected."], "Review this guided output against the alternate branch and record the decision.")
@@ -834,6 +907,10 @@ function technicalBriefPage(context) {
 </ul>
 <h2>Minimum Entry Fields</h2>
 <ul>${listHtml(patternEntryFields())}</ul>
+<h2>Canonical File Layout</h2>
+<ul>${listHtml(contentFileLayout())}</ul>
+<h2>Routes And Surfaces</h2>
+<ul>${listHtml(routeStructure())}</ul>
 <h2>Imported Implementation Notes</h2>
 <ul>${listHtml(context.sourceEvidence.implementationNotes)}</ul>
 <h2>Trust And Safety Defaults</h2>
@@ -916,19 +993,51 @@ function selectedMvpPromise(context) {
   return `${promise} through ${lowerFirst(prototype)}, validated by ${lowerFirst(validation)}.`;
 }
 
+function implementationSpecPage(context) {
+  if (!hasGuidedPlan(context)) {
+    return layout(context, "Implementation Spec", `<h1>Implementation Spec</h1><p>No imported source or planning answers were provided during initialization.</p>`);
+  }
+  return layout(context, "Implementation Spec", `<h1>MVP Implementation Spec</h1>
+<section class="summary">
+  <h2>Build Target</h2>
+  <ul>
+    <li>${escapeHtml(selectedMvpPromise(context))}</li>
+    <li>Build scope: static curated pattern library; no accounts, public submissions, crawler import, or backend persistence in the first slice.</li>
+    <li>Promotion threshold: ${escapeHtml(promotionThreshold(context))}</li>
+  </ul>
+</section>
+<h2>Canonical Files</h2>
+<ul>${listHtml(contentFileLayout())}</ul>
+<h2>Frontmatter Contract</h2>
+<pre><code>${escapeHtml(frontmatterExample(context))}</code></pre>
+<h2>Taxonomy Facets</h2>
+<ul>${listHtml(taxonomyFacets())}</ul>
+<h2>First Seed Categories</h2>
+<ul>${listHtml(seedExampleCategories(context))}</ul>
+<h2>Routes And Screens</h2>
+<ul>${listHtml(routeStructure())}</ul>
+<h2>Search And Filter Behavior</h2>
+<ul>${listHtml(searchBehavior())}</ul>
+<h2>Copy And Compare Behavior</h2>
+<ul>${listHtml(copyCompareBehavior())}</ul>
+<h2>Validation Plan</h2>
+<ul>${listHtml(validationPlan(context))}</ul>
+<h2>Deferred Scope</h2>
+<ul>${listHtml(staticFirstNonGoals(context))}</ul>`);
+}
+
 function lowerFirst(value) {
   const text = String(value || "");
   return text ? `${text.slice(0, 1).toLowerCase()}${text.slice(1)}` : text;
 }
 
 function coreUseCases(context) {
-  const evidence = context.sourceEvidence || {};
   return [
-    evidence.shape ? `Browse the product shape described in the source: ${evidence.shape}` : "Browse curated examples by task and workflow.",
-    "Search and filter patterns by task, agent/tool, stack, file type, maturity, freshness, and license.",
+    "Find a proven Markdown pattern for a specific agentic coding task such as planning, review, onboarding, evals, memory, prompts, or handoffs.",
+    "Filter examples by task, agent/tool, stack, file type, maturity, freshness, and license before opening details.",
     "Inspect source Markdown beside rendered preview, explanation, assumptions, and tradeoffs.",
-    "Copy or adapt a pattern while preserving attribution, license, and context.",
-    "Compare multiple patterns before choosing one for a repo workflow."
+    "Compare multiple patterns before choosing one for a repo workflow.",
+    "Copy or adapt a pattern while preserving attribution, license, and context."
   ];
 }
 
@@ -965,6 +1074,123 @@ function patternEntryFields() {
   ];
 }
 
+function contentFileLayout() {
+  return [
+    "`content/patterns/*.md` stores one pattern per file with frontmatter and source Markdown.",
+    "`content/taxonomy.json` stores allowed values for task, agent/tool, stack, file type, maturity, freshness, and license facets.",
+    "`public/search-index.json` or an equivalent build artifact is generated from pattern files for local search.",
+    "`wiki/sources/` remains product planning context; app content belongs in repo-visible content files, not hidden runtime state."
+  ];
+}
+
+function routeStructure() {
+  return [
+    "`/patterns` or `/` shows the searchable gallery with filters, selected count, empty state, and seed coverage status.",
+    "`/patterns/:slug` shows source Markdown, rendered preview, explanation, assumptions, tradeoffs, provenance, attribution, license, and freshness.",
+    "`/compare` or a persistent compare tray lets users compare selected patterns by task fit, repo location, agent usage, tradeoffs, and copy/adapt readiness.",
+    "Copy/adapt action exposes source context and attribution before copying any Markdown."
+  ];
+}
+
+function taxonomyFacets() {
+  return [
+    "Task: planning, code review, onboarding, evals, memory, prompts, handoffs.",
+    "Agent/tool: Codex, Claude Code, Cursor, Aider, custom agent, team workflow.",
+    "Stack: JavaScript/TypeScript, Python, docs-only, full-stack app, data/ML, infrastructure.",
+    "File type: AGENTS.md, CLAUDE.md, prompt, task plan, PRD, eval rubric, memory file, workflow note.",
+    "Maturity: proven, promising, experimental, deprecated.",
+    "Freshness: current, needs review, historical.",
+    "License: permissive, unknown, proprietary, internal-only."
+  ];
+}
+
+function seedExampleCategories(context) {
+  const target = validationTargetCount(context);
+  const base = [
+    "Repo-local agent instructions for a coding assistant.",
+    "PRD or feature brief that drives an implementation agent.",
+    "Task plan checklist used for multi-step agent work.",
+    "Code review rubric for automated or assisted review.",
+    "Onboarding guide that teaches an agent project conventions.",
+    "Evaluation rubric for generated code quality.",
+    "Memory or context file for repeated agent sessions.",
+    "Handoff note that transfers work between humans and agents.",
+    "Prompt template that preserves assumptions and constraints.",
+    "Before/after example where Markdown structure improved agent output."
+  ];
+  if (target > 10) {
+    return [
+      ...base,
+      "Additional examples should expand tool, repo, workflow, and license diversity until the source promotion threshold is reached."
+    ];
+  }
+  return base.slice(0, target);
+}
+
+function validationTargetCount(context) {
+  const text = context.planningAnswers?.validation || "";
+  const match = text.match(/\b(\d+)\b/);
+  return match ? Number(match[1]) : 10;
+}
+
+function promotionThreshold(context) {
+  const criteria = context.sourceEvidence?.promotionCriteria || [];
+  const countCriterion = criteria.find((item) => /\b\d+\b/.test(item));
+  if (countCriterion && countCriterion !== context.planningAnswers?.validation) {
+    return `${countCriterion}; keep this as the post-MVP promotion bar if the interview selected a smaller validation target.`;
+  }
+  return context.planningAnswers?.validation || "Confirm after first validation pass.";
+}
+
+function frontmatterExample(context) {
+  const category = seedExampleCategories(context)[0] || "Repo-local agent instructions for a coding assistant.";
+  return `---
+title: "${category}"
+slug: "repo-local-agent-instructions"
+task: "planning"
+agent_tool: "Codex"
+stack: "docs-only"
+file_type: "AGENTS.md"
+maturity: "promising"
+source_url: "https://example.com/repo/AGENTS.md"
+author: "Unknown"
+license: "unknown"
+updated: "${context.date}"
+freshness: "needs review"
+tags: ["agentic-coding", "repo-instructions"]
+---
+
+Paste or preserve the source Markdown here, followed by explanation, assumptions, and tradeoffs.`;
+}
+
+function searchBehavior() {
+  return [
+    "Search matches title, task, tags, tool, stack, file type, explanation, and source text.",
+    "Filters combine with AND semantics across facets and OR semantics inside a facet.",
+    "Unknown license, author, or freshness values remain filterable and visible.",
+    "Empty results state suggests clearing filters and shows which seed categories are still missing."
+  ];
+}
+
+function copyCompareBehavior() {
+  return [
+    "Compare supports at least two selected patterns and keeps selections visible while browsing.",
+    "Comparison rows include task fit, repo location, agent/tool, assumptions, tradeoffs, maturity, freshness, and license.",
+    "Copy/adapt action copies Markdown only after showing attribution, license, and assumptions.",
+    "Copy/adapt should be disabled or warning-labeled when license or provenance is unknown."
+  ];
+}
+
+function validationPlan(context) {
+  return [
+    `Seed target: ${context.planningAnswers.validation || "selected validation target"}.`,
+    `Seed categories: ${seedExampleCategories(context).join("; ")}.`,
+    "Collect feedback from developers on whether search/filtering found a useful pattern.",
+    "Track whether users would bookmark, copy, adapt, or submit a pattern.",
+    "Record gaps in taxonomy, missing example categories, and trust/provenance blockers in `wiki/log.html`."
+  ];
+}
+
 function mvpAcceptanceItems(context) {
   const validation = context.planningAnswers?.validation || "selected validation target";
   return [
@@ -994,6 +1220,8 @@ function planningInterviewPage(context) {
 </section>
 <h2>Acceptance Snapshot</h2>
 <ul>${listHtml(mvpAcceptanceItems(context))}</ul>
+<h2>Implementation Spec</h2>
+<p>First-slice build contract: <a href="/wiki/plans/mvp/implementation-spec.html">MVP implementation spec</a>.</p>
 <h2>Static-first Boundary</h2>
 <ul>${listHtml(staticFirstNonGoals(context))}</ul>`);
 }
