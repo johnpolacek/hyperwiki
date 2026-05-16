@@ -2242,7 +2242,7 @@ function renderPlanningStep() {
   planningOptionList.replaceChildren(...question.options.map((option) => planningOptionCard(option, selected.value)));
   renderPlanningStepper();
   if (planningSelectedSummary) {
-    planningSelectedSummary.textContent = `Selected: ${selected.label}`;
+    planningSelectedSummary.textContent = `Plan will optimize for: ${selected.value}`;
   }
   planningBack.textContent = planningWizard.stepIndex === 0 ? "Back to source" : "Back";
   planningNext.hidden = planningWizard.stepIndex === planningQuestions.length - 1;
@@ -2271,12 +2271,13 @@ function planningOptionCard(option, selectedValue) {
 
   const header = document.createElement("span");
   header.className = "planning-option-header";
-  const label = document.createElement("strong");
-  label.textContent = option.label;
   const marker = document.createElement("span");
+  marker.className = "planning-option-marker";
   marker.textContent = option.value === selectedValue ? "✓" : "";
   marker.setAttribute("aria-hidden", "true");
-  header.append(label, marker);
+  const label = document.createElement("strong");
+  label.textContent = option.label;
+  header.append(marker, label);
 
   const detail = document.createElement("span");
   detail.className = "planning-option-detail";
@@ -2362,6 +2363,7 @@ function startPlanningInterview() {
   projectImportForm.hidden = true;
   newProjectPage.classList.add("planning-active");
   planningInterview.hidden = false;
+  requestAnimationFrame(() => newProjectPage.scrollTo({ top: 0, behavior: "instant" }));
   setNewProjectStatus("Answer the planning interview to create the MVP plan.");
   renderPlanningInterview();
 }
