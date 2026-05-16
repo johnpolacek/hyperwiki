@@ -1036,6 +1036,10 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-wizard-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 42px;
   border: 1px solid #20231f;
   border-radius: 6px;
@@ -1044,6 +1048,16 @@ html[data-initial-route="settings"] .wiki-pane {
   color: #ffffff;
   cursor: pointer;
   font: 800 12px/1.2 var(--sidebar-font);
+}
+
+.planning-wizard-actions button svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
 }
 
 .planning-wizard-actions button:first-of-type {
