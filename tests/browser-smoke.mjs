@@ -247,11 +247,19 @@ await page.locator(".terminal-panel[data-name=\"dev\"].collapsed").waitFor();
 await page.locator(".terminal-pane").evaluate((pane) => {
   const toolbar = pane.querySelector(".terminal-toolbar");
   const firstPanel = pane.querySelector(".terminal-panel");
+  const collapsedDevPanel = pane.querySelector(".terminal-panel[data-name=\"dev\"].collapsed");
+  const collapsedDevHeader = collapsedDevPanel?.querySelector(".terminal-panel-header");
   if (!toolbar || !firstPanel) {
     throw new Error("Expected terminal toolbar and panels after Execute.");
   }
   if (firstPanel.getBoundingClientRect().top - toolbar.getBoundingClientRect().bottom > 2) {
     throw new Error("Expected terminal panels to align directly below the toolbar.");
+  }
+  if (!collapsedDevPanel || !collapsedDevHeader) {
+    throw new Error("Expected collapsed dev terminal panel after Execute.");
+  }
+  if (collapsedDevPanel.getBoundingClientRect().height - collapsedDevHeader.getBoundingClientRect().height > 2) {
+    throw new Error("Expected collapsed dev terminal to size to its header.");
   }
 });
 await page.locator("#plan-prompt").evaluate((element) => {

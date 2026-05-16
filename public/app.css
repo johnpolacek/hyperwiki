@@ -3579,9 +3579,8 @@ html[data-initial-route="settings"] .wiki-pane {
   --terminal-bottom-gutter: 72px;
   --terminal-bg: #272822;
   background: var(--terminal-bg);
-  display: grid;
-  grid-auto-rows: minmax(220px, 1fr);
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 1px;
   min-height: 0;
   overflow: auto;
@@ -3607,11 +3606,13 @@ html[data-initial-route="settings"] .wiki-pane {
 .terminal-panel {
   display: grid;
   grid-template-rows: auto 1fr;
+  flex: 1 0 220px;
   min-height: 0;
   background: var(--terminal-bg);
 }
 
 .terminal-panel.collapsed {
+  flex: 0 0 auto;
   grid-template-rows: auto;
   min-height: auto;
 }
