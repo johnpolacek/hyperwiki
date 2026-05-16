@@ -1003,35 +1003,48 @@ html[data-initial-route="new-project"] .wiki-pane {
 .project-remove-confirm-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 8px;
 }
 
-.project-remove-cancel,
-.project-remove-confirm {
+.dashboard-item .project-remove-cancel,
+.dashboard-item .project-remove-confirm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
-  border-radius: 6px;
-  padding: 7px 10px;
+  min-height: 36px;
+  border-radius: 7px;
+  padding: 9px 13px;
   cursor: pointer;
-  font: 800 11px/1.2 var(--sidebar-font);
+  font: 800 12px/1.2 var(--sidebar-font);
+  box-shadow: 0 2px 0 rgba(95, 23, 18, 0.14);
 }
 
-.project-remove-cancel {
-  border: 1px solid #d3cbc2;
+.dashboard-item .project-remove-cancel {
+  border: 1px solid #b8afa4;
   background: #fffdfa;
-  color: #4f554c;
+  color: #2a2b27;
 }
 
-.project-remove-confirm {
-  border: 1px solid #a51d17;
-  background: #c8271f;
+.dashboard-item .project-remove-cancel:hover,
+.dashboard-item .project-remove-cancel:focus-visible {
+  border-color: #5f1712;
+  background: #fff6f2;
+}
+
+.dashboard-item .project-remove-confirm {
+  border: 1px solid #7f1712;
+  background: #9f2119;
   color: #fff;
 }
 
-.project-remove-confirm:disabled,
-.project-remove-cancel:disabled {
+.dashboard-item .project-remove-confirm:hover,
+.dashboard-item .project-remove-confirm:focus-visible {
+  border-color: #5f120e;
+  background: #c8271f;
+}
+
+.dashboard-item .project-remove-confirm:disabled,
+.dashboard-item .project-remove-cancel:disabled {
   cursor: wait;
   opacity: 0.65;
 }
