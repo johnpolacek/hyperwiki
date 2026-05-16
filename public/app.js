@@ -37,6 +37,8 @@ const planningStepLabel = document.getElementById("planning-step-label");
 const planningQuestionTitle = document.getElementById("planning-question-title");
 const planningQuestionDescription = document.getElementById("planning-question-description");
 const planningOptionList = document.getElementById("planning-option-list");
+const planningStepper = document.getElementById("planning-stepper");
+const planningSelectedSummary = document.getElementById("planning-selected-summary");
 const planningBack = document.getElementById("planning-back");
 const planningNext = document.getElementById("planning-next");
 const planningCreateProject = document.getElementById("planning-create-project");
@@ -125,6 +127,7 @@ const thinkingEffortLevels = new Set(["low", "medium", "high", "xhigh"]);
 const planningQuestions = [
   {
     key: "promise",
+    stepLabel: "Promise",
     title: "What should the first MVP prove?",
     description: "Pick the product promise that should guide the first implementation plan.",
     options: [
@@ -156,6 +159,7 @@ const planningQuestions = [
   },
   {
     key: "prototype",
+    stepLabel: "Prototype",
     title: "What should the first prototype contain?",
     description: "Choose the concrete surface the MVP plan should build first.",
     options: [
@@ -187,6 +191,7 @@ const planningQuestions = [
   },
   {
     key: "community",
+    stepLabel: "Community",
     title: "How much community belongs in the MVP?",
     description: "Set the boundary between curated quality and public contribution.",
     options: [
@@ -212,6 +217,7 @@ const planningQuestions = [
   },
   {
     key: "validation",
+    stepLabel: "Validation",
     title: "What proves the MVP is worth continuing?",
     description: "Choose the acceptance target the generated plan should optimize around.",
     options: [
@@ -2200,8 +2206,7 @@ function renderPlanningInterview() {
     briefRow("Problem", brief.problem),
     briefRow("Audience", brief.audience),
     briefRow("Shape", brief.shape),
-    briefRow("Features", brief.features.join("; ")),
-    briefRow("Validation", brief.validation.join("; "))
+    briefRow("Signals", brief.validation.join("; ") || brief.features.join("; "))
   );
   renderPlanningStep();
   planningInterview.hidden = false;
@@ -2235,9 +2240,24 @@ function renderPlanningStep() {
   planningQuestionTitle.textContent = question.title;
   planningQuestionDescription.textContent = question.description;
   planningOptionList.replaceChildren(...question.options.map((option) => planningOptionCard(option, selected.value)));
+  renderPlanningStepper();
+  if (planningSelectedSummary) {
+    planningSelectedSummary.textContent = `Selected: ${selected.label}`;
+  }
   planningBack.textContent = planningWizard.stepIndex === 0 ? "Back to source" : "Back";
   planningNext.hidden = planningWizard.stepIndex === planningQuestions.length - 1;
   planningCreateProject.hidden = planningWizard.stepIndex !== planningQuestions.length - 1;
+}
+
+function renderPlanningStepper() {
+  if (!planningStepper) return;
+  planningStepper.replaceChildren(...planningQuestions.map((question, index) => {
+    const item = document.createElement("li");
+    item.textContent = question.stepLabel || question.title;
+    if (index < planningWizard.stepIndex) item.classList.add("complete");
+    if (index === planningWizard.stepIndex) item.classList.add("current");
+    return item;
+  }));
 }
 
 function planningOptionCard(option, selectedValue) {
@@ -2254,7 +2274,8 @@ function planningOptionCard(option, selectedValue) {
   const label = document.createElement("strong");
   label.textContent = option.label;
   const marker = document.createElement("span");
-  marker.textContent = option.value === selectedValue ? "Selected" : "Choose";
+  marker.textContent = option.value === selectedValue ? "✓" : "";
+  marker.setAttribute("aria-hidden", "true");
   header.append(label, marker);
 
   const detail = document.createElement("span");

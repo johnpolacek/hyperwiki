@@ -508,9 +508,13 @@ html[data-initial-route="settings"] .wiki-pane {
   margin: 24px auto 44px;
 }
 
-.workspace.new-project-mode .new-project-form,
-.workspace.new-project-mode .planning-interview {
+.workspace.new-project-mode .new-project-form {
   width: min(760px, calc(100% - 84px));
+  margin: 24px auto 44px;
+}
+
+.workspace.new-project-mode .planning-interview {
+  width: min(1180px, calc(100% - 84px));
   margin: 24px auto 44px;
 }
 
@@ -736,15 +740,15 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .planning-interview {
   display: grid;
-  gap: 18px;
-  max-width: 1120px;
-  border: 1px solid color-mix(in srgb, var(--text) 24%, var(--border));
-  border-radius: 8px;
-  padding: clamp(16px, 2.6vw, 28px);
+  gap: 20px;
+  max-width: 1180px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   background:
-    linear-gradient(135deg, color-mix(in srgb, var(--panel) 92%, #e5f0d6) 0%, var(--panel) 58%),
-    var(--panel);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.08);
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 4%, transparent), transparent 360px),
+    transparent;
+  box-shadow: none;
 }
 
 .planning-interview[hidden] {
@@ -752,18 +756,19 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-interview > header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  gap: 18px;
+  padding: 0 0 2px;
+  border-bottom: 0;
 }
 
 .planning-interview > header h2 {
-  margin: 4px 0 6px;
+  max-width: 760px;
+  margin: 6px 0 7px;
   color: var(--text);
-  font: 700 clamp(22px, 2.6vw, 34px)/1.05 var(--sidebar-font);
+  font: 800 clamp(24px, 3vw, 42px)/1.02 var(--sidebar-font);
 }
 
 .planning-interview > header p {
@@ -774,37 +779,98 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-step-label {
-  color: #59624f;
+  margin: 0;
+  color: color-mix(in srgb, var(--text) 62%, var(--muted));
   font: 800 11px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
 
 .planning-interview > header span {
   flex: 0 0 auto;
-  border: 1px solid var(--border);
+  align-self: start;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, var(--border));
   border-radius: 999px;
-  padding: 5px 8px;
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
   color: var(--muted);
   font: 700 10px/1 var(--sidebar-font);
   text-transform: uppercase;
 }
 
+.planning-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planning-stepper li {
+  position: relative;
+  min-width: 0;
+  padding: 15px 10px 0 0;
+  border-top: 2px solid color-mix(in srgb, var(--border) 78%, var(--muted));
+  color: var(--muted);
+  font: 800 10px/1.2 var(--sidebar-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.planning-stepper li::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  border: 2px solid color-mix(in srgb, var(--border) 78%, var(--muted));
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.planning-stepper li.complete,
+.planning-stepper li.current {
+  border-top-color: var(--text);
+  color: var(--text);
+}
+
+.planning-stepper li.complete::before,
+.planning-stepper li.current::before {
+  border-color: var(--text);
+  background: var(--text);
+}
+
 .planning-interview-grid {
   display: grid;
-  grid-template-columns: minmax(250px, 0.42fr) minmax(360px, 0.58fr);
+  grid-template-columns: minmax(240px, 0.32fr) minmax(520px, 0.68fr);
   align-items: start;
-  gap: 18px;
+  gap: 22px;
 }
 
 .source-brief-card,
 .planning-question-card {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   min-width: 0;
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, var(--muted));
   border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 96%, var(--bg));
+}
+
+.source-brief-card {
+  position: sticky;
+  top: 18px;
   padding: 14px;
-  background: color-mix(in srgb, var(--panel) 94%, var(--bg));
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+}
+
+.planning-question-card {
+  overflow: hidden;
+  padding: 0;
+  background: var(--panel);
 }
 
 .source-brief-card h3,
@@ -820,13 +886,13 @@ html[data-initial-route="settings"] .wiki-pane {
 
 #planning-source-brief {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px 12px;
+  gap: 9px;
   margin: 0;
 }
 
 #planning-source-brief dt {
-  color: var(--muted);
+  margin-top: 4px;
+  color: color-mix(in srgb, var(--text) 54%, var(--muted));
   font: 800 10px/1.35 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -834,37 +900,53 @@ html[data-initial-route="settings"] .wiki-pane {
 #planning-source-brief dd {
   min-width: 0;
   margin: 0;
-  color: var(--text);
+  color: color-mix(in srgb, var(--text) 86%, var(--muted));
+  display: -webkit-box;
   font: 12px/1.45 var(--sidebar-font);
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+#planning-source-brief dt:nth-of-type(n+5),
+#planning-source-brief dt:nth-of-type(n+5) + dd {
+  display: none;
 }
 
 .planning-option-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
+  padding: 12px;
 }
 
 .planning-option-card {
   display: grid;
-  gap: 9px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 13px;
-  background: #ffffff;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 15px 16px 15px 18px;
+  background: transparent;
   color: var(--text);
   cursor: pointer;
   font: 12px/1.45 var(--sidebar-font);
   text-align: left;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.planning-option-card + .planning-option-card {
+  margin-top: 7px;
 }
 
 .planning-option-card:hover {
-  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
-  background: color-mix(in srgb, var(--accent) 5%, #ffffff);
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: color-mix(in srgb, var(--accent) 4%, var(--panel));
 }
 
 .planning-option-card.selected {
-  border-color: #2f5d3a;
-  background: #f1f7ed;
-  box-shadow: inset 0 0 0 1px #2f5d3a;
+  position: relative;
+  border-color: color-mix(in srgb, var(--text) 32%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  box-shadow: inset 4px 0 0 var(--text), 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
 .planning-option-header {
@@ -877,17 +959,24 @@ html[data-initial-route="settings"] .wiki-pane {
 .planning-option-header strong {
   min-width: 0;
   color: var(--text);
-  font: 800 13px/1.25 var(--sidebar-font);
+  font: 800 14px/1.25 var(--sidebar-font);
 }
 
 .planning-option-header span {
   flex: 0 0 auto;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  padding: 4px 7px;
-  color: #59624f;
-  font: 800 10px/1 var(--sidebar-font);
-  text-transform: uppercase;
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--muted));
+  border-radius: 50%;
+  color: var(--panel);
+  font: 800 12px/1 var(--sidebar-font);
+}
+
+.planning-option-card.selected .planning-option-header span {
+  border-color: var(--text);
+  background: var(--text);
 }
 
 .planning-option-detail,
@@ -897,16 +986,30 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .planning-option-tradeoff {
-  border-left: 3px solid #d8d8d0;
-  padding-left: 10px;
-  color: #4f584c;
+  border-left: 2px solid color-mix(in srgb, var(--border) 70%, var(--muted));
+  padding-left: 11px;
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
 }
 
 .planning-wizard-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  padding: 13px 14px;
+  background: color-mix(in srgb, var(--bg) 78%, var(--panel));
+}
+
+.planning-selected-summary {
+  min-width: 0;
+  margin: 0;
+  color: var(--muted);
+  font: 700 11px/1.35 var(--sidebar-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .planning-wizard-actions button {
@@ -931,26 +1034,50 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 @media (max-width: 900px) {
+  .workspace.new-project-mode .new-project-form,
+  .workspace.new-project-mode .planning-interview {
+    width: min(760px, calc(100% - 32px));
+  }
+
   .planning-interview > header,
-  .planning-option-header {
+  .planning-option-header,
+  .planning-wizard-actions {
     align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .planning-interview-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .source-brief-card {
+    position: static;
+    padding: 12px;
+  }
+
+  .source-brief-card {
+    gap: 10px;
+  }
+
   #planning-source-brief {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 7px;
+  }
+
+  #planning-source-brief dd {
+    -webkit-line-clamp: 1;
+  }
+
+  #planning-source-brief dt:nth-of-type(n+3),
+  #planning-source-brief dt:nth-of-type(n+3) + dd {
+    display: none;
   }
 
   .planning-wizard-actions {
-    justify-content: stretch;
+    justify-items: stretch;
   }
 
   .planning-wizard-actions button {
-    flex: 1 1 auto;
+    width: 100%;
   }
 }
 
