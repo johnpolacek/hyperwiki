@@ -3384,6 +3384,19 @@ html[data-initial-route="settings"] .wiki-pane {
   text-decoration: none;
 }
 
+.execute-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-color: color-mix(in srgb, var(--accent) 82%, var(--text));
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 24%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--accent) 20%, transparent);
+  font-weight: 800;
+}
+
 .completion-badge {
   flex: 0 0 auto;
   border: 1px solid #d6d8d1;
@@ -3403,12 +3416,6 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .modify-button {
   flex: 0 0 auto;
-}
-
-.execute-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
 }
 
 .execute-button svg {
@@ -3475,8 +3482,6 @@ html[data-initial-route="settings"] .wiki-pane {
   text-align: left;
 }
 
-.execute-button:hover,
-.execute-button:focus-visible,
 .modify-button:hover,
 .modify-button:focus-visible,
 .execute-menu button:hover,
@@ -3485,6 +3490,20 @@ html[data-initial-route="settings"] .wiki-pane {
 .preview-link:focus-visible {
   border-color: #8f9c90;
   background: #f2f4ef;
+}
+
+.execute-button:hover,
+.execute-button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 64%, var(--text));
+  background: color-mix(in srgb, var(--accent) 86%, var(--text));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 22%, transparent) inset,
+    0 10px 22px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.execute-button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 36%, #ffffff);
+  outline-offset: 2px;
 }
 
 .modify-plan-ui {
