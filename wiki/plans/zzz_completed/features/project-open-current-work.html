@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project Open Current Work - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Project Open Current Work</h1>
+    <section class="summary" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact feature plan</li>
+        <li>Current unit: Unit 01 - Open Current Work From Projects</li>
+        <li>Next action: none; implementation and verification are complete.</li>
+        <li>Blockers: none</li>
+        <li>Validation: <code>pnpm check</code> and focused project smoke coverage.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Project rows in Manage Projects should present a simple Open action. Opening any available project should leave the management page and load that project's current unit of work, falling back to the planning dashboard when no current path exists.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Rename project row action buttons to <code>Open</code>.</li>
+        <li>Resolve the selected project's current work through its workspace summary before navigation.</li>
+        <li>Apply the same open behavior to active and inactive projects.</li>
+        <li>Keep unavailable projects disabled and keep remove behavior unchanged.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Unit 01 - Open Current Work From Projects</h2>
+      <ul>
+        <li>Update project switching to navigate out of management mode to <code>status.currentPath</code> or the plan dashboard fallback.</li>
+        <li>Preserve project switching reloads for repo context, wiki nav, workspace summary, guardrails, layout, and terminals.</li>
+        <li>Add smoke coverage for the Open label and current-work navigation.</li>
+      </ul>
+      <h3>Verification</h3>
+      <ul>
+        <li>Passed: <code>pnpm check</code>.</li>
+        <li>Passed: <code>pnpm smoke:project-removal</code>.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

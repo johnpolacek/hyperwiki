@@ -2041,7 +2041,7 @@ function renderDashboardProjects(projects) {
     const openButton = document.createElement("button");
     openButton.type = "button";
     openButton.className = "project-open-button";
-    openButton.textContent = project.active ? "Open project" : "Switch and open";
+    openButton.textContent = "Open";
     openButton.disabled = !project.available;
     openButton.addEventListener("click", () => switchProject(project));
     actions.append(openButton);
@@ -2669,9 +2669,10 @@ function delay(ms) {
 
 async function switchProject(project) {
   closeTopbarPanels();
+  const targetPath = await projectOpenPath(project);
   if (project.id === activeProjectId) {
-    history.pushState(null, "", `${workspacePath(project)}#/wiki/index.html`);
-    activateWorkspaceLocation("/wiki/index.html");
+    history.pushState(null, "", `${workspacePath(project)}#${targetPath}`);
+    activateWorkspaceLocation(targetPath);
     return;
   }
   closeAllTerminals();
@@ -2679,16 +2680,25 @@ async function switchProject(project) {
   activeProjectId = project.id;
   activeProjectSlug = project.projectSlug;
   activeWorktreeSlug = project.worktreeSlug;
-  history.pushState(null, "", `${workspacePath(project)}#/wiki/index.html`);
-  requestedWikiPath = "/wiki/index.html";
+  history.pushState(null, "", `${workspacePath(project)}#${targetPath}`);
+  requestedWikiPath = targetPath;
   await loadProjects();
   await loadProjectManagement();
   await loadRepoContext();
   await loadWikiNav();
   await loadWorkspaceSummary();
   await loadGuardrails();
-  activateWikiPage(currentPlanPath);
+  activateWorkspaceLocation(targetPath);
   await restoreTerminals();
+}
+
+async function projectOpenPath(project) {
+  try {
+    const summary = await api(`/api/workspace?${new URLSearchParams({ project: project.id }).toString()}`);
+    return displayWikiPath(summary.status?.currentPath || summary.plan?.path || "/wiki/plans/index.html");
+  } catch {
+    return "/wiki/plans/index.html";
+  }
 }
 
 function updatePlanPromptVisibility() {

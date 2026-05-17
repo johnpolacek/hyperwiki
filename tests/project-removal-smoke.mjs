@@ -37,13 +37,19 @@ try {
   await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
   await expectManagementShellFullWidth(page, "#projects-page");
-  await page.getByRole("button", { name: "Open project" }).click();
-  await page.waitForURL(/\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/index\.html$/);
+  await page.locator("#dashboard-projects").evaluate((list) => {
+    const labels = [...list.querySelectorAll(".project-open-button")].map((button) => button.textContent.trim());
+    if (labels.some((label) => label !== "Open")) {
+      throw new Error(`Expected all project action buttons to say Open, got ${labels.join(", ")}`);
+    }
+  });
+  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open" }).click();
+  await page.waitForURL(/\/workspace\/project-removal-root\/main#\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/);
   await expectSidebarVisible(page);
   await page.getByRole("button", { name: "Projects" }).click();
   await page.locator("#project-panel").waitFor();
   await page.getByRole("button", { name: "Registry Only Project" }).click();
-  await page.waitForURL(/\/workspace\/registry-only-project\/main#\/wiki\/index\.html$/);
+  await page.waitForURL(/\/workspace\/registry-only-project\/main#\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/);
   await page.locator("#project-panel").evaluate((panel) => {
     if (!panel.hidden) throw new Error("Expected project dropdown to close after selecting a project.");
   });
