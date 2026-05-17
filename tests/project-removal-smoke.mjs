@@ -42,14 +42,25 @@ try {
     if (labels.some((label) => label !== "Open")) {
       throw new Error(`Expected all project action buttons to say Open, got ${labels.join(", ")}`);
     }
+    const card = [...list.querySelectorAll(".project-card")].find((item) => item.textContent.includes("Project Removal Root"));
+    const openButton = card?.querySelector(".project-open-button");
+    const removeButton = card?.querySelector(".project-remove-button");
+    if (!openButton || !removeButton) {
+      throw new Error("Expected Project Removal Root card to include Open and remove controls.");
+    }
+    const openRect = openButton.getBoundingClientRect();
+    const removeRect = removeButton.getBoundingClientRect();
+    if (Math.abs(openRect.top - removeRect.top) > 2) {
+      throw new Error(`Expected Open and remove controls on the same row, got ${openRect.top}/${removeRect.top}`);
+    }
   });
   await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open" }).click();
-  await page.waitForURL(/\/workspace\/project-removal-root\/main#\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/);
+  await page.waitForFunction(() => /\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/.test(location.href));
   await expectSidebarVisible(page);
   await page.getByRole("button", { name: "Projects" }).click();
   await page.locator("#project-panel").waitFor();
   await page.getByRole("button", { name: "Registry Only Project" }).click();
-  await page.waitForURL(/\/workspace\/registry-only-project\/main#\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/);
+  await page.waitForFunction(() => /\/workspace\/registry-only-project\/main#\/projects\/[^/]+\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/.test(location.href));
   await page.locator("#project-panel").evaluate((panel) => {
     if (!panel.hidden) throw new Error("Expected project dropdown to close after selecting a project.");
   });

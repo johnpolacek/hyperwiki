@@ -2044,8 +2044,6 @@ function renderDashboardProjects(projects) {
     openButton.textContent = "Open";
     openButton.disabled = !project.available;
     openButton.addEventListener("click", () => switchProject(project));
-    actions.append(openButton);
-
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "project-remove-button";
@@ -2056,12 +2054,14 @@ function renderDashboardProjects(projects) {
       pendingProjectRemovalId = project.id;
       renderDashboardProjects(projects);
     });
+    actions.append(openButton);
+    if (pendingProjectRemovalId !== project.id) {
+      actions.append(removeButton);
+    }
 
     item.append(header, meta, details, actions);
     if (pendingProjectRemovalId === project.id) {
       item.append(projectRemovalConfirmation(project));
-    } else {
-      item.append(removeButton);
     }
     return item;
   }));

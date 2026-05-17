@@ -1335,7 +1335,7 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 11px;
   min-height: 112px;
   border-color: #d6d3c7;
-  padding: 14px 16px 42px 18px;
+  padding: 14px 16px 16px 18px;
   background:
     linear-gradient(90deg, color-mix(in srgb, #25a244 15%, transparent) 0 4px, transparent 4px),
     #fffdfa;
@@ -1399,9 +1399,6 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .project-remove-button {
-  position: absolute;
-  right: 12px;
-  bottom: 11px;
   display: inline-grid;
   width: 28px;
   height: 28px;
