@@ -1310,6 +1310,7 @@ html[data-initial-route="settings"] .wiki-pane {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  justify-content: space-between;
 }
 
 .dashboard-item .dashboard-open-link {
@@ -1400,6 +1401,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .project-remove-button {
   display: inline-grid;
+  margin-left: auto;
   width: 28px;
   height: 28px;
   place-items: center;

@@ -2041,7 +2041,7 @@ function renderDashboardProjects(projects) {
     const openButton = document.createElement("button");
     openButton.type = "button";
     openButton.className = "project-open-button";
-    openButton.textContent = "Open";
+    openButton.textContent = "Open Project";
     openButton.disabled = !project.available;
     openButton.addEventListener("click", () => switchProject(project));
     const removeButton = document.createElement("button");
