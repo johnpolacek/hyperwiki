@@ -82,6 +82,16 @@ try {
   await expectSidebarVisible(page);
   await page.getByRole("button", { name: "Projects" }).click();
   await page.locator("#project-panel").waitFor();
+  await page.locator("#project-panel").evaluate((panel) => {
+    const projectButtons = [...panel.querySelectorAll("#project-list button")].map((button) => button.getAttribute("aria-label"));
+    const rootButtons = projectButtons.filter((label) => label === "Project Removal Root");
+    if (rootButtons.length !== 1) {
+      throw new Error(`Expected one project switcher button for Project Removal Root, got ${rootButtons.length}: ${projectButtons.join(", ")}`);
+    }
+    if (panel.textContent.includes("hyperwiki-project-removal-root-feature")) {
+      throw new Error("Expected project switcher to hide individual worktree checkout rows.");
+    }
+  });
   await page.getByRole("button", { name: "Registry Only Project" }).click();
   await page.waitForFunction(() => /\/workspace\/registry-only-project\/main#\/projects\/[^/]+\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/.test(location.href));
   await page.locator("#project-panel").evaluate((panel) => {

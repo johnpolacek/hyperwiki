@@ -1025,29 +1025,21 @@ function topbarEmpty(text) {
 
 function renderProjectSwitcher(groups) {
   projectList.replaceChildren(...groups.map((group) => {
-    const section = document.createElement("section");
-    section.className = "project-switcher-group";
-    const heading = document.createElement("strong");
-    heading.textContent = group.name;
-    section.append(heading);
-    const list = document.createElement("div");
-    list.className = "project-switcher-checkouts";
-    (group.checkouts || []).forEach((project) => {
-      const preview = projectPreviewState.get(project.id);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.projectId = project.id;
-      button.dataset.worktreeSlug = project.worktreeSlug || "main";
-      button.className = project.id === activeProjectId ? "active" : "";
-      button.disabled = !project.available;
-      button.setAttribute("aria-label", `${project.name} ${project.worktreeSlug || "main"}`);
-      button.title = project.available ? project.root : `${project.root} unavailable`;
-      button.append(projectCheckoutLabel(project), previewStatusPill(preview, project.available));
-      button.addEventListener("click", () => switchProject(project));
-      list.append(button);
-    });
-    section.append(list);
-    return section;
+    const project = selectedProjectCheckout(group);
+    const active = (group.checkouts || []).some((checkout) => checkout.id === activeProjectId);
+    const preview = projectPreviewState.get(project?.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.projectSlug = group.projectSlug || slugify(group.name);
+    button.dataset.projectId = project?.id || "";
+    button.dataset.worktreeSlug = project?.worktreeSlug || "main";
+    button.className = active ? "active" : "";
+    button.disabled = !project?.available;
+    button.setAttribute("aria-label", group.name);
+    button.title = project?.available ? project.root : `${project?.root || group.name} unavailable`;
+    button.append(projectSwitcherLabel(group, project), previewStatusPill(preview, project?.available));
+    button.addEventListener("click", () => switchProject(project));
+    return button;
   }));
 }
 
@@ -1070,6 +1062,17 @@ function projectCheckoutLabel(project) {
   name.textContent = project.worktreeSlug === "main" ? "main" : project.worktreeSlug || "main";
   const path = document.createElement("small");
   path.textContent = project.root;
+  label.append(name, path);
+  return label;
+}
+
+function projectSwitcherLabel(group, project) {
+  const label = document.createElement("span");
+  label.className = "project-checkout-label";
+  const name = document.createElement("span");
+  name.textContent = group.name;
+  const path = document.createElement("small");
+  path.textContent = project?.root || "";
   label.append(name, path);
   return label;
 }
