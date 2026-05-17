@@ -846,6 +846,32 @@ await page.locator(".terminal-pane").evaluate((pane) => {
   }
 });
 
+await page.route(/\/api\/layout(?:\?|$)/, async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      panels: [
+        { name: "cli", role: "shell", command: null }
+      ],
+      dev: { command: "", previewUrl: "" },
+      worktrees: { workflow: "parallel-dev-worktrees", previewUrlPattern: "" }
+    })
+  });
+});
+await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html`, { waitUntil: "networkidle" });
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
+await page.locator("#execute-button").evaluate((button) => {
+  button.hidden = false;
+});
+await page.locator("#execute-button").click();
+await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
+await page.waitForFunction(() => document.querySelector("#plan-prompt-status")?.textContent.includes("No agent launch command is configured"));
+await page.locator(".terminal-pane").evaluate((pane) => {
+  if (document.querySelectorAll(".terminal-panel").length !== 0) {
+    throw new Error(`Expected missing agent command to avoid terminal creation, got ${pane.textContent}`);
+  }
+});
+
 if (errors.length > 0) {
   throw new Error(`Browser console errors: ${errors.join(" | ")}`);
 }

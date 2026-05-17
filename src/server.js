@@ -382,6 +382,7 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   const agentSession = [...sessions].reverse().find((session) =>
     session.status === "active" &&
     session.role === "agent" &&
+    String(session.command || "").trim() &&
     inputs.has(session.id)
   );
   if (!agentSession) {

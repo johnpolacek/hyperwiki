@@ -341,10 +341,16 @@ previewLink.addEventListener("click", (event) => {
 
 newAgentTerminalButton.addEventListener("click", async () => {
   if (workspace.classList.contains("non-plan-wiki-mode")) return;
-  const template = agentTerminalTemplate();
-  const name = nextTerminalName("agent");
-  await createTerminal(name, { ...template, name });
-  activateTerminal(name);
+  planPromptStatus.textContent = "Starting agent...";
+  try {
+    const template = requireAgentTerminalTemplate();
+    const name = nextTerminalName("agent");
+    await createTerminal(name, { ...template, name });
+    activateTerminal(name);
+    planPromptStatus.textContent = "Agent started.";
+  } catch (error) {
+    planPromptStatus.textContent = error.message || "Agent unavailable.";
+  }
 });
 
 newCliTerminalButton.addEventListener("click", async () => {
@@ -366,7 +372,14 @@ executeMenu.addEventListener("click", (event) => {
   if (!target) return;
   executeMenu.hidden = true;
   executeButton.setAttribute("aria-expanded", "false");
-  void executeTarget(target.dataset.executeTarget || "main");
+  planPromptStatus.textContent = "Starting agent...";
+  void executeTarget(target.dataset.executeTarget || "main")
+    .then(() => {
+      planPromptStatus.textContent = "Sent to agent.";
+    })
+    .catch((error) => {
+      planPromptStatus.textContent = error.message || "Agent unavailable.";
+    });
 });
 
 modifyButton.addEventListener("click", () => {
@@ -2697,13 +2710,29 @@ async function ensureDevLogTerminal() {
 }
 
 async function ensureAgentTerminal() {
+  const template = requireAgentTerminalTemplate();
   if (terminalSessions.has("agent")) {
-    return terminalSessions.get("agent");
+    const session = terminalSessions.get("agent");
+    if (!session.command) {
+      throw new Error(agentLaunchCommandMissingMessage());
+    }
+    return session;
   }
-  const template = agentTerminalTemplate();
   const session = await createTerminal("agent", { ...template, name: "agent", role: "agent" });
   updatePlanPromptVisibility();
   return session;
+}
+
+function requireAgentTerminalTemplate() {
+  const template = agentTerminalTemplate();
+  if (!String(template.command || "").trim()) {
+    throw new Error(agentLaunchCommandMissingMessage());
+  }
+  return template;
+}
+
+function agentLaunchCommandMissingMessage() {
+  return "No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.";
 }
 
 async function postAgentPromptWithRetry(prompt, currentPagePath) {

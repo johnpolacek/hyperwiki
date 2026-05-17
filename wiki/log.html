@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-17 fix | agent execute launch guard</h2>
+  <ul>
+    <li>Changed Execute and New Agent handoffs to require a configured project agent launch command before creating an agent terminal.</li>
+    <li>Added server-side prompt routing defense so active shell sessions without commands cannot receive agent prompts through <code>/api/agent/prompt</code>.</li>
+    <li>Added browser smoke coverage for the missing-command guard so generated Execute prompts are not pasted into zsh.</li>
+    <li>Verified with <code>pnpm run check</code> and browser smoke.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-17 implementation | project card checkout switcher</h2>
   <ul>
     <li>Changed Manage Projects to render one card per project group instead of separate duplicate-looking cards for registered worktrees.</li>
