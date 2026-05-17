@@ -1,4 +1,5 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { ProjectRegistry } from "../src/projects.js";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +14,7 @@ const previousHome = process.env.HYPERWIKI_HOME;
 const previousProjectsDir = process.env.HYPERWIKI_PROJECTS_DIR;
 let browser = null;
 let server = null;
+let groupedWorktree = null;
 
 process.env.HYPERWIKI_HOME = home;
 process.env.HYPERWIKI_PROJECTS_DIR = projectsDir;
@@ -31,6 +33,15 @@ try {
   const registryOnly = await createProject(serverInfo.url, "Registry Only Project");
   const deleteFiles = await createProject(serverInfo.url, "Delete Files Project");
   const staleCard = await createProject(serverInfo.url, "Stale Card Project");
+  groupedWorktree = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-project-removal-root-feature-"));
+  await writeFile(path.join(groupedWorktree, "package.json"), `${JSON.stringify({ name: "project-removal-root" }, null, 2)}\n`);
+  await inithyperwiki(groupedWorktree, {
+    yes: true,
+    project_name: "Project Removal Root",
+    summary: "Feature checkout for grouped project card coverage."
+  });
+  await writeFile(path.join(groupedWorktree, ".git"), "gitdir: /tmp/project-removal-root-feature.git\n");
+  const groupedWorktreeRecord = await new ProjectRegistry().register(groupedWorktree);
 
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -39,10 +50,18 @@ try {
   await expectManagementShellFullWidth(page, "#projects-page");
   await page.locator("#dashboard-projects").evaluate((list) => {
     const labels = [...list.querySelectorAll(".project-open-button")].map((button) => button.textContent.trim());
-    if (labels.some((label) => label !== "Open Project")) {
-      throw new Error(`Expected all project action buttons to say Open Project, got ${labels.join(", ")}`);
+    if (labels.some((label) => label !== "Open Workspace")) {
+      throw new Error(`Expected all project action buttons to say Open Workspace, got ${labels.join(", ")}`);
     }
     const card = [...list.querySelectorAll(".project-card")].find((item) => item.textContent.includes("Project Removal Root"));
+    const rootCards = [...list.querySelectorAll(".project-card")].filter((item) => item.textContent.includes("Project Removal Root"));
+    if (rootCards.length !== 1) {
+      throw new Error(`Expected one Project Removal Root card with checkout switcher, got ${rootCards.length}`);
+    }
+    const checkoutButtons = [...card.querySelectorAll(".project-checkout-picker button")].map((button) => button.textContent.trim());
+    if (!checkoutButtons.some((label) => label.includes("main")) || !checkoutButtons.some((label) => label.includes("hyperwiki-project-removal-root-feature"))) {
+      throw new Error(`Expected main and feature checkout buttons, got ${checkoutButtons.join(", ")}`);
+    }
     const openButton = card?.querySelector(".project-open-button");
     const removeButton = card?.querySelector(".project-remove-button");
     if (!openButton || !removeButton) {
@@ -58,7 +77,7 @@ try {
       throw new Error(`Expected remove control to align to the card right edge, got ${cardRect.right}/${removeRect.right}`);
     }
   });
-  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open Project" }).click();
+  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open Workspace" }).click();
   await page.waitForFunction(() => /\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/.test(location.href));
   await expectSidebarVisible(page);
   await page.getByRole("button", { name: "Projects" }).click();
@@ -70,6 +89,9 @@ try {
   });
   await page.goto(`${serverInfo.url}/projects`, { waitUntil: "networkidle" });
   await expectSidebarHidden(page);
+  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("tab", { name: /hyperwiki-project-removal-root-feature/ }).click();
+  await removeSelectedCheckout(page, "Project Removal Root", "hyperwiki-project-removal-root-feature", { deleteFiles: false });
+  await expectProjectMissing(serverInfo.url, groupedWorktreeRecord.id);
 
   await removeProjectCard(page, "Registry Only Project", { deleteFiles: false });
   if (!existsSync(registryOnly.project.root)) {
@@ -120,6 +142,9 @@ try {
   await rm(root, { recursive: true, force: true });
   await rm(home, { recursive: true, force: true });
   await rm(projectsDir, { recursive: true, force: true });
+  if (groupedWorktree) {
+    await rm(groupedWorktree, { recursive: true, force: true });
+  }
 }
 
 console.log("project removal smoke test passed");
@@ -136,9 +161,9 @@ async function createProject(origin, title) {
 
 async function removeProjectCard(page, title, options) {
   const card = page.locator(".project-card").filter({ hasText: title });
-  await card.getByRole("button", { name: `Remove ${title}` }).click();
+  await card.getByRole("button", { name: `Remove project ${title}` }).click();
   await card.locator(".project-remove-warning").waitFor();
-  if (await card.getByRole("button", { name: `Remove ${title}` }).count() !== 0) {
+  if (await card.getByRole("button", { name: `Remove project ${title}` }).count() !== 0) {
     throw new Error("Expected trash remove button to be hidden while confirming removal.");
   }
   const deleteFiles = card.getByRole("checkbox", { name: /delete project files/i });
@@ -161,9 +186,29 @@ async function removeProjectCard(page, title, options) {
   title);
 }
 
+async function removeSelectedCheckout(page, title, checkout, options) {
+  const card = page.locator(".project-card").filter({ hasText: title });
+  await card.getByRole("button", { name: `Remove checkout ${checkout}` }).click();
+  await card.locator(".project-remove-warning").filter({ hasText: `Remove checkout: ${checkout}` }).waitFor();
+  const deleteFiles = card.getByRole("checkbox", { name: /delete checkout files/i });
+  if (await deleteFiles.isChecked()) {
+    throw new Error("Expected checkout delete-files checkbox to default to unchecked.");
+  }
+  await card.getByRole("button", { name: "Confirm Remove" }).waitFor();
+  if (options.deleteFiles) {
+    await deleteFiles.check();
+    await card.getByRole("button", { name: "Confirm Delete" }).waitFor();
+  }
+  await card.getByRole("button", { name: options.deleteFiles ? "Confirm Delete" : "Confirm Remove" }).click();
+  await card.getByText(options.deleteFiles ? "Deleting checkout files..." : "Removing checkout...").waitFor();
+  await page.waitForFunction((checkoutSlug) =>
+    ![...document.querySelectorAll(".project-checkout-picker button")].some((button) => button.textContent.includes(checkoutSlug)),
+  checkout);
+}
+
 async function expectProjectMissing(origin, projectId) {
   const projects = await json(`${origin}/api/projects`);
-  if (projects.projects.some((project) => project.id === projectId)) {
+  if ([...(projects.projects || []), ...(projects.checkouts || [])].some((project) => project.id === projectId)) {
     throw new Error(`Expected removed project ${projectId} to be absent from registry.`);
   }
 }

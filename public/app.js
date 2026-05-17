@@ -112,6 +112,7 @@ let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
 let pendingProjectRemovalId = null;
+const selectedProjectCheckoutBySlug = new Map();
 let currentPlanPath = "/wiki/plans/index.html";
 let sidebarFocusKey = "";
 let nonPlanPromptSubmitted = false;
@@ -1101,7 +1102,7 @@ async function loadProjectManagement() {
     setProjectPreviewState(result[1].value.previews || []);
   }
   if (result[0].status === "fulfilled") {
-    renderDashboardProjects(result[0].value.checkouts || result[0].value.projects || []);
+    renderDashboardProjects(result[0].value.projectGroups || groupsFromProjects(result[0].value.checkouts || result[0].value.projects || []));
   } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
   }
@@ -2084,100 +2085,146 @@ function extensionlessWikiPath(path) {
   return String(path || "").replace(/\.html$/, "");
 }
 
-function renderDashboardProjects(projects) {
-  if (projects.length === 0) {
+function renderDashboardProjects(groups) {
+  const normalizedGroups = normalizeProjectGroups(groups);
+  if (normalizedGroups.length === 0) {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
     return;
   }
-  dashboardProjects.replaceChildren(...projects.map((project) => {
-    const item = document.createElement("article");
-    item.className = `dashboard-item project-card${project.active ? " active" : ""}`;
-    item.dataset.projectId = project.id;
-    item.dataset.projectName = project.name;
-    item.dataset.projectRoot = project.root;
-    item.dataset.projectAvailable = String(project.available);
-    item.dataset.projectActive = String(project.active);
-    item.dataset.projectLastOpenedAt = project.lastOpenedAt || "";
-    const preview = projectPreviewState.get(project.id);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "project-card-title";
-    button.textContent = project.name;
-    button.disabled = !project.available;
-    button.title = project.available ? project.root : `${project.root} unavailable`;
-    button.addEventListener("click", () => switchProject(project));
-
-    const status = document.createElement("span");
-    status.className = `project-card-status${project.available ? "" : " unavailable"}`;
-    status.textContent = project.available ? (project.active ? "Active" : "Available") : "Unavailable";
-
-    const header = document.createElement("div");
-    header.className = "project-card-header";
-    header.append(button, status);
-
-    const meta = document.createElement("p");
-    meta.className = "project-card-path";
-    meta.textContent = project.available ? project.root : "Unavailable";
-
-    const details = document.createElement("div");
-    details.className = "project-card-details";
-    details.append(
-      projectDetail("Checkout", project.worktreeSlug || "main"),
-      projectDetail("App", preview?.url || "No preview URL"),
-      projectDetail("Last opened", formatProjectDate(project.lastOpenedAt))
-    );
-
-    const actions = document.createElement("div");
-    actions.className = "dashboard-item-actions";
-    const openButton = document.createElement("button");
-    openButton.type = "button";
-    openButton.className = "project-open-button";
-    openButton.replaceChildren(doubleChevronIcon(), "Open Project");
-    openButton.disabled = !project.available;
-    openButton.addEventListener("click", () => switchProject(project));
-    const appButton = document.createElement("button");
-    appButton.type = "button";
-    appButton.className = "project-app-button";
-    appButton.textContent = previewActionLabel(preview);
-    appButton.disabled = !project.available || !previewCanAct(preview);
-    appButton.title = preview?.reason || preview?.url || "No app preview is configured.";
-    appButton.addEventListener("click", async () => {
-      await switchProject(project);
-      await openActiveAppPreview();
-    });
-    const removeButton = document.createElement("button");
-    removeButton.type = "button";
-    removeButton.className = "project-remove-button";
-    removeButton.setAttribute("aria-label", `Remove ${project.name}`);
-    removeButton.title = "Remove project";
-    removeButton.append(icon(["m3 6 18 0", "m8 6 0-2 8 0 0 2", "m6 6 1 14 10 0 1-14", "m10 11 0 5", "m14 11 0 5"]));
-    removeButton.addEventListener("click", () => {
-      pendingProjectRemovalId = project.id;
-      renderDashboardProjects(projects);
-    });
-    actions.append(openButton, appButton);
-    if (pendingProjectRemovalId !== project.id) {
-      actions.append(removeButton);
-    }
-
-    item.append(header, meta, details, actions);
-    if (pendingProjectRemovalId === project.id) {
-      item.append(projectRemovalConfirmation(project));
-    }
-    return item;
-  }));
+  dashboardProjects.replaceChildren(...normalizedGroups.map((group) => projectGroupCard(group, normalizedGroups)));
 }
 
-function projectRemovalConfirmation(project) {
+function normalizeProjectGroups(value) {
+  if (!Array.isArray(value)) return [];
+  if (value.some((item) => Array.isArray(item.checkouts))) return value;
+  return groupsFromProjects(value);
+}
+
+function projectGroupCard(group, groups) {
+  const checkouts = (group.checkouts || []).filter(Boolean);
+  const selected = selectedProjectCheckout(group);
+  const preview = selected ? projectPreviewState.get(selected.id) : null;
+  const item = document.createElement("article");
+  item.className = `dashboard-item project-card${checkouts.some((checkout) => checkout.active) ? " active" : ""}`;
+  item.dataset.projectSlug = group.projectSlug || slugify(group.name);
+  item.dataset.projectName = group.name;
+  item.dataset.selectedProjectId = selected?.id || "";
+  item.dataset.selectedWorktreeSlug = selected?.worktreeSlug || "main";
+
+  const title = document.createElement("strong");
+  title.className = "project-card-title-text";
+  title.textContent = group.name;
+
+  const status = document.createElement("span");
+  status.className = `project-card-status${selected?.available ? "" : " unavailable"}`;
+  status.textContent = selected?.available ? (selected.active ? "Active" : "Available") : "Unavailable";
+
+  const header = document.createElement("div");
+  header.className = "project-card-header";
+  header.append(title, status);
+
+  const checkoutPicker = document.createElement("div");
+  checkoutPicker.className = "project-checkout-picker";
+  checkoutPicker.setAttribute("role", "tablist");
+  checkoutPicker.setAttribute("aria-label", `${group.name} checkouts`);
+  checkouts.forEach((checkout) => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = checkout.id === selected?.id ? "active" : "";
+    option.dataset.projectId = checkout.id;
+    option.dataset.worktreeSlug = checkout.worktreeSlug || "main";
+    option.setAttribute("role", "tab");
+    option.setAttribute("aria-selected", String(checkout.id === selected?.id));
+    option.textContent = checkout.worktreeSlug || "main";
+    option.append(previewStatusPill(projectPreviewState.get(checkout.id), checkout.available));
+    option.addEventListener("click", () => {
+      selectedProjectCheckoutBySlug.set(group.projectSlug || slugify(group.name), checkout.worktreeSlug || "main");
+      renderDashboardProjects(groups);
+    });
+    checkoutPicker.append(option);
+  });
+
+  const meta = document.createElement("p");
+  meta.className = "project-card-path";
+  meta.textContent = selected?.available ? selected.root : "Unavailable";
+
+  const details = document.createElement("div");
+  details.className = "project-card-details";
+  details.append(
+    projectDetail("Checkout", selected?.worktreeSlug || "main"),
+    projectDetail("App", preview?.url || "No preview URL"),
+    projectDetail("Last opened", formatProjectDate(selected?.lastOpenedAt))
+  );
+
+  const actions = document.createElement("div");
+  actions.className = "dashboard-item-actions";
+  const openButton = document.createElement("button");
+  openButton.type = "button";
+  openButton.className = "project-open-button";
+  openButton.replaceChildren(doubleChevronIcon(), "Open Workspace");
+  openButton.disabled = !selected?.available;
+  openButton.addEventListener("click", () => switchProject(selected));
+  const appButton = document.createElement("button");
+  appButton.type = "button";
+  appButton.className = "project-app-button";
+  appButton.textContent = previewActionLabel(preview);
+  appButton.disabled = !selected?.available || !previewCanAct(preview);
+  appButton.title = preview?.reason || preview?.url || "No app preview is configured.";
+  appButton.addEventListener("click", async () => {
+    await switchProject(selected);
+    await openActiveAppPreview();
+  });
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "project-remove-button";
+  const removeLabel = checkouts.length > 1
+    ? `Remove checkout ${selected?.worktreeSlug || "main"}`
+    : `Remove project ${group.name}`;
+  removeButton.setAttribute("aria-label", removeLabel);
+  removeButton.title = removeLabel;
+  removeButton.append(icon(["m3 6 18 0", "m8 6 0-2 8 0 0 2", "m6 6 1 14 10 0 1-14", "m10 11 0 5", "m14 11 0 5"]));
+  removeButton.addEventListener("click", () => {
+    pendingProjectRemovalId = selected.id;
+    renderDashboardProjects(groups);
+  });
+  actions.append(openButton, appButton);
+  if (pendingProjectRemovalId !== selected?.id) {
+    actions.append(removeButton);
+  }
+
+  item.append(header);
+  if (checkouts.length > 1) item.append(checkoutPicker);
+  item.append(meta, details, actions);
+  if (pendingProjectRemovalId === selected?.id) {
+    item.append(projectRemovalConfirmation(selected, checkouts.length));
+  }
+  return item;
+}
+
+function selectedProjectCheckout(group) {
+  const checkouts = group.checkouts || [];
+  const key = group.projectSlug || slugify(group.name);
+  const selectedSlug = selectedProjectCheckoutBySlug.get(key);
+  return checkouts.find((checkout) => (checkout.worktreeSlug || "main") === selectedSlug)
+    || checkouts.find((checkout) => checkout.active)
+    || checkouts.find((checkout) => checkout.worktreeSlug === "main")
+    || checkouts.find((checkout) => checkout.available)
+    || checkouts[0]
+    || null;
+}
+
+function projectRemovalConfirmation(project, checkoutCount = 1) {
   const panel = document.createElement("div");
   panel.className = "project-remove-confirmation";
 
   const warning = document.createElement("div");
   warning.className = "project-remove-warning";
   const warningTitle = document.createElement("strong");
-  warningTitle.textContent = "Destructive option";
+  warningTitle.textContent = checkoutCount > 1 ? `Remove checkout: ${project.worktreeSlug || "main"}` : "Destructive option";
   const warningText = document.createElement("span");
-  warningText.textContent = "Removing the project only forgets it in Hyperwiki. Checking file deletion permanently deletes the project folder.";
+  warningText.textContent = checkoutCount > 1
+    ? "Removing this checkout only forgets that registered worktree in Hyperwiki. Checking file deletion permanently deletes the checkout folder."
+    : "Removing the project only forgets it in Hyperwiki. Checking file deletion permanently deletes the project folder.";
   warning.append(warningTitle, warningText);
 
   const deleteFilesLabel = document.createElement("label");
@@ -2187,7 +2234,9 @@ function projectRemovalConfirmation(project) {
   deleteFiles.checked = false;
   deleteFiles.disabled = !project.available;
   const deleteFilesText = document.createElement("span");
-  deleteFilesText.textContent = project.available ? "Also delete project files" : "Project files unavailable";
+  deleteFilesText.textContent = project.available
+    ? `Also delete ${checkoutCount > 1 ? "checkout" : "project"} files`
+    : "Project files unavailable";
   deleteFilesLabel.append(deleteFiles, deleteFilesText);
 
   const actions = document.createElement("div");
@@ -2218,7 +2267,9 @@ function projectRemovalConfirmation(project) {
     cancel.disabled = true;
     deleteFiles.disabled = true;
     confirm.textContent = deletingFiles ? "Deleting..." : "Removing...";
-    status.textContent = deletingFiles ? "Deleting project files..." : "Removing project...";
+    status.textContent = deletingFiles
+      ? `Deleting ${checkoutCount > 1 ? "checkout" : "project"} files...`
+      : `Removing ${checkoutCount > 1 ? "checkout" : "project"}...`;
     try {
       await removeProject(project, deletingFiles);
     } catch (error) {

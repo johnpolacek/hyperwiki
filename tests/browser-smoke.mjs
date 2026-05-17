@@ -195,24 +195,15 @@ await page.locator("#current-page").evaluate((element) => {
     throw new Error(`Expected current page breadcrumb for Planning Dashboard, got ${element.textContent}`);
   }
 });
-await page.locator("#execute-button").filter({ hasText: "Execute" }).waitFor();
-await page.locator("#modify-button").filter({ hasText: "Modify" }).click();
-await page.locator("#modify-plan-ui").evaluate((form) => {
-  if (form.hidden || !form.textContent.includes("Send")) {
-    throw new Error("Expected Modify Plan UI with Send action.");
+await page.locator("#execute-button").evaluate((button) => {
+  if (!button.hidden) {
+    throw new Error("Expected Execute to be hidden when no current unit is active.");
   }
 });
-const modifyInput = page.locator("#modify-plan-input");
-const initialModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
-await modifyInput.fill(["tighten scope", "add verification", "note follow-up", "record assumption"].join("\n"));
-await modifyInput.evaluate((element) => element.dispatchEvent(new Event("input", { bubbles: true })));
-const expandedModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
-if (expandedModifyHeight <= initialModifyHeight) {
-  throw new Error(`Expected Modify textarea to expand, got ${expandedModifyHeight}/${initialModifyHeight}`);
-}
-await page.locator("#modify-button").click();
-await page.locator("#modify-plan-ui").evaluate((form) => {
-  if (!form.hidden) throw new Error("Expected Modify Plan UI to collapse.");
+await page.locator("#modify-button").evaluate((button) => {
+  if (!button.hidden) {
+    throw new Error("Expected Modify to be hidden when no current unit is active.");
+  }
 });
 const initialTerminalCount = await page.locator(".terminal-panel").count();
 if (initialTerminalCount !== 0) {
@@ -254,6 +245,33 @@ await page.route(/\/api\/workspace(?:\?|$)/, async (route) => {
       }
     })
   });
+});
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Planning Dashboard");
+await page.locator("#execute-button").evaluate((button) => {
+  button.hidden = false;
+});
+await page.locator("#modify-button").evaluate((button) => {
+  button.hidden = false;
+});
+await page.locator("#execute-button").filter({ hasText: "Execute" }).waitFor();
+await page.locator("#modify-button").filter({ hasText: "Modify" }).click();
+await page.locator("#modify-plan-ui").evaluate((form) => {
+  if (form.hidden || !form.textContent.includes("Send")) {
+    throw new Error("Expected Modify Plan UI with Send action.");
+  }
+});
+const modifyInput = page.locator("#modify-plan-input");
+const initialModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
+await modifyInput.fill(["tighten scope", "add verification", "note follow-up", "record assumption"].join("\n"));
+await modifyInput.evaluate((element) => element.dispatchEvent(new Event("input", { bubbles: true })));
+const expandedModifyHeight = await modifyInput.evaluate((element) => element.clientHeight);
+if (expandedModifyHeight <= initialModifyHeight) {
+  throw new Error(`Expected Modify textarea to expand, got ${expandedModifyHeight}/${initialModifyHeight}`);
+}
+await page.locator("#modify-button").click();
+await page.locator("#modify-plan-ui").evaluate((form) => {
+  if (!form.hidden) throw new Error("Expected Modify Plan UI to collapse.");
 });
 await page.locator("#thinking-effort").selectOption("high");
 await page.locator("#execute-button").click();

@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-17 implementation | project card checkout switcher</h2>
+  <ul>
+    <li>Changed Manage Projects to render one card per project group instead of separate duplicate-looking cards for registered worktrees.</li>
+    <li>Added an in-card checkout switcher so workspace, app preview, and removal actions apply to the selected main or worktree checkout.</li>
+    <li>Adjusted checkout removal copy and smoke coverage so removing a worktree checkout is distinct from removing the whole project.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, and browser smoke after plan closeout.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-17 implementation | multi-worktree app preview</h2>
   <ul>
     <li>Added exact-checkout app preview status for registered main and worktree checkouts, using exact Portless hostname matching instead of broad project URL assumptions.</li>

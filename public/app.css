@@ -1426,6 +1426,15 @@ html[data-initial-route="settings"] .wiki-pane {
   line-height: 1.2;
 }
 
+.project-card-title-text {
+  min-width: 0;
+  color: #171916;
+  font: 800 15px/1.2 var(--sidebar-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .project-card-status {
   flex: 0 0 auto;
   border: 1px solid #cfd5c9;
@@ -1452,6 +1461,35 @@ html[data-initial-route="settings"] .wiki-pane {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
+}
+
+.project-checkout-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.project-checkout-picker button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  max-width: 100%;
+  border: 1px solid #d3d7cc;
+  border-radius: 999px;
+  padding: 5px 7px;
+  background: #f7f8f4;
+  font: 800 11px/1.1 var(--sidebar-font);
+}
+
+.project-checkout-picker button.active {
+  border-color: #8f9c90;
+  background: #eef4ea;
+  color: #26311f;
+}
+
+.project-checkout-picker .preview-status {
+  font-size: 8px;
 }
 
 .dashboard-item .project-open-button,
