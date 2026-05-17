@@ -2161,19 +2161,9 @@ function projectGroupCard(group, groups) {
   const openButton = document.createElement("button");
   openButton.type = "button";
   openButton.className = "project-open-button";
-  openButton.replaceChildren(doubleChevronIcon(), "Open Workspace");
+  openButton.replaceChildren(doubleChevronIcon(), "Open Project");
   openButton.disabled = !selected?.available;
   openButton.addEventListener("click", () => switchProject(selected));
-  const appButton = document.createElement("button");
-  appButton.type = "button";
-  appButton.className = "project-app-button";
-  appButton.textContent = previewActionLabel(preview);
-  appButton.disabled = !selected?.available || !previewCanAct(preview);
-  appButton.title = preview?.reason || preview?.url || "No app preview is configured.";
-  appButton.addEventListener("click", async () => {
-    await switchProject(selected);
-    await openActiveAppPreview();
-  });
   const removeButton = document.createElement("button");
   removeButton.type = "button";
   removeButton.className = "project-remove-button";
@@ -2187,7 +2177,7 @@ function projectGroupCard(group, groups) {
     pendingProjectRemovalId = selected.id;
     renderDashboardProjects(groups);
   });
-  actions.append(openButton, appButton);
+  actions.append(openButton);
   if (pendingProjectRemovalId !== selected?.id) {
     actions.append(removeButton);
   }

@@ -50,8 +50,8 @@ try {
   await expectManagementShellFullWidth(page, "#projects-page");
   await page.locator("#dashboard-projects").evaluate((list) => {
     const labels = [...list.querySelectorAll(".project-open-button")].map((button) => button.textContent.trim());
-    if (labels.some((label) => label !== "Open Workspace")) {
-      throw new Error(`Expected all project action buttons to say Open Workspace, got ${labels.join(", ")}`);
+    if (labels.some((label) => label !== "Open Project")) {
+      throw new Error(`Expected all project action buttons to say Open Project, got ${labels.join(", ")}`);
     }
     const card = [...list.querySelectorAll(".project-card")].find((item) => item.textContent.includes("Project Removal Root"));
     const rootCards = [...list.querySelectorAll(".project-card")].filter((item) => item.textContent.includes("Project Removal Root"));
@@ -77,7 +77,7 @@ try {
       throw new Error(`Expected remove control to align to the card right edge, got ${cardRect.right}/${removeRect.right}`);
     }
   });
-  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open Workspace" }).click();
+  await page.locator(".project-card").filter({ hasText: "Project Removal Root" }).getByRole("button", { name: "Open Project" }).click();
   await page.waitForFunction(() => /\/workspace\/project-removal-root\/main#\/projects\/[^/]+\/wiki\/plans\/mvp\/stage-01-foundation\/unit-01-confirm-project-direction\.html$/.test(location.href));
   await expectSidebarVisible(page);
   await page.getByRole("button", { name: "Projects" }).click();

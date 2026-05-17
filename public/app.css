@@ -1492,8 +1492,7 @@ html[data-initial-route="settings"] .wiki-pane {
   font-size: 8px;
 }
 
-.dashboard-item .project-open-button,
-.dashboard-item .project-app-button {
+.dashboard-item .project-open-button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1504,19 +1503,6 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #171916;
   color: #fff;
   font-weight: 600;
-}
-
-.dashboard-item .project-app-button {
-  border-color: #7f8b72;
-  background: #f5f7ef;
-  color: #26311f;
-}
-
-.dashboard-item .project-app-button:disabled {
-  border-color: #d8d8d0;
-  background: #f1f1ed;
-  color: #747970;
-  cursor: not-allowed;
 }
 
 .dashboard-item .project-open-button svg {
