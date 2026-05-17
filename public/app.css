@@ -227,6 +227,23 @@ body {
 
 .project-list {
   display: grid;
+  gap: 9px;
+}
+
+.project-switcher-group {
+  display: grid;
+  gap: 4px;
+}
+
+.project-switcher-group > strong {
+  padding: 0 2px;
+  color: #747970;
+  font: 800 10px/1.2 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.project-switcher-checkouts {
+  display: grid;
   gap: 4px;
 }
 
@@ -260,6 +277,54 @@ body {
   text-overflow: ellipsis;
   text-align: left;
   white-space: nowrap;
+}
+
+.project-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-checkout-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.project-checkout-label span,
+.project-checkout-label small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-checkout-label small {
+  color: #747970;
+  font-size: 10px;
+}
+
+.preview-status {
+  border: 1px solid #d5d8cf;
+  border-radius: 999px;
+  padding: 3px 6px;
+  background: #f4f6f0;
+  color: #566153;
+  font: 800 9px/1 var(--sidebar-font);
+  text-transform: uppercase;
+}
+
+.preview-status.running {
+  border-color: #b9d1b5;
+  background: #eef8ed;
+  color: #276338;
+}
+
+.preview-status.stopped,
+.preview-status.unknown {
+  border-color: #ded8c4;
+  background: #fbf7e8;
+  color: #6c5a26;
 }
 
 .topbar-list a {
@@ -1389,7 +1454,8 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 8px;
 }
 
-.dashboard-item .project-open-button {
+.dashboard-item .project-open-button,
+.dashboard-item .project-app-button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1400,6 +1466,19 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #171916;
   color: #fff;
   font-weight: 600;
+}
+
+.dashboard-item .project-app-button {
+  border-color: #7f8b72;
+  background: #f5f7ef;
+  color: #26311f;
+}
+
+.dashboard-item .project-app-button:disabled {
+  border-color: #d8d8d0;
+  background: #f1f1ed;
+  color: #747970;
+  cursor: not-allowed;
 }
 
 .dashboard-item .project-open-button svg {
@@ -3323,6 +3402,26 @@ html[data-initial-route="settings"] .wiki-pane {
   background: #f5f7ef;
   color: #26311f;
   font-weight: 800;
+}
+
+.preview-link.stopped,
+.preview-link.unknown {
+  border-color: #b59c5b;
+  background: #fbf6e6;
+  color: #4f421b;
+}
+
+.preview-link.starting {
+  border-color: #8f9c90;
+  background: #f2f4ef;
+  color: #455044;
+}
+
+.preview-link.disabled {
+  border-color: #d8d8d0;
+  background: #f1f1ed;
+  color: #747970;
+  cursor: not-allowed;
 }
 
 .execute-menu {

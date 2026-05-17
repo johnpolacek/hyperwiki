@@ -161,6 +161,15 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, await context.projectRegistry.list(await requestedProjectId(context.projectRegistry, url, context.activeProjectId, defaultRoot)));
       return;
     }
+    if (url.pathname === "/api/app-previews") {
+      await sendJson(response, await appPreviewSummary(context.projectRegistry, url, context.activeProjectId, defaultRoot));
+      return;
+    }
+    if (url.pathname === "/api/app-preview") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      await sendJson(response, await appPreviewForProject(project));
+      return;
+    }
     if (url.pathname === "/api/projects/create" && request.method === "POST") {
       const body = await readJsonBody(request);
       await sendJson(response, await createProjectFromDashboard(context.projectRegistry, body));
@@ -1361,6 +1370,157 @@ function layoutConfig(config) {
       previewUrlPattern: config.worktrees?.previewUrlPattern ? String(config.worktrees.previewUrlPattern) : ""
     }
   };
+}
+
+async function appPreviewSummary(projectRegistry, url, activeProjectId, fallbackRoot) {
+  const projects = await projectRegistry.list(await requestedProjectId(projectRegistry, url, activeProjectId, fallbackRoot));
+  const previews = await Promise.all((projects.checkouts || projects.projects || []).map(appPreviewForProject));
+  return {
+    previews,
+    groups: groupPreviews(previews),
+    activePreview: previews.find((preview) => preview.active) || null
+  };
+}
+
+async function appPreviewForProject(project) {
+  const config = await readConfig(project.root);
+  const layout = layoutConfig(config);
+  const worktreeSlugValue = project.worktreeSlug || "main";
+  const url = previewUrlForProject(project, layout);
+  const startCommand = layout.dev.command || "";
+  if (!url) {
+    return previewState(project, {
+      url: "",
+      startCommand,
+      status: "not-configured",
+      running: false,
+      canStart: false,
+      reason: "No app preview URL is configured."
+    });
+  }
+
+  const routes = await portlessRoutes(project.root);
+  const hostname = hostnameForUrl(url);
+  const route = hostname ? routes.routes.find((candidate) => candidate.hostname === hostname) : null;
+  if (route) {
+    return previewState(project, {
+      url,
+      startCommand,
+      status: "running",
+      running: true,
+      canStart: Boolean(startCommand),
+      reason: `Portless route is active for ${hostname}.`,
+      route
+    });
+  }
+  if (!routes.available) {
+    return previewState(project, {
+      url,
+      startCommand,
+      status: "unknown",
+      running: false,
+      canStart: Boolean(startCommand),
+      reason: routes.error || "Portless route status is unavailable."
+    });
+  }
+  return previewState(project, {
+    url,
+    startCommand,
+    status: startCommand ? "stopped" : "not-startable",
+    running: false,
+    canStart: Boolean(startCommand),
+    reason: startCommand
+      ? `No active Portless route for ${hostname}.`
+      : "No dev command is configured for this project."
+  });
+}
+
+function previewState(project, preview) {
+  return {
+    projectId: project.id,
+    projectName: project.name,
+    projectSlug: project.projectSlug,
+    worktreeSlug: project.worktreeSlug || "main",
+    root: project.root,
+    active: Boolean(project.active),
+    available: project.available !== false,
+    ...preview
+  };
+}
+
+function previewUrlForProject(project, layout) {
+  const worktreeSlugValue = project.worktreeSlug || "main";
+  if (worktreeSlugValue !== "main") {
+    const pattern = layout.worktrees.previewUrlPattern || "";
+    if (pattern) {
+      return pattern.replaceAll("<branch-slug>", worktreeSlugValue);
+    }
+  }
+  return layout.dev.previewUrl || "";
+}
+
+async function portlessRoutes(cwd) {
+  const result = await execFileResult("portless", ["list"], cwd);
+  if (!result.ok) {
+    return { available: false, routes: [], error: result.stderr || result.stdout || "Could not run `portless list`." };
+  }
+  return { available: true, routes: parsePortlessRoutes(result.stdout), raw: result.stdout };
+}
+
+function parsePortlessRoutes(output) {
+  return String(output || "").split(/\r?\n/).map((line) => {
+    const match = line.match(/https?:\/\/([^/\s:]+)(?::\d+)?\s+->\s+([^\s]+)\s+\(pid\s+(\d+)\)/);
+    if (!match) return null;
+    return {
+      hostname: match[1],
+      target: match[2],
+      pid: Number(match[3])
+    };
+  }).filter(Boolean);
+}
+
+function hostnameForUrl(value) {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return "";
+  }
+}
+
+function groupPreviews(previews) {
+  const groups = new Map();
+  for (const preview of previews) {
+    if (!groups.has(preview.projectSlug)) {
+      groups.set(preview.projectSlug, {
+        projectSlug: preview.projectSlug,
+        name: preview.projectName,
+        previews: []
+      });
+    }
+    groups.get(preview.projectSlug).previews.push(preview);
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    previews: group.previews.sort((a, b) => checkoutSortKey(a).localeCompare(checkoutSortKey(b)))
+  })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function checkoutSortKey(project) {
+  const slug = project.worktreeSlug || "main";
+  return slug === "main" ? "000-main" : `100-${slug}`;
+}
+
+function execFileResult(command, args, cwd) {
+  return new Promise((resolve) => {
+    execFile(command, args, { cwd, timeout: 2000 }, (error, stdout, stderr) => {
+      resolve({
+        ok: !error,
+        stdout: String(stdout || "").trim(),
+        stderr: String(stderr || "").trim(),
+        code: error?.code || 0
+      });
+    });
+  });
 }
 
 function fallbackPanels(config) {

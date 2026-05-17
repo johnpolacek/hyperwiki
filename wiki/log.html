@@ -17,9 +17,18 @@
       <a href="/wiki/sources.html">Sources</a>
     </nav>
   </header>
-  <main class="wiki-page">
+<main class="wiki-page">
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
+<article>
+  <h2>2026-05-17 implementation | multi-worktree app preview</h2>
+  <ul>
+    <li>Added exact-checkout app preview status for registered main and worktree checkouts, using exact Portless hostname matching instead of broad project URL assumptions.</li>
+    <li>Changed the command-bar app control to open a running preview or start the active checkout's dev terminal, poll readiness, and then open the exact checkout URL.</li>
+    <li>Updated the project switcher and Manage Projects cards to show registered worktrees with per-checkout preview status and app start/open actions.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, <code>pnpm run smoke:plan-status</code>, and <code>pnpm run smoke:contract</code>.</li>
+  </ul>
+</article>
 <article>
   <h2>2026-05-16 refinement | decision-complete generated MVP specs</h2>
   <ul>

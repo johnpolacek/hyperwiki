@@ -105,6 +105,9 @@ let terminalLayout = [];
 let projectDevCommand = "";
 let projectPreviewUrl = "";
 let workspaceStatus = {};
+let activeAppPreview = null;
+let appPreviewStarting = false;
+let projectPreviewState = new Map();
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
@@ -330,6 +333,11 @@ activateWorkspaceLocation(workspaceLocation() || currentPlanPath);
 delete document.documentElement.dataset.initialRoute;
 await restoreTerminals();
 
+previewLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  void openActiveAppPreview();
+});
+
 newAgentTerminalButton.addEventListener("click", async () => {
   if (workspace.classList.contains("non-plan-wiki-mode")) return;
   const template = agentTerminalTemplate();
@@ -339,7 +347,6 @@ newAgentTerminalButton.addEventListener("click", async () => {
 });
 
 newCliTerminalButton.addEventListener("click", async () => {
-  if (workspace.classList.contains("non-plan-wiki-mode")) return;
   const template = terminalTemplate("cli");
   const name = nextTerminalName("cli");
   await createTerminal(name, { ...template, name });
@@ -677,7 +684,7 @@ async function restoreTerminals() {
   terminalLayout = layout.panels;
   projectDevCommand = layout.dev?.command || "";
   projectPreviewUrl = layout.dev?.previewUrl || "";
-  resetPreviewLink();
+  await refreshActiveAppPreview();
   workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
   updatePlanPromptVisibility();
 }
@@ -983,9 +990,16 @@ async function loadGuardrails() {
 }
 
 async function loadProjects() {
-  const data = await api(projectPath("/api/projects"));
-  const activeProject = data.projects.find((project) => project.id === data.activeProjectId)
-    || data.projects.find((project) => project.available);
+  const [data, previews] = await Promise.all([
+    api(projectPath("/api/projects")),
+    api(projectPath("/api/app-previews")).catch(() => ({ previews: [], activePreview: null }))
+  ]);
+  setProjectPreviewState(previews.previews || []);
+  activeAppPreview = previews.activePreview || activeAppPreview;
+  renderPreviewLink(activeAppPreview);
+  const checkouts = data.checkouts || data.projects || [];
+  const activeProject = checkouts.find((project) => project.id === data.activeProjectId)
+    || checkouts.find((project) => project.available);
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
@@ -994,24 +1008,11 @@ async function loadProjects() {
   }
   projectToggle.hidden = false;
   workspace.classList.add("has-projects");
-  if (data.projects.length === 0) {
+  if (checkouts.length === 0) {
     projectList.replaceChildren(topbarEmpty("No projects registered."));
     return;
   }
-  projectList.replaceChildren(
-    ...data.projects.map((project) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.dataset.projectId = project.id;
-      button.dataset.worktreeSlug = project.worktreeSlug || "main";
-      button.textContent = project.name;
-      button.title = project.available ? project.root : `${project.root} unavailable`;
-      button.className = project.id === activeProjectId ? "active" : "";
-      button.disabled = !project.available;
-      button.addEventListener("click", () => switchProject(project));
-      return button;
-    })
-  );
+  renderProjectSwitcher(data.projectGroups || groupsFromProjects(checkouts));
 }
 
 function topbarEmpty(text) {
@@ -1021,10 +1022,86 @@ function topbarEmpty(text) {
   return item;
 }
 
+function renderProjectSwitcher(groups) {
+  projectList.replaceChildren(...groups.map((group) => {
+    const section = document.createElement("section");
+    section.className = "project-switcher-group";
+    const heading = document.createElement("strong");
+    heading.textContent = group.name;
+    section.append(heading);
+    const list = document.createElement("div");
+    list.className = "project-switcher-checkouts";
+    (group.checkouts || []).forEach((project) => {
+      const preview = projectPreviewState.get(project.id);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.projectId = project.id;
+      button.dataset.worktreeSlug = project.worktreeSlug || "main";
+      button.className = project.id === activeProjectId ? "active" : "";
+      button.disabled = !project.available;
+      button.setAttribute("aria-label", `${project.name} ${project.worktreeSlug || "main"}`);
+      button.title = project.available ? project.root : `${project.root} unavailable`;
+      button.append(projectCheckoutLabel(project), previewStatusPill(preview, project.available));
+      button.addEventListener("click", () => switchProject(project));
+      list.append(button);
+    });
+    section.append(list);
+    return section;
+  }));
+}
+
+function groupsFromProjects(projects) {
+  const groups = new Map();
+  projects.forEach((project) => {
+    const key = project.projectSlug || slugify(project.name);
+    if (!groups.has(key)) {
+      groups.set(key, { name: project.name, projectSlug: key, checkouts: [] });
+    }
+    groups.get(key).checkouts.push(project);
+  });
+  return [...groups.values()];
+}
+
+function projectCheckoutLabel(project) {
+  const label = document.createElement("span");
+  label.className = "project-checkout-label";
+  const name = document.createElement("span");
+  name.textContent = project.worktreeSlug === "main" ? "main" : project.worktreeSlug || "main";
+  const path = document.createElement("small");
+  path.textContent = project.root;
+  label.append(name, path);
+  return label;
+}
+
+function previewStatusPill(preview, available = true) {
+  const pill = document.createElement("span");
+  const status = available ? preview?.status || "unknown" : "unavailable";
+  pill.className = `preview-status ${status}`;
+  pill.textContent = previewStatusLabel(status);
+  return pill;
+}
+
+function previewStatusLabel(status) {
+  return {
+    running: "Running",
+    stopped: "Stopped",
+    unknown: "Unknown",
+    "not-configured": "No App",
+    "not-startable": "No Start",
+    unavailable: "Unavailable"
+  }[status] || "Unknown";
+}
+
 async function loadProjectManagement() {
-  const result = await Promise.allSettled([api(projectPath("/api/projects"))]);
+  const result = await Promise.allSettled([
+    api(projectPath("/api/projects")),
+    api(projectPath("/api/app-previews"))
+  ]);
+  if (result[1].status === "fulfilled") {
+    setProjectPreviewState(result[1].value.previews || []);
+  }
   if (result[0].status === "fulfilled") {
-    renderDashboardProjects(result[0].value.projects || []);
+    renderDashboardProjects(result[0].value.checkouts || result[0].value.projects || []);
   } else {
     dashboardProjects.replaceChildren(emptyDashboardItem("No projects added yet..."));
   }
@@ -2021,6 +2098,7 @@ function renderDashboardProjects(projects) {
     item.dataset.projectAvailable = String(project.available);
     item.dataset.projectActive = String(project.active);
     item.dataset.projectLastOpenedAt = project.lastOpenedAt || "";
+    const preview = projectPreviewState.get(project.id);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "project-card-title";
@@ -2044,6 +2122,8 @@ function renderDashboardProjects(projects) {
     const details = document.createElement("div");
     details.className = "project-card-details";
     details.append(
+      projectDetail("Checkout", project.worktreeSlug || "main"),
+      projectDetail("App", preview?.url || "No preview URL"),
       projectDetail("Last opened", formatProjectDate(project.lastOpenedAt))
     );
 
@@ -2055,6 +2135,16 @@ function renderDashboardProjects(projects) {
     openButton.replaceChildren(doubleChevronIcon(), "Open Project");
     openButton.disabled = !project.available;
     openButton.addEventListener("click", () => switchProject(project));
+    const appButton = document.createElement("button");
+    appButton.type = "button";
+    appButton.className = "project-app-button";
+    appButton.textContent = previewActionLabel(preview);
+    appButton.disabled = !project.available || !previewCanAct(preview);
+    appButton.title = preview?.reason || preview?.url || "No app preview is configured.";
+    appButton.addEventListener("click", async () => {
+      await switchProject(project);
+      await openActiveAppPreview();
+    });
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.className = "project-remove-button";
@@ -2065,7 +2155,7 @@ function renderDashboardProjects(projects) {
       pendingProjectRemovalId = project.id;
       renderDashboardProjects(projects);
     });
-    actions.append(openButton);
+    actions.append(openButton, appButton);
     if (pendingProjectRemovalId !== project.id) {
       actions.append(removeButton);
     }
@@ -2699,7 +2789,7 @@ function previewUrl(slug) {
 }
 
 function mainPreviewUrl() {
-  return projectPreviewUrl || `https://${activeProjectSlug || "hyperwiki"}.localhost`;
+  return activeAppPreview?.url || projectPreviewUrl || `https://${activeProjectSlug || "hyperwiki"}.localhost`;
 }
 
 function showPreviewLink(url, label = "Open preview") {
@@ -2707,6 +2797,7 @@ function showPreviewLink(url, label = "Open preview") {
   previewLink.href = url;
   previewLink.textContent = label;
   previewLink.title = previewLinkTitle(url);
+  previewLink.classList.remove("disabled", "starting", "stopped", "unknown", "running");
 }
 
 function hidePreviewLink() {
@@ -2714,19 +2805,123 @@ function hidePreviewLink() {
 }
 
 function resetPreviewLink() {
-  if (!projectPreviewUrl) {
-    previewLink.hidden = true;
-    previewLink.href = "#";
-    previewLink.textContent = "Open App";
-    previewLink.title = "";
+  renderPreviewLink(activeAppPreview);
+}
+
+async function refreshActiveAppPreview() {
+  try {
+    activeAppPreview = await api(projectPath("/api/app-preview"));
+    if (activeAppPreview?.projectId) {
+      projectPreviewState.set(activeAppPreview.projectId, activeAppPreview);
+    }
+  } catch {
+    activeAppPreview = null;
+  }
+  renderPreviewLink(activeAppPreview);
+  return activeAppPreview;
+}
+
+function setProjectPreviewState(previews) {
+  projectPreviewState = new Map((previews || []).map((preview) => [preview.projectId, preview]));
+}
+
+function renderPreviewLink(preview) {
+  previewLink.classList.remove("disabled", "starting", "stopped", "unknown", "running", "not-configured", "not-startable");
+  if (appPreviewStarting) {
+    previewLink.hidden = false;
+    previewLink.href = preview?.url || "#";
+    previewLink.textContent = "Starting...";
+    previewLink.title = preview?.url || "Starting app preview.";
+    previewLink.classList.add("starting");
     return;
   }
-  showPreviewLink(projectPreviewUrl, "Open App");
+  if (!preview?.url) {
+    previewLink.hidden = true;
+    previewLink.href = "#";
+    previewLink.textContent = "App Not Configured";
+    previewLink.title = preview?.reason || "";
+    return;
+  }
+  previewLink.hidden = false;
+  previewLink.href = preview.url;
+  previewLink.textContent = previewActionLabel(preview);
+  previewLink.title = previewTitle(preview);
+  previewLink.classList.add(preview.status || "unknown");
+  if (!previewCanAct(preview)) {
+    previewLink.classList.add("disabled");
+  }
+}
+
+function previewActionLabel(preview) {
+  if (!preview?.url) return "App Not Configured";
+  if (preview.running || preview.status === "running") return "Open App";
+  if (preview.canStart) return "Start App";
+  if (preview.status === "unknown") return "Preview Unknown";
+  return "App Not Configured";
+}
+
+function previewCanAct(preview) {
+  return Boolean(preview?.url && (preview.running || preview.canStart));
+}
+
+function previewTitle(preview) {
+  if (!preview) return "";
+  const detail = preview.reason || preview.url;
+  return preview.startCommand ? `${detail} Start: ${preview.startCommand}` : detail;
 }
 
 function previewLinkTitle(url) {
   if (projectDevCommand) return url;
   return `${url} (no dev command configured)`;
+}
+
+async function openActiveAppPreview() {
+  const preview = activeAppPreview || await refreshActiveAppPreview();
+  if (!previewCanAct(preview)) return;
+  if (preview.running || preview.status === "running") {
+    openPreviewWindow(preview.url);
+    return;
+  }
+  const opened = openPreviewWindow("about:blank");
+  try {
+    opened?.document?.write(`<p style="font: 14px system-ui; padding: 20px;">Starting ${escapeHtml(preview.url)}...</p>`);
+  } catch {
+    // Some browsers restrict writes even to a synchronously opened placeholder.
+  }
+  await startActiveAppPreview(preview, opened);
+}
+
+function openPreviewWindow(url) {
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  return opened;
+}
+
+async function startActiveAppPreview(preview, openedWindow) {
+  if (appPreviewStarting) return;
+  appPreviewStarting = true;
+  renderPreviewLink(preview);
+  try {
+    await ensureDevLogTerminal();
+    const ready = await waitForActivePreview(preview);
+    if (ready?.url && openedWindow && !openedWindow.closed) {
+      openedWindow.location.href = ready.url;
+    } else if (ready?.url) {
+      openPreviewWindow(ready.url);
+    }
+  } finally {
+    appPreviewStarting = false;
+    await refreshActiveAppPreview();
+  }
+}
+
+async function waitForActivePreview(preview) {
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    await delay(1000);
+    const current = await refreshActiveAppPreview();
+    if (current?.url === preview.url && current.running) return current;
+  }
+  return null;
 }
 
 function delay(ms) {

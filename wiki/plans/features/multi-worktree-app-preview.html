@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multi-Worktree App Preview - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Multi-Worktree App Preview</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact feature plan</li>
+        <li>Current unit: complete</li>
+        <li>Validation: syntax check, browser smoke, preview status smoke</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Make app preview launching exact-checkout aware across main and registered worktrees. Hyperwiki should never open a main preview when the active workspace is a worktree, and it should not present a dead URL as a working app.</p>
+    </section>
+    <section>
+      <h2>Unit 01 - Exact Checkout Preview Launcher</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Add preview status APIs that resolve exact URLs for main and registered worktrees.</li>
+        <li>Use exact Portless hostname matching to distinguish running, stopped, unknown, and unconfigured previews.</li>
+        <li>Expose all registered worktrees in the project switcher and Manage Projects UI.</li>
+        <li>Make Open App start the active checkout's dev terminal when needed, poll readiness, and open only the exact checkout URL.</li>
+      </ul>
+      <h3>Verification</h3>
+      <p>Completed 2026-05-17. Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, <code>pnpm run smoke:plan-status</code>, and <code>pnpm run smoke:contract</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

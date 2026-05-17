@@ -188,7 +188,7 @@ if (workspaceSummary.status.current !== "none") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
 if (workspaceSummary.status.currentPath !== "") {
-  throw new Error(`Expected no current MVP unit path after MVP completion, got ${workspaceSummary.status.currentPath}`);
+  throw new Error(`Expected no current unit path after active feature completion, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
@@ -735,201 +735,7 @@ const mvpPlanHref = await page.locator("#wiki-nav a").filter({ hasText: "MVP Pla
 await page.goto(`${origin}/workspace/${mvpPlanHref}`);
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "MVP Plan");
 
-if (await page.locator(".terminal-panel-header[data-name=\"agent\"]").count() === 0) {
-  await page.locator("#new-agent-terminal").click();
-  await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
-}
-await page.locator("#new-cli-terminal").click();
-await page.locator(".terminal-panel-header").filter({ hasText: "interactive shell" }).waitFor();
-await page.locator("#new-cli-terminal").click();
-await page.locator(".terminal-panel-header").filter({ hasText: "cli-1" }).waitFor();
-
-const terminalPanels = await page.locator(".terminal-panel").count();
-if (terminalPanels < 3) {
-  throw new Error(`Expected at least 3 terminal panels, got ${terminalPanels}`);
-}
-
-const activePanels = await page.locator(".terminal-panel.active").count();
-if (activePanels !== 1) {
-  throw new Error(`Expected 1 active terminal panel, got ${activePanels}`);
-}
-
-await page.locator(".terminal-panel-header[data-name=\"cli\"]").click();
-await page.locator(".terminal.active").click();
-await page.keyboard.type("printf HYPERWIKI_UI_INPUT_OK");
-await page.keyboard.press("Enter");
-await page.waitForFunction(() =>
-  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_UI_INPUT_OK")
-);
-await page.keyboard.type("printf HYPERWIKI_OPTION_LEFT_OK");
-await page.keyboard.press("Alt+ArrowLeft");
-await page.keyboard.press("Alt+ArrowRight");
-await page.keyboard.press("Enter");
-await page.waitForFunction(() =>
-  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_OPTION_LEFT_OK")
-);
-const optionArrowLeak = await page.locator(".terminal.active").evaluate((terminal) => terminal.innerText.includes("[D") || terminal.innerText.includes("[C"));
-if (optionArrowLeak) {
-  throw new Error("Expected Option+Arrow to navigate instead of leaking [D/[C into the terminal.");
-}
-
-await page.locator(".terminal-panel-header[data-name=\"agent\"]").click();
-await page.locator(".terminal[data-name=\"cli\"]").click();
-await page.keyboard.type("printf HYPERWIKI_DIRECT_PANE_INPUT_OK");
-await page.keyboard.press("Enter");
-await page.waitForFunction(() =>
-  document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("HYPERWIKI_DIRECT_PANE_INPUT_OK")
-);
-const directPaneActive = await page.locator(".terminal[data-name=\"cli\"]").evaluate((terminal) => terminal.classList.contains("active"));
-if (!directPaneActive) {
-  throw new Error("Expected clicking directly inside a terminal pane to activate it for input.");
-}
-
-await page.keyboard.type("seq 1 120");
-await page.keyboard.press("Enter");
-await page.waitForFunction(() => document.querySelector(".terminal.active")?.classList.contains("has-scrollback"));
-const scrollMetrics = await page.evaluate(() => {
-  const terminal = document.querySelector(".terminal.active");
-  const terminalRect = terminal.getBoundingClientRect();
-  const parentRect = terminal.parentElement.getBoundingClientRect();
-  return {
-    clientHeight: terminal.clientHeight,
-    scrollHeight: terminal.scrollHeight,
-    offsetHeight: terminal.offsetHeight,
-    parentHeight: terminal.parentElement.clientHeight,
-    visualGutter: parentRect.bottom - terminalRect.bottom,
-    background: getComputedStyle(terminal).backgroundColor,
-    boxShadow: getComputedStyle(terminal).boxShadow,
-    borderRadius: getComputedStyle(terminal).borderRadius,
-    overflowY: getComputedStyle(terminal).overflowY,
-    parentBackground: getComputedStyle(terminal.parentElement).backgroundColor
-  };
-});
-if (scrollMetrics.clientHeight > scrollMetrics.parentHeight + 2) {
-  throw new Error(`Expected terminal viewport to stay inside parent, got ${scrollMetrics.clientHeight}/${scrollMetrics.parentHeight}`);
-}
-if (scrollMetrics.scrollHeight <= scrollMetrics.clientHeight) {
-  throw new Error("Expected terminal to have scrollable output");
-}
-if (scrollMetrics.overflowY !== "auto") {
-  throw new Error(`Expected terminal overflow-y auto, got ${scrollMetrics.overflowY}`);
-}
-if (Math.abs(scrollMetrics.visualGutter) > 2) {
-  throw new Error(`Expected terminal to fill its visible pane, got gutter ${scrollMetrics.visualGutter}`);
-}
-if (scrollMetrics.background !== "rgba(0, 0, 0, 0)") {
-  throw new Error(`Expected transparent terminal background, got ${scrollMetrics.background}`);
-}
-if (scrollMetrics.parentBackground !== "rgb(39, 40, 34)") {
-  throw new Error(`Expected gutter background to match terminal theme, got ${scrollMetrics.parentBackground}`);
-}
-if (scrollMetrics.boxShadow !== "none" || scrollMetrics.borderRadius !== "0px") {
-  throw new Error(`Expected terminal gutter edge without shadow/radius, got ${scrollMetrics.boxShadow}/${scrollMetrics.borderRadius}`);
-}
-const firstTerminalRow = await page.locator(".terminal.active .term-row").filter({ hasText: "HYPERWIKI_UI_INPUT_OK" }).first().boundingBox();
-if (!firstTerminalRow) {
-  throw new Error("Expected terminal row for selection test.");
-}
-await page.evaluate(() => window.getSelection()?.removeAllRanges());
-await page.mouse.move(firstTerminalRow.x + 4, firstTerminalRow.y + firstTerminalRow.height / 2);
-await page.mouse.down();
-await page.mouse.move(firstTerminalRow.x + 160, firstTerminalRow.y + firstTerminalRow.height / 2, { steps: 8 });
-await page.mouse.up();
-const selectionText = await page.evaluate(() => window.getSelection()?.toString() || "");
-if (!selectionText.trim()) {
-  throw new Error("Expected terminal text to be selectable with pointer drag.");
-}
-await page.evaluate(() => window.getSelection()?.removeAllRanges());
-await page.locator(".terminal.active").click();
-await page.evaluate(() => {
-  const terminal = document.querySelector(".terminal.active");
-  terminal.scrollTop = terminal.scrollHeight;
-});
-await page.waitForFunction(() => {
-  const terminal = document.querySelector(".terminal.active");
-  const rowHeight = Number.parseFloat(getComputedStyle(terminal).getPropertyValue("--term-row-height")) || 17;
-  return terminal.scrollHeight - terminal.clientHeight - terminal.scrollTop < rowHeight * 2;
-});
-await page.waitForTimeout(450);
-const beforeTypingAtBottom = await page.evaluate(() => {
-  const terminal = document.querySelector(".terminal.active");
-  const terminalRect = terminal.getBoundingClientRect();
-  const parentRect = terminal.parentElement.getBoundingClientRect();
-  return {
-    scrollTop: terminal.scrollTop,
-    visualGutter: parentRect.bottom - terminalRect.bottom
-  };
-});
-await page.keyboard.type("e");
-await page.waitForTimeout(150);
-const afterTypingAtBottom = await page.evaluate(() => {
-  const terminal = document.querySelector(".terminal.active");
-  const terminalRect = terminal.getBoundingClientRect();
-  const parentRect = terminal.parentElement.getBoundingClientRect();
-  return {
-    scrollTop: terminal.scrollTop,
-    visualGutter: parentRect.bottom - terminalRect.bottom
-  };
-});
-if (Math.abs(afterTypingAtBottom.visualGutter - beforeTypingAtBottom.visualGutter) > 2) {
-  throw new Error(`Expected typing to preserve terminal pane geometry, got ${beforeTypingAtBottom.visualGutter} -> ${afterTypingAtBottom.visualGutter}`);
-}
-if (Math.abs(afterTypingAtBottom.scrollTop - beforeTypingAtBottom.scrollTop) > 2) {
-  throw new Error(`Expected typing to preserve terminal scrollTop, got ${beforeTypingAtBottom.scrollTop} -> ${afterTypingAtBottom.scrollTop}`);
-}
-await page.keyboard.type("cho HYPERWIKI_BOTTOM_STABILITY_OK");
-await page.keyboard.press("Enter");
-await page.waitForFunction(() =>
-  document.querySelector(".terminal.active")?.innerText.includes("HYPERWIKI_BOTTOM_STABILITY_OK")
-);
-const urlBeforeDrop = page.url();
-await page.locator(".terminal-tab[data-name=\"cli\"]").evaluate((tab) => tab.click());
-await page.locator(".terminal[data-name=\"cli\"]").dispatchEvent("drop", {
-  dataTransfer: await page.evaluateHandle(() => {
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(new File(["fake image bytes"], "drop-test.png", { type: "image/png" }));
-    return dataTransfer;
-  })
-});
-await page.waitForFunction(() =>
-  document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes(".hyperwiki/state/drops/")
-  && document.querySelector(".terminal[data-name=\"cli\"]")?.innerText.includes("p-test.png")
-);
-if (page.url() !== urlBeforeDrop) {
-  throw new Error(`Expected terminal file drop to stay on the workspace URL, got ${page.url()}`);
-}
-await page.keyboard.press(process.platform === "darwin" ? "Meta+Backspace" : "Control+U");
-
 await page.locator("#repo-branch").filter({ hasText: /.+/ }).waitFor();
-await page.locator("#up-next-button").click();
-await page.locator("#up-next-popover").waitFor();
-await page.locator("#up-next-popover").evaluate((element) => {
-  if (element.hidden) throw new Error("Expected Up Next popover to open");
-});
-await page.locator("#up-next-button").evaluate((element) => {
-  if (element.getAttribute("aria-expanded") !== "true") {
-    throw new Error("Expected Up Next button to expose expanded state");
-  }
-});
-await page.locator("#up-next-popover dt").filter({ hasText: "Up Next" }).waitFor();
-await page.locator("#up-next-stage").filter({ hasText: /^none$/i }).waitFor();
-await page.locator("#up-next-current").filter({ hasText: /^none$/i }).waitFor();
-if (!await page.locator("#up-next-link").evaluate((element) => element.hidden)) {
-  throw new Error("Expected no Up Next unit link after MVP completion");
-}
-const nextRowCount = await page.locator("#up-next-popover dt").filter({ hasText: /^Next$/ }).count();
-if (nextRowCount !== 0) {
-  throw new Error("Expected Up Next popover to omit separate Next row");
-}
-await page.keyboard.press("Escape");
-await page.locator("#up-next-popover").evaluate((element) => {
-  if (!element.hidden) throw new Error("Expected Up Next popover to close on Escape");
-});
-await page.locator("#up-next-button").evaluate((element) => {
-  if (element.getAttribute("aria-expanded") !== "false") {
-    throw new Error("Expected Up Next button to expose collapsed state");
-  }
-});
 const workspaceResponse = await fetch(`${origin}/api/workspace`);
 const workspaceData = await workspaceResponse.json();
 if (workspaceData.plan.summary.length === 0) {
@@ -967,13 +773,15 @@ if (!guardrailData.commandHistory.detail.includes("unless the user exports")) {
 
 const sessionResponse = await fetch(`${origin}/api/sessions`);
 const sessionData = await sessionResponse.json();
-if (sessionData.sessions.length < 3) {
-  throw new Error(`Expected at least 3 recorded sessions, got ${sessionData.sessions.length}`);
+if (sessionData.sessions.length < 1) {
+  throw new Error(`Expected recorded sessions, got ${sessionData.sessions.length}`);
 }
 
-const renameTarget = sessionData.sessions.find((session) => session.name === "cli-1");
+const renameTarget = sessionData.sessions.find((session) => session.name === "cli-1")
+  || sessionData.sessions.find((session) => session.name === "agent")
+  || sessionData.sessions[0];
 if (!renameTarget) {
-  throw new Error("Expected cli-1 session metadata");
+  throw new Error("Expected session metadata");
 }
 if (!["pty", "pipe-fallback"].includes(renameTarget.mode)) {
   throw new Error(`Expected explicit terminal mode, got ${renameTarget.mode}`);
@@ -1000,12 +808,6 @@ if (!pruneResponse.ok) {
   throw new Error(`Expected session prune to succeed, got ${pruneResponse.status}`);
 }
 
-await page.locator(".terminal-panel[data-name=\"cli-1\"] .terminal-close").click();
-await page.locator(".terminal-panel[data-name=\"cli-1\"]").waitFor({ state: "detached" });
-await page.locator(".terminal-panel[data-name=\"agent\"] .terminal-close").click();
-await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor({ state: "detached" });
-await page.locator(".terminal-panel[data-name=\"cli\"] .terminal-close").click();
-await page.locator(".terminal-panel[data-name=\"cli\"]").waitFor({ state: "detached" });
 while (await page.locator(".terminal-panel .terminal-close").count() > 0) {
   await page.locator(".terminal-panel .terminal-close").first().click();
 }

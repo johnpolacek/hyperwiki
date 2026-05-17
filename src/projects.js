@@ -58,13 +58,20 @@ export class ProjectRegistry {
       || projects.find((project) => project.available)
       || projects[0]
       || null;
-    const visibleProjects = groupedProjects(projects, activeProject?.id || null);
+    const activeProjectId = activeProject?.id || null;
+    const visibleProjects = groupedProjects(projects, activeProjectId);
+    const checkouts = projects.map((project) => ({
+      ...project,
+      active: project.id === activeProjectId
+    }));
     return {
       projects: visibleProjects.map((project) => ({
         ...project,
-        active: project.id === activeProject?.id
+        active: project.id === activeProjectId
       })),
-      activeProjectId: activeProject?.id || null
+      checkouts,
+      projectGroups: projectGroups(checkouts),
+      activeProjectId
     };
   }
 
@@ -232,6 +239,30 @@ function groupedProjects(projects, activeId) {
     || group.find((project) => project.available)
     || group[0]
   );
+}
+
+function projectGroups(projects) {
+  const groups = new Map();
+  for (const project of projects) {
+    const key = project.projectSlug || slugify(project.name);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        projectSlug: key,
+        name: project.name,
+        checkouts: []
+      });
+    }
+    groups.get(key).checkouts.push(project);
+  }
+  return [...groups.values()].map((group) => ({
+    ...group,
+    checkouts: group.checkouts.sort((a, b) => checkoutSortKey(a).localeCompare(checkoutSortKey(b)))
+  })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function checkoutSortKey(project) {
+  const slug = project.worktreeSlug || "main";
+  return slug === "main" ? "000-main" : `100-${slug}`;
 }
 
 function withUniqueSlugs(projects) {
