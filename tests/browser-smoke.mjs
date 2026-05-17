@@ -232,11 +232,49 @@ await page.locator(".terminal-toolbar").evaluate((toolbar) => {
     throw new Error(`Expected compact terminal toolbar, got ${text}`);
   }
 });
+await page.locator("#preview-link").evaluate((link) => {
+  if (link.hidden || link.textContent.trim() !== "Open App" || !link.href.includes("hyperwiki.localhost")) {
+    throw new Error(`Expected persistent Open App link, got hidden=${link.hidden} text=${link.textContent} href=${link.href}`);
+  }
+});
+const capturedPrompts = [];
+page.on("request", (request) => {
+  if (!request.url().includes("/api/agent/prompt")) return;
+  capturedPrompts.push(request.postDataJSON());
+});
+await page.route(/\/api\/workspace(?:\?|$)/, async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      status: {
+        completed: "Stage 07 complete",
+        stage: "Stage 08 - Settings, Soul, And Memory",
+        current: "Unit 01 - Global Settings Page",
+        currentPath: "/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html"
+      }
+    })
+  });
+});
 await page.locator("#thinking-effort").selectOption("high");
 await page.locator("#execute-button").click();
 await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
+for (let attempt = 0; capturedPrompts.length === 0 && attempt < 350; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+const mainPrompt = capturedPrompts[0];
+if (!mainPrompt?.prompt?.includes("Execute exactly one hyperwiki unit")) {
+  throw new Error(`Expected one-unit execute prompt, got ${mainPrompt?.prompt}`);
+}
+if (!mainPrompt.prompt.includes("Execution unit: Unit 01 - Global Settings Page")
+  || !mainPrompt.prompt.includes("Execution unit path: /wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html")
+  || !mainPrompt.prompt.includes("Do not complete sibling units, later units, or the entire stage")) {
+  throw new Error(`Expected Execute to target the current unit only, got ${mainPrompt.prompt}`);
+}
+if (mainPrompt.currentPage !== "/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html") {
+  throw new Error(`Expected agent currentPage to be the current unit, got ${mainPrompt.currentPage}`);
+}
 await page.locator(".terminal-panel-header[data-name=\"agent\"]").evaluate((header) => {
   const text = header.textContent || "";
   if (text.includes("codex --yolo") && !text.includes("model_reasoning_effort")) {
@@ -267,11 +305,15 @@ await page.locator("#plan-prompt").evaluate((element) => {
 });
 await page.locator("#execute-button").click();
 await page.locator("#execute-menu [data-execute-target=\"worktree\"]").click();
+for (let attempt = 0; capturedPrompts.length < 2 && attempt < 350; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
 await page.locator("#preview-link").evaluate((link) => {
   if (link.hidden || !link.href.includes(".hyperwiki.localhost")) {
     throw new Error(`Expected worktree preview link, got ${link.href}`);
   }
 });
+await page.unroute(/\/api\/workspace(?:\?|$)/);
 await page.locator(".workspace").evaluate((workspaceElement) => {
   if (workspaceElement.dataset.executeTarget !== "worktree" || workspaceElement.dataset.executeWorkflow !== "parallel-dev-worktrees") {
     throw new Error(`Expected worktree execution workflow, got ${workspaceElement.dataset.executeTarget}/${workspaceElement.dataset.executeWorkflow}`);

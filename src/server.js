@@ -1342,13 +1342,16 @@ function layoutConfig(config) {
     ? config.layout.panels
     : fallbackPanels(config);
   return {
-    panels: panels.map((panel) => ({
-      name: String(panel.name),
-      role: String(panel.role || panel.name),
-      command: panel.role === "agent" && process.env.HYPERWIKI_AGENT_DRY_RUN === "1"
-        ? "printf HYPERWIKI_AGENT_DRY_RUN\\n"
-        : panel.command ? String(panel.command) : null
-    })),
+    panels: panels.map((panel) => {
+      const role = String(panel.role || panel.name);
+      return {
+        name: String(panel.name),
+        role,
+        command: role === "agent" && process.env.HYPERWIKI_AGENT_DRY_RUN === "1"
+          ? "printf HYPERWIKI_AGENT_DRY_RUN\\n"
+          : panel.command ? String(panel.command) : null
+      };
+    }),
     dev: {
       command: config.dev?.command ? String(config.dev.command) : "",
       previewUrl: config.dev?.previewUrl ? String(config.dev.previewUrl) : ""

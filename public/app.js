@@ -102,6 +102,9 @@ let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let guardrails = null;
 let terminalLayout = [];
+let projectDevCommand = "";
+let projectPreviewUrl = "";
+let workspaceStatus = {};
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
@@ -672,6 +675,9 @@ memoryAdd.addEventListener("click", () => {
 async function restoreTerminals() {
   const layout = await api(projectPath("/api/layout"));
   terminalLayout = layout.panels;
+  projectDevCommand = layout.dev?.command || "";
+  projectPreviewUrl = layout.dev?.previewUrl || "";
+  resetPreviewLink();
   workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
   updatePlanPromptVisibility();
 }
@@ -735,13 +741,17 @@ function summaryItemsFromHtml(html) {
 async function loadWorkspaceSummary() {
   try {
     const summary = await api(projectPath("/api/workspace"));
+    workspaceStatus = summary.status || {};
     renderUpNext(summary.status);
+    return summary;
   } catch {
+    workspaceStatus = {};
     renderUpNext({
       completed: "Workspace summary unavailable",
       current: "Unknown",
       next: "Unknown"
     });
+    return null;
   }
 }
 
@@ -803,6 +813,7 @@ function isStageLabel(value = "") {
 function displayPlanLabel(value = "") {
   return value
     .replace(/^Stage-(\d+)\s+/, "Stage $1 - ")
+    .replace(/^Unit-(\d+)\s+/, "Unit $1 - ")
     .replace(/^Unit\s+(\d+)\s+·\s+/, "Unit $1 - ");
 }
 
@@ -2460,36 +2471,68 @@ async function handOffDashboardPrompt(prompt, currentPagePath) {
 }
 
 async function executeTarget(target) {
-  const pagePath = currentPage.title || requestedWikiPath;
-  const pageTitle = currentPage.dataset.title || titleForWikiPath(pagePath);
-  const slug = slugify(pageTitle || "worktree");
+  const executionContext = await resolveExecutionContext();
+  const slug = slugify(executionContext.unitTitle || executionContext.pageTitle || "worktree");
   workspace.dataset.executeTarget = target;
   if (target === "worktree") {
     workspace.dataset.executeWorkflow = "parallel-dev-worktrees";
     showPreviewLink(previewUrl(slug), `Preview: ${slug}`);
   } else {
     workspace.dataset.executeWorkflow = "main";
-    showPreviewLink(previewUrl(activeProjectSlug || "hyperwiki"), "Preview: main");
+    showPreviewLink(mainPreviewUrl(), "Open App");
   }
   await ensureDevLogTerminal();
   const agent = await ensureAgentTerminal();
   activateTerminal(agent.name);
-  await postAgentPromptWithRetry(executePrompt(target, pageTitle, pagePath, slug), pagePath);
+  await postAgentPromptWithRetry(executePrompt(target, executionContext, slug), executionContext.agentPagePath);
 }
 
-function executePrompt(target, pageTitle, pagePath, slug) {
+async function resolveExecutionContext() {
+  const summary = await loadWorkspaceSummary();
+  const status = summary?.status || workspaceStatus || {};
+  const visiblePath = currentPage.title || requestedWikiPath;
+  const visibleTitle = currentPage.dataset.title || titleForWikiPath(visiblePath);
+  const unitPath = status.currentPath || "";
+  const unitTitle = unitPath
+    ? displayPlanLabel(wikiPageTitles.get(unitPath) || wikiPageTitles.get(displayWikiPath(unitPath)) || status.current || titleForWikiPath(unitPath))
+    : "";
+  return {
+    pagePath: visiblePath,
+    pageTitle: visibleTitle,
+    unitPath,
+    unitTitle,
+    stageTitle: status.stage || "",
+    agentPagePath: unitPath || visiblePath,
+    hasCurrentUnit: Boolean(unitPath)
+  };
+}
+
+function executePrompt(target, context, slug) {
+  const pagePath = context.pagePath;
+  const pageTitle = context.pageTitle;
+  const unitTitle = context.unitTitle || "No current unit resolved";
+  const unitPath = context.unitPath || "";
   const lines = [
-    `Execute the current hyperwiki context on ${target === "worktree" ? "a worktree" : "main"}.`,
+    `Execute exactly one hyperwiki unit on ${target === "worktree" ? "a worktree" : "main"}.`,
     "",
-    `Current page: ${pageTitle}`,
-    `Current path: ${displayWikiPath(pagePath)}`,
+    `Execution unit: ${unitTitle}`,
+    `Execution unit path: ${unitPath ? displayWikiPath(unitPath) : "none"}`,
+    `Visible page: ${pageTitle}`,
+    `Visible page path: ${displayWikiPath(pagePath)}`,
     ""
   ];
+  if (!context.hasCurrentUnit) {
+    lines.push(
+      "No current unit path was resolved from the workspace status.",
+      "Inspect the plan status and ask the user which unit to execute before changing files.",
+      ""
+    );
+  }
   if (target === "worktree") {
     lines.push(
       "Instructions:",
       "- Use the parallel-dev-worktrees skill before changing files.",
-      `- Derive the branch/worktree slug from the current page as "${slug}" unless that would be ambiguous.`,
+      `- Derive the branch/worktree slug from the execution unit as "${slug}" unless that would be ambiguous.`,
       "- Ask a concise question only if the worktree or branch name is ambiguous.",
       "- Use Portless for the dev preview URL.",
       `- Expected preview URL: ${previewUrl(slug)}`,
@@ -2499,10 +2542,16 @@ function executePrompt(target, pageTitle, pagePath, slug) {
     lines.push(
       "Instructions:",
       "- Work in the current main checkout.",
-      "- Keep changes grounded in the current wiki page and repo state.",
+      "- Keep changes grounded in the execution unit and repo state.",
       "- Run the relevant checks before summarizing the result."
     );
   }
+  lines.push(
+    "- Complete exactly this execution unit.",
+    "- Do not complete sibling units, later units, or the entire stage unless this unit explicitly requires only status reconciliation for already-finished work.",
+    "- If the unit reaches a manual review, approval, or human validation gate, prepare the evidence/checklist and stop before continuing.",
+    "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes."
+  );
   return lines.join("\n");
 }
 
@@ -2644,23 +2693,40 @@ function previewUrl(slug) {
   const projectSlug = activeProjectSlug || "hyperwiki";
   const normalizedSlug = slugify(slug || "main");
   if (normalizedSlug === "main" || normalizedSlug === projectSlug) {
-    return `https://${projectSlug}.localhost`;
+    return mainPreviewUrl();
   }
   return `https://${normalizedSlug}.${projectSlug}.localhost`;
+}
+
+function mainPreviewUrl() {
+  return projectPreviewUrl || `https://${activeProjectSlug || "hyperwiki"}.localhost`;
 }
 
 function showPreviewLink(url, label = "Open preview") {
   previewLink.hidden = false;
   previewLink.href = url;
   previewLink.textContent = label;
-  previewLink.title = url;
+  previewLink.title = previewLinkTitle(url);
 }
 
 function hidePreviewLink() {
-  previewLink.hidden = true;
-  previewLink.href = "#";
-  previewLink.textContent = "Open preview";
-  previewLink.title = "";
+  resetPreviewLink();
+}
+
+function resetPreviewLink() {
+  if (!projectPreviewUrl) {
+    previewLink.hidden = true;
+    previewLink.href = "#";
+    previewLink.textContent = "Open App";
+    previewLink.title = "";
+    return;
+  }
+  showPreviewLink(projectPreviewUrl, "Open App");
+}
+
+function previewLinkTitle(url) {
+  if (projectDevCommand) return url;
+  return `${url} (no dev command configured)`;
 }
 
 function delay(ms) {

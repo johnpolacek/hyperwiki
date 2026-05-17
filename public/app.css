@@ -3305,6 +3305,13 @@ html[data-initial-route="settings"] .wiki-pane {
   stroke-width: 2;
 }
 
+.preview-link {
+  border-color: #7f8b72;
+  background: #f5f7ef;
+  color: #26311f;
+  font-weight: 800;
+}
+
 .execute-menu {
   position: absolute;
   top: calc(100% + 5px);
