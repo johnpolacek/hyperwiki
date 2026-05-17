@@ -2806,7 +2806,7 @@ function renderPlanTree(pages) {
 function renderPlanNode(page, pages, currentTargets) {
   const children = childPlanPages(page, pages);
   const state = currentPlanState(page, pages, currentTargets);
-  const completed = isCompletedPage(page);
+  const completed = isCompletedPage(page) && !state;
   if (children.length === 0) {
     return renderWikiLink(page, state, { completed });
   }
@@ -3045,6 +3045,15 @@ function planSortKey(page) {
 }
 
 function currentPlanTargets(pages = []) {
+  const currentStagePage = pages.find((page) => page.currentState === "current-stage");
+  const currentUnitPage = pages.find((page) => page.currentState === "current-unit");
+  if (currentStagePage || currentUnitPage) {
+    return {
+      hasCanonicalCurrent: true,
+      stagePath: currentStagePage ? displayWikiPath(currentStagePage.path) : "",
+      unitPath: currentUnitPage ? displayWikiPath(currentUnitPage.path) : ""
+    };
+  }
   const dashboard = pages.find((page) => displayWikiPath(page.path).endsWith("/wiki/plans/index.html"));
   const currentStage = summaryValue(dashboard?.summary, "Current stage");
   const currentUnit = summaryValue(dashboard?.summary, "Current unit");
@@ -3061,6 +3070,7 @@ function currentPlanTargets(pages = []) {
 
 function currentPlanState(page, pages = [], currentTargets = currentPlanTargets(pages)) {
   const path = displayWikiPath(page.path);
+  if (page.currentState) return page.currentState;
   if (currentTargets.hasCanonicalCurrent) {
     if (currentTargets.unitPath && path === currentTargets.unitPath) return "current-unit";
     if (isStagePlanPath(path) && path === currentTargets.stagePath) return "current-stage";
@@ -3166,6 +3176,7 @@ function cleanPageTitle(page) {
 }
 
 function pageStatus(page) {
+  if (page?.status) return String(page.status).replace("completed", "complete");
   const summary = `${page.summary || ""} ${page.title || ""} ${page.path || ""}`;
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "";

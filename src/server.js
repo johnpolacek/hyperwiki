@@ -1038,26 +1038,22 @@ function normalizeVerificationLoop(loop, run = null) {
 }
 
 function workspaceStatus(planSummary, logEntries, pages = []) {
-  const currentUnit = summaryValue(planSummary, "Current unit");
-  const currentStage = summaryValue(planSummary, "Current stage");
-  if (isNoneStatus(currentUnit) && isNoneStatus(currentStage || "none")) {
+  const resolved = resolvePlanStatus(pages, planSummary);
+  if (!resolved.currentUnitPage && !resolved.currentStagePage && isNoneStatus(resolved.current || "none")) {
     return {
       completed: completedStatus(planSummary, logEntries),
       stage: "none",
       current: "none",
-      currentPath: ""
+      currentPath: "",
+      conflicts: resolved.conflicts
     };
   }
-  const currentStagePage = findPlanPageByLabel(pages, currentStage) || findActivePlanPage(pages, isStagePath);
-  const currentUnitPage = findPlanPageByLabel(pages, currentUnit, currentStagePage)
-    || findActivePlanPage(pages, isUnitPath, currentStagePage)
-    || (!currentStagePage ? findActivePlanPage(pages, isUnitPath) : null);
-  const current = currentUnit || currentUnitPage?.title || currentStage || currentStagePage?.title || summaryValue(planSummary, "Status") || "Unknown";
   return {
     completed: completedStatus(planSummary, logEntries),
-    stage: currentStage || currentStagePage?.title || "Unknown",
-    current,
-    currentPath: currentUnitPage?.path || currentStagePage?.path || ""
+    stage: resolved.currentStagePage?.title || resolved.stage || "Unknown",
+    current: resolved.currentUnitPage?.title || resolved.currentStagePage?.title || resolved.current || summaryValue(planSummary, "Status") || "Unknown",
+    currentPath: resolved.currentUnitPage?.path || resolved.currentStagePage?.path || "",
+    conflicts: resolved.conflicts
   };
 }
 
@@ -1082,6 +1078,180 @@ function findActivePlanPage(pages, predicate, parentPage = null) {
     if (parentBase && !page.path.startsWith(`${parentBase}/`)) return false;
     return predicate(page.path) && pageSummaryStatus(page) === "active";
   }) || null;
+}
+
+function resolvePlanStatus(pages = [], planSummary = []) {
+  const planPages = [...pages]
+    .filter((page) => displayWikiPath(page.path).includes("/wiki/plans/"))
+    .sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const dashboard = planPages.find((page) => displayWikiPath(page.path).endsWith("/wiki/plans/index.html"));
+  const dashboardSummary = planSummary.length > 0 ? planSummary : dashboard?.summary || [];
+  const conflicts = [];
+
+  for (const page of planPages) {
+    page.status = explicitPlanStatus(page);
+    page.currentState = "";
+  }
+  for (const page of [...planPages].reverse()) {
+    if (!page.status) {
+      page.status = derivedPlanStatus(page, planPages);
+    }
+  }
+
+  const dashboardStage = summaryValue(dashboardSummary, "Current stage");
+  const dashboardUnit = summaryValue(dashboardSummary, "Current unit");
+  const explicitStage = findPlanPageByLabel(planPages, dashboardStage);
+  const explicitUnit = findPlanPageByLabel(planPages, dashboardUnit, explicitStage);
+  const staleStage = explicitStage && !isCurrentEligible(explicitStage);
+  const staleUnit = explicitUnit && !isCurrentEligible(explicitUnit);
+  if (staleStage) {
+    conflicts.push({
+      kind: "stale-current-stage",
+      label: dashboardStage,
+      path: explicitStage.path,
+      status: explicitStage.status
+    });
+  }
+  if (staleUnit) {
+    conflicts.push({
+      kind: "stale-current-unit",
+      label: dashboardUnit,
+      path: explicitUnit.path,
+      status: explicitUnit.status
+    });
+  }
+
+  let currentUnitPage = explicitUnit && isCurrentEligible(explicitUnit) ? explicitUnit : null;
+  let currentStagePage = explicitStage && isCurrentEligible(explicitStage) ? explicitStage : null;
+  if (!currentUnitPage) {
+    currentUnitPage = firstPlanPage(planPages, isUnitPath, "active", currentStagePage)
+      || firstPlanPage(planPages, isUnitPath, "blocked", currentStagePage)
+      || firstPlanPage(planPages, isUnitPath, "pending", currentStagePage)
+      || firstPlanPage(planPages, isUnitPath, "draft", currentStagePage);
+  }
+  if (!currentStagePage) {
+    currentStagePage = parentStagePageForUnit(currentUnitPage, planPages)
+      || firstPlanPage(planPages, isStagePath, "active")
+      || firstPlanPage(planPages, isStagePath, "blocked")
+      || firstPlanPage(planPages, isStagePath, "pending")
+      || firstPlanPage(planPages, isStagePath, "draft");
+  }
+
+  const topPlan = currentUnitPage || currentStagePage;
+  for (const page of planPages) {
+    if (currentUnitPage && samePlanPath(page.path, currentUnitPage.path)) {
+      page.currentState = "current-unit";
+    } else if (currentStagePage && isStagePath(displayWikiPath(page.path)) && samePlanPath(page.path, currentStagePage.path)) {
+      page.currentState = "current-stage";
+    } else if (topPlan && isTopLevelPlanPath(displayWikiPath(page.path)) && planPathContains(displayWikiPath(page.path), displayWikiPath(topPlan.path))) {
+      page.currentState = "current-plan";
+    }
+  }
+
+  return {
+    currentStagePage,
+    currentUnitPage,
+    stage: dashboardStage,
+    current: dashboardUnit,
+    conflicts
+  };
+}
+
+function explicitPlanStatus(page) {
+  const pathValue = displayWikiPath(page.path);
+  if (pathValue.endsWith("/wiki/plans/zzz_completed/index.html")) return "";
+  if (pathValue.includes("/wiki/plans/zzz_completed/")) return "complete";
+  const status = pageSummaryStatus(page).replace("completed", "complete");
+  return ["active", "pending", "complete", "draft", "blocked", "deferred"].includes(status) ? status : "";
+}
+
+function derivedPlanStatus(page, pages) {
+  const pathValue = displayWikiPath(page.path);
+  if (!pathValue.includes("/wiki/plans/")) return "";
+  if (pathValue.endsWith("/wiki/plans/zzz_completed/index.html")) return "";
+  const children = childPlanPages(page, pages);
+  if (children.length === 0) return "";
+  const childStatuses = children.map((child) => child.status || explicitPlanStatus(child)).filter(Boolean);
+  if (childStatuses.length === children.length && childStatuses.every((status) => status === "complete" || status === "deferred")) return "complete";
+  if (childStatuses.includes("active")) return "active";
+  if (childStatuses.includes("blocked")) return "blocked";
+  if (childStatuses.some((status) => status === "pending" || status === "draft" || !status)) return "pending";
+  return "";
+}
+
+function firstPlanPage(pages, predicate, status, parentPage = null) {
+  const parentBase = parentPage ? displayWikiPath(parentPage.path).replace(/\.html$/, "") : "";
+  return pages.find((page) => {
+    const pagePath = displayWikiPath(page.path);
+    if (parentBase && !pagePath.startsWith(`${parentBase}/`)) return false;
+    return predicate(pagePath) && page.status === status && isCurrentEligible(page);
+  }) || null;
+}
+
+function isCurrentEligible(page) {
+  return !["complete", "deferred"].includes(String(page?.status || explicitPlanStatus(page)).toLowerCase());
+}
+
+function childPlanPages(parent, pages) {
+  return pages.filter((candidate) => isImmediateChildPlanPage(parent, candidate));
+}
+
+function isImmediateChildPlanPage(parent, candidate) {
+  const parentPath = displayWikiPath(parent.path);
+  const candidatePath = displayWikiPath(candidate.path);
+  if (parentPath === candidatePath) return false;
+  if (parentPath.endsWith("/wiki/plans/mvp/index.html")) {
+    return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
+  }
+  if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
+    return /^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
+      && !candidatePath.endsWith("/index.html");
+  }
+  const parentBase = parentPath.replace(/\.html$/, "");
+  return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
+}
+
+function parentStagePageForUnit(unitPage, pages) {
+  if (!unitPage) return null;
+  const match = displayWikiPath(unitPage.path).match(/^(\/wiki\/plans\/mvp\/stage-[^/]+)\/unit-\d+-[^/]+\.html$/);
+  if (!match) return null;
+  const stagePath = `${match[1]}.html`;
+  return pages.find((page) => displayWikiPath(page.path) === stagePath) || null;
+}
+
+function isTopLevelPlanPath(pathValue) {
+  const path = displayWikiPath(pathValue);
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return true;
+  return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
+}
+
+function planSortKey(page) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
+  if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "99";
+  if (path.startsWith("/wiki/plans/zzz_completed/")) return `99-${path}`;
+  return `02-${path}`;
+}
+
+function planPathContains(parentPath, childPath) {
+  const parent = displayWikiPath(parentPath);
+  const child = displayWikiPath(childPath);
+  if (!parent || !child) return false;
+  if (parent === child) return true;
+  const basePath = parent.endsWith("/index.html")
+    ? parent.replace(/\/index\.html$/, "")
+    : parent.replace(/\.html$/, "");
+  return child.startsWith(`${basePath}/`);
+}
+
+function samePlanPath(left, right) {
+  return displayWikiPath(left) === displayWikiPath(right);
+}
+
+function displayWikiPath(pathValue) {
+  return String(pathValue || "").replace(/^\/projects\/[^/]+(?=\/wiki\/)/, "");
 }
 
 function isStagePath(pathValue) {
@@ -1111,7 +1281,7 @@ function completedStatus(planSummary, logEntries) {
 
 function summaryValue(items, label) {
   const prefix = `${label}:`;
-  const item = items.find((entry) => entry.startsWith(prefix));
+  const item = (Array.isArray(items) ? items : []).find((entry) => String(entry).toLowerCase().startsWith(prefix.toLowerCase()));
   return item ? item.slice(prefix.length).trim() : "";
 }
 
@@ -1401,6 +1571,7 @@ export async function listWikiPages(root, projectId = null) {
   const pages = [];
   await walkWiki(wikiRoot, wikiRoot, pages, projectId);
   pages.sort((a, b) => a.path.localeCompare(b.path));
+  resolvePlanStatus(pages);
   return { pages };
 }
 

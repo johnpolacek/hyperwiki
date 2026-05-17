@@ -650,6 +650,7 @@ function plansIndexPage(context) {
   <ul>
     <li>Status: active</li>
     <li>Shape: human-steered multi-stage MVP</li>
+    <li>Current stage: Stage 01 - Taxonomy And Content Schema</li>
     <li>Current unit: Unit 01 - Lock Interview Decisions And Taxonomy</li>
     <li>Next action: implement the prototype path selected in the planning interview.</li>
     <li>Planning source: imported document plus in-app steering answers</li>
@@ -663,6 +664,7 @@ function plansIndexPage(context) {
   <ul>
     <li>Status: active</li>
     <li>Shape: multi-stage MVP</li>
+    <li>Current stage: Stage 01 - Project Direction And Setup</li>
     <li>Current unit: Unit 01 - Confirm Project Direction</li>
     <li>Next action: review generated source briefs, confirm missing project intent, and refine the first implementation plan.</li>
     <li>Blockers: none</li>
@@ -718,14 +720,14 @@ function stageOnePage(context) {
       ["Unit 02 - Define Pattern Entry Requirements", "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html"],
       ["Unit 03 - Sync Source Briefs With Answers", "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html"],
       ["Unit 04 - Define Prototype Acceptance Criteria", "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html"]
-    ], "Define the Markdown-for-agent pattern taxonomy, entry schema, metadata requirements, and static-first MVP acceptance gate.");
+    ], "Define the Markdown-for-agent pattern taxonomy, entry schema, metadata requirements, and static-first MVP acceptance gate.", "active");
   }
   return stagePage(context, "Stage 01 - Project Direction And Setup", [
     ["Unit 01 - Confirm Project Direction", "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html"],
     ["Unit 02 - Review Repository Setup", "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html"],
     ["Unit 03 - Update Source Briefs", "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html"],
     ["Unit 04 - Define First Implementation Unit", "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html"]
-  ], "Confirm project goals, audience, non-goals, and success criteria.");
+  ], "Confirm project goals, audience, non-goals, and success criteria.", "active");
 }
 
 function stageTwoPage(context) {
@@ -762,8 +764,14 @@ function stageThreePage(context) {
   ], "Close gaps found during implementation and verification.");
 }
 
-function stagePage(context, title, units, intent) {
+function stagePage(context, title, units, intent, status = "pending") {
   return layout(context, title, `<h1>${escapeHtml(title)}</h1>
+<section class="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: ${escapeHtml(status)}</li>
+  </ul>
+</section>
 <h2>Intent</h2>
 <p>${escapeHtml(intent)}</p>
 <h2>Execution Units</h2>
