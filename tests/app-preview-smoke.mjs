@@ -39,6 +39,9 @@ try {
   if (main?.status !== "running") {
     throw new Error(`Expected main to be running, got ${JSON.stringify(main)}`);
   }
+  if (main.url !== "https://preview-smoke.localhost:1355" || main.expectedUrl !== "https://preview-smoke.localhost") {
+    throw new Error(`Expected running preview to use actual Portless route URL and preserve expected URL, got ${JSON.stringify(main)}`);
+  }
   if (feature?.status !== "stopped" || feature.running) {
     throw new Error(`Expected feature worktree to be stopped while main is running, got ${JSON.stringify(feature)}`);
   }
@@ -52,6 +55,10 @@ try {
   }
   if (feature?.status !== "running") {
     throw new Error(`Expected feature worktree to be running, got ${JSON.stringify(feature)}`);
+  }
+  if (feature.url !== `https://${featureSlug}.preview-smoke.localhost:1355`
+    || feature.expectedUrl !== `https://${featureSlug}.preview-smoke.localhost`) {
+    throw new Error(`Expected feature preview to use actual Portless route URL and preserve expected URL, got ${JSON.stringify(feature)}`);
   }
 } finally {
   if (server) {

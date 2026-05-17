@@ -1386,11 +1386,12 @@ async function appPreviewForProject(project) {
   const config = await readConfig(project.root);
   const layout = layoutConfig(config);
   const worktreeSlugValue = project.worktreeSlug || "main";
-  const url = previewUrlForProject(project, layout);
+  const expectedUrl = previewUrlForProject(project, layout);
   const startCommand = layout.dev.command || "";
-  if (!url) {
+  if (!expectedUrl) {
     return previewState(project, {
       url: "",
+      expectedUrl: "",
       startCommand,
       status: "not-configured",
       running: false,
@@ -1400,22 +1401,24 @@ async function appPreviewForProject(project) {
   }
 
   const routes = await portlessRoutes(project.root);
-  const hostname = hostnameForUrl(url);
+  const hostname = hostnameForUrl(expectedUrl);
   const route = hostname ? routes.routes.find((candidate) => candidate.hostname === hostname) : null;
   if (route) {
     return previewState(project, {
-      url,
+      url: route.url,
+      expectedUrl,
       startCommand,
       status: "running",
       running: true,
       canStart: Boolean(startCommand),
-      reason: `Portless route is active for ${hostname}.`,
+      reason: `Portless route is active for ${route.url}.`,
       route
     });
   }
   if (!routes.available) {
     return previewState(project, {
-      url,
+      url: expectedUrl,
+      expectedUrl,
       startCommand,
       status: "unknown",
       running: false,
@@ -1424,7 +1427,8 @@ async function appPreviewForProject(project) {
     });
   }
   return previewState(project, {
-    url,
+    url: expectedUrl,
+    expectedUrl,
     startCommand,
     status: startCommand ? "stopped" : "not-startable",
     running: false,
@@ -1469,12 +1473,13 @@ async function portlessRoutes(cwd) {
 
 function parsePortlessRoutes(output) {
   return String(output || "").split(/\r?\n/).map((line) => {
-    const match = line.match(/https?:\/\/([^/\s:]+)(?::\d+)?\s+->\s+([^\s]+)\s+\(pid\s+(\d+)\)/);
+    const match = line.match(/(https?:\/\/([^/\s:]+)(?::\d+)?)\s+->\s+([^\s]+)\s+\(pid\s+(\d+)\)/);
     if (!match) return null;
     return {
-      hostname: match[1],
-      target: match[2],
-      pid: Number(match[3])
+      url: match[1],
+      hostname: match[2],
+      target: match[3],
+      pid: Number(match[4])
     };
   }).filter(Boolean);
 }

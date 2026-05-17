@@ -2916,12 +2916,21 @@ async function startActiveAppPreview(preview, openedWindow) {
 
 async function waitForActivePreview(preview) {
   const deadline = Date.now() + 30000;
+  const expectedHostname = hostnameForPreview(preview.expectedUrl || preview.url);
   while (Date.now() < deadline) {
     await delay(1000);
     const current = await refreshActiveAppPreview();
-    if (current?.url === preview.url && current.running) return current;
+    if (current?.running && hostnameForPreview(current.expectedUrl || current.url) === expectedHostname) return current;
   }
   return null;
+}
+
+function hostnameForPreview(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
 }
 
 function delay(ms) {
