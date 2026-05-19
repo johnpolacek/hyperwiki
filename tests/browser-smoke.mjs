@@ -34,6 +34,29 @@ await page.locator("#projects-page").evaluate((panel) => {
   if (!document.querySelector("#new-project-page")?.hidden) {
     throw new Error("Expected New Project page to be hidden on Manage Projects.");
   }
+  const themeText = computedThemeColor("--text");
+  const themeMuted = computedThemeColor("--muted");
+  const themeBg = computedThemeColor("--bg", "backgroundColor");
+  const title = document.querySelector(".dashboard-page-header h1");
+  const description = document.querySelector(".dashboard-page-header p");
+  const projectDetail = document.querySelector(".project-detail");
+  if (!title || getComputedStyle(title).color !== themeText) {
+    throw new Error(`Expected Projects title to use theme text, got ${title ? getComputedStyle(title).color : "none"} / ${themeText}`);
+  }
+  if (!description || getComputedStyle(description).color !== themeMuted) {
+    throw new Error(`Expected Projects description to use theme muted text, got ${description ? getComputedStyle(description).color : "none"} / ${themeMuted}`);
+  }
+  if (projectDetail && getComputedStyle(projectDetail).backgroundColor !== themeBg) {
+    throw new Error(`Expected project detail panels to use theme bg, got ${getComputedStyle(projectDetail).backgroundColor} / ${themeBg}`);
+  }
+  function computedThemeColor(variableName, property = "color") {
+    const probe = document.createElement("span");
+    probe.style[property] = `var(${variableName})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe)[property];
+    probe.remove();
+    return color;
+  }
 });
 await page.locator("#new-project-page-link").click();
 await page.waitForURL(newProjectUrl);
@@ -66,6 +89,28 @@ await page.locator("#settings-page").evaluate((panel) => {
   }
   if (!document.querySelector(".workspace")?.classList.contains("settings-mode")) {
     throw new Error("Expected Settings to be a workspace page mode.");
+  }
+  const themeText = computedThemeColor("--text");
+  const themeMuted = computedThemeColor("--muted");
+  const headerTitle = document.querySelector(".settings-page-header h1");
+  const headerDescription = document.querySelector(".settings-page-header p");
+  const topbarBrand = document.querySelector(".topbar-brand");
+  if (!headerTitle || getComputedStyle(headerTitle).color !== themeText) {
+    throw new Error(`Expected Settings title to use theme text color, got ${headerTitle ? getComputedStyle(headerTitle).color : "none"} / ${themeText}`);
+  }
+  if (!headerDescription || getComputedStyle(headerDescription).color !== themeMuted) {
+    throw new Error(`Expected Settings description to use theme muted color, got ${headerDescription ? getComputedStyle(headerDescription).color : "none"} / ${themeMuted}`);
+  }
+  if (!topbarBrand || getComputedStyle(topbarBrand).color !== themeMuted) {
+    throw new Error(`Expected topbar brand to use theme muted color, got ${topbarBrand ? getComputedStyle(topbarBrand).color : "none"} / ${themeMuted}`);
+  }
+  function computedThemeColor(variableName) {
+    const probe = document.createElement("span");
+    probe.style.color = `var(${variableName})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
   }
   const docsSerif = getComputedStyle(document.documentElement).getPropertyValue("--docs-serif-font").trim();
   const sidebarFont = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-font").trim();
@@ -202,11 +247,20 @@ await page.locator("#project-import-form").evaluate((form) => {
   if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
     throw new Error(`Expected project import to accept HTML, got ${fileInput?.accept}`);
   }
-  if (getComputedStyle(importButton).backgroundColor !== "rgb(251, 251, 248)") {
-    throw new Error(`Expected import button to match dashboard surface, got ${getComputedStyle(importButton).backgroundColor}`);
+  const themeBg = computedThemeColor("--bg", "backgroundColor");
+  if (getComputedStyle(importButton).backgroundColor !== themeBg) {
+    throw new Error(`Expected import button to use theme background, got ${getComputedStyle(importButton).backgroundColor} / ${themeBg}`);
   }
   if (getComputedStyle(fileInput).opacity !== "0") {
     throw new Error("Expected native file input to be visually hidden.");
+  }
+  function computedThemeColor(variableName, property = "color") {
+    const probe = document.createElement("span");
+    probe.style[property] = `var(${variableName})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe)[property];
+    probe.remove();
+    return color;
   }
 });
 await page.locator("#project-title").fill("Smoke Test Project");

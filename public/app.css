@@ -95,14 +95,14 @@ body {
   gap: 16px;
   padding: 8px 12px;
   border-right: 0;
-  border-bottom: 1px solid #c8cbc2;
-  background: #fbfbfa;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
   font-family: var(--sidebar-font);
 }
 
 .wiki-pane {
   position: relative;
-  background: #ffffff;
+  background: var(--panel);
 }
 
 .topbar-brand {
@@ -110,7 +110,7 @@ body {
   align-items: center;
   gap: 9px;
   min-width: 0;
-  color: #3c433c;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
@@ -129,23 +129,24 @@ body {
   align-items: center;
   gap: 7px;
   min-height: 32px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 9px;
-  background: #f7f7f4;
+  background: var(--bg);
   color: var(--text);
   cursor: pointer;
   font: 12px/1.2 var(--sidebar-font);
 }
 
 .topbar-button[aria-expanded="true"] {
-  border-color: #8f9c90;
-  background: #ffffff;
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  background: var(--panel);
 }
 
 .topbar-button.active {
-  border-color: #8f9c90;
-  background: #ffffff;
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--panel);
 }
 
 .topbar-button:focus-visible,
@@ -162,7 +163,7 @@ body {
 .wiki-nav a:focus-visible,
 .wiki-nav summary:focus-visible,
 .primary-nav a:focus-visible {
-  outline: 2px solid rgba(39, 110, 241, 0.65);
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
   outline-offset: 2px;
 }
 
@@ -183,11 +184,11 @@ body {
   width: min(360px, calc(100vw - 24px));
   max-height: min(460px, calc(100vh - 76px));
   overflow: auto;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  background: #fbfbf8;
-  box-shadow: 0 18px 44px rgba(28, 31, 27, 0.18);
+  background: var(--panel);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--text) 18%, transparent);
   transform-origin: top center;
   animation: topbar-panel-enter 170ms ease-out both;
 }
@@ -237,7 +238,7 @@ body {
 
 .project-switcher-group > strong {
   padding: 0 2px;
-  color: #747970;
+  color: var(--muted);
   font: 800 10px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -254,11 +255,11 @@ body {
 
 .topbar-empty {
   margin: 0;
-  border: 1px dashed #d8d8d0;
+  border: 1px dashed var(--border);
   border-radius: 6px;
   padding: 13px 12px;
-  background: #f7f7f4;
-  color: #747970;
+  background: var(--bg);
+  color: var(--muted);
   font: 12px/1.35 var(--sidebar-font);
   text-align: center;
 }
@@ -300,16 +301,16 @@ body {
 }
 
 .project-checkout-label small {
-  color: #747970;
+  color: var(--muted);
   font-size: 10px;
 }
 
 .preview-status {
-  border: 1px solid #d5d8cf;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 6px;
-  background: #f4f6f0;
-  color: #566153;
+  background: var(--bg);
+  color: var(--muted);
   font: 800 9px/1 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -333,13 +334,13 @@ body {
 }
 
 .project-list button.active {
-  border-color: #c6c8c0;
-  background: #f7f7f4;
+  border-color: var(--border);
+  background: var(--bg);
   font-weight: 700;
 }
 
 .project-list button:disabled {
-  color: #8b9088;
+  color: var(--muted);
   cursor: not-allowed;
 }
 
@@ -422,11 +423,11 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 8px;
   width: 100%;
   min-height: 34px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 8px;
   padding: 7px 10px;
-  background: #ffffff;
+  background: var(--panel);
   color: var(--text);
   cursor: pointer;
   font: 700 12px/1.2 var(--sidebar-font);
@@ -491,7 +492,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .workspace.non-plan-wiki-mode .terminal-pane {
   grid-template-rows: minmax(0, 1fr);
   border-left: 1px solid var(--border);
-  background: #f7f7f4;
+  background: var(--bg);
 }
 
 .workspace.non-plan-wiki-mode .terminal-toolbar,
@@ -545,9 +546,9 @@ html[data-initial-route="settings"] .wiki-pane {
 .workspace.settings-mode .settings-page-header {
   align-items: center;
   min-height: 132px;
-  border-bottom: 1px solid #d6d0c2;
+  border-bottom: 1px solid var(--border);
   padding: 30px 42px 26px;
-  background: #f8f4ea;
+  background: color-mix(in srgb, var(--panel) 72%, var(--bg));
 }
 
 .workspace.new-project-mode .new-project-page.planning-active .dashboard-page-header {
@@ -607,14 +608,14 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-page-header h1 {
   margin: 0;
-  color: #20231f;
+  color: var(--text);
   font: 700 34px/1.05 var(--docs-serif-font);
 }
 
 .dashboard-page-header p {
   margin: 6px 0 0;
   max-width: 620px;
-  color: #596158;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -634,7 +635,7 @@ html[data-initial-route="settings"] .wiki-pane {
   justify-self: end;
   gap: 6px;
   margin: 0;
-  color: #3f473f;
+  color: var(--muted);
   font: 600 11px/1.35 var(--sidebar-font);
   text-align: right;
 }
@@ -667,10 +668,10 @@ html[data-initial-route="settings"] .wiki-pane {
   display: grid;
   gap: 12px;
   min-width: 0;
-  border: 1px solid #d8d8d0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  background: #fff;
+  background: var(--panel);
 }
 
 .dashboard-action-form[hidden] {
@@ -685,7 +686,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-action-form h3,
 .dashboard-inventory h2 {
   margin: 0;
-  color: #252a25;
+  color: var(--text);
   font-size: 12px;
   line-height: 1.2;
   text-transform: uppercase;
@@ -698,7 +699,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-action-form p {
   margin: 0;
-  color: #596158;
+  color: var(--muted);
   font: 16px/1.4 var(--docs-serif-font);
 }
 
@@ -706,7 +707,7 @@ html[data-initial-route="settings"] .wiki-pane {
   display: grid;
   gap: 5px;
   min-width: 0;
-  color: #3f473f;
+  color: var(--muted);
   font: 600 11px/1.25 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -715,11 +716,11 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-action-form textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 9px;
-  background: #fbfbf8;
-  color: #20231f;
+  background: var(--bg);
+  color: var(--text);
   font: 12px/1.45 var(--sidebar-font);
   text-transform: none;
 }
@@ -749,7 +750,7 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  color: #8b9088;
+  color: var(--muted);
   font: 800 11px/1 var(--sidebar-font);
   letter-spacing: 0;
 }
@@ -758,7 +759,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-import-separator::after {
   content: "";
   height: 1px;
-  background: #d8d8d0;
+  background: var(--border);
 }
 
 .dashboard-import-separator span {
@@ -767,7 +768,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-import-label {
   margin: -2px 0 0;
-  color: #596158;
+  color: var(--muted);
   font: 700 11px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -792,19 +793,19 @@ html[data-initial-route="settings"] .wiki-pane {
   position: relative;
   justify-items: center;
   gap: 6px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
-  background: #fbfbf8;
-  color: #20231f;
+  background: var(--bg);
+  color: var(--text);
   cursor: pointer;
   text-align: center;
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .dashboard-import-button:hover {
-  border-color: #20231f;
-  background: #f7f7f4;
+  border-color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg));
 }
 
 .dashboard-import-button span {
@@ -814,7 +815,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-import-button small {
-  color: #596158;
+  color: var(--muted);
   font: 600 11px/1.2 var(--sidebar-font);
   text-transform: none;
 }
@@ -831,8 +832,8 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-import-button:has(input:focus-visible) {
-  border-color: #7da0ff;
-  box-shadow: 0 0 0 4px rgba(125, 160, 255, 0.55);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .planning-interview {
@@ -1122,11 +1123,11 @@ html[data-initial-route="settings"] .wiki-pane {
   justify-content: center;
   gap: 7px;
   min-height: 42px;
-  border: 1px solid #20231f;
+  border: 1px solid var(--text);
   border-radius: 6px;
   padding: 11px 17px;
-  background: #20231f;
-  color: #ffffff;
+  background: var(--text);
+  color: var(--panel);
   cursor: pointer;
   font: 800 14px/1.2 var(--sidebar-font);
 }
@@ -1267,11 +1268,11 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-action-form button {
   flex: 0 0 auto;
   min-height: 34px;
-  border: 1px solid #20231f;
+  border: 1px solid var(--text);
   border-radius: 6px;
   padding: 8px 10px;
-  background: #20231f;
-  color: #fff;
+  background: var(--text);
+  color: var(--panel);
   cursor: pointer;
   font: 700 11px/1.2 var(--sidebar-font);
 }
@@ -1301,7 +1302,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-section + .dashboard-section {
-  border-top: 1px solid #d8d8d0;
+  border-top: 1px solid var(--border);
   padding-top: 14px;
   padding-left: 0;
 }
@@ -1312,26 +1313,26 @@ html[data-initial-route="settings"] .wiki-pane {
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
-  border-bottom: 1px solid #d8d8d0;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 8px;
 }
 
 .dashboard-new-button {
   flex: 0 0 auto;
   min-height: 40px;
-  border: 1px solid #20231f;
+  border: 1px solid var(--text);
   border-radius: 7px;
   padding: 9px 14px;
-  background: #20231f;
-  color: #fff;
+  background: var(--text);
+  color: var(--panel);
   cursor: pointer;
   font: 800 13px/1.2 var(--sidebar-font);
-  box-shadow: 0 2px 0 #d8d8d0;
+  box-shadow: 0 2px 0 var(--border);
 }
 
 .dashboard-new-button[aria-expanded="true"] {
-  border-color: #40483f;
-  background: #40483f;
+  border-color: var(--text);
+  background: var(--text);
 }
 
 .dashboard-list {
@@ -1354,10 +1355,10 @@ html[data-initial-route="settings"] .wiki-pane {
   display: grid;
   gap: 5px;
   min-width: 0;
-  border: 1px solid #dedfd8;
+  border: 1px solid var(--border);
   border-radius: 7px;
   padding: 9px;
-  background: #fff;
+  background: var(--panel);
 }
 
 .dashboard-item a,
@@ -1367,7 +1368,7 @@ html[data-initial-route="settings"] .wiki-pane {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #171916;
+  color: var(--text);
   cursor: pointer;
   font: 700 12px/1.25 var(--sidebar-font);
   overflow: hidden;
@@ -1379,7 +1380,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .dashboard-item p,
 .dashboard-empty {
   margin: 0;
-  color: #596158;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
   overflow-wrap: anywhere;
@@ -1394,7 +1395,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-item .dashboard-open-link {
-  border: 1px solid #dedfd8;
+  border: 1px solid var(--border);
   border-radius: 5px;
   padding: 5px 7px;
   font-weight: 600;
@@ -1403,10 +1404,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .dashboard-badge {
   width: fit-content;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 6px;
-  color: #596158;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1;
 }
@@ -1415,16 +1416,16 @@ html[data-initial-route="settings"] .wiki-pane {
   position: relative;
   gap: 11px;
   min-height: 112px;
-  border-color: #d6d3c7;
+  border-color: var(--border);
   padding: 14px 16px 16px 18px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, #25a244 15%, transparent) 0 4px, transparent 4px),
-    #fffdfa;
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent) 0 4px, transparent 4px),
+    var(--panel);
 }
 
 .dashboard-item.project-card.active {
-  border-color: #b9c1b1;
-  box-shadow: inset 0 0 0 1px #edf0e9;
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, var(--panel));
 }
 
 .project-card-header {
@@ -1443,7 +1444,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .project-card-title-text {
   min-width: 0;
-  color: #171916;
+  color: var(--text);
   font: 800 15px/1.2 var(--sidebar-font);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1468,7 +1469,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .dashboard-item .project-card-path {
-  color: #596158;
+  color: var(--muted);
   font: 12px/1.35 var(--sidebar-font);
 }
 
@@ -1490,17 +1491,17 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 6px;
   width: auto;
   max-width: 100%;
-  border: 1px solid #d3d7cc;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 5px 7px;
-  background: #f7f8f4;
+  background: var(--bg);
   font: 800 11px/1.1 var(--sidebar-font);
 }
 
 .project-checkout-picker button.active {
-  border-color: #8f9c90;
-  background: #eef4ea;
-  color: #26311f;
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  color: var(--text);
 }
 
 .project-checkout-picker .preview-status {
@@ -1512,11 +1513,11 @@ html[data-initial-route="settings"] .wiki-pane {
   align-items: center;
   gap: 4px;
   width: auto;
-  border: 1px solid #171916;
+  border: 1px solid var(--text);
   border-radius: 5px;
   padding: 5px 7px;
-  background: #171916;
-  color: #fff;
+  background: var(--text);
+  color: var(--panel);
   font-weight: 600;
 }
 
@@ -1657,10 +1658,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .project-detail {
   min-width: 0;
-  border: 1px solid #e3e1d8;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 9px;
-  background: #f8f6ef;
+  background: var(--bg);
 }
 
 .project-detail span,
@@ -1673,14 +1674,14 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .project-detail span {
-  color: #747970;
+  color: var(--muted);
   font: 700 9px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
 
 .project-detail strong {
   margin-top: 3px;
-  color: #252a25;
+  color: var(--text);
   font: 600 12px/1.2 var(--sidebar-font);
 }
 
@@ -2644,7 +2645,7 @@ html[data-initial-route="settings"] .wiki-pane {
   display: flex;
   flex-direction: column;
   padding: 6px 20px 18px 0;
-  background: #fbfbfa;
+  background: var(--panel);
   font-family: var(--sidebar-font);
   overflow-x: hidden;
   overflow-y: auto;
@@ -2684,7 +2685,7 @@ html[data-initial-route="settings"] .wiki-pane {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #879189;
+  background: var(--muted);
   opacity: 0.34;
   animation: brand-dot-pulse 3.6s ease-in-out infinite;
 }
@@ -2724,7 +2725,7 @@ html[data-initial-route="settings"] .wiki-pane {
 @keyframes brand-dot-pulse {
   0%,
   100% {
-    background: #879189;
+    background: var(--muted);
     opacity: 0.28;
   }
 
@@ -2734,7 +2735,7 @@ html[data-initial-route="settings"] .wiki-pane {
   }
 
   68% {
-    background: #5f7668;
+    background: color-mix(in srgb, var(--accent) 42%, var(--muted));
     opacity: 0.5;
   }
 }
@@ -2860,16 +2861,16 @@ html[data-initial-route="settings"] .wiki-pane {
   margin-right: -20px;
   margin-bottom: -18px;
   padding: 8px 20px 18px 0;
-  background: #fbfbfa;
-  border-top: 1px solid #e3e3df;
-  box-shadow: 0 -14px 22px rgba(251, 251, 250, 0.92);
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -14px 22px color-mix(in srgb, var(--panel) 92%, transparent);
 }
 
 .project-nav-group[open] {
   z-index: 8;
   max-height: min(48vh, 360px);
   overflow: auto;
-  box-shadow: 0 -18px 28px rgba(251, 251, 250, 0.96), 0 -1px 0 #d9d9d2;
+  box-shadow: 0 -18px 28px color-mix(in srgb, var(--panel) 96%, transparent), 0 -1px 0 var(--border);
 }
 
 .wiki-nav-group .wiki-nav-group {
@@ -2881,7 +2882,7 @@ html[data-initial-route="settings"] .wiki-pane {
   max-width: 100%;
   min-width: 0;
   padding: 5px 20px 9px;
-  color: #8a8d88;
+  color: var(--muted);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -2902,7 +2903,7 @@ html[data-initial-route="settings"] .wiki-pane {
   max-width: 100%;
   min-width: 0;
   padding: 5px 20px 9px 13px;
-  color: #8a8d88;
+  color: var(--muted);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
@@ -2930,7 +2931,7 @@ html[data-initial-route="settings"] .wiki-pane {
   flex: 0 0 22px;
   padding-right: 3px;
   text-align: right;
-  color: #8a8d88;
+  color: var(--muted);
   font-size: 22px;
   font-weight: 400;
   line-height: 1;
@@ -2963,7 +2964,7 @@ html[data-initial-route="settings"] .wiki-pane {
   left: 4px;
   flex: 0 0 22px;
   padding-left: 3px;
-  color: #8a8d88;
+  color: var(--muted);
   font-size: 22px;
   line-height: 1;
   transform: translateY(-1px);
@@ -2989,7 +2990,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .wiki-nav a.completed-plan-link {
-  color: #8d928a;
+  color: var(--muted);
 }
 
 .wiki-nav a.completed-plan-link .wiki-nav-label {
@@ -2997,12 +2998,12 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .wiki-nav a.completed-plan-link::before {
-  background: #d3d8cf;
+  background: color-mix(in srgb, var(--muted) 24%, transparent);
   box-shadow: none;
 }
 
 .wiki-nav details.completed-plan > summary {
-  color: #9aa098;
+  color: var(--muted);
 }
 
 .plan-tree > .plan-subtree > summary a::before,
@@ -3032,7 +3033,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .plan-tree .plan-subtree .plan-subtree > a.completed-plan-link::before {
-  background: #d3d8cf;
+  background: color-mix(in srgb, var(--muted) 24%, transparent);
   box-shadow: none;
 }
 
@@ -3069,7 +3070,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .plan-tree > .plan-subtree[open],
 .plan-tree > .plan-subtree:has(.plan-subtree[open]) {
   padding-bottom: 10px;
-  border-bottom: 1px solid #e3e3df;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 10px;
 }
 
@@ -3123,7 +3124,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .up-next-popover dd {
   margin: 0;
-  color: #343831;
+  color: var(--text);
   font-size: 12px;
   line-height: 1.3;
 }
@@ -3134,11 +3135,11 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 #up-next-stage {
-  color: #343831;
+  color: var(--text);
 }
 
 #up-next-current {
-  color: #343831;
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -3177,7 +3178,7 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 6px 10px;
   padding: 10px 14px;
   border-top: 1px solid var(--border);
-  background: #fbfbf8;
+  background: var(--panel);
 }
 
 .plan-prompt[hidden] {
@@ -3200,10 +3201,10 @@ html[data-initial-route="settings"] .wiki-pane {
   min-width: 0;
   overflow-y: hidden;
   resize: none;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 7px 8px;
-  background: #fbfbf8;
+  background: var(--bg);
   color: var(--text);
   font: 12px/1.55 var(--sidebar-font);
 }
@@ -3216,10 +3217,10 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 6px;
   justify-self: end;
   min-height: 35px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
-  background: #f7f7f4;
+  background: var(--bg);
   color: var(--text);
   cursor: pointer;
   font: 12px/1.2 var(--sidebar-font);
@@ -3260,10 +3261,10 @@ html[data-initial-route="settings"] .wiki-pane {
   width: min(680px, calc(100% - 48px));
   margin: 28px auto;
   padding: 28px;
-  border: 1px solid #d8d8d0;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fffdfa;
-  box-shadow: 0 18px 44px rgba(32, 35, 31, 0.08);
+  background: var(--panel);
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--text) 8%, transparent);
 }
 
 .workspace.non-plan-wiki-mode .plan-prompt[hidden] {
@@ -3283,11 +3284,11 @@ html[data-initial-route="settings"] .wiki-pane {
   min-height: 180px;
   --plan-prompt-min-lines: 12;
   --plan-prompt-max-lines: 18;
-  border-color: rgba(32, 35, 31, 0.22);
+  border-color: color-mix(in srgb, var(--text) 22%, transparent);
   border-radius: 8px;
   padding: 16px;
-  background: rgba(255, 253, 248, 0.72);
-  box-shadow: inset 0 0 0 1px rgba(255, 253, 248, 0.5);
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--panel) 50%, transparent);
   font: 14px/1.55 var(--sidebar-font);
 }
 
@@ -3318,10 +3319,10 @@ html[data-initial-route="settings"] .wiki-pane {
   align-items: center;
   gap: 10px;
   min-width: 0;
-  border-bottom: 1px solid #d8d8d0;
+  border-bottom: 1px solid var(--border);
   padding: 7px 10px;
-  background: #fbfbfa;
-  color: #3f473f;
+  background: var(--panel);
+  color: var(--muted);
   font: 12px/1.2 var(--sidebar-font);
 }
 
@@ -3332,7 +3333,7 @@ html[data-initial-route="settings"] .wiki-pane {
   min-width: 0;
   margin-right: auto;
   overflow: hidden;
-  color: #20231f;
+  color: var(--text);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -3358,11 +3359,11 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .wiki-breadcrumb-separator {
   flex: 0 0 auto;
-  color: #7b847b;
+  color: var(--muted);
 }
 
 .wiki-breadcrumb-current {
-  color: #20231f;
+  color: var(--text);
 }
 
 .execute-control {
@@ -3375,11 +3376,11 @@ html[data-initial-route="settings"] .wiki-pane {
 .execute-menu button,
 .preview-link {
   min-height: 30px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 9px;
-  background: #ffffff;
-  color: #20231f;
+  background: var(--panel);
+  color: var(--text);
   cursor: pointer;
   font: 600 12px/1.2 var(--sidebar-font);
   text-decoration: none;
@@ -3400,11 +3401,11 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .completion-badge {
   flex: 0 0 auto;
-  border: 1px solid #d6d8d1;
+  border: 1px solid var(--border);
   border-radius: 999px;
   padding: 6px 10px;
-  background: #f0f2ed;
-  color: #6b756c;
+  background: var(--bg);
+  color: var(--muted);
   font: 800 10px/1.2 var(--sidebar-font);
   text-transform: uppercase;
 }
@@ -3430,9 +3431,9 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .preview-link {
-  border-color: #7f8b72;
-  background: #f5f7ef;
-  color: #26311f;
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  color: var(--text);
   font-weight: 800;
 }
 
@@ -3444,15 +3445,15 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .preview-link.starting {
-  border-color: #8f9c90;
-  background: #f2f4ef;
-  color: #455044;
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  color: var(--muted);
 }
 
 .preview-link.disabled {
-  border-color: #d8d8d0;
-  background: #f1f1ed;
-  color: #747970;
+  border-color: var(--border);
+  background: var(--bg);
+  color: var(--muted);
   cursor: not-allowed;
 }
 
@@ -3464,11 +3465,11 @@ html[data-initial-route="settings"] .wiki-pane {
   display: grid;
   gap: 4px;
   min-width: 145px;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 7px;
   padding: 5px;
-  background: #ffffff;
-  box-shadow: 0 14px 30px rgba(23, 25, 22, 0.12);
+  background: var(--panel);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--text) 12%, transparent);
 }
 
 .execute-menu[hidden],
@@ -3490,7 +3491,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .preview-link:hover,
 .preview-link:focus-visible {
   border-color: #8f9c90;
-  background: #f2f4ef;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
 }
 
 .execute-button:hover,
@@ -3515,11 +3516,11 @@ html[data-initial-route="settings"] .wiki-pane {
     "input button";
   align-items: start;
   gap: 6px 10px;
-  border-bottom: 1px solid #d8d8d0;
+  border-bottom: 1px solid var(--border);
   padding: 9px 10px 10px;
   background:
-    linear-gradient(90deg, rgba(37, 162, 68, 0.08), transparent 42%),
-    #fbfbf8;
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 42%),
+    var(--panel);
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
@@ -3529,7 +3530,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .modify-plan-ui label {
   grid-area: label;
-  color: #5f6b60;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -3543,10 +3544,10 @@ html[data-initial-route="settings"] .wiki-pane {
   --plan-prompt-max-lines: 7;
   overflow-y: hidden;
   resize: none;
-  border: 1px solid #c6c8c0;
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 9px;
-  background: #ffffff;
+  background: var(--panel);
   color: var(--text);
   font: 12px/1.55 var(--sidebar-font);
 }
@@ -3558,11 +3559,11 @@ html[data-initial-route="settings"] .wiki-pane {
   align-self: start;
   gap: 6px;
   min-height: 34px;
-  border: 1px solid #20231f;
+  border: 1px solid var(--text);
   border-radius: 6px;
   padding: 8px 10px;
-  background: #20231f;
-  color: #fff;
+  background: var(--text);
+  color: var(--panel);
   cursor: pointer;
   font: 700 11px/1.2 var(--sidebar-font);
 }
@@ -3582,7 +3583,7 @@ html[data-initial-route="settings"] .wiki-pane {
   justify-self: end;
   min-height: 14px;
   margin: 0;
-  color: #5f6b60;
+  color: var(--muted);
   font-size: 11px;
 }
 
