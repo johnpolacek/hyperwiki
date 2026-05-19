@@ -37,6 +37,7 @@ try {
   await writeFile(path.join(groupedWorktree, "package.json"), `${JSON.stringify({ name: "project-removal-root" }, null, 2)}\n`);
   await inithyperwiki(groupedWorktree, {
     yes: true,
+    no_git: true,
     project_name: "Project Removal Root",
     summary: "Feature checkout for grouped project card coverage."
   });

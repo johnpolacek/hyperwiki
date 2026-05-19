@@ -1,7 +1,8 @@
-import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import path from "node:path";
+import { git, gitOnboardingRequested, gitOnboardingStatus, initializeGitOnboarding } from "./git.js";
 
 const pages = new Map([
   ["wiki/index.html", indexPage],
@@ -75,7 +76,16 @@ export async function inithyperwiki(root, options = {}) {
     await writeIfSafe(path.join(root, relativePath), render(context), options);
   }
 
+  const gitResult = await maybeInitializeGit(root, options);
+
   console.log(`Initialized hyperwiki for ${context.projectName}`);
+  if (gitResult?.status === "committed") {
+    console.log("Initialized Git and created the initial Hyperwiki commit.");
+  } else if (gitResult?.status === "initialized") {
+    console.log("Initialized Git.");
+  } else if (gitResult?.status === "skipped") {
+    console.log("Skipped Git initialization.");
+  }
   console.log("Run: npx hyperwiki");
 }
 
@@ -132,6 +142,32 @@ async function inspectProject(root, options) {
       status: gitStatus.ok ? gitStatus.stdout.split("\n").filter(Boolean) : []
     }
   };
+}
+
+async function maybeInitializeGit(root, options) {
+  const existing = await gitOnboardingStatus(root);
+  if (existing.hasGit) {
+    return { status: "already-initialized", gitRoot: existing.root };
+  }
+  const requested = gitOnboardingRequested(options);
+  if (requested === false) {
+    return { status: "skipped" };
+  }
+  if (requested === true || await confirmGitInitialization()) {
+    return initializeGitOnboarding(root);
+  }
+  return { status: "skipped" };
+}
+
+async function confirmGitInitialization() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return false;
+  const readline = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await readline.question("Initialize Git and create an initial commit for this project? [Y/n] ");
+    return !/^n(o)?$/i.test(answer.trim());
+  } finally {
+    readline.close();
+  }
 }
 
 function normalizePlanningAnswers(value, evidence = null) {
@@ -381,14 +417,6 @@ Use the \`parallel-dev-worktrees\` skill for worktree execution. Feature worktre
 
 Create or update \`wiki/plans/\` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
 `;
-}
-
-function git(root, args) {
-  return new Promise((resolve) => {
-    execFile("git", args, { cwd: root }, (error, stdout, stderr) => {
-      resolve({ ok: !error, stdout: stdout.trim(), stderr: stderr.trim() });
-    });
-  });
 }
 
 async function writeIfSafe(filePath, content, options) {

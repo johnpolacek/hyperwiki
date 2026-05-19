@@ -13,6 +13,7 @@ import { createPtySession } from "./pty.js";
 import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
+import { gitContext, initializeGitOnboarding } from "./git.js";
 import { readSettings, resetThemeSettings, syncAgentsFile, themeCss, writeSettings } from "./settings.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -222,6 +223,12 @@ async function handleRequest(defaultRoot, request, response, context) {
     if (url.pathname === "/api/repo") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       await sendJson(response, await repoContext(project.root));
+      return;
+    }
+    if (url.pathname === "/api/git/init" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const result = await initializeGitOnboarding(project.root);
+      await sendJson(response, { ok: true, result, repo: await repoContext(project.root) });
       return;
     }
     if (url.pathname === "/api/sessions") {
@@ -1575,15 +1582,20 @@ async function createProjectFromDashboard(projectRegistry, body) {
   await mkdir(projectRoot, { recursive: true });
   await inithyperwiki(projectRoot, {
     yes: true,
+    no_git: true,
     project_name: title,
     summary,
     source_document: typeof body?.document === "string" ? body.document : "",
     source_document_type: typeof body?.documentType === "string" ? body.documentType : "",
     planning_answers: body?.planningAnswers && typeof body.planningAnswers === "object" ? body.planningAnswers : null
   });
+  let gitOnboarding = { status: "skipped" };
+  if (body?.initializeGit !== false) {
+    gitOnboarding = await initializeGitOnboarding(projectRoot);
+  }
   const record = await projectRegistry.register(projectRoot);
   const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
-  return { project: record, workspaceUrl };
+  return { project: record, workspaceUrl, git: gitOnboarding };
 }
 
 async function uniqueProjectRoot(title) {
@@ -1692,36 +1704,14 @@ function stripHtml(value) {
 }
 
 export async function repoContext(root) {
-  const [gitRoot, branch, status, commonDir, worktree] = await Promise.all([
-    git(root, ["rev-parse", "--show-toplevel"]),
-    git(root, ["branch", "--show-current"]),
-    git(root, ["status", "--short"]),
-    git(root, ["rev-parse", "--git-common-dir"]),
-    worktreeSlug(root)
-  ]);
+  const context = await gitContext(root);
   return {
-    root,
+    ...context,
     git: {
-      root: gitRoot.ok ? gitRoot.stdout : null,
-      branch: branch.ok && branch.stdout ? branch.stdout : "detached",
-      worktree,
-      dirty: status.ok ? status.stdout.length > 0 : null,
-      status: status.ok ? status.stdout.split("\n").filter(Boolean) : [],
-      isWorktree: commonDir.ok ? ![".git", path.join(root, ".git")].includes(commonDir.stdout) : null
+      ...context.git,
+      worktree: await worktreeSlug(root)
     }
   };
-}
-
-function git(root, args) {
-  return new Promise((resolve) => {
-    execFile("git", args, { cwd: root }, (error, stdout, stderr) => {
-      resolve({
-        ok: !error,
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      });
-    });
-  });
 }
 
 async function readJsonBody(request) {

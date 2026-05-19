@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { inithyperwiki } from "../src/init.js";
@@ -34,7 +34,7 @@ try {
   if (contract.project.name !== "Contract Smoke" || contract.project.root !== root || contract.project.canonicalWiki !== "html") {
     throw new Error(`Expected project facts from config/root, got ${JSON.stringify(contract.project)}`);
   }
-  if (!contract.repo.git || contract.repo.git.root !== null && !contract.repo.git.root.startsWith(root)) {
+  if (!contract.repo.git || contract.repo.git.root !== null && await realpath(contract.repo.git.root) !== await realpath(root)) {
     throw new Error(`Expected repo context in contract, got ${JSON.stringify(contract.repo)}`);
   }
   if (contract.plan.dashboard.path !== "/wiki/plans/index.html" || !contract.plan.status.current) {

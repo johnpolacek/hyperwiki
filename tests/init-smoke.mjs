@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { inithyperwiki } from "../src/init.js";
@@ -31,6 +32,9 @@ const prd = await readFile(path.join(root, "wiki", "sources", "prd.html"), "utf8
 const sources = await readFile(path.join(root, "wiki", "sources.html"), "utf8");
 const agents = await readFile(path.join(root, "AGENTS.md"), "utf8");
 const config = JSON.parse(await readFile(path.join(root, ".hyperwiki", "config.json"), "utf8"));
+const gitRoot = await git(root, ["rev-parse", "--show-toplevel"]);
+const gitLog = await git(root, ["log", "--oneline", "-1"]);
+const realRoot = await realpath(root);
 
 if (!index.includes("<h1>sample-product</h1>")) {
   throw new Error("Generated index did not use the project name.");
@@ -68,14 +72,24 @@ if (config.agent.launchCommand !== "") {
 if (config.layout.panels.some((panel) => panel.name === "agent")) {
   throw new Error("Expected fresh init to omit the agent panel until an agent command is configured.");
 }
+if (!gitRoot.ok || await realpath(gitRoot.stdout) !== realRoot) {
+  throw new Error(`Expected --yes init to initialize Git, got ${JSON.stringify(gitRoot)}`);
+}
+if (!gitLog.stdout.includes("Initialize Hyperwiki project")) {
+  throw new Error(`Expected initial Hyperwiki commit, got ${gitLog.stdout}`);
+}
 
-await inithyperwiki(agentRoot, { yes: true, agent_launch_command: "custom-agent --workspace" });
+await inithyperwiki(agentRoot, { yes: true, no_git: true, agent_launch_command: "custom-agent --workspace" });
 const agentConfig = JSON.parse(await readFile(path.join(agentRoot, ".hyperwiki", "config.json"), "utf8"));
+const skippedGit = await git(agentRoot, ["rev-parse", "--show-toplevel"]);
 if (agentConfig.agent.launchCommand !== "custom-agent --workspace") {
   throw new Error("Expected explicit agent launch command to be written to config.");
 }
 if (!agentConfig.layout.panels.some((panel) => panel.name === "agent" && panel.command === "custom-agent --workspace")) {
   throw new Error("Expected explicit agent launch command to create an agent panel.");
+}
+if (skippedGit.ok) {
+  throw new Error("Expected no_git init to skip Git initialization.");
 }
 
 const sourceDocument = `<!doctype html>
@@ -206,3 +220,15 @@ if (!guidedRoadmap.includes("Ship the first slice") || !guidedArchitecture.inclu
 }
 
 console.log("init smoke test passed");
+
+function git(cwd, args) {
+  return new Promise((resolve) => {
+    execFile("git", args, { cwd }, (error, stdout, stderr) => {
+      resolve({
+        ok: !error,
+        stdout: String(stdout || "").trim(),
+        stderr: String(stderr || "").trim()
+      });
+    });
+  });
+}

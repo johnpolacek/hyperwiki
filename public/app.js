@@ -31,6 +31,7 @@ const projectImportForm = document.getElementById("project-import-form");
 const projectTitleInput = document.getElementById("project-title");
 const projectMarkdownInput = document.getElementById("project-markdown");
 const projectMarkdownFile = document.getElementById("project-markdown-file");
+const projectInitGit = document.getElementById("project-init-git");
 const planningInterview = document.getElementById("planning-interview");
 const planningSourceBrief = document.getElementById("planning-source-brief");
 const planningStepLabel = document.getElementById("planning-step-label");
@@ -2565,7 +2566,8 @@ async function createProjectFromMarkdown() {
         summary: documentSummary(markdown, documentType),
         document: markdown,
         documentType,
-        planningAnswers: selectedPlanningAnswers()
+        planningAnswers: selectedPlanningAnswers(),
+        initializeGit: projectInitGit ? projectInitGit.checked : true
       })
     });
     closeAllTerminals();
@@ -2628,10 +2630,24 @@ async function executeTarget(target) {
     workspace.dataset.executeWorkflow = "main";
     showPreviewLink(mainPreviewUrl(), "Open App");
   }
+  await ensureGitForExecution();
   await ensureDevLogTerminal();
   const agent = await ensureAgentTerminal();
   activateTerminal(agent.name);
   await postAgentPromptWithRetry(executePrompt(target, executionContext, slug), executionContext.agentPagePath);
+}
+
+async function ensureGitForExecution() {
+  const repo = await api(projectPath("/api/repo"));
+  if (repo.git?.root) return repo;
+  const shouldInitialize = window.confirm("This project is not a Git repository yet. Initialize Git and create an initial Hyperwiki commit before executing?");
+  if (shouldInitialize) {
+    const result = await api(projectPath("/api/git/init"), { method: "POST", body: "{}" });
+    await loadRepoContext();
+    return result.repo;
+  }
+  window.alert("Continuing without Git. Agent changes will not have Git history until you initialize the project.");
+  return repo;
 }
 
 async function resolveExecutionContext() {

@@ -146,9 +146,13 @@ await page.waitForURL(newProjectUrl);
 await page.locator("#project-import-form").evaluate((form) => {
   const text = form.textContent || "";
   const fileInput = form.querySelector("#project-markdown-file");
+  const gitInput = form.querySelector("#project-init-git");
   const importButton = form.querySelector(".dashboard-import-button");
-  if (!text.includes("OR") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || text.includes("Send to agent")) {
+  if (!text.includes("OR") || !text.includes("Choose File") || !text.includes("Markdown or HTML") || !text.includes("Initialize Git") || text.includes("Send to agent")) {
     throw new Error(`Expected custom document import affordance without Send to agent, got ${text}`);
+  }
+  if (!gitInput?.checked) {
+    throw new Error("Expected Git initialization to be checked by default.");
   }
   if (!fileInput?.accept.includes(".html") || !fileInput.accept.includes("text/html")) {
     throw new Error(`Expected project import to accept HTML, got ${fileInput?.accept}`);
@@ -858,14 +862,47 @@ await page.route(/\/api\/layout(?:\?|$)/, async (route) => {
     })
   });
 });
+let gitInitRequests = 0;
+await page.route(/\/api\/repo(?:\?|$)/, async (route) => {
+  await route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      root: "/tmp/non-git-smoke",
+      git: { root: null, branch: "detached", worktree: "main", dirty: null, status: [], isWorktree: null }
+    })
+  });
+});
+await page.route(/\/api\/git\/init(?:\?|$)/, async (route) => {
+  gitInitRequests += 1;
+  await route.fulfill({
+    contentType: "application/json",
+    body: JSON.stringify({
+      ok: true,
+      result: { status: "committed", committed: true, message: "Initialize Hyperwiki project" },
+      repo: {
+        root: "/tmp/non-git-smoke",
+        git: { root: "/tmp/non-git-smoke", branch: "main", worktree: "main", dirty: false, status: [], isWorktree: false }
+      }
+    })
+  });
+});
 await page.goto(`${origin}/workspace/#/wiki/plans/mvp/stage-08-settings-soul-memory/unit-01-global-settings-page.html`, { waitUntil: "networkidle" });
 await page.waitForFunction(() => document.querySelector("#current-page")?.dataset.title === "Unit 01 - Global Settings Page");
 await page.locator("#execute-button").evaluate((button) => {
   button.hidden = false;
 });
+page.once("dialog", async (dialog) => {
+  if (!dialog.message().includes("not a Git repository")) {
+    throw new Error(`Expected missing-Git confirmation, got ${dialog.message()}`);
+  }
+  await dialog.accept();
+});
 await page.locator("#execute-button").click();
 await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.waitForFunction(() => document.querySelector("#plan-prompt-status")?.textContent.includes("No agent launch command is configured"));
+if (gitInitRequests !== 1) {
+  throw new Error(`Expected Execute to initialize Git once, got ${gitInitRequests}`);
+}
 await page.locator(".terminal-pane").evaluate((pane) => {
   if (document.querySelectorAll(".terminal-panel").length !== 0) {
     throw new Error(`Expected missing agent command to avoid terminal creation, got ${pane.textContent}`);

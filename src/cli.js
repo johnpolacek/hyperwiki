@@ -66,7 +66,7 @@ function printHelp() {
 
 Usage:
   npx hyperwiki
-  npx hyperwiki init [--yes] [--project-name NAME] [--summary TEXT] [--overwrite]
+  npx hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite]
   npx hyperwiki reset [--dry-run]
   npx hyperwiki dev [--host 127.0.0.1] [--port 4177]
   npx hyperwiki launch [--host 127.0.0.1] [--port 4177] [--no-open]

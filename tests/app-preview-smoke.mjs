@@ -21,7 +21,7 @@ try {
   await writePackage(root);
   await writePackage(worktree);
   await inithyperwiki(root, { yes: true, project_name: "Preview Smoke", skip_portless: true });
-  await inithyperwiki(worktree, { yes: true, project_name: "Preview Smoke", skip_portless: true });
+  await inithyperwiki(worktree, { yes: true, no_git: true, project_name: "Preview Smoke", skip_portless: true });
   await writeFile(path.join(worktree, ".git"), "gitdir: /tmp/hyperwiki-preview-feature-a.git\n");
   await writeFakePnpm(bin, routeFile);
   const registry = new ProjectRegistry();

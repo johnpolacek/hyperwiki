@@ -17,8 +17,8 @@ let child = null;
 let browser = null;
 
 try {
-  await runCli(["init", "--yes"], { cwd: root, env: { ...process.env, HYPERWIKI_HOME: home } });
-  await runCli(["init", "--yes"], { cwd: secondRoot, env: { ...process.env, HYPERWIKI_HOME: home } });
+  await runCli(["init", "--yes", "--agent-launch-command", "cat"], { cwd: root, env: { ...process.env, HYPERWIKI_HOME: home } });
+  await runCli(["init", "--yes", "--no-git"], { cwd: secondRoot, env: { ...process.env, HYPERWIKI_HOME: home } });
   child = spawn(process.execPath, [path.resolve("src/cli.js"), "launch", "--port", String(port)], {
     cwd: root,
     env: {
@@ -62,7 +62,7 @@ try {
 
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  await page.goto(workspaceUrl, { waitUntil: "networkidle" });
+  await page.goto(`${workspaceUrl}#/wiki/plans/index.html`, { waitUntil: "networkidle" });
   const initialTerminals = await page.locator(".terminal-panel").count();
   if (initialTerminals !== 0) {
     throw new Error(`Expected launch to start with no terminals, got ${initialTerminals}`);
@@ -72,9 +72,9 @@ try {
       throw new Error(`Expected visible terminal controls before Execute, got ${pane.textContent}`);
     }
   });
-  const singleProjectToggle = await page.locator("#project-toggle").evaluate((element) => element.hidden);
-  if (!singleProjectToggle) {
-    throw new Error("Expected project topbar action to stay hidden for a single registered project.");
+  const projectToggleVisible = await page.locator("#project-toggle").evaluate((element) => !element.hidden);
+  if (!projectToggleVisible) {
+    throw new Error("Expected project topbar action to be visible for registered checkouts.");
   }
 
   const sessions = await fetch(`http://127.0.0.1:${port}/api/sessions`).then((response) => response.json());
@@ -103,7 +103,7 @@ try {
   await page.goto(secondWorkspaceUrl, { waitUntil: "networkidle" });
   await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "plan-unit-navigation");
   await page.locator("#project-toggle").evaluate((element) => {
-    if (!element.hidden) throw new Error("Expected worktrees to stay out of the Projects switcher.");
+    if (element.hidden) throw new Error("Expected project switcher to expose registered worktrees.");
   });
   const groupedProjects = await fetch(`http://127.0.0.1:${port}/api/projects?projectSlug=launch-smoke&worktreeSlug=plan-unit-navigation`).then((response) => response.json());
   if (groupedProjects.projects.length !== 1 || groupedProjects.projects[0].name !== "launch-smoke") {

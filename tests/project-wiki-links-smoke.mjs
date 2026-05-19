@@ -1,4 +1,5 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -35,6 +36,14 @@ try {
     })
   });
   const projectId = created.project.id;
+  const createdGitRoot = await git(created.project.root, ["rev-parse", "--show-toplevel"]);
+  const createdGitLog = await git(created.project.root, ["log", "--oneline", "-1"]);
+  if (!createdGitRoot.ok || await realpath(createdGitRoot.stdout) !== await realpath(created.project.root)) {
+    throw new Error(`Expected created project to initialize Git, got ${JSON.stringify(createdGitRoot)}`);
+  }
+  if (!createdGitLog.stdout.includes("Initialize Hyperwiki project")) {
+    throw new Error(`Expected created project initial commit, got ${createdGitLog.stdout}`);
+  }
   const stagePath = `/projects/${projectId}/wiki/plans/mvp/stage-01-foundation.html`;
   const unitPath = `/projects/${projectId}/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html`;
 
@@ -93,6 +102,18 @@ async function json(url, options = {}) {
     throw new Error(`Request failed: ${response.status} ${await response.text()}`);
   }
   return response.json();
+}
+
+function git(cwd, args) {
+  return new Promise((resolve) => {
+    execFile("git", args, { cwd }, (error, stdout, stderr) => {
+      resolve({
+        ok: !error,
+        stdout: String(stdout || "").trim(),
+        stderr: String(stderr || "").trim()
+      });
+    });
+  });
 }
 
 async function text(url) {
