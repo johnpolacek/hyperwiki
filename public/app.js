@@ -120,7 +120,6 @@ let nonPlanPromptSubmitted = false;
 let settingsState = null;
 let themeDraft = null;
 let themeDraftSimple = null;
-let themePresetPickerOpen = false;
 let agentDraft = null;
 let agentsFileDraft = "";
 let agentWikiRefreshTimer = null;
@@ -580,13 +579,6 @@ planningNext?.addEventListener("click", () => {
   if (planningWizard.stepIndex < planningQuestions.length - 1) {
     planningWizard.stepIndex += 1;
     renderPlanningInterview();
-  }
-});
-
-themePresetBar.addEventListener("click", (event) => {
-  if (event.target.closest("#theme-preset-edit")) {
-    themePresetPickerOpen = true;
-    renderThemeEditor();
   }
 });
 
@@ -1491,7 +1483,6 @@ function openThemeEditor() {
 function closeThemeEditor() {
   themeDraft = null;
   themeDraftSimple = null;
-  themePresetPickerOpen = false;
   themeEditor.hidden = true;
   settingsLayout.hidden = false;
   settingsPage.classList.remove("theme-editing");
@@ -1503,9 +1494,9 @@ function renderThemeEditor() {
   const activePreset = themeDraft?.activePreset || "paper";
   themePresetBar.replaceChildren(themeSelectedPreset(activePreset, presets[activePreset]));
   themePresetPicker.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset, "picker")));
-  themePresetBar.hidden = themePresetPickerOpen;
-  themePresetPicker.hidden = !themePresetPickerOpen;
-  themeEditorLayout.hidden = themePresetPickerOpen;
+  themePresetBar.hidden = false;
+  themePresetPicker.hidden = false;
+  themeEditorLayout.hidden = false;
   const theme = effectiveTheme({ theme: themeDraft });
   syncSimpleControls();
   themeControls.replaceChildren(themeTypographySection(theme.tokens));
@@ -1515,12 +1506,6 @@ function renderThemeEditor() {
 
 function themeSelectedPreset(value, preset) {
   const wrapper = themePresetCard(value, preset, "selected");
-  const edit = document.createElement("button");
-  edit.type = "button";
-  edit.id = "theme-preset-edit";
-  edit.className = "theme-preset-edit";
-  edit.textContent = "edit";
-  wrapper.append(edit);
   return wrapper;
 }
 

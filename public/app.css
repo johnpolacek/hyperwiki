@@ -1969,6 +1969,12 @@ html[data-initial-route="settings"] .wiki-pane {
   margin-top: 18px;
 }
 
+.workspace.settings-mode .theme-editor,
+.workspace.settings-mode .agent-editor {
+  margin: 0;
+  padding: 24px 42px 44px;
+}
+
 .theme-editor-header {
   display: flex;
   align-items: end;
@@ -2011,7 +2017,7 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .theme-preset-card-selected {
   position: relative;
-  grid-template-columns: 260px minmax(0, 1fr) auto;
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 220px;
   padding: 24px 26px;
   align-items: center;
@@ -2019,29 +2025,9 @@ html[data-initial-route="settings"] .wiki-pane {
   cursor: default;
 }
 
-.theme-preset-edit {
-  align-self: start;
-  justify-self: end;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  background: var(--panel);
-  color: var(--accent);
-  font: 700 15px/1 var(--sidebar-font);
-  text-transform: lowercase;
-  cursor: pointer;
-}
-
-.theme-preset-edit:hover,
-.theme-preset-edit:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent);
-  outline: 0;
-}
-
 .theme-preset-picker {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 12px;
   min-width: 0;
 }

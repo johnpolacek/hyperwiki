@@ -98,6 +98,51 @@ await page.locator("#settings-page").evaluate((panel) => {
     throw new Error("Expected font preview samples in the theme summary.");
   }
 });
+const originalThemeTitle = await page.locator("#theme-title").textContent();
+await page.locator("#theme-edit").click();
+await page.locator("#theme-editor").evaluate((editor) => {
+  if (editor.hidden) {
+    throw new Error("Expected Edit Theme to open.");
+  }
+  const style = getComputedStyle(editor);
+  if (Number.parseFloat(style.paddingLeft) < 24 || Number.parseFloat(style.paddingRight) < 24) {
+    throw new Error(`Expected Edit Theme to keep settings body padding, got ${style.paddingLeft} / ${style.paddingRight}.`);
+  }
+  const picker = document.querySelector("#theme-preset-picker");
+  if (!picker || picker.hidden || getComputedStyle(picker).display === "none") {
+    throw new Error("Expected theme preset picker to be visible immediately.");
+  }
+  const cards = [...document.querySelectorAll("#theme-preset-picker .theme-preset-card")];
+  if (cards.length < 4) {
+    throw new Error(`Expected multiple theme preset cards, got ${cards.length}.`);
+  }
+  const active = cards.filter((card) => card.getAttribute("aria-pressed") === "true");
+  if (active.length !== 1) {
+    throw new Error(`Expected one active theme preset, got ${active.length}.`);
+  }
+  if (document.querySelector("#theme-editor-layout").hidden) {
+    throw new Error("Expected theme controls and preview to stay visible beside preset picker.");
+  }
+});
+const nextPresetCard = page.locator("#theme-preset-picker .theme-preset-card").filter({ hasText: originalThemeTitle === "Atlas" ? "Paper" : "Atlas" }).first();
+const nextPresetName = (await nextPresetCard.locator(".theme-preset-text strong").textContent())?.trim();
+await nextPresetCard.click();
+await page.locator("#theme-preset-bar").evaluate((bar, expected) => {
+  const selected = bar.querySelector(".theme-preset-text-selected strong")?.textContent?.trim();
+  if (selected !== expected) {
+    throw new Error(`Expected selected draft preset ${expected}, got ${selected}.`);
+  }
+  const activePickerCard = document.querySelector("#theme-preset-picker .theme-preset-card[aria-pressed=\"true\"] .theme-preset-text strong")?.textContent?.trim();
+  if (activePickerCard !== expected) {
+    throw new Error(`Expected active picker preset ${expected}, got ${activePickerCard}.`);
+  }
+}, nextPresetName);
+await page.locator("#theme-cancel").click();
+await page.locator("#theme-title").evaluate((title, expected) => {
+  if (title.textContent !== expected) {
+    throw new Error(`Expected Cancel to keep persisted theme ${expected}, got ${title.textContent}.`);
+  }
+}, originalThemeTitle);
 await page.locator("#agent-edit").click();
 await page.locator("#memory-add").click();
 await page.waitForFunction(() => document.querySelectorAll(".memory-entry").length > 0);
