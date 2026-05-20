@@ -1,5 +1,5 @@
 use super::DomainSurface;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -70,6 +70,35 @@ pub struct GitInitResponse {
     pub ok: bool,
     pub result: GitInitResult,
     pub repo: RepoContext,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeCreateRequest {
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeCreateResponse {
+    pub ok: bool,
+    pub branch: String,
+    pub slug: String,
+    pub path: PathBuf,
+    pub preview_url: String,
+    pub workspace_url: String,
+    pub project: crate::domain::projects::ProjectRecord,
+    pub install: WorktreeInstallResult,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorktreeInstallResult {
+    pub ok: bool,
+    pub message: String,
 }
 
 pub fn repo_context(root: impl AsRef<Path>) -> RepoContext {
@@ -169,6 +198,124 @@ pub fn initialize_git_onboarding(root: impl AsRef<Path>) -> Result<GitInitRespon
     })
 }
 
+pub fn create_worktree_checkout(
+    registry: &crate::domain::projects::ProjectRegistry,
+    project: &crate::domain::projects::ProjectRecord,
+    request: WorktreeCreateRequest,
+) -> Result<WorktreeCreateResponse, (u16, String)> {
+    let repo = repo_context(&project.root);
+    let Some(git_root) = repo.git.root.as_deref() else {
+        return Err((
+            409,
+            "Initialize Git before creating a worktree.".to_string(),
+        ));
+    };
+    let current = if repo.git.worktree.is_empty() {
+        repo.git.branch.as_str()
+    } else {
+        repo.git.worktree.as_str()
+    }
+    .trim()
+    .to_lowercase();
+    if current != "main" && current != "master" {
+        return Err((
+            409,
+            "Create new worktrees from the main or master checkout.".to_string(),
+        ));
+    }
+
+    let branch = normalize_branch_name(request.branch.or(request.name))?;
+    let branch_format = git(git_root, &["check-ref-format", "--branch", &branch]);
+    if !branch_format.ok {
+        return Err((
+            400,
+            "Branch name contains characters Git cannot use.".to_string(),
+        ));
+    }
+    let slug = slugify(branch.trim_start_matches("refs/heads/"));
+    let git_root_path = PathBuf::from(git_root);
+    let parent = git_root_path.parent().unwrap_or(git_root_path.as_path());
+    let base = git_root_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("project");
+    let target = parent.join(format!("{base}.worktrees")).join(&slug);
+    if target.exists() {
+        return Err((
+            409,
+            format!("Worktree path already exists: {}", target.display()),
+        ));
+    }
+    let existing_branch = git(
+        git_root,
+        &[
+            "show-ref",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{branch}"),
+        ],
+    );
+    if existing_branch.ok {
+        return Err((409, format!("Branch already exists: {branch}")));
+    }
+
+    fs::create_dir_all(target.parent().unwrap_or(parent))
+        .map_err(|error| (500, error.to_string()))?;
+    let integration = default_git_branch(git_root, &repo.git.branch);
+    let fetch = git(git_root, &["fetch", "origin", "--prune"]);
+    let base_ref = if fetch.ok {
+        format!("origin/{integration}")
+    } else {
+        integration
+    };
+    let added = git(
+        git_root,
+        &[
+            "worktree",
+            "add",
+            target.to_string_lossy().as_ref(),
+            "-b",
+            &branch,
+            &base_ref,
+        ],
+    );
+    if !added.ok {
+        return Err((500, first_message(&added, "Could not create worktree.")));
+    }
+
+    let install = exec_file("pnpm", &["install"], &target);
+    let record = registry.register(&target).map_err(|error| (500, error))?;
+    let layout = crate::domain::previews::layout_config_for_root(&target);
+    let preview = crate::domain::previews::app_preview_for_project(&record);
+    let preview_url = if !preview.expected_url.is_empty() {
+        preview.expected_url
+    } else {
+        layout.dev.preview_url
+    };
+    let workspace_url = format!(
+        "/workspace/{}/{}",
+        percent_encode_path_segment(&record.project_slug),
+        percent_encode_path_segment(&record.worktree_slug)
+    );
+    Ok(WorktreeCreateResponse {
+        ok: true,
+        branch,
+        slug,
+        path: target,
+        preview_url,
+        workspace_url,
+        project: record,
+        install: WorktreeInstallResult {
+            ok: install.ok,
+            message: if install.ok {
+                "pnpm install completed.".to_string()
+            } else {
+                first_message(&install, "pnpm install failed.")
+            },
+        },
+    })
+}
+
 pub fn git(root: impl AsRef<Path>, args: &[&str]) -> GitCommandResult {
     match Command::new("git")
         .args(args)
@@ -186,6 +333,77 @@ pub fn git(root: impl AsRef<Path>, args: &[&str]) -> GitCommandResult {
             stderr: error.to_string(),
         },
     }
+}
+
+fn exec_file(command: &str, args: &[&str], cwd: &Path) -> GitCommandResult {
+    match Command::new(command).args(args).current_dir(cwd).output() {
+        Ok(output) => GitCommandResult {
+            ok: output.status.success(),
+            stdout: String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        },
+        Err(error) => GitCommandResult {
+            ok: false,
+            stdout: String::new(),
+            stderr: error.to_string(),
+        },
+    }
+}
+
+fn normalize_branch_name(value: Option<String>) -> Result<String, (u16, String)> {
+    let branch = value
+        .unwrap_or_default()
+        .trim()
+        .trim_matches('/')
+        .to_string();
+    if branch.is_empty() {
+        return Err((400, "Branch name is required.".to_string()));
+    }
+    if branch.contains("..")
+        || branch.ends_with('.')
+        || branch.ends_with('/')
+        || branch
+            .chars()
+            .any(|character| character.is_whitespace() || "~^:?*[]\\".contains(character))
+    {
+        return Err((
+            400,
+            "Branch name contains characters Git cannot use.".to_string(),
+        ));
+    }
+    Ok(branch)
+}
+
+fn default_git_branch(root: &str, fallback: &str) -> String {
+    let remote_head = git(
+        root,
+        &["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+    );
+    if remote_head.ok && remote_head.stdout.contains('/') {
+        return remote_head
+            .stdout
+            .split('/')
+            .skip(1)
+            .collect::<Vec<_>>()
+            .join("/");
+    }
+    if fallback.is_empty() || fallback == "detached" {
+        "main".to_string()
+    } else {
+        fallback.to_string()
+    }
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    value
+        .bytes()
+        .flat_map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                vec![byte as char]
+            }
+            _ => format!("%{byte:02X}").chars().collect(),
+        })
+        .collect()
 }
 
 fn require_git(root: &Path, args: &[&str], action: &str) -> Result<GitCommandResult, String> {
@@ -295,6 +513,152 @@ mod tests {
         assert_eq!(repo_context(&worktree).git.worktree, "feature-branch");
     }
 
+    #[test]
+    fn creates_git_worktree_registers_checkout_and_runs_install() {
+        let root = temp_root("git-worktree-main");
+        let home = temp_root("git-worktree-home");
+        make_hyperwiki_project(&root);
+        fs::write(
+            root.join("package.json"),
+            serde_json::json!({
+                "scripts": { "dev": "vite" },
+                "packageManager": "pnpm@10.33.3"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        git(&root, &["init"]);
+        git(&root, &["add", "-A"]);
+        git(
+            &root,
+            &[
+                "-c",
+                "user.name=Hyperwiki Test",
+                "-c",
+                "user.email=hyperwiki-test@localhost",
+                "commit",
+                "-m",
+                "Initial",
+            ],
+        );
+        let fake_bin = fake_pnpm();
+        let _path_guard = PathGuard::prepend(fake_bin);
+        let registry = crate::domain::projects::ProjectRegistry::new(&home);
+        let project = registry.register(&root).unwrap();
+
+        let result = create_worktree_checkout(
+            &registry,
+            &project,
+            WorktreeCreateRequest {
+                branch: Some("feature/worktree-flow".to_string()),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        assert!(result.ok);
+        assert_eq!(result.branch, "feature/worktree-flow");
+        assert_eq!(result.slug, "feature-worktree-flow");
+        assert!(result
+            .path
+            .to_string_lossy()
+            .contains(".worktrees/feature-worktree-flow"));
+        assert_eq!(
+            result.workspace_url,
+            "/workspace/git-worktree-main/feature-worktree-flow"
+        );
+        assert_eq!(
+            result.preview_url,
+            "https://feature-worktree-flow.git-worktree-main.localhost"
+        );
+        assert!(result.install.ok);
+        assert_eq!(result.project.worktree_slug, "feature-worktree-flow");
+        let listed = registry.list(Some(&result.project.id));
+        assert!(listed
+            .checkouts
+            .iter()
+            .any(|project| project.worktree_slug == "feature-worktree-flow"));
+    }
+
+    #[test]
+    fn rejects_worktree_creation_from_feature_checkout() {
+        let root = temp_root("git-worktree-feature");
+        make_hyperwiki_project(&root);
+        fs::write(
+            root.join(".git"),
+            "gitdir: /tmp/hyperwiki-feature-worktree.git\n",
+        )
+        .unwrap();
+        let registry =
+            crate::domain::projects::ProjectRegistry::new(temp_root("git-worktree-feature-home"));
+        let project = crate::domain::projects::ProjectRecord {
+            id: "feature".to_string(),
+            root,
+            name: "Feature".to_string(),
+            project_slug: "feature".to_string(),
+            worktree_slug: "feature-branch".to_string(),
+            available: true,
+            last_opened_at: None,
+            active: false,
+        };
+
+        let error = create_worktree_checkout(
+            &registry,
+            &project,
+            WorktreeCreateRequest {
+                branch: Some("feature/nope".to_string()),
+                name: None,
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error.0, 409);
+        assert!(error.1.contains("Initialize Git") || error.1.contains("main or master"));
+    }
+
+    fn make_hyperwiki_project(root: &Path) {
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({
+                "projectName": "Git Worktree Main",
+                "dev": {
+                    "command": "",
+                    "previewUrl": "https://git-worktree-main.localhost"
+                },
+                "worktrees": {
+                    "previewUrlPattern": "https://<branch-slug>.git-worktree-main.localhost"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("index.html"),
+            "<h1>Git Worktree</h1>",
+        )
+        .unwrap();
+    }
+
+    fn fake_pnpm() -> PathBuf {
+        let bin = temp_root("pnpm-bin");
+        let path = bin.join("pnpm");
+        fs::write(
+            &path,
+            "#!/usr/bin/env sh\nif [ \"$1\" = \"install\" ]; then exit 0; fi\nif [ \"$1\" = \"--version\" ]; then echo 10.33.3; exit 0; fi\nexit 1\n",
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            permissions.set_mode(0o755);
+        }
+        fs::set_permissions(&path, permissions).unwrap();
+        bin
+    }
+
     fn temp_root(label: &str) -> PathBuf {
         let nanos = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -303,5 +667,30 @@ mod tests {
         let root = std::env::temp_dir().join(format!("hyperwiki-tauri-{label}-{nanos}"));
         fs::create_dir_all(&root).unwrap();
         root
+    }
+
+    struct PathGuard {
+        previous: Option<std::ffi::OsString>,
+    }
+
+    impl PathGuard {
+        fn prepend(path: PathBuf) -> Self {
+            let previous = std::env::var_os("PATH");
+            let mut paths = vec![path];
+            if let Some(previous) = previous.clone() {
+                paths.extend(std::env::split_paths(&previous));
+            }
+            std::env::set_var("PATH", std::env::join_paths(paths).unwrap());
+            Self { previous }
+        }
+    }
+
+    impl Drop for PathGuard {
+        fn drop(&mut self) {
+            match self.previous.take() {
+                Some(value) => std::env::set_var("PATH", value),
+                None => std::env::remove_var("PATH"),
+            }
+        }
     }
 }

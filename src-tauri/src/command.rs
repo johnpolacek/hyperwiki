@@ -172,6 +172,27 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(500, error),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/worktrees") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for worktree creation.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::git::WorktreeCreateRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::git::WorktreeCreateRequest {
+                branch: None,
+                name: None,
+            });
+        return match crate::domain::git::create_worktree_checkout(&registry, &project, parsed) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/sessions") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
@@ -647,6 +668,53 @@ mod tests {
         assert!(preview
             .text
             .contains("\"expectedUrl\":\"https://command-preview.localhost\""));
+    }
+
+    #[test]
+    fn worktree_endpoint_requires_git_checkout() {
+        let _guard = env_lock();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let home = temp_root("command-worktree-home");
+        let root = temp_root("command-worktree-project");
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({ "projectName": "Command Worktree" }).to_string(),
+        )
+        .unwrap();
+        fs::create_dir_all(&home).unwrap();
+        fs::write(
+            home.join("projects.json"),
+            serde_json::json!({
+                "version": 1,
+                "projects": [{
+                    "id": "worktree-id",
+                    "root": root,
+                    "name": "Command Worktree",
+                    "projectSlug": "command-worktree",
+                    "worktreeSlug": "main",
+                    "available": true
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/worktrees?project=worktree-id".to_string(),
+            method: "POST".to_string(),
+            body: Some(serde_json::json!({ "branch": "feature/test" }).to_string()),
+        });
+
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(!response.ok);
+        assert_eq!(response.status, 409);
+        assert!(response.text.contains("Initialize Git"));
     }
 
     #[test]

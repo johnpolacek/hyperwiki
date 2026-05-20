@@ -151,6 +151,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri worktree creation flow</h2>
+  <ul>
+    <li>Ported worktree creation into Rust with branch normalization and validation, main/master checkout guardrails, duplicate branch/path detection, Git worktree creation, <code>pnpm install</code>, and compatible project registry registration.</li>
+    <li>Added Tauri command transport handling for <code>POST /api/worktrees</code>, returning the same branch, slug, path, preview URL, workspace URL, project, and install result shape used by the existing branch rail flow.</li>
+    <li>Marked Stage 03 Unit 04 and Stage 03 complete, then advanced the active migration unit to Stage 04 Unit 01 - Workspace And Verification Models.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for successful temporary-repo worktree creation, registry persistence, preview/workspace URL derivation, install execution, feature-checkout rejection, and command endpoint guardrails.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

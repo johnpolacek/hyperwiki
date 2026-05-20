@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn surface() -> DomainSurface {
     DomainSurface {
@@ -89,6 +90,52 @@ impl ProjectRegistry {
 
     pub fn read_raw(&self) -> RegistryFile {
         read_registry_file(&self.file_path)
+    }
+
+    pub fn register(&self, root: impl AsRef<Path>) -> Result<ProjectRecord, String> {
+        let root = root.as_ref().to_path_buf();
+        let project = project_from_root(&root);
+        if !project.available {
+            return Err(
+                "hyperwiki project not found. Run `npx hyperwiki init` in this repo first."
+                    .to_string(),
+            );
+        }
+        let mut registry = self.read_raw();
+        let existing = registry
+            .projects
+            .iter()
+            .find(|item| same_path(&item.root, &root))
+            .cloned();
+        let record = ProjectRecord {
+            id: existing
+                .as_ref()
+                .map(|item| item.id.clone())
+                .unwrap_or_else(generated_id),
+            root,
+            name: project.name.clone(),
+            project_slug: existing
+                .as_ref()
+                .map(|item| item.project_slug.clone())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| slugify(&project.name)),
+            worktree_slug: worktree_slug(&project.root),
+            available: true,
+            last_opened_at: Some(now_isoish()),
+            active: false,
+        };
+        registry.projects = prune_missing_worktrees(with_unique_slugs(
+            std::iter::once(record.clone())
+                .chain(
+                    registry
+                        .projects
+                        .into_iter()
+                        .filter(|item| item.id != record.id),
+                )
+                .collect(),
+        ));
+        write_registry_file(&self.file_path, &registry)?;
+        Ok(record)
     }
 
     pub fn list(&self, active_id: Option<&str>) -> ProjectList {
@@ -421,6 +468,22 @@ fn unsafe_removal_root(root: &Path) -> bool {
 
 fn same_path(left: &Path, right: &Path) -> bool {
     left.canonicalize().ok() == right.canonicalize().ok()
+}
+
+fn generated_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    format!("project-{nanos}")
+}
+
+fn now_isoish() -> String {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default();
+    format!("{seconds}")
 }
 
 fn slugify(value: &str) -> String {
