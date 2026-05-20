@@ -4017,6 +4017,9 @@ async function createTerminal(name, options = {}) {
   transport.connect();
   workspace.classList.add("terminal-active");
   setTerminalCollapsed(name, Boolean(options.collapsed));
+  if (!options.collapsed) {
+    requestAnimationFrame(() => resizeTerminalToElement(session));
+  }
   updateTerminalCloseButtons();
   return session;
 }
@@ -4076,6 +4079,7 @@ function activateTerminal(name) {
   const session = terminalSessions.get(name);
   if (session) {
     requestAnimationFrame(() => {
+      resizeTerminalToElement(session);
       session.term.focus();
       scrollTerminalToBottom(session.el);
     });
@@ -4094,6 +4098,39 @@ function setTerminalCollapsed(name, collapsed) {
   session.panel.classList.toggle("collapsed", collapsed);
   session.collapseButton.textContent = collapsed ? "expand" : "collapse";
   session.collapseButton.setAttribute("aria-expanded", String(!collapsed));
+  if (!collapsed) {
+    requestAnimationFrame(() => {
+      resizeTerminalToElement(session);
+      scrollTerminalToBottom(session.el);
+    });
+  }
+}
+
+function resizeTerminalToElement(session) {
+  if (!session?.term || session.panel.classList.contains("collapsed")) return;
+  const metrics = terminalElementMetrics(session.el);
+  if (!metrics) return;
+  session.term.resize(metrics.cols, metrics.rows);
+}
+
+function terminalElementMetrics(el) {
+  const width = el.clientWidth;
+  const height = el.clientHeight;
+  if (width <= 0 || height <= 0) return null;
+  const probe = document.createElement("span");
+  probe.textContent = "W";
+  probe.style.visibility = "hidden";
+  probe.style.position = "absolute";
+  probe.style.whiteSpace = "pre";
+  el.append(probe);
+  const rect = probe.getBoundingClientRect();
+  probe.remove();
+  const charWidth = rect.width || 8;
+  const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || rect.height || 17;
+  return {
+    cols: Math.max(20, Math.floor(width / charWidth)),
+    rows: Math.max(3, Math.floor(height / rowHeight))
+  };
 }
 
 function terminalCommandLabel(options = {}) {
