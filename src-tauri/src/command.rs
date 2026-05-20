@@ -18,6 +18,69 @@ pub struct HyperwikiResponse {
 
 #[tauri::command]
 pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
+    if request.path == "/api/settings" {
+        let store = crate::domain::settings::SettingsStore::from_environment();
+        if request.method == "GET" {
+            return json_response(200, &store.read());
+        }
+        if request.method == "PUT" {
+            let parsed = request
+                .body
+                .as_deref()
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok());
+            return match parsed {
+                Some(settings) => match store.write(settings) {
+                    Ok(settings) => json_response(200, &settings),
+                    Err(error) => error_response(500, error),
+                },
+                None => error_response(400, "Invalid settings JSON body."),
+            };
+        }
+    }
+    if request.method == "POST" && request.path.starts_with("/api/settings/reset-theme") {
+        let store = crate::domain::settings::SettingsStore::from_environment();
+        return match store.reset_theme() {
+            Ok(settings) => json_response(200, &settings),
+            Err(error) => error_response(500, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/assets/theme.css") {
+        let settings = crate::domain::settings::SettingsStore::from_environment().read();
+        return text_response(200, crate::domain::settings::theme_css(&settings));
+    }
+    if request.path.starts_with("/api/settings/agents-file")
+        || request.path.starts_with("/api/settings/sync-agents")
+    {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let Some(project) = project else {
+            return error_response(404, "Project not found for settings request.");
+        };
+        if request.method == "GET" && request.path.starts_with("/api/settings/agents-file") {
+            return json_response(200, &crate::domain::settings::agents_file(&project.root));
+        }
+        if request.method == "POST" && request.path.starts_with("/api/settings/sync-agents") {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+                .unwrap_or(serde_json::Value::Null);
+            let base_content = body["content"].as_str();
+            let settings = crate::domain::settings::SettingsStore::from_environment().read();
+            return match crate::domain::settings::sync_agents_file(
+                &project.root,
+                &settings,
+                base_content,
+            ) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(500, error),
+            };
+        }
+    }
     if request.method == "GET" && request.path.starts_with("/api/projects") {
         let active_id = query_param(&request.path, "project");
         return json_response(
@@ -80,6 +143,18 @@ fn json_response<T: Serialize>(status: u16, value: &T) -> HyperwikiResponse {
     }
 }
 
+fn text_response(status: u16, text: String) -> HyperwikiResponse {
+    HyperwikiResponse {
+        ok: status < 400,
+        status,
+        text,
+    }
+}
+
+fn error_response(status: u16, message: impl Into<String>) -> HyperwikiResponse {
+    json_response(status, &serde_json::json!({ "error": message.into() }))
+}
+
 fn query_param(path: &str, key: &str) -> Option<String> {
     let query = path.split_once('?')?.1;
     query.split('&').find_map(|pair| {
@@ -92,7 +167,13 @@ fn query_param(path: &str, key: &str) -> Option<String> {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+    }
 
     #[test]
     fn response_shape_is_json_serializable() {
@@ -121,6 +202,7 @@ mod tests {
 
     #[test]
     fn wiki_endpoint_lists_current_checkout_when_registry_is_empty() {
+        let _guard = env_lock();
         let previous_dir = std::env::current_dir().unwrap();
         let previous_home = std::env::var_os("HYPERWIKI_HOME");
         let root = temp_root("command-wiki");
@@ -159,5 +241,26 @@ mod tests {
         let root = std::env::temp_dir().join(format!("hyperwiki-tauri-{label}-{nanos}"));
         fs::create_dir_all(&root).unwrap();
         root
+    }
+
+    #[test]
+    fn settings_endpoint_reads_from_isolated_home() {
+        let _guard = env_lock();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let home = temp_root("command-settings-home");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/settings".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok);
+        assert!(response.text.contains("\"activePreset\":\"paper\""));
     }
 }

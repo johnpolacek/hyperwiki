@@ -80,6 +80,14 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri settings and AGENTS sync</h2>
+  <ul>
+    <li>Ported the settings store into Rust with compatible JSON read/write, built-in preset normalization, theme reset, theme CSS generation, Soul and Memory handling, AGENTS file reads, and managed AGENTS block sync.</li>
+    <li>Added Tauri command transport handling for <code>/api/settings</code>, <code>/api/settings/reset-theme</code>, <code>/api/settings/agents-file</code>, <code>/api/settings/sync-agents</code>, and <code>/assets/theme.css</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for settings defaults, write/reset behavior, custom theme CSS, managed AGENTS replacement, enabled Memory filtering, and isolated command routing.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
