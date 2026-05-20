@@ -110,6 +110,38 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/repo") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        if let Some(project) = project {
+            return json_response(200, &crate::domain::git::repo_context(&project.root));
+        }
+        return json_response(
+            200,
+            &crate::domain::git::repo_context(
+                std::env::current_dir().unwrap_or_else(|_| ".".into()),
+            ),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/git/init") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let Some(project) = project else {
+            return error_response(404, "Project not found for Git initialization.");
+        };
+        return match crate::domain::git::initialize_git_onboarding(&project.root) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(500, error),
+        };
+    }
     if request.method == "GET" && request.path == "/api/health" {
         return json_response(
             200,
@@ -262,5 +294,33 @@ mod tests {
         }
         assert!(response.ok);
         assert!(response.text.contains("\"activePreset\":\"paper\""));
+    }
+
+    #[test]
+    fn repo_endpoint_reports_current_checkout_git_context() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-repo");
+        let home = temp_root("command-repo-home");
+        fs::write(root.join("README.md"), "# Repo\n").unwrap();
+        crate::domain::git::git(&root, &["init"]);
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/repo".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok);
+        assert!(response.text.contains("\"worktree\":\"main\""));
+        assert!(response.text.contains("README.md"));
     }
 }
