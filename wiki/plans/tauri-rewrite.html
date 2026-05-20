@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tauri Rewrite Plan - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+  <style>
+    :root {
+      --tr-bg: #f5f2ec;
+      --tr-panel: #fffaf1;
+      --tr-ink: #17130d;
+      --tr-muted: #695f50;
+      --tr-line: #d8cdb8;
+      --tr-strong: #0b4b47;
+      --tr-rust: #9b3d1e;
+      --tr-gold: #b68018;
+      --tr-green: #37633d;
+      --tr-red: #9a342d;
+      --tr-blue: #2d5679;
+      --tr-shadow: 0 18px 45px rgba(65, 47, 22, 0.13);
+    }
+    body {
+      background:
+        linear-gradient(90deg, rgba(23, 19, 13, 0.035) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(180deg, rgba(23, 19, 13, 0.025) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--tr-bg);
+      color: var(--tr-ink);
+    }
+    .wiki-page.rewrite-plan { max-width: 1180px; }
+    .migration-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.8fr);
+      gap: 20px;
+      padding: 22px;
+      border: 1px solid var(--tr-line);
+      background: linear-gradient(135deg, rgba(255,250,241,0.96), rgba(238,229,211,0.86));
+      box-shadow: var(--tr-shadow);
+      margin-bottom: 22px;
+    }
+    .migration-hero h1 {
+      font-size: clamp(2.1rem, 6vw, 5.4rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+      margin: 8px 0 16px;
+      max-width: 10ch;
+    }
+    .eyebrow, .metric dt, .decision h3, .risk h3, .unit h3, .matrix th {
+      font: 800 0.76rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-transform: uppercase;
+      color: var(--tr-strong);
+      letter-spacing: 0.06em;
+    }
+    .eyebrow { color: var(--tr-rust); }
+    .hero-copy { max-width: 68ch; color: var(--tr-muted); font-size: 1.02rem; }
+    .hero-panel {
+      border-left: 4px solid var(--tr-rust);
+      background: rgba(255, 250, 241, 0.76);
+      padding: 18px;
+      display: grid;
+      align-content: center;
+      gap: 12px;
+    }
+    .summary-grid, .risk-grid, .unit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 12px;
+    }
+    .metric, .decision, .risk, .unit {
+      border: 1px solid var(--tr-line);
+      background: var(--tr-panel);
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(65,47,22,0.07);
+    }
+    .metric dd { margin: 0; }
+    .status-active, .status-gate, .status-risk, .status-source, .status-test {
+      display: inline-flex;
+      width: fit-content;
+      border: 1px solid currentColor;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font: 700 0.72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      text-transform: uppercase;
+    }
+    .status-active { color: var(--tr-rust); }
+    .status-gate { color: var(--tr-gold); }
+    .status-risk { color: var(--tr-red); }
+    .status-source { color: var(--tr-blue); }
+    .status-test { color: var(--tr-green); }
+    .flow-map {
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--tr-line);
+      background: rgba(255, 250, 241, 0.72);
+      overflow-x: auto;
+    }
+    .flow-map svg { min-width: 860px; width: 100%; height: auto; display: block; }
+    .matrix {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--tr-panel);
+      border: 1px solid var(--tr-line);
+      margin: 12px 0 24px;
+    }
+    .matrix th, .matrix td {
+      border-bottom: 1px solid var(--tr-line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .matrix th { background: #eee3d0; }
+    .stage {
+      margin: 26px 0;
+      padding: 18px;
+      border: 1px solid var(--tr-line);
+      background: rgba(255,250,241,0.62);
+    }
+    .stage-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--tr-line);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .stage-header p { margin: 0; color: var(--tr-muted); max-width: 74ch; }
+    .unit ol, .unit ul { padding-left: 18px; }
+    .callout {
+      border-left: 5px solid var(--tr-strong);
+      background: #ecf1ea;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .copy-box {
+      display: grid;
+      gap: 10px;
+      border: 1px dashed var(--tr-strong);
+      background: #f8f4ea;
+      padding: 14px;
+    }
+    .copy-box textarea {
+      width: 100%;
+      min-height: 128px;
+      box-sizing: border-box;
+      font: 0.82rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: var(--tr-ink);
+      background: #fffaf1;
+      border: 1px solid var(--tr-line);
+      padding: 10px;
+    }
+    @media (max-width: 760px) {
+      .migration-hero { grid-template-columns: 1fr; padding: 16px; }
+      .hero-panel { border-left: 0; border-top: 4px solid var(--tr-rust); }
+      .matrix { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page rewrite-plan">
+    <section class="migration-hero" aria-labelledby="title">
+      <div>
+        <span class="eyebrow">Migration control room</span>
+        <h1 id="title">Complete Tauri Rewrite</h1>
+        <p class="hero-copy">Rewrite Hyperwiki as a dedicated Tauri desktop app with a Rust-owned runtime, feature compatibility with the current Node/localhost product, full compatibility for existing wiki/project data, and permissioned local tooling that keeps the developer machine as the trust boundary.</p>
+      </div>
+      <aside class="hero-panel" aria-labelledby="summary">
+        <h2 id="summary">Summary</h2>
+        <dl class="summary-grid">
+          <div class="metric"><dt>Status</dt><dd><span class="status-active">active plan</span></dd></div>
+          <div class="metric"><dt>Shape</dt><dd>multi-stage architecture migration</dd></div>
+          <div class="metric"><dt>Current unit</dt><dd>Stage 01 / Unit 01 - Tauri Baseline App</dd></div>
+          <div class="metric"><dt>Next action</dt><dd>Create the Tauri workspace and Rust crate layout.</dd></div>
+          <div class="metric"><dt>Blockers</dt><dd>none; branch may go dark during rebuild.</dd></div>
+          <div class="metric"><dt>Validation</dt><dd>feature parity smoke suite, Rust tests, Tauri checks, manual desktop dogfood.</dd></div>
+        </dl>
+      </aside>
+    </section>
+
+    <section class="callout" aria-labelledby="reader-goal">
+      <h2 id="reader-goal">Reader Goal</h2>
+      <p>After 2 minutes, the reader should understand the migration shape, feature-parity gates, current execution unit, and why this is a Rust-core rewrite instead of a Tauri shell around the Node server.</p>
+    </section>
+
+    <section aria-labelledby="fixed-decisions">
+      <h2 id="fixed-decisions">Fixed Decisions</h2>
+      <div class="summary-grid">
+        <article class="decision"><h3>Rewrite boundary</h3><p>Full Tauri rewrite. Rust owns backend/runtime behavior; Node is not the long-term product runtime.</p></article>
+        <article class="decision"><h3>Release target</h3><p>Feature compatibility with the current Hyperwiki product, not a thin proof of concept.</p></article>
+        <article class="decision"><h3>Compatibility</h3><p>Full compatibility with existing repo wiki files, <code>.hyperwiki</code> state shape, project registry expectations, Portless/worktree workflows, and current CLI habits.</p></article>
+        <article class="decision"><h3>Frontend</h3><p>Keep the current vanilla TypeScript/HTML/CSS shape unless a staged Tailwind or shadcn migration reduces implementation risk. Do not combine framework churn with parity-critical Rust work by default.</p></article>
+        <article class="decision"><h3>Continuity</h3><p>The rewrite branch may go dark. The plan still preserves the existing Node implementation as a reference until parity is proven.</p></article>
+        <article class="decision"><h3>Security posture</h3><p>Use Tauri capabilities and Rust commands as the default boundary. Avoid making shell sidecars the main product architecture.</p></article>
+      </div>
+    </section>
+
+    <section class="flow-map" aria-labelledby="architecture-flow">
+      <h2 id="architecture-flow">Target Runtime Flow</h2>
+      <svg viewBox="0 0 980 260" role="img" aria-label="Tauri rewrite target architecture">
+        <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#9b3d1e"></path></marker></defs>
+        <rect x="20" y="30" width="170" height="72" fill="#fffaf1" stroke="#9b3d1e" stroke-width="2"></rect>
+        <text x="105" y="62" text-anchor="middle" font-size="18" font-weight="700" fill="#17130d">Tauri Window</text>
+        <text x="105" y="86" text-anchor="middle" font-size="13" fill="#695f50">HTML/CSS/TS workspace</text>
+        <line x1="190" y1="66" x2="285" y2="66" stroke="#9b3d1e" stroke-width="3" marker-end="url(#arrow)"></line>
+        <rect x="285" y="24" width="190" height="84" fill="#fffaf1" stroke="#0b4b47" stroke-width="2"></rect>
+        <text x="380" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="#17130d">Command API</text>
+        <text x="380" y="84" text-anchor="middle" font-size="13" fill="#695f50">typed Rust commands/events</text>
+        <line x1="475" y1="66" x2="570" y2="66" stroke="#9b3d1e" stroke-width="3" marker-end="url(#arrow)"></line>
+        <rect x="570" y="24" width="180" height="84" fill="#fffaf1" stroke="#2d5679" stroke-width="2"></rect>
+        <text x="660" y="58" text-anchor="middle" font-size="18" font-weight="700" fill="#17130d">Rust Core</text>
+        <text x="660" y="84" text-anchor="middle" font-size="13" fill="#695f50">projects, wiki, Git, PTY, MCP</text>
+        <line x1="660" y1="108" x2="660" y2="156" stroke="#9b3d1e" stroke-width="3" marker-end="url(#arrow)"></line>
+        <rect x="505" y="156" width="310" height="74" fill="#fffaf1" stroke="#37633d" stroke-width="2"></rect>
+        <text x="660" y="188" text-anchor="middle" font-size="18" font-weight="700" fill="#17130d">Local Machine Boundary</text>
+        <text x="660" y="212" text-anchor="middle" font-size="13" fill="#695f50">repo files, Git, terminals, credentials, ignored state</text>
+        <rect x="38" y="148" width="380" height="92" fill="#eee3d0" stroke="#d8cdb8"></rect>
+        <text x="228" y="178" text-anchor="middle" font-size="17" font-weight="700" fill="#17130d">Compatibility Contract</text>
+        <text x="228" y="205" text-anchor="middle" font-size="13" fill="#695f50">same wiki HTML, project registry, plan status, routes, commands, smoke expectations</text>
+      </svg>
+    </section>
+
+    <section aria-labelledby="parity-matrix">
+      <h2 id="parity-matrix">Feature Compatibility Matrix</h2>
+      <table class="matrix">
+        <thead><tr><th>Surface</th><th>Current Node Behavior</th><th>Tauri Rewrite Requirement</th><th>Parity Gate</th></tr></thead>
+        <tbody>
+          <tr><td>Startup</td><td><code>hyperwiki</code>, <code>launch</code>, <code>dev</code>, browser open.</td><td>Desktop app launch plus compatibility CLI that opens/registers projects.</td><td>Existing launch smoke intent passes against Tauri entrypoints.</td></tr>
+          <tr><td>Wiki</td><td>Repo-visible HTML under <code>wiki/</code>; app-served pages and navigation.</td><td>Read/render same files, preserve scaffold conventions, no hidden source of truth.</td><td>Project wiki link smoke passes with existing fixtures.</td></tr>
+          <tr><td>Projects</td><td>User registry at <code>~/.hyperwiki/projects.json</code>, project switching, project creation/removal.</td><td>Rust registry model reads legacy registry and writes compatible records or migrates explicitly.</td><td>Project removal and project-switching flows pass.</td></tr>
+          <tr><td>Git/worktrees</td><td>Git context, init recovery, worktree creation, Portless preview URL conventions.</td><td>Rust Git command layer preserves paths, branch slug rules, and merge-oriented finish policy expectations.</td><td>Launch/worktree smoke creates and reopens a worktree.</td></tr>
+          <tr><td>Terminals</td><td><code>node-pty</code> WebSocket sessions, xterm renderer, plan-scoped session retention.</td><td>Rust PTY/session manager emits typed terminal events into xterm and preserves detach/reattach semantics.</td><td>PTY, session retention, and browser terminal smoke pass.</td></tr>
+          <tr><td>Settings</td><td>Global theme, Soul, Memory, and AGENTS.md sync.</td><td>Rust settings store and file sync preserve current JSON/AGENTS behavior.</td><td>Settings UI manual pass and syntax checks pass.</td></tr>
+          <tr><td>Verification</td><td><code>/api/verification</code>, project contract, review workflows, MCP surface, stdio MCP.</td><td>Expose equivalent Tauri command data and compatibility endpoint/transport where agents depend on it.</td><td>Verification, project-contract, review-workflows, MCP smoke pass.</td></tr>
+          <tr><td>Dev previews</td><td>Portless-backed <code>pnpm dev</code>, exact checkout preview status, Run Dev terminal.</td><td>Rust process runner and preview detector preserve exact hostname matching and terminal-driven runtime URL capture.</td><td>App preview smoke passes.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="evidence">
+      <h2 id="evidence">Evidence And Constraints</h2>
+      <table class="matrix">
+        <thead><tr><th>Claim</th><th>Evidence</th><th>Confidence</th><th>Impact</th></tr></thead>
+        <tbody>
+          <tr><td>Hyperwiki already has a local trust-boundary product identity.</td><td><a href="../architecture.html">Architecture</a>, <a href="../sources/technical-brief.html">technical brief</a>, user direction on Tauri rewrite.</td><td><span class="status-source">high</span></td><td>The desktop app should strengthen Localhost Tooling.</td></tr>
+          <tr><td>Tauri should be a Rust-core rewrite, not a Node sidecar shell.</td><td>User selected fully complete rewrite, feature compatibility, full compatibility, and acceptable dark branch.</td><td><span class="status-source">high</span></td><td>Node modules become reference implementation, not runtime dependency.</td></tr>
+          <tr><td>Tauri automated UI testing has platform constraints.</td><td>Official Tauri docs say WebDriver uses native webdrivers and desktop macOS lacks a WKWebView driver tool.</td><td><span class="status-source">high</span></td><td>Use Rust tests, compatibility smoke tests, and manual macOS dogfood instead of assuming full Playwright parity.</td></tr>
+          <tr><td>Tauri shell sidecars exist but should not be the core path.</td><td>Official Tauri shell plugin documents sidecar execution; this plan selects Rust ownership for local tooling.</td><td><span class="status-source">high</span></td><td>Use shell/process permissions narrowly for project commands, not to preserve Node as backend.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-01">
+      <div class="stage-header"><div><h2 id="stage-01">Stage 01 - Tauri Foundation And Build Shape</h2><p>Introduce the Tauri workspace and Rust crate boundaries while preserving the existing frontend as the fastest path to a working desktop surface.</p></div><span class="status-active">current stage</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Tauri Baseline App</h3><p>Create <code>src-tauri/</code>, Tauri v2 config, Rust workspace conventions, dev/build scripts using <code>pnpm</code>, and a desktop window that loads existing app assets.</p><p><strong>Acceptance:</strong> <code>pnpm tauri dev</code> opens Hyperwiki without browser chrome; existing static app shell renders; no Node server is required for the first window.</p><p><strong>Verification:</strong> Rust compile check, Tauri dev launch, static asset render check, and updated syntax/build script.</p></article>
+        <article class="unit"><h3>Unit 02 - Command Contract Skeleton</h3><p>Replace localhost HTTP assumptions with a typed frontend adapter that can call either legacy HTTP or Tauri commands during migration.</p><p><strong>Acceptance:</strong> frontend reads workspace, wiki, repo, settings, project, terminal, preview, verification, review, and MCP data through one adapter interface.</p><p><strong>Verification:</strong> adapter unit tests cover success, error, and legacy response shape normalization.</p></article>
+        <article class="unit"><h3>Unit 03 - Rust Domain Crate Layout</h3><p>Create modules for project registry, wiki filesystem, settings, Git, sessions, terminals, previews, verification, review workflows, MCP, and app shell commands.</p><p><strong>Acceptance:</strong> each current Node module has a Rust owner and test boundary; public structs use serializable DTOs matching frontend expectations.</p><p><strong>Verification:</strong> compile-only tests and JSON snapshot tests for representative DTOs.</p></article>
+        <article class="unit"><h3>Unit 04 - Test Harness Baseline</h3><p>Stand up Rust unit/integration tests, compatibility fixtures, desktop launch checks, and manual macOS checks where Tauri WebDriver coverage is unavailable.</p><p><strong>Acceptance:</strong> scripts separate Rust tests, frontend syntax/build checks, compatibility smoke tests, and manual desktop dogfood checklist.</p><p><strong>Verification:</strong> all baseline checks pass before replacing product behavior.</p></article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-02">
+      <div class="stage-header"><div><h2 id="stage-02">Stage 02 - Canonical Data Compatibility</h2><p>Rebuild the non-terminal product model in Rust before tackling PTY/process complexity.</p></div><span class="status-gate">data gate</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Project Registry And Workspace Resolution</h3><p>Implement the user-level registry, project/worktree slug resolution, active workspace route model, and legacy registry compatibility.</p><p><strong>Acceptance:</strong> existing records can be listed, opened, grouped by project, and removed without data loss.</p><p><strong>Verification:</strong> fixture tests for main projects, worktrees, stale roots, duplicate slugs, and removal safety.</p></article>
+        <article class="unit"><h3>Unit 02 - Wiki Filesystem And Navigation</h3><p>Implement wiki page listing, title extraction, project-scoped wiki serving, link rewriting, source summaries, plan status parsing, and completed-plan detection.</p><p><strong>Acceptance:</strong> sidebar, Up Next, command bar, plan completion state, and wiki content rendering match current behavior.</p><p><strong>Verification:</strong> project wiki links smoke, plan-status smoke, fixture snapshots for active/complete/deferred plan summaries.</p></article>
+        <article class="unit"><h3>Unit 03 - Settings, Theme, Soul, Memory, AGENTS Sync</h3><p>Move settings read/write, theme CSS generation, managed AGENTS block replacement, and wiki-frame theme support into Rust-backed commands.</p><p><strong>Acceptance:</strong> Settings page behavior and file sync are preserved; invalid theme JSON fails visibly without corrupting settings.</p><p><strong>Verification:</strong> Rust settings tests, managed-block replacement tests, manual theme and AGENTS sync pass.</p></article>
+        <article class="unit"><h3>Unit 04 - Git Context And Onboarding</h3><p>Implement Git status, branch detection, repo initialization, initial Hyperwiki commit behavior, and Execute-time Git recovery prompts.</p><p><strong>Acceptance:</strong> non-Git projects, clean repos, dirty repos, ahead/behind state, and initialized generated projects behave like current Hyperwiki.</p><p><strong>Verification:</strong> git onboarding smoke equivalent and Rust command tests using temporary repos.</p></article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-03">
+      <div class="stage-header"><div><h2 id="stage-03">Stage 03 - Local Process, Terminal, And Preview Runtime</h2><p>Replace Node PTY, WebSocket, and process orchestration with a Rust runtime that feeds the existing xterm UI.</p></div><span class="status-risk">highest risk</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Rust Terminal Session Manager</h3><p>Implement PTY-backed and pipe-backed terminal sessions, lifecycle metadata, output replay, resize, input, close, export, prune, and plan-scoped session lookup.</p><p><strong>Acceptance:</strong> terminal processes survive route changes until explicit close; reattaching restores readable xterm output; fallback shell failures are reported clearly.</p><p><strong>Verification:</strong> PTY smoke, session-retention smoke, Rust integration tests for detach/reattach/export/prune.</p></article>
+        <article class="unit"><h3>Unit 02 - Agent Launch And Prompt Routing</h3><p>Port agent launch command handling, New Agent/New CLI terminals, Execute prompts, Modify plan prompts, non-plan prompt rail, review prompt routing, and missing-agent guardrails.</p><p><strong>Acceptance:</strong> prompts only route to command-backed agent sessions in the active scope; shell-only sessions cannot receive agent prompts by accident.</p><p><strong>Verification:</strong> browser smoke equivalent for missing-command guard and prompt routing tests.</p></article>
+        <article class="unit"><h3>Unit 03 - Dev Preview Lifecycle</h3><p>Port Run Dev, exact Portless route parsing, active checkout preview status, start/open/stop actions, runtime URL detection from terminal output, and preview link rendering.</p><p><strong>Acceptance:</strong> main and worktree preview status uses exact hostname matching and respects externally started Portless routes.</p><p><strong>Verification:</strong> app-preview smoke, terminal-output URL detection tests, manual Portless dogfood.</p></article>
+        <article class="unit"><h3>Unit 04 - Worktree Creation Flow</h3><p>Port branch validation, Git worktree creation, dependency installation, project registration, workspace URL switching, branch-rail state, and existing-worktree agent handoff.</p><p><strong>Acceptance:</strong> <code>+ worktree</code> creates and switches to <code>/workspace/&lt;project&gt;/&lt;worktree&gt;</code>; reload preserves the checkout; duplicate branch/path errors stay inline.</p><p><strong>Verification:</strong> launch/worktree smoke equivalent and temporary-repo tests.</p></article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-04">
+      <div class="stage-header"><div><h2 id="stage-04">Stage 04 - Verification, Review, MCP, And Contract Surfaces</h2><p>Restore the agent-native structured surfaces that make Hyperwiki more than a desktop wiki viewer.</p></div><span class="status-gate">agent gate</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Workspace And Verification Models</h3><p>Port workspace summary, verification loops, package script inference, runtime verification state, and guardrail summary.</p><p><strong>Acceptance:</strong> data shapes remain compatible with current frontend and smoke expectations.</p><p><strong>Verification:</strong> verification smoke equivalent and JSON fixture snapshots.</p></article>
+        <article class="unit"><h3>Unit 02 - Project Contract</h3><p>Port project contract composition across config, Git, current plan, source briefs, verification loops, guardrails, layout, wiki index, and copy-pasteable agent context.</p><p><strong>Acceptance:</strong> versioned contract remains stable unless deliberately bumped with migration notes.</p><p><strong>Verification:</strong> project-contract smoke and schema snapshot tests.</p></article>
+        <article class="unit"><h3>Unit 03 - Review Workflows</h3><p>Port review workflow discovery, dry-run preparation, contract-aware prompt generation, and active-agent routing for execution.</p><p><strong>Acceptance:</strong> diff, architecture consistency, security, and test-gap workflows keep the same IDs and prompts unless intentionally improved.</p><p><strong>Verification:</strong> review-workflows smoke and prompt snapshot tests.</p></article>
+        <article class="unit"><h3>Unit 04 - MCP Surface And Stdio Transport</h3><p>Reimplement local stdio MCP transport and the MCP surface/resource/tool contract in Rust, including read-only resources and clearly permissioned action tools.</p><p><strong>Acceptance:</strong> existing read-only MCP behavior is preserved; action tools are implemented with explicit permission gates or deferred in the contract.</p><p><strong>Verification:</strong> MCP surface and transport smoke tests against Content-Length framed JSON-RPC.</p></article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-05">
+      <div class="stage-header"><div><h2 id="stage-05">Stage 05 - Desktop UX, Packaging, And CLI Compatibility</h2><p>Make the rewrite feel like a dedicated app with no browser chrome while preserving command-line habits.</p></div><span class="status-gate">release gate</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Desktop Window And App Actions</h3><p>Add native window title, menu actions, external-open behavior, file/drop handling, app settings location, deep/open project behavior, and clear local-only affordances.</p><p><strong>Acceptance:</strong> desktop app opens registered projects, external preview links, wiki pages, and local project folders without browser chrome confusion.</p><p><strong>Verification:</strong> manual desktop checklist across key routes, keyboard behavior, window restore, and external link behavior.</p></article>
+        <article class="unit"><h3>Unit 02 - Compatibility CLI</h3><p>Provide <code>hyperwiki</code>, <code>init</code>, <code>launch</code>, <code>dev</code> or documented replacements, plus <code>mcp</code> compatibility where agents and scripts depend on it.</p><p><strong>Acceptance:</strong> existing README command promises still work or have intentional migration notes; generated projects still get correct instructions.</p><p><strong>Verification:</strong> init, launch, reset, MCP transport, and generated-project smoke equivalents.</p></article>
+        <article class="unit"><h3>Unit 03 - Packaging And Distribution</h3><p>Add Tauri bundle config, app icons, product metadata, macOS dogfood packaging, and a documented path for Windows/Linux once feature parity is stable.</p><p><strong>Acceptance:</strong> local packaged macOS app installs and runs against existing Hyperwiki projects; package does not require Node.</p><p><strong>Verification:</strong> packaged-app launch, project open, terminal spawn, Portless preview, and settings persistence manual checks.</p></article>
+        <article class="unit"><h3>Unit 04 - Frontend Styling Decision</h3><p>Decide whether to keep the current CSS, add Tailwind for utility ergonomics, or introduce shadcn only for components that reduce long-term maintenance.</p><p><strong>Acceptance:</strong> no broad redesign is required for parity; any styling/tooling change has measurable implementation benefit and does not delay release gates.</p><p><strong>Verification:</strong> visual smoke on Projects, workspace/wiki split, terminal panels, Settings, New Project, and worktree popover.</p></article>
+      </div>
+    </section>
+
+    <section class="stage" aria-labelledby="stage-06">
+      <div class="stage-header"><div><h2 id="stage-06">Stage 06 - Parity Closeout And Node Removal</h2><p>Prove the Tauri app is the product, then remove the Node runtime from the shipping path.</p></div><span class="status-test">closeout</span></div>
+      <div class="unit-grid">
+        <article class="unit"><h3>Unit 01 - Full Parity Audit</h3><p>Map every current smoke test, route, API shape, CLI command, wiki scaffold promise, and product workflow to a passing Tauri equivalent or a documented intentional change.</p><p><strong>Acceptance:</strong> no unreviewed Node-only behavior remains in the current product surface.</p><p><strong>Verification:</strong> parity matrix signed off in this plan with automated/manual evidence.</p></article>
+        <article class="unit"><h3>Unit 02 - Remove Node Runtime Dependencies</h3><p>Remove or archive Node server modules, <code>node-pty</code>, <code>ws</code>, obsolete HTTP server code, and scripts that imply Node is still the app backend.</p><p><strong>Acceptance:</strong> production app and CLI run without Node runtime dependencies; remaining Node tooling is build/test/frontend-only and clearly named.</p><p><strong>Verification:</strong> clean install, build, package, and smoke from a fresh checkout.</p></article>
+        <article class="unit"><h3>Unit 03 - Wiki And Docs Reconciliation</h3><p>Update architecture, technical brief, dev workflow, README, source index, roadmap, scaffold-generated AGENTS guidance, and completed plan status to reflect Tauri as the canonical runtime.</p><p><strong>Acceptance:</strong> no durable docs describe the Node localhost server as the primary runtime except historical references.</p><p><strong>Verification:</strong> source/link audit, wiki browser pass, and final project-context log entry.</p></article>
+        <article class="unit"><h3>Unit 04 - Release Dogfood</h3><p>Use the packaged Tauri app to execute a real Hyperwiki plan in this repo, including agent terminal, worktree creation, app preview, verification, and plan update.</p><p><strong>Acceptance:</strong> the Tauri app can run its own development workflow end to end without falling back to the Node app.</p><p><strong>Verification:</strong> recorded dogfood evidence in this plan and <a href="../log.html">project log</a>.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="risks">
+      <h2 id="risks">Risks And Defaults</h2>
+      <div class="risk-grid">
+        <article class="risk"><h3>PTY parity</h3><p>Rust PTY behavior is the highest-risk subsystem. Prove detach/reattach, resize, export, and fallback behavior before porting review/MCP layers.</p></article>
+        <article class="risk"><h3>Testing gap</h3><p>Tauri desktop WebDriver support is not equivalent to current browser automation on macOS. Use Rust tests, fixture snapshots, targeted app checks, and explicit manual desktop evidence.</p></article>
+        <article class="risk"><h3>Compatibility drift</h3><p>Treat current tests and technical brief as the source of parity, then update the matrix when implementation discovers drift.</p></article>
+        <article class="risk"><h3>Frontend churn</h3><p>Tailwind or shadcn may help later, but the default is no framework migration until the Tauri command contract and terminal runtime are stable.</p></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="acceptance">
+      <h2 id="acceptance">Whole-Plan Acceptance</h2>
+      <ul>
+        <li>Hyperwiki ships as a Tauri desktop app with no browser chrome and a Rust-owned local runtime.</li>
+        <li>Existing initialized projects, wiki files, settings, project registry records, worktree conventions, and Portless preview patterns remain usable.</li>
+        <li>The app reaches feature compatibility across Projects, New Project, wiki navigation, plan command bar, Execute, Modify, terminals, worktrees, Settings, verification, review workflows, MCP, and app previews.</li>
+        <li>Node server/runtime dependencies are removed from the shipping path after parity closeout.</li>
+        <li>Durable docs and wiki pages identify Tauri/Rust as the canonical architecture.</li>
+      </ul>
+    </section>
+
+    <section class="copy-box" aria-labelledby="handoff">
+      <h2 id="handoff">Execution Handoff</h2>
+      <textarea readonly>Current plan: wiki/plans/tauri-rewrite.html
+Current unit: Stage 01 / Unit 01 - Tauri Baseline App
+Next action: create src-tauri, Tauri v2 config, Rust crate layout, and pnpm scripts that open the existing workspace assets in a desktop window.
+Keep current Node implementation as a reference only; the rewrite branch may go dark.
+Update this plan after every unit with implementation notes and verification evidence.</textarea>
+    </section>
+  </main>
+</body>
+</html>
