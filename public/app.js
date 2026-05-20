@@ -2931,8 +2931,9 @@ function renderPreviewLink(preview) {
 
 function previewActionLabel(preview) {
   if (!preview?.url) return "App Not Configured";
+  if (terminalSessions.has("dev")) return "Stop Dev";
   if (preview.running || preview.status === "running") {
-    return terminalSessions.has("dev") ? "Stop Dev" : "Dev Running";
+    return "Dev Running";
   }
   if (preview.canStart) return "Run Dev";
   if (preview.status === "unknown") return "Preview Unknown";
@@ -2942,7 +2943,7 @@ function previewActionLabel(preview) {
 
 function previewCanAct(preview) {
   const isRunning = preview?.running || preview?.status === "running";
-  return Boolean(preview?.url && ((isRunning && terminalSessions.has("dev")) || (!isRunning && preview.canStart)));
+  return Boolean(preview?.url && (terminalSessions.has("dev") || (!isRunning && preview.canStart)));
 }
 
 function previewTitle(preview) {
@@ -2972,7 +2973,6 @@ async function startActiveAppPreview(preview) {
   renderPreviewLink(preview);
   try {
     await ensureDevLogTerminal();
-    await waitForActivePreview(preview);
   } finally {
     appPreviewStarting = false;
     await refreshActiveAppPreview();
