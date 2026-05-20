@@ -3020,6 +3020,10 @@ function previewLinkTitle(url) {
 async function openActiveAppPreview() {
   const preview = activeAppPreview || await refreshActiveAppPreview();
   if (!previewCanAct(preview)) return;
+  if (terminalSessions.has("dev")) {
+    await stopActiveAppPreview(preview);
+    return;
+  }
   if (preview.running || preview.status === "running") {
     await stopActiveAppPreview(preview);
     return;
