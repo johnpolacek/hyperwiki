@@ -322,7 +322,8 @@ body {
 }
 
 .preview-status.stopped,
-.preview-status.unknown {
+.preview-status.unknown,
+.preview-status.not-startable {
   border-color: #ded8c4;
   background: #fbf7e8;
   color: #6c5a26;
@@ -3444,7 +3445,8 @@ html[data-initial-route="settings"] .wiki-pane {
   color: #4f421b;
 }
 
-.preview-link.starting {
+.preview-link.starting,
+.preview-link.stopping {
   border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
   background: color-mix(in srgb, var(--accent) 6%, var(--panel));
   color: var(--muted);

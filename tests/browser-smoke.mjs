@@ -327,8 +327,8 @@ await page.locator(".terminal-toolbar").evaluate((toolbar) => {
   }
 });
 await page.locator("#preview-link").evaluate((link) => {
-  if (link.hidden || link.textContent.trim() !== "Open App" || !link.href.includes("hyperwiki.localhost")) {
-    throw new Error(`Expected persistent Open App link, got hidden=${link.hidden} text=${link.textContent} href=${link.href}`);
+  if (link.hidden || link.textContent.trim() !== "Dev Running" || !link.href.includes("hyperwiki.localhost")) {
+    throw new Error(`Expected persistent Dev Running link, got hidden=${link.hidden} text=${link.textContent} href=${link.href}`);
   }
 });
 const capturedPrompts = [];

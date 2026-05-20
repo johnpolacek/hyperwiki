@@ -1097,7 +1097,7 @@ function previewStatusLabel(status) {
     stopped: "Stopped",
     unknown: "Unknown",
     "not-configured": "No App",
-    "not-startable": "No Start",
+    "not-startable": "No Dev",
     unavailable: "Unavailable"
   }[status] || "Unknown";
 }
@@ -2900,7 +2900,7 @@ function setProjectPreviewState(previews) {
 }
 
 function renderPreviewLink(preview) {
-  previewLink.classList.remove("disabled", "starting", "stopped", "unknown", "running", "not-configured", "not-startable");
+  previewLink.classList.remove("disabled", "starting", "stopping", "stopped", "unknown", "running", "not-configured", "not-startable");
   if (appPreviewStarting) {
     previewLink.hidden = false;
     previewLink.href = preview?.url || "#";
@@ -2928,14 +2928,18 @@ function renderPreviewLink(preview) {
 
 function previewActionLabel(preview) {
   if (!preview?.url) return "App Not Configured";
-  if (preview.running || preview.status === "running") return "Open App";
-  if (preview.canStart) return "Start App";
+  if (preview.running || preview.status === "running") {
+    return terminalSessions.has("dev") ? "Stop Dev" : "Dev Running";
+  }
+  if (preview.canStart) return "Run Dev";
   if (preview.status === "unknown") return "Preview Unknown";
+  if (preview.status === "not-startable") return "Dev Not Available";
   return "App Not Configured";
 }
 
 function previewCanAct(preview) {
-  return Boolean(preview?.url && (preview.running || preview.canStart));
+  const isRunning = preview?.running || preview?.status === "running";
+  return Boolean(preview?.url && ((isRunning && terminalSessions.has("dev")) || (!isRunning && preview.canStart)));
 }
 
 function previewTitle(preview) {
@@ -2953,39 +2957,34 @@ async function openActiveAppPreview() {
   const preview = activeAppPreview || await refreshActiveAppPreview();
   if (!previewCanAct(preview)) return;
   if (preview.running || preview.status === "running") {
-    openPreviewWindow(preview.url);
+    await stopActiveAppPreview(preview);
     return;
   }
-  const opened = openPreviewWindow("about:blank");
-  try {
-    opened?.document?.write(`<p style="font: 14px system-ui; padding: 20px;">Starting ${escapeHtml(preview.url)}...</p>`);
-  } catch {
-    // Some browsers restrict writes even to a synchronously opened placeholder.
-  }
-  await startActiveAppPreview(preview, opened);
+  await startActiveAppPreview(preview);
 }
 
-function openPreviewWindow(url) {
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  return opened;
-}
-
-async function startActiveAppPreview(preview, openedWindow) {
+async function startActiveAppPreview(preview) {
   if (appPreviewStarting) return;
   appPreviewStarting = true;
   renderPreviewLink(preview);
   try {
     await ensureDevLogTerminal();
-    const ready = await waitForActivePreview(preview);
-    if (ready?.url && openedWindow && !openedWindow.closed) {
-      openedWindow.location.href = ready.url;
-    } else if (ready?.url) {
-      openPreviewWindow(ready.url);
-    }
+    await waitForActivePreview(preview);
   } finally {
     appPreviewStarting = false;
     await refreshActiveAppPreview();
   }
+}
+
+async function stopActiveAppPreview(preview) {
+  const session = terminalSessions.get("dev");
+  if (!session) return;
+  previewLink.classList.add("stopping");
+  previewLink.textContent = "Stopping...";
+  previewLink.title = preview?.url || "Stopping dev preview.";
+  closeTerminal("dev");
+  await delay(500);
+  await refreshActiveAppPreview();
 }
 
 async function waitForActivePreview(preview) {

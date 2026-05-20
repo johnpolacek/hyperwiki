@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { ProjectRegistry } from "../src/projects.js";
@@ -9,6 +9,7 @@ const previousHome = process.env.HYPERWIKI_HOME;
 const previousPath = process.env.PATH;
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-preview-main-"));
 const worktree = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-preview-feature-a-"));
+const noDevRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-preview-no-dev-"));
 const home = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-preview-home-"));
 const bin = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-preview-bin-"));
 const routeFile = path.join(bin, "routes.txt");
@@ -20,13 +21,17 @@ process.env.PATH = `${bin}${path.delimiter}${process.env.PATH}`;
 try {
   await writePackage(root);
   await writePackage(worktree);
+  await writePackage(noDevRoot);
   await inithyperwiki(root, { yes: true, project_name: "Preview Smoke", skip_portless: true });
   await inithyperwiki(worktree, { yes: true, no_git: true, project_name: "Preview Smoke", skip_portless: true });
+  await inithyperwiki(noDevRoot, { yes: true, no_git: true, project_name: "Preview Smoke No Dev", skip_portless: true });
+  await removeDevCommand(noDevRoot);
   await writeFile(path.join(worktree, ".git"), "gitdir: /tmp/hyperwiki-preview-feature-a.git\n");
   await writeFakePnpm(bin, routeFile);
   const registry = new ProjectRegistry();
   await registry.register(root);
   const featureRecord = await registry.register(worktree);
+  await registry.register(noDevRoot);
   const featureSlug = featureRecord.worktreeSlug;
 
   const serverInfo = await startDevServer(root, { host: "127.0.0.1", port: 0 });
@@ -60,6 +65,15 @@ try {
     || feature.expectedUrl !== `https://${featureSlug}.preview-smoke.localhost`) {
     throw new Error(`Expected feature preview to use actual Portless route URL and preserve expected URL, got ${JSON.stringify(feature)}`);
   }
+
+  previews = await json(`${serverInfo.url}/api/app-previews`);
+  const noDev = previews.previews.find((preview) => preview.projectName === "Preview Smoke No Dev");
+  if (noDev?.status !== "not-startable" || noDev.canStart || noDev.running) {
+    throw new Error(`Expected preview URL without dev command to be not-startable, got ${JSON.stringify(noDev)}`);
+  }
+  if (noDev.url !== "https://preview-smoke-no-dev.localhost" || noDev.expectedUrl !== "https://preview-smoke-no-dev.localhost") {
+    throw new Error(`Expected not-startable preview to preserve URL, got ${JSON.stringify(noDev)}`);
+  }
 } finally {
   if (server) {
     await new Promise((resolve) => server.close(resolve));
@@ -80,6 +94,13 @@ async function writePackage(directory) {
     scripts: { dev: "vite" },
     packageManager: "pnpm@10.33.3"
   }, null, 2)}\n`);
+}
+
+async function removeDevCommand(directory) {
+  const configPath = path.join(directory, ".hyperwiki", "config.json");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  config.dev.command = "";
+  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
 }
 
 async function writeFakePnpm(directory, file) {
