@@ -1388,20 +1388,28 @@ function layoutConfig(config, packageCommand = "") {
 async function packageDevCommand(root) {
   try {
     const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-    if (pkg.scripts?.dev) return packageRunCommand(pkg, "dev");
+    if (pkg.scripts?.dev) return await packageRunCommand(root, pkg, "dev");
   } catch {
     // No package manifest or no readable dev script.
   }
   return "";
 }
 
-function packageRunCommand(pkg, script) {
+async function packageRunCommand(root, pkg, script) {
   const packageManager = String(pkg.packageManager || "");
   const manager = packageManager.split("@")[0];
   if (manager === "pnpm") return `pnpm run ${script}`;
   if (manager === "yarn") return `yarn ${script}`;
   if (manager === "bun") return `bun run ${script}`;
+  if (existsSync(path.join(root, "pnpm-lock.yaml")) || (await commandAvailable("pnpm", root))) return `pnpm run ${script}`;
+  if (existsSync(path.join(root, "yarn.lock"))) return `yarn ${script}`;
+  if (existsSync(path.join(root, "bun.lock")) || existsSync(path.join(root, "bun.lockb"))) return `bun run ${script}`;
   return `npm run ${script}`;
+}
+
+async function commandAvailable(command, cwd) {
+  const result = await execFileResult(command, ["--version"], cwd);
+  return result.ok;
 }
 
 function reconcileConfiguredPanels(panels, devCommand) {

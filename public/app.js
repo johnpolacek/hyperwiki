@@ -4116,7 +4116,7 @@ function sendTerminalStartupCommand(session) {
   session.commandSent = true;
   setTimeout(() => {
     session.transport.send(JSON.stringify({ type: "resize", cols: metrics.cols, rows: metrics.rows }));
-    session.transport.send(`${session.command}\r`);
+    session.transport.send(`${session.command}\r\n`);
   }, 50);
 }
 
