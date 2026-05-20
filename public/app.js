@@ -2580,6 +2580,7 @@ async function createProjectFromMarkdown() {
       "- Preserve Hyperwiki scaffold conventions: lowercase wiki/sources.html is canonical, wiki/AGENTS.html is the app-visible wiki guide, and generated pages use the app-served /assets/wiki.css unless the user asks for a standalone artifact.",
       "- Treat Hyperwiki as Localhost Tooling: the user's local machine, repo files, Git state, terminal sessions, credentials, and environment variables are the trust boundary.",
       "- Update the project wiki pages as if the user had typed this brief directly to you.",
+      "- If this project needs an app preview, create or update package.json with a runnable dev script. Prefer a Portless-backed dev script over fixed localhost ports so Hyperwiki can open stable .localhost previews.",
       "- Create or revise source briefs, roadmap, and planning pages only where the document supports durable project context.",
       "- Ask concise Q&A in this terminal if the document lacks critical product, technical, or validation decisions.",
       "- Keep the project locally grounded and run relevant hyperwiki checks before finishing.",
@@ -2683,6 +2684,7 @@ function executePrompt(target, context, slug) {
       `- Derive the branch/worktree slug from the execution unit as "${slug}" unless that would be ambiguous.`,
       "- Ask a concise question only if the worktree or branch name is ambiguous.",
       "- Use Portless for the dev preview URL.",
+      "- If the implementation creates or changes a previewable app, ensure package.json has a runnable dev script, preferably backed by Portless.",
       `- Expected preview URL: ${previewUrl(slug)}`,
       "- Include the Preview URL in your final handoff."
     );
@@ -2691,6 +2693,7 @@ function executePrompt(target, context, slug) {
       "Instructions:",
       "- Work in the current main checkout.",
       "- Keep changes grounded in the execution unit and repo state.",
+      "- If the implementation creates or changes a previewable app, ensure package.json has a runnable dev script, preferably backed by Portless.",
       "- Run the relevant checks before summarizing the result."
     );
   }

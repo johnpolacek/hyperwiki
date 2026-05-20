@@ -63,6 +63,9 @@ if (!sources.includes("lowercase <code>wiki/sources.html</code>")) {
 if (!agents.includes("Do not add a duplicate `wiki/Sources.html`")) {
   throw new Error("Generated AGENTS.md did not preserve the Hyperwiki source-index convention.");
 }
+if (!agents.includes("If this project needs an app preview") || !agents.includes("Portless-backed `dev` script")) {
+  throw new Error("Generated AGENTS.md did not explicitly require a dev script for previewable apps.");
+}
 if (prd.includes("hyperwiki turns repo-local project docs")) {
   throw new Error("Generated PRD still contains hyperwiki-specific product copy.");
 }
@@ -217,6 +220,9 @@ if (!guidedStageThreeUnit.includes("Document Licensing Moderation And Submission
 }
 if (!guidedRoadmap.includes("Ship the first slice") || !guidedArchitecture.includes("content/taxonomy.json") || !guidedDev.includes("Implementation Order")) {
   throw new Error("Guided roadmap, architecture, and dev pages remained too generic.");
+}
+if (!guidedDev.includes("package.json") || !guidedDev.includes("dev:app")) {
+  throw new Error("Guided dev page did not explicitly require a runnable preview dev script.");
 }
 
 console.log("init smoke test passed");

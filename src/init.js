@@ -413,6 +413,8 @@ Use \`pnpm\` when this repository declares pnpm; otherwise follow the package ma
 
 Use Portless for local dev previews. Prefer \`${context.packageManager} run dev\` over fixed localhost ports so main and worktree previews get stable .localhost URLs.
 
+If this project needs an app preview and \`package.json\` has no runnable \`dev\` script, create or update \`package.json\` with one. Prefer a Portless-backed \`dev\` script, with the real app server behind a secondary script such as \`dev:app\`.
+
 Use the \`parallel-dev-worktrees\` skill for worktree execution. Feature worktrees should use the preview pattern \`https://<branch-slug>.${slugify(context.projectName)}.localhost\`.
 
 Create or update \`wiki/plans/\` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
@@ -646,7 +648,7 @@ function devPage(context) {
   if (hasGuidedPlan(context)) {
     return layout(context, "Development", `<h1>Development</h1>
 <h2>Bootstrap Expectation</h2>
-<p>The first implementation agent should create the app scaffold, package manifest, and dev/test scripts if they do not exist yet.</p>
+<p>The first implementation agent should create the app scaffold, package manifest, and dev/test scripts if they do not exist yet. If the project needs an app preview, <code>package.json</code> must include a runnable <code>dev</code> script, preferably backed by Portless with the real app server behind <code>dev:app</code>.</p>
 <h2>Recommended First Commands</h2>
 <pre><code>pnpm install
 pnpm run dev
@@ -969,6 +971,7 @@ function technicalBriefPage(context) {
   <li>Known scripts: <code>${escapeHtml(context.scripts.join(", ") || "Unknown")}</code>.</li>
   <li>Git branch at initialization: <code>${escapeHtml(context.git.branch || "Unknown")}</code>.</li>
   <li>Dev preview command: <code>${context.scripts.includes("dev") ? escapeHtml(packageRun(context, "dev")) : "Unknown"}</code>.</li>
+  <li>If the project needs an app preview and no dev command exists, add a runnable <code>dev</code> script to <code>package.json</code>, preferably Portless-backed with the real app server behind <code>dev:app</code>.</li>
   <li>Worktree preview pattern: <code>https://&lt;branch-slug&gt;.${escapeHtml(slugify(context.projectName))}.localhost</code>.</li>
   <li>Canonical wiki files are HTML under <code>wiki/</code>, with the source index at <code>wiki/sources.html</code>.</li>
   <li>The app-visible wiki guide is <code>wiki/AGENTS.html</code>; root <code>AGENTS.md</code> remains the agent entrypoint.</li>
