@@ -3943,7 +3943,6 @@ async function createTerminal(name, options = {}) {
   let transport;
   let lastLocalInputAt = 0;
   let lastLocalInputWasEnter = false;
-  let commandSent = false;
   const term = new WTerm(el, {
     cols: 100,
     rows: 24,
@@ -4002,13 +4001,7 @@ async function createTerminal(name, options = {}) {
     onOpen: () => {
       tab.classList.add("connected");
       tab.classList.remove("closed", "error");
-      if (options.command && !commandSent) {
-        commandSent = true;
-        setTimeout(() => {
-          transport.send(JSON.stringify({ type: "resize", cols: 100, rows: 24 }));
-          transport.send(`${options.command}\r`);
-        }, 50);
-      }
+      sendTerminalStartupCommand(session);
     },
     onClose: () => {
       tab.classList.remove("connected");
@@ -4020,7 +4013,7 @@ async function createTerminal(name, options = {}) {
     }
   });
 
-  session = { id, name, role: options.role || "shell", command: options.command || null, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
   await term.init();
   transport.connect();
@@ -4111,8 +4104,20 @@ function setTerminalCollapsed(name, collapsed) {
     requestAnimationFrame(() => {
       resizeTerminalToElement(session);
       scrollTerminalToBottom(session.el);
+      sendTerminalStartupCommand(session);
     });
   }
+}
+
+function sendTerminalStartupCommand(session) {
+  if (!session?.command || session.commandSent) return;
+  if (session.panel.classList.contains("collapsed")) return;
+  const metrics = resizeTerminalToElement(session) || { cols: 100, rows: 24 };
+  session.commandSent = true;
+  setTimeout(() => {
+    session.transport.send(JSON.stringify({ type: "resize", cols: metrics.cols, rows: metrics.rows }));
+    session.transport.send(`${session.command}\r`);
+  }, 50);
 }
 
 function resizeTerminalToElement(session) {
@@ -4120,6 +4125,7 @@ function resizeTerminalToElement(session) {
   const metrics = terminalElementMetrics(session.el);
   if (!metrics) return;
   session.term.resize(metrics.cols, metrics.rows);
+  return metrics;
 }
 
 function terminalElementMetrics(el) {
