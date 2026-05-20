@@ -12,7 +12,6 @@ const modifyPlanUi = document.getElementById("modify-plan-ui");
 const modifyPlanInput = document.getElementById("modify-plan-input");
 const modifyPlanStatus = document.getElementById("modify-plan-status");
 const executeButton = document.getElementById("execute-button");
-const executeMenu = document.getElementById("execute-menu");
 const previewLink = document.getElementById("preview-link");
 const appOpenLink = document.getElementById("app-open-link");
 const terminals = document.getElementById("terminals");
@@ -20,6 +19,7 @@ const terminalTabs = document.getElementById("terminal-tabs");
 const terminalPane = document.querySelector(".terminal-pane");
 const wikiPane = document.querySelector(".wiki-pane");
 const thinkingEffort = document.getElementById("thinking-effort");
+const newWorktreeTerminalButton = document.getElementById("new-worktree-terminal");
 const newAgentTerminalButton = document.getElementById("new-agent-terminal");
 const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
@@ -105,6 +105,7 @@ let cliTerminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
 let activeTerminalScope = terminalScopeForLocation(workspaceLocation());
+let terminalScopeVersion = 0;
 let guardrails = null;
 let terminalLayout = [];
 let projectDevCommand = "";
@@ -371,20 +372,20 @@ newCliTerminalButton.addEventListener("click", async () => {
   activateTerminal(name);
 });
 
-executeButton.addEventListener("click", (event) => {
-  event.stopPropagation();
-  const open = executeMenu.hidden;
-  executeMenu.hidden = !open;
-  executeButton.setAttribute("aria-expanded", String(open));
+executeButton.addEventListener("click", () => {
+  planPromptStatus.textContent = "Starting agent...";
+  void executeTarget("main")
+    .then(() => {
+      planPromptStatus.textContent = "Sent to agent.";
+    })
+    .catch((error) => {
+      planPromptStatus.textContent = error.message || "Agent unavailable.";
+    });
 });
 
-executeMenu.addEventListener("click", (event) => {
-  const target = event.target.closest("[data-execute-target]");
-  if (!target) return;
-  executeMenu.hidden = true;
-  executeButton.setAttribute("aria-expanded", "false");
-  planPromptStatus.textContent = "Starting agent...";
-  void executeTarget(target.dataset.executeTarget || "main")
+newWorktreeTerminalButton.addEventListener("click", () => {
+  planPromptStatus.textContent = "Starting worktree agent...";
+  void executeTarget("worktree")
     .then(() => {
       planPromptStatus.textContent = "Sent to agent.";
     })
@@ -526,13 +527,11 @@ upNextPopover.addEventListener("click", (event) => {
 
 document.addEventListener("click", () => {
   closeTopbarPanels();
-  closeExecuteMenu();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeTopbarPanels();
-    closeExecuteMenu();
   }
 });
 
@@ -713,10 +712,17 @@ async function loadRepoContext() {
     repoBranch.textContent = repo.git.worktree || "main";
     repoBranch.title = repo.root;
     document.getElementById("server-status").title = repo.root;
+    updateWorktreeButtonVisibility(repo.git?.worktree || repo.git?.branch || "main");
   } catch {
     repoBranch.textContent = "Unavailable";
     repoBranch.title = "";
+    updateWorktreeButtonVisibility("");
   }
+}
+
+function updateWorktreeButtonVisibility(branch) {
+  const normalized = String(branch || "").trim().toLowerCase();
+  newWorktreeTerminalButton.hidden = !(normalized === "main" || normalized === "master");
 }
 
 async function loadWikiNav() {
@@ -993,11 +999,6 @@ function closeTopbarPanels() {
   upNextPopover.hidden = true;
   projectToggle.setAttribute("aria-expanded", "false");
   upNextButton.setAttribute("aria-expanded", "false");
-}
-
-function closeExecuteMenu() {
-  executeMenu.hidden = true;
-  executeButton.setAttribute("aria-expanded", "false");
 }
 
 async function loadGuardrails() {
@@ -2619,6 +2620,7 @@ async function handOffDashboardPrompt(prompt, currentPagePath) {
 
 async function executeTarget(target) {
   const executionContext = await resolveExecutionContext();
+  switchTerminalScope(executionContext.agentPagePath || executionContext.pagePath);
   const slug = slugify(executionContext.unitTitle || executionContext.pageTitle || "worktree");
   workspace.dataset.executeTarget = target;
   if (target === "worktree") {
@@ -3118,19 +3120,21 @@ async function projectOpenPath(project) {
 function switchTerminalScope(path) {
   const nextScope = terminalScopeForLocation(path);
   if (nextScope.scope === activeTerminalScope.scope) return;
+  terminalScopeVersion += 1;
   closeAllTerminals();
   activeTerminalScope = nextScope;
-  void restoreTerminalsForScope(nextScope);
+  void restoreTerminalsForScope(nextScope, terminalScopeVersion);
 }
 
-async function restoreTerminalsForScope(scope = activeTerminalScope) {
+async function restoreTerminalsForScope(scope = activeTerminalScope, version = terminalScopeVersion) {
   try {
     const data = await api(projectPath(`/api/sessions?${new URLSearchParams({ scope: scope.scope }).toString()}`));
-    if (scope.scope !== activeTerminalScope.scope) return;
+    if (scope.scope !== activeTerminalScope.scope || version !== terminalScopeVersion) return;
     const sessions = (data.sessions || [])
       .filter((session) => session.status !== "closed")
       .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
     for (const session of sessions) {
+      if (scope.scope !== activeTerminalScope.scope || version !== terminalScopeVersion) return;
       if (terminalSessions.has(session.name)) continue;
       await createTerminal(session.name, {
         id: session.id,
@@ -3867,8 +3871,6 @@ function setCommandBarCompleted(completed) {
   completionBadge.hidden = !completed;
   modifyButton.hidden = completed;
   executeButton.hidden = completed;
-  executeMenu.hidden = true;
-  executeButton.setAttribute("aria-expanded", "false");
   if (completed) {
     modifyPlanUi.hidden = true;
     modifyButton.setAttribute("aria-expanded", "false");

@@ -120,18 +120,7 @@
         <nav id="current-page" class="wiki-breadcrumbs" aria-label="Current wiki location">/wiki/index.html</nav>
         <span id="completion-badge" class="completion-badge" hidden>Completed</span>
         <button type="button" id="modify-button" class="modify-button" aria-expanded="false" aria-controls="modify-plan-ui">Modify</button>
-        <div class="execute-control">
-          <button type="button" id="execute-button" class="execute-button" aria-expanded="false" aria-controls="execute-menu">
-            <span>Execute</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"></path>
-            </svg>
-          </button>
-          <div id="execute-menu" class="execute-menu" role="menu" hidden>
-            <button type="button" data-execute-target="main" role="menuitem">on main</button>
-            <button type="button" data-execute-target="worktree" role="menuitem">on worktree</button>
-          </div>
-        </div>
+        <button type="button" id="execute-button" class="execute-button">Execute</button>
         <a id="preview-link" class="preview-link" href="#" target="_blank" rel="noreferrer" hidden>Open preview</a>
         <a id="app-open-link" class="preview-link app-open-link" href="#" target="_blank" rel="noreferrer" hidden>Open App</a>
         <a id="open-page" href="/wiki/index.html" target="_blank" rel="noreferrer" hidden>Open</a>
@@ -419,6 +408,7 @@ Reading settings, previewing terminal contrast...
           <strong id="repo-branch">Unknown</strong>
         </div>
         <div class="terminal-actions">
+          <button type="button" id="new-worktree-terminal" class="terminal-worktree-button" hidden>+ worktree</button>
           <label class="terminal-effort-picker" for="thinking-effort">
             <span>thinking</span>
             <select id="thinking-effort" aria-label="Default thinking effort for new agent terminals">
@@ -428,8 +418,8 @@ Reading settings, previewing terminal contrast...
               <option value="xhigh">xhigh</option>
             </select>
           </label>
-          <button type="button" id="new-agent-terminal">+ new agent</button>
-          <button type="button" id="new-cli-terminal">+ new cli</button>
+          <button type="button" id="new-agent-terminal" class="terminal-outline-button">+ agent</button>
+          <button type="button" id="new-cli-terminal" class="terminal-outline-button">+ cli</button>
         </div>
       </div>
       <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal panels"></div>

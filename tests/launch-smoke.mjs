@@ -68,7 +68,7 @@ try {
     throw new Error(`Expected launch to start with no terminals, got ${initialTerminals}`);
   }
   await page.locator(".terminal-pane").evaluate((pane) => {
-    if (getComputedStyle(pane).display === "none" || !pane.textContent.includes("new agent") || !pane.textContent.includes("new cli")) {
+    if (getComputedStyle(pane).display === "none" || !pane.textContent.includes("+ agent") || !pane.textContent.includes("+ cli") || !pane.textContent.includes("+ worktree")) {
       throw new Error(`Expected visible terminal controls before Execute, got ${pane.textContent}`);
     }
   });
@@ -82,21 +82,20 @@ try {
     throw new Error(`Expected launch to avoid active terminal sessions before Execute, got ${JSON.stringify(sessions)}`);
   }
   await page.locator("#execute-button").click();
-  await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
   await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor();
-  await page.goto(`${workspaceUrl}#/wiki/plans/mvp/stage-01-foundation.html`, { waitUntil: "networkidle" });
-  await page.waitForURL(/#\/wiki\/plans\/mvp\/stage-01-foundation\.html$/);
+  await page.goto(`${workspaceUrl}#/wiki/plans/mvp/stage-02-dev-workspace.html`, { waitUntil: "networkidle" });
+  await page.waitForURL(/#\/wiki\/plans\/mvp\/stage-02-dev-workspace\.html$/);
   const scopedStageTerminals = await page.locator(".terminal-panel").count();
   if (scopedStageTerminals !== 0) {
     throw new Error(`Expected a fresh terminal scope on another plan, got ${scopedStageTerminals}`);
   }
   const detachedSessions = await fetch(`http://127.0.0.1:${port}/api/sessions`).then((response) => response.json());
-  if (!detachedSessions.sessions.some((session) => session.name === "agent" && session.status === "detached" && session.scope === "plan:/wiki/plans/index.html")) {
-    throw new Error(`Expected index agent to keep running detached, got ${JSON.stringify(detachedSessions)}`);
+  if (!detachedSessions.sessions.some((session) => session.name === "agent" && session.status === "detached" && session.scope === "plan:/wiki/plans/mvp/stage-01-foundation.html")) {
+    throw new Error(`Expected Stage 01 agent to keep running detached, got ${JSON.stringify(detachedSessions)}`);
   }
-  await page.goto(`${workspaceUrl}#/wiki/plans/index.html`, { waitUntil: "networkidle" });
+  await page.goto(`${workspaceUrl}#/wiki/plans/mvp/stage-01-foundation.html`, { waitUntil: "networkidle" });
   await page.locator(".terminal-panel[data-name=\"agent\"]").waitFor();
-  const reattachedSessions = await fetch(`http://127.0.0.1:${port}/api/sessions?scope=${encodeURIComponent("plan:/wiki/plans/index.html")}`).then((response) => response.json());
+  const reattachedSessions = await fetch(`http://127.0.0.1:${port}/api/sessions?scope=${encodeURIComponent("plan:/wiki/plans/mvp/stage-01-foundation.html")}`).then((response) => response.json());
   if (!reattachedSessions.sessions.some((session) => session.name === "agent" && session.status === "active")) {
     throw new Error(`Expected plan-scoped agent to reattach, got ${JSON.stringify(reattachedSessions)}`);
   }

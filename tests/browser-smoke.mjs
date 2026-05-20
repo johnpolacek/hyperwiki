@@ -316,13 +316,13 @@ await page.locator(".terminal-pane").evaluate((pane) => {
   if (getComputedStyle(pane).display === "none") {
     throw new Error("Expected terminal pane chrome before Execute.");
   }
-  if (!pane.textContent.includes("new agent") || !pane.textContent.includes("new cli") || !pane.textContent.includes("No terminals running")) {
+  if (!pane.textContent.includes("+ agent") || !pane.textContent.includes("+ cli") || !pane.textContent.includes("No terminals running")) {
     throw new Error(`Expected terminal chrome with empty state before Execute, got ${pane.textContent}`);
   }
 });
 await page.locator(".terminal-toolbar").evaluate((toolbar) => {
   const text = toolbar.textContent || "";
-  if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("thinking") || !text.includes("new agent") || !text.includes("new cli")) {
+  if (!toolbar.querySelector(".terminal-branch svg") || !text.includes("thinking") || !text.includes("+ agent") || !text.includes("+ cli")) {
     throw new Error(`Expected compact terminal toolbar, got ${text}`);
   }
 });
@@ -378,7 +378,6 @@ await page.locator("#modify-plan-ui").evaluate((form) => {
 });
 await page.locator("#thinking-effort").selectOption("high");
 await page.locator("#execute-button").click();
-await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.locator(".terminal-panel-header[data-name=\"agent\"]").waitFor();
 await page.locator(".terminal-panel-header").filter({ hasText: /codex --yolo|HYPERWIKI_AGENT_DRY_RUN/ }).waitFor();
 for (let attempt = 0; capturedPrompts.length === 0 && attempt < 350; attempt += 1) {
@@ -424,8 +423,7 @@ await page.locator(".terminal-pane").evaluate((pane) => {
 await page.locator("#plan-prompt").evaluate((element) => {
   if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
 });
-await page.locator("#execute-button").click();
-await page.locator("#execute-menu [data-execute-target=\"worktree\"]").click();
+await page.locator("#new-worktree-terminal").click();
 for (let attempt = 0; capturedPrompts.length < 2 && attempt < 350; attempt += 1) {
   await new Promise((resolve) => setTimeout(resolve, 100));
 }
@@ -997,7 +995,6 @@ page.once("dialog", async (dialog) => {
   await dialog.accept();
 });
 await page.locator("#execute-button").click();
-await page.locator("#execute-menu [data-execute-target=\"main\"]").click();
 await page.waitForFunction(() => document.querySelector("#plan-prompt-status")?.textContent.includes("No agent launch command is configured"));
 if (gitInitRequests !== 1) {
   throw new Error(`Expected Execute to initialize Git once, got ${gitInitRequests}`);

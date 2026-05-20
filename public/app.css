@@ -3367,14 +3367,8 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--text);
 }
 
-.execute-control {
-  position: relative;
-  flex: 0 0 auto;
-}
-
 .execute-button,
 .modify-button,
-.execute-menu button,
 .preview-link {
   min-height: 30px;
   border: 1px solid var(--border);
@@ -3459,37 +3453,12 @@ html[data-initial-route="settings"] .wiki-pane {
   cursor: not-allowed;
 }
 
-.execute-menu {
-  position: absolute;
-  top: calc(100% + 5px);
-  right: 0;
-  z-index: 30;
-  display: grid;
-  gap: 4px;
-  min-width: 145px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 5px;
-  background: var(--panel);
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--text) 12%, transparent);
-}
-
-.execute-menu[hidden],
 .preview-link[hidden] {
   display: none;
 }
 
-.execute-menu button {
-  width: 100%;
-  border: 0;
-  border-radius: 4px;
-  text-align: left;
-}
-
 .modify-button:hover,
 .modify-button:focus-visible,
-.execute-menu button:hover,
-.execute-menu button:focus-visible,
 .preview-link:hover,
 .preview-link:focus-visible {
   border-color: #8f9c90;
@@ -3692,7 +3661,6 @@ html[data-initial-route="settings"] .wiki-pane {
   overflow-x: auto;
 }
 
-.terminal-toolbar button,
 .terminal-tab {
   border: 0;
   border-radius: 0;
@@ -3704,9 +3672,46 @@ html[data-initial-route="settings"] .wiki-pane {
   white-space: nowrap;
 }
 
-.terminal-toolbar button:hover,
-.terminal-toolbar button:focus-visible {
+.terminal-toolbar button {
+  white-space: nowrap;
+}
+
+.terminal-outline-button,
+.terminal-worktree-button {
+  min-height: 28px;
+  border: 1px solid #3a403b;
+  border-radius: 6px;
+  padding: 4px 9px;
+  background: transparent;
+  color: #eef2ec;
+  cursor: pointer;
+  font: 700 11px/1.2 var(--terminal-font);
+}
+
+.terminal-worktree-button {
+  border-color: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 74%, #ffffff);
+  background: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 16%, transparent);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--terminal-accent, #9fd1ff) 18%, transparent);
+}
+
+.terminal-worktree-button[hidden] {
+  display: none;
+}
+
+.terminal-outline-button:hover,
+.terminal-outline-button:focus-visible,
+.terminal-worktree-button:hover,
+.terminal-worktree-button:focus-visible {
+  border-color: #9fd1ff;
   color: #9fd1ff;
+  outline: none;
+}
+
+.terminal-worktree-button:hover,
+.terminal-worktree-button:focus-visible {
+  background: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 22%, transparent);
+  color: #ffffff;
 }
 
 .terminal-tab {
