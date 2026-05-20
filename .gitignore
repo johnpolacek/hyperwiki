@@ -1,6 +1,9 @@
 node_modules/
 npm-debug.log*
 
+src-tauri/target/
+src-tauri/gen/
+
 .hyperwiki/state/
 .hyperwiki/sessions/
 .hyperwiki/*.log

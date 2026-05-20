@@ -180,8 +180,8 @@
         <dl class="summary-grid">
           <div class="metric"><dt>Status</dt><dd><span class="status-active">active plan</span></dd></div>
           <div class="metric"><dt>Shape</dt><dd>multi-stage architecture migration</dd></div>
-          <div class="metric"><dt>Current unit</dt><dd>Stage 01 / Unit 01 - Tauri Baseline App</dd></div>
-          <div class="metric"><dt>Next action</dt><dd>Create the Tauri workspace and Rust crate layout.</dd></div>
+          <div class="metric"><dt>Current unit</dt><dd>Stage 01 / Unit 02 - Command Contract Skeleton</dd></div>
+          <div class="metric"><dt>Next action</dt><dd>Create the typed frontend adapter for Tauri command calls and legacy HTTP compatibility.</dd></div>
           <div class="metric"><dt>Blockers</dt><dd>none; branch may go dark during rebuild.</dd></div>
           <div class="metric"><dt>Validation</dt><dd>feature parity smoke suite, Rust tests, Tauri checks, manual desktop dogfood.</dd></div>
         </dl>
@@ -263,7 +263,7 @@
     <section class="stage" aria-labelledby="stage-01">
       <div class="stage-header"><div><h2 id="stage-01">Stage 01 - Tauri Foundation And Build Shape</h2><p>Introduce the Tauri workspace and Rust crate boundaries while preserving the existing frontend as the fastest path to a working desktop surface.</p></div><span class="status-active">current stage</span></div>
       <div class="unit-grid">
-        <article class="unit"><h3>Unit 01 - Tauri Baseline App</h3><p>Create <code>src-tauri/</code>, Tauri v2 config, Rust workspace conventions, dev/build scripts using <code>pnpm</code>, and a desktop window that loads existing app assets.</p><p><strong>Acceptance:</strong> <code>pnpm tauri dev</code> opens Hyperwiki without browser chrome; existing static app shell renders; no Node server is required for the first window.</p><p><strong>Verification:</strong> Rust compile check, Tauri dev launch, static asset render check, and updated syntax/build script.</p></article>
+        <article class="unit"><h3>Unit 01 - Tauri Baseline App</h3><p>Create <code>src-tauri/</code>, Tauri v2 config, Rust workspace conventions, dev/build scripts using <code>pnpm</code>, and a desktop window that loads existing app assets.</p><p><strong>Status:</strong> complete.</p><p><strong>Acceptance:</strong> <code>pnpm tauri dev</code> opens Hyperwiki without browser chrome; existing static app shell renders; no Node server is required for the first window.</p><p><strong>Verification:</strong> <code>pnpm run check</code> passed, <code>pnpm run check:tauri</code> passed, and <code>pnpm run tauri:dev</code> built the app and reached <code>Running target/debug/hyperwiki</code> before manual stop.</p></article>
         <article class="unit"><h3>Unit 02 - Command Contract Skeleton</h3><p>Replace localhost HTTP assumptions with a typed frontend adapter that can call either legacy HTTP or Tauri commands during migration.</p><p><strong>Acceptance:</strong> frontend reads workspace, wiki, repo, settings, project, terminal, preview, verification, review, and MCP data through one adapter interface.</p><p><strong>Verification:</strong> adapter unit tests cover success, error, and legacy response shape normalization.</p></article>
         <article class="unit"><h3>Unit 03 - Rust Domain Crate Layout</h3><p>Create modules for project registry, wiki filesystem, settings, Git, sessions, terminals, previews, verification, review workflows, MCP, and app shell commands.</p><p><strong>Acceptance:</strong> each current Node module has a Rust owner and test boundary; public structs use serializable DTOs matching frontend expectations.</p><p><strong>Verification:</strong> compile-only tests and JSON snapshot tests for representative DTOs.</p></article>
         <article class="unit"><h3>Unit 04 - Test Harness Baseline</h3><p>Stand up Rust unit/integration tests, compatibility fixtures, desktop launch checks, and manual macOS checks where Tauri WebDriver coverage is unavailable.</p><p><strong>Acceptance:</strong> scripts separate Rust tests, frontend syntax/build checks, compatibility smoke tests, and manual desktop dogfood checklist.</p><p><strong>Verification:</strong> all baseline checks pass before replacing product behavior.</p></article>
@@ -344,9 +344,9 @@
     <section class="copy-box" aria-labelledby="handoff">
       <h2 id="handoff">Execution Handoff</h2>
       <textarea readonly>Current plan: wiki/plans/tauri-rewrite.html
-Current unit: Stage 01 / Unit 01 - Tauri Baseline App
-Next action: create src-tauri, Tauri v2 config, Rust crate layout, and pnpm scripts that open the existing workspace assets in a desktop window.
-Keep current Node implementation as a reference only; the rewrite branch may go dark.
+Current unit: Stage 01 / Unit 02 - Command Contract Skeleton
+Next action: create a typed frontend adapter that can call Tauri commands while preserving legacy HTTP response shapes during migration.
+Unit 01 complete: src-tauri baseline, pnpm Tauri scripts, cargo check, node check, and tauri dev launch evidence are in place.
 Update this plan after every unit with implementation notes and verification evidence.</textarea>
     </section>
   </main>
