@@ -299,6 +299,35 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             };
         }
     }
+    if request.method == "POST" && request.path.starts_with("/api/agent/prompt") {
+        let project = resolve_request_project(&request.path).or_else(|| {
+            let root = std::env::current_dir().ok()?;
+            let info = crate::domain::projects::project_from_root(&root);
+            info.available
+                .then_some(crate::domain::projects::ProjectRecord {
+                    id: "current".to_string(),
+                    root,
+                    name: info.name,
+                    project_slug: "current".to_string(),
+                    worktree_slug: "main".to_string(),
+                    last_opened_at: None,
+                    available: true,
+                    active: false,
+                })
+        });
+        let Some(project) = project else {
+            return error_response(404, "Project not found for agent prompt.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+            .unwrap_or(serde_json::Value::Null);
+        return match send_agent_prompt(&project, &body) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path == "/api/health" {
         return json_response(
             200,
@@ -364,6 +393,68 @@ fn resolve_request_project(path: &str) -> Option<crate::domain::projects::Projec
 fn terminal_manager() -> &'static Mutex<crate::domain::terminals::TerminalManager> {
     static MANAGER: OnceLock<Mutex<crate::domain::terminals::TerminalManager>> = OnceLock::new();
     MANAGER.get_or_init(|| Mutex::new(crate::domain::terminals::TerminalManager::new()))
+}
+
+fn send_agent_prompt(
+    project: &crate::domain::projects::ProjectRecord,
+    body: &serde_json::Value,
+) -> Result<serde_json::Value, (u16, String)> {
+    let prompt = body["prompt"].as_str().unwrap_or_default().trim();
+    if prompt.is_empty() {
+        return Err((400, "Prompt is required.".to_string()));
+    }
+    let scope = body["scope"].as_str().unwrap_or_default();
+    let sessions = crate::domain::sessions::SessionRegistry::new(&project.root).list(None, false);
+    let Some(agent_session) = sessions.sessions.into_iter().rev().find(|session| {
+        (session.status == "active" || session.status == "detached")
+            && session.role == "agent"
+            && (scope.is_empty() || session.scope == scope)
+            && session
+                .command
+                .as_deref()
+                .map(str::trim)
+                .is_some_and(|command| !command.is_empty())
+    }) else {
+        return Err((409, "No active agent session is available.".to_string()));
+    };
+    let current_page = body["currentPage"]
+        .as_str()
+        .unwrap_or("/wiki/plans/index.html");
+    let message = [
+        "",
+        "Please handle this hyperwiki workspace request.",
+        "",
+        &format!("Project: {}", project.name),
+        &format!("Repo root: {}", project.root.display()),
+        &format!("Current wiki page: {current_page}"),
+        "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
+        "Keep durable project knowledge in wiki/ HTML pages and Git-visible files. Run relevant checks before finishing.",
+        "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
+        "",
+        prompt,
+        "",
+    ]
+    .join("\n");
+    let mut manager = terminal_manager()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    manager
+        .write(&agent_session.id, &codex_paste_input(&message))
+        .map_err(|error| (409, error))?;
+    manager
+        .write(&agent_session.id, "\r")
+        .map_err(|error| (409, error))?;
+    Ok(serde_json::json!({
+        "ok": true,
+        "session": {
+            "id": agent_session.id,
+            "name": agent_session.name
+        }
+    }))
+}
+
+fn codex_paste_input(message: &str) -> String {
+    format!("\x1b[200~{message}\x1b[201~")
 }
 
 #[cfg(test)]
@@ -589,6 +680,62 @@ mod tests {
         assert!(output.contains("tauri-terminal-command"));
         assert!(close.ok);
         assert!(close.text.contains("\"status\":\"closed\""));
+    }
+
+    #[test]
+    fn agent_prompt_routes_only_to_command_backed_agent_session() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-agent-prompt");
+        let home = temp_root("command-agent-prompt-home");
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            "{\"project\":{\"name\":\"Agent Prompt\"}}",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("index.html"),
+            "<h1>Agent Prompt</h1>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let missing = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Before agent exists\"}".to_string()),
+        });
+        let start = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/start".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"id\":\"agent-command\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+        });
+        let routed = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+        });
+        let close = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/agent-command".to_string(),
+            method: "DELETE".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(!missing.ok);
+        assert_eq!(missing.status, 409);
+        assert!(start.ok);
+        assert!(routed.ok);
+        assert!(routed.text.contains("\"id\":\"agent-command\""));
+        assert!(close.ok);
     }
 
     fn wait_for_terminal_output(id: &str, needle: &str) -> String {

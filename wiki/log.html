@@ -124,6 +124,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri agent prompt routing</h2>
+  <ul>
+    <li>Added Tauri command transport handling for <code>/api/agent/prompt</code> so prompts route through Rust-owned terminal sessions instead of the Node server's in-memory input map.</li>
+    <li>Preserved the active command-backed agent guardrail: prompt routing rejects missing agents, non-agent sessions, wrong-scope sessions, and agent sessions without a launch command.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust command tests for missing-agent rejection and successful prompt routing to an active command-backed agent terminal.</li>
+    <li>Stage 03 Unit 02 remains in progress; review workflow routing and the remaining agent prompt surfaces still need Rust command parity.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
