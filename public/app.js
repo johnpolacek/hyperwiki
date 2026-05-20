@@ -111,6 +111,7 @@ let projectPreviewUrl = "";
 let workspaceStatus = {};
 let activeAppPreview = null;
 let appPreviewStarting = false;
+let appPreviewRuntimeUrl = "";
 let projectPreviewState = new Map();
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
@@ -340,6 +341,12 @@ await restoreTerminals();
 previewLink.addEventListener("click", (event) => {
   event.preventDefault();
   void openActiveAppPreview();
+});
+
+appOpenLink.addEventListener("click", (event) => {
+  if (appOpenLink.classList.contains("disabled") || appOpenLink.getAttribute("href") === "#") {
+    event.preventDefault();
+  }
 });
 
 newAgentTerminalButton.addEventListener("click", async () => {
@@ -2713,7 +2720,7 @@ async function ensureDevLogTerminal() {
   if (terminalSessions.has("dev")) return terminalSessions.get("dev");
   const template = terminalTemplate("dev");
   if (!template.command) return null;
-  return createTerminal("dev", { ...template, name: "dev", collapsed: true });
+  return createTerminal("dev", { ...template, name: "dev", collapsed: true, startWhenCollapsed: true });
 }
 
 async function ensureAgentTerminal() {
@@ -2913,9 +2920,11 @@ function renderPreviewLink(preview) {
   renderAppOpenLink(preview);
   if (appPreviewStarting) {
     previewLink.hidden = false;
-    previewLink.href = preview?.url || "#";
+    previewLink.href = "#";
     previewLink.textContent = "Starting...";
-    previewLink.title = preview?.url || "Starting app preview.";
+    previewLink.title = preview?.startCommand
+      ? `Starting: ${preview.startCommand}`
+      : "Starting app preview.";
     previewLink.classList.add("starting");
     return;
   }
@@ -2937,10 +2946,17 @@ function renderPreviewLink(preview) {
 }
 
 function renderAppOpenLink(preview) {
-  const canOpen = Boolean(preview?.url && (terminalSessions.has("dev") || preview.running || preview.status === "running"));
-  appOpenLink.hidden = !canOpen;
-  appOpenLink.href = canOpen ? preview.url : "#";
-  appOpenLink.title = canOpen ? preview.url : "";
+  const runtimeUrl = appPreviewRuntimeUrl || "";
+  const openUrl = runtimeUrl || preview?.url || "";
+  const devTerminalRunning = terminalSessions.has("dev");
+  const canOpen = Boolean(openUrl && (runtimeUrl || preview?.running || preview?.status === "running"));
+  const isStarting = devTerminalRunning && !runtimeUrl && !(preview?.running || preview?.status === "running");
+  appOpenLink.hidden = !canOpen && !isStarting;
+  appOpenLink.href = canOpen ? openUrl : "#";
+  appOpenLink.textContent = runtimeUrl ? `-> ${runtimeUrl}` : isStarting ? "Starting..." : "Open App";
+  appOpenLink.title = canOpen ? openUrl : "Waiting for the dev server URL.";
+  appOpenLink.classList.toggle("disabled", !canOpen);
+  appOpenLink.classList.toggle("starting", isStarting);
 }
 
 function previewActionLabel(preview) {
@@ -2983,6 +2999,7 @@ async function openActiveAppPreview() {
 
 async function startActiveAppPreview(preview) {
   if (appPreviewStarting) return;
+  appPreviewRuntimeUrl = "";
   appPreviewStarting = true;
   renderPreviewLink(preview);
   try {
@@ -2996,6 +3013,7 @@ async function startActiveAppPreview(preview) {
 async function stopActiveAppPreview(preview) {
   const session = terminalSessions.get("dev");
   if (!session) return;
+  appPreviewRuntimeUrl = "";
   previewLink.classList.add("stopping");
   previewLink.textContent = "Stopping...";
   previewLink.title = preview?.url || "Stopping dev preview.";
@@ -4044,7 +4062,7 @@ async function createTerminal(name, options = {}) {
     }
   });
 
-  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
   term.open(el);
   transport.connect();
@@ -4094,12 +4112,27 @@ function createTerminalTransport({ url, onData, onOpen, onClose, onError }) {
 function recordTerminalOutput(session, data) {
   if (!session) return;
   session.outputBuffer = `${session.outputBuffer || ""}${String(data)}`.slice(-20000);
+  updateRuntimePreviewFromTerminal(session);
   scheduleAgentWikiRefresh(session);
   if (!shouldWaitForCodexReady(session) || session.codexReady || !codexReadyFromOutput(session.outputBuffer)) return;
   session.codexReady = true;
   const waiters = session.codexReadyWaiters || [];
   session.codexReadyWaiters = [];
   waiters.forEach((resolve) => resolve());
+}
+
+function updateRuntimePreviewFromTerminal(session) {
+  if (session.name !== "dev") return;
+  const runtimeUrl = runtimePreviewUrlFromOutput(session.outputBuffer);
+  if (!runtimeUrl || runtimeUrl === appPreviewRuntimeUrl) return;
+  appPreviewRuntimeUrl = runtimeUrl;
+  renderPreviewLink(activeAppPreview);
+}
+
+function runtimePreviewUrlFromOutput(output) {
+  const clean = stripTerminalControl(String(output || ""));
+  const urls = clean.match(/https?:\/\/(?:localhost|127\.0\.0\.1|\[[^\]]+\]|[a-z0-9.-]+\.localhost)(?::\d+)?(?:\/[^\s'"<>)]*)?/gi) || [];
+  return urls.at(-1) || "";
 }
 
 function scheduleAgentWikiRefresh(session) {
@@ -4206,7 +4239,7 @@ function scheduleTerminalScrollRestoreFromMemory(session) {
 
 function sendTerminalStartupCommand(session) {
   if (!session?.command || session.commandSent) return;
-  if (session.panel.classList.contains("collapsed")) return;
+  if (session.panel.classList.contains("collapsed") && !session.startWhenCollapsed) return;
   const metrics = resizeTerminalToElement(session) || { cols: 100, rows: 24 };
   session.commandSent = true;
   setTimeout(() => {
@@ -4291,6 +4324,9 @@ function shellQuote(value) {
 function closeTerminal(name) {
   const session = terminalSessions.get(name);
   if (!session) return;
+  if (name === "dev") {
+    appPreviewRuntimeUrl = "";
+  }
   session.transport.close();
   session.disposables?.forEach((disposable) => disposable?.dispose?.());
   session.term.dispose();

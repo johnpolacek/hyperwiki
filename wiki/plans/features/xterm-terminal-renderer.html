@@ -41,6 +41,8 @@
         <li>Keep Hyperwiki's existing PTY websocket endpoint and session lifecycle, replacing only the browser transport adapter.</li>
         <li>Resize PTYs through the xterm fit addon instead of measuring character cells manually.</li>
         <li>Preserve collapse or expand position through xterm buffer viewport state.</li>
+        <li>Allow the managed Run Dev terminal to start while collapsed and show a Starting state until the server prints a runtime URL.</li>
+        <li>Use the runtime URL printed by the dev terminal for the Open App link when it differs from the configured preview URL.</li>
         <li>Serve xterm assets through the local vendor route and remove the obsolete wterm packages.</li>
       </ul>
     </section>
@@ -50,7 +52,7 @@
         <li><code>pnpm run check</code> passed.</li>
         <li><code>pnpm run smoke:app-preview</code> passed.</li>
         <li><code>pnpm run smoke:pty</code> passed.</li>
-        <li>Agent-browser confirmed MarkdownStack Run Dev starts a readable <code>pnpm run dev</code> terminal, exposes Stop Dev and Open App, and retains the <code>Serving!</code> output after collapse and expand.</li>
+        <li>Agent-browser confirmed MarkdownStack Run Dev starts from a collapsed panel, shows Starting, updates Open App to the printed <code>localhost</code> runtime URL, opens that URL successfully, and retains the <code>Serving!</code> output after collapse and expand.</li>
       </ul>
     </section>
   </main>

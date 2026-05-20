@@ -26,6 +26,7 @@
     <li>Replaced the browser terminal renderer with xterm.js, including the fit and web-link addons.</li>
     <li>Kept the existing PTY websocket lifecycle while moving browser-side command input, resize events, and output rendering onto xterm APIs.</li>
     <li>Updated collapse and expand restoration to use xterm buffer viewport state so output remains readable after reopening a panel.</li>
+    <li>Changed Run Dev so collapsed managed dev terminals still start, show a Starting state, and update Open App to the runtime URL printed by the dev server.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:pty</code>, and agent-browser checks on the MarkdownStack Run Dev workflow.</li>
   </ul>
 </article>
