@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
 import { openWorkspace } from "./open.js";
-import { createPtySession } from "./pty.js";
+import { createManagedPtySession } from "./pty.js";
 import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
@@ -43,9 +43,10 @@ export async function startDevServer(root, options = {}) {
   }
   const sessionRegistries = new Map();
   const sessionInputs = new Map();
+  const terminalSessions = new Map();
 
   const server = createServer((request, response) => {
-    void handleRequest(root, request, response, { projectRegistry, sessionRegistries, sessionInputs, activeProjectId });
+    void handleRequest(root, request, response, { projectRegistry, sessionRegistries, sessionInputs, terminalSessions, activeProjectId });
   });
   const wss = new WebSocketServer({ noServer: true });
 
@@ -60,17 +61,35 @@ export async function startDevServer(root, options = {}) {
         const project = await resolveProject(projectRegistry, url, activeProjectId, root);
         const sessionRegistry = sessionRegistryFor(sessionRegistries, project.root);
         const inputs = sessionInputFor(sessionInputs, project.root);
+        const terminals = terminalSessionFor(terminalSessions, project.root);
         const id = url.searchParams.get("id") || randomUUID();
         const name = url.searchParams.get("name") || id;
         const role = url.searchParams.get("role") || "shell";
         const command = url.searchParams.get("command") || null;
-        const session = createPtySession(project.root, ws, { id, name, role, command, registry: sessionRegistry });
-        inputs.set(id, session.write);
-        sessionRegistry.setCloser(id, () => ws.close());
-        ws.on("close", () => {
-          inputs.delete(id);
-          session.close();
-        });
+        const scope = url.searchParams.get("scope") || "global";
+        const scopeKind = url.searchParams.get("scopeKind") || "global";
+        const planPath = url.searchParams.get("planPath") || null;
+        let session = terminals.get(id);
+        if (!session) {
+          session = createManagedPtySession(project.root, {
+            id,
+            name,
+            role,
+            command,
+            scope,
+            scopeKind,
+            planPath,
+            registry: sessionRegistry,
+            onClose: (closedId) => {
+              inputs.delete(closedId);
+              terminals.delete(closedId);
+            }
+          });
+          terminals.set(id, session);
+          inputs.set(id, session.write);
+          sessionRegistry.setCloser(id, () => session.close());
+        }
+        session.attach(ws);
       })().catch(() => ws.close());
     });
   });
@@ -235,7 +254,12 @@ async function handleRequest(defaultRoot, request, response, context) {
     if (url.pathname === "/api/sessions") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
-      await sendJson(response, { sessions: await sessionRegistry.list() });
+      const terminals = terminalSessionFor(context.terminalSessions, project.root);
+      const sessions = (await sessionRegistry.list()).filter((session) =>
+        session.status === "closed" || terminals.has(session.id)
+      );
+      const scope = url.searchParams.get("scope") || "";
+      await sendJson(response, { sessions: scope ? sessions.filter((session) => session.scope === scope) : sessions });
       return;
     }
     if (url.pathname === "/api/sessions/prune" && request.method === "POST") {
@@ -379,6 +403,14 @@ function sessionInputFor(inputsByRoot, root) {
   return inputsByRoot.get(key);
 }
 
+function terminalSessionFor(sessionsByRoot, root) {
+  const key = path.resolve(root);
+  if (!sessionsByRoot.has(key)) {
+    sessionsByRoot.set(key, new Map());
+  }
+  return sessionsByRoot.get(key);
+}
+
 async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
   const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
   if (!prompt) {
@@ -387,9 +419,11 @@ async function sendAgentPrompt(project, sessionRegistry, inputs, body) {
     throw error;
   }
   const sessions = await sessionRegistry.list({ prune: false });
+  const scope = typeof body.scope === "string" ? body.scope : "";
   const agentSession = [...sessions].reverse().find((session) =>
-    session.status === "active" &&
+    (session.status === "active" || session.status === "detached") &&
     session.role === "agent" &&
+    (!scope || session.scope === scope) &&
     String(session.command || "").trim() &&
     inputs.has(session.id)
   );
@@ -527,7 +561,7 @@ async function runReviewWorkflow(project, sessionRegistry, inputs, body) {
       prompt
     };
   }
-  const result = await sendAgentPrompt(project, sessionRegistry, inputs, { prompt, currentPage });
+  const result = await sendAgentPrompt(project, sessionRegistry, inputs, { prompt, currentPage, scope: body.scope });
   return {
     ...result,
     sent: true,
@@ -893,6 +927,10 @@ export function mcpTools(contract) {
         currentPage: {
           type: "string",
           description: "Current wiki page path to include in the handoff."
+        },
+        scope: {
+          type: "string",
+          description: "Optional terminal scope to target when the workflow is sent."
         }
       }, ["workflowId"])
     },
@@ -917,6 +955,10 @@ export function mcpTools(contract) {
         currentPage: {
           type: "string",
           description: "Current wiki page path to include in the handoff."
+        },
+        scope: {
+          type: "string",
+          description: "Optional terminal scope to target, such as plan:/wiki/plans/index.html."
         }
       }, ["prompt"])
     }

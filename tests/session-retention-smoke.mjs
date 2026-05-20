@@ -7,6 +7,7 @@ const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-session-retention-"
 const registry = new SessionRegistry(root);
 
 await registry.upsert("active", { name: "active", status: "active", mode: "pty" });
+await registry.upsert("detached", { name: "detached", status: "detached", mode: "pty", scope: "plan:/wiki/plans/index.html" });
 for (let index = 0; index < 30; index += 1) {
   await registry.upsert(`closed-${index}`, { name: `closed-${index}`, status: "closed", mode: "pty" });
 }
@@ -25,6 +26,11 @@ if (exported.boundary !== "runtime-only") {
 const active = (await registry.list()).find((session) => session.id === "active");
 if (!active.exportedAt) {
   throw new Error("Expected exported session metadata to record exportedAt.");
+}
+
+const detached = (await registry.list()).find((session) => session.id === "detached");
+if (!detached || detached.status !== "detached" || detached.scope !== "plan:/wiki/plans/index.html") {
+  throw new Error(`Expected detached scoped session to be retained, got ${JSON.stringify(detached)}`);
 }
 
 console.log("session retention smoke test passed");

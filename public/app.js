@@ -104,6 +104,7 @@ let agentTerminalCount = 0;
 let cliTerminalCount = 0;
 let requestedWikiPath = "/wiki/index.html";
 let activeTerminalName = null;
+let activeTerminalScope = terminalScopeForLocation(workspaceLocation());
 let guardrails = null;
 let terminalLayout = [];
 let projectDevCommand = "";
@@ -702,7 +703,7 @@ async function restoreTerminals() {
   projectDevCommand = layout.dev?.command || "";
   projectPreviewUrl = layout.dev?.previewUrl || "";
   await refreshActiveAppPreview();
-  workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
+  await restoreTerminalsForScope(activeTerminalScope);
   updatePlanPromptVisibility();
 }
 
@@ -933,6 +934,7 @@ function setUpNextAvailable(available) {
 }
 
 function activateWorkspaceLocation(path) {
+  switchTerminalScope(path);
   if (isProjectsPath(path)) {
     void showProjectsPage({ replace: true });
     return;
@@ -2758,7 +2760,7 @@ async function postAgentPromptWithRetry(prompt, currentPagePath) {
     try {
       await api(projectPath("/api/agent/prompt"), {
         method: "POST",
-        body: JSON.stringify({ prompt, currentPage: currentPagePath })
+        body: JSON.stringify({ prompt, currentPage: currentPagePath, scope: activeTerminalScope.scope })
       });
       return;
     } catch (error) {
@@ -3111,6 +3113,74 @@ async function projectOpenPath(project) {
   } catch {
     return "/wiki/plans/index.html";
   }
+}
+
+function switchTerminalScope(path) {
+  const nextScope = terminalScopeForLocation(path);
+  if (nextScope.scope === activeTerminalScope.scope) return;
+  closeAllTerminals();
+  activeTerminalScope = nextScope;
+  void restoreTerminalsForScope(nextScope);
+}
+
+async function restoreTerminalsForScope(scope = activeTerminalScope) {
+  try {
+    const data = await api(projectPath(`/api/sessions?${new URLSearchParams({ scope: scope.scope }).toString()}`));
+    if (scope.scope !== activeTerminalScope.scope) return;
+    const sessions = (data.sessions || [])
+      .filter((session) => session.status !== "closed")
+      .sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")));
+    for (const session of sessions) {
+      if (terminalSessions.has(session.name)) continue;
+      await createTerminal(session.name, {
+        id: session.id,
+        name: session.name,
+        role: session.role || "shell",
+        command: session.command || null,
+        commandSent: true,
+        collapsed: false
+      });
+    }
+    const [firstName] = terminalSessions.keys();
+    if (firstName && !activeTerminalName) activateTerminal(firstName);
+  } catch {
+    // Missing or stale session metadata should not block the workspace shell.
+  }
+  workspace.classList.toggle("terminal-active", terminalSessions.size > 0);
+  updatePlanPromptVisibility();
+}
+
+function terminalScopeForLocation(path) {
+  const normalized = normalizeAppPath(path);
+  if (normalized === "/projects" || normalized === "/dashboard" || normalized === "/ideas") {
+    return { kind: "app", scope: "app:/projects", planPath: "" };
+  }
+  if (normalized === "/projects/new") {
+    return { kind: "app", scope: "app:/projects/new", planPath: "" };
+  }
+  if (normalized === "/settings") {
+    return { kind: "app", scope: "app:/settings", planPath: "" };
+  }
+  const displayPath = displayWikiPath(path || "/wiki/plans/index.html");
+  if (!displayPath.includes("/wiki/plans/")) {
+    return { kind: "wiki", scope: `wiki:${displayPath}`, planPath: "" };
+  }
+  const planPath = planRootForTerminalScope(displayPath);
+  return { kind: "plan", scope: `plan:${planPath}`, planPath };
+}
+
+function planRootForTerminalScope(path) {
+  const displayPath = displayWikiPath(path);
+  const unitMatch = displayPath.match(/^(\/wiki\/plans\/mvp\/stage-\d+-[^/]+)\/unit-\d+-[^/]+\.html$/);
+  if (unitMatch) return `${unitMatch[1]}.html`;
+  if (/^\/wiki\/plans\/mvp\/stage-\d+-[^/]+\.html$/.test(displayPath)) return displayPath;
+  if (displayPath.endsWith("/wiki/plans/mvp/index.html")) return "/wiki/plans/mvp/index.html";
+  if (displayPath.endsWith("/wiki/plans/index.html")) return "/wiki/plans/index.html";
+  const featureMatch = displayPath.match(/^(\/wiki\/plans\/features\/[^/]+\.html)$/);
+  if (featureMatch) return featureMatch[1];
+  const completedFeatureMatch = displayPath.match(/^(\/wiki\/plans\/zzz_completed\/features\/[^/]+\.html)$/);
+  if (completedFeatureMatch) return completedFeatureMatch[1];
+  return displayPath;
 }
 
 function updatePlanPromptVisibility() {
@@ -3953,7 +4023,7 @@ async function createTerminal(name, options = {}) {
     return terminalSessions.get(name);
   }
 
-  const id = crypto.randomUUID();
+  const id = options.id || crypto.randomUUID();
   const panel = document.createElement("section");
   panel.className = "terminal-panel";
   panel.dataset.name = name;
@@ -4087,7 +4157,16 @@ async function createTerminal(name, options = {}) {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const decoder = new TextDecoder();
   transport = createTerminalTransport({
-    url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
+    url: `${protocol}//${location.host}/pty?${new URLSearchParams({
+      project: activeProjectId || "",
+      id,
+      name,
+      role: options.role || "shell",
+      command: options.command || "",
+      scope: activeTerminalScope.scope,
+      scopeKind: activeTerminalScope.kind,
+      planPath: activeTerminalScope.planPath || ""
+    }).toString()}`,
     onData: (data) => {
       const text = typeof data === "string" ? data : decoder.decode(data, { stream: true });
       recordTerminalOutput(session, text);
@@ -4108,7 +4187,7 @@ async function createTerminal(name, options = {}) {
     }
   });
 
-  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, headerStatus, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: Boolean(options.commandSent), startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, headerStatus, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
   term.open(el);
   transport.connect();

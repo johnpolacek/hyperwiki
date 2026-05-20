@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-20 implementation | plan-scoped terminals</h2>
+  <ul>
+    <li>Changed terminal panels to resolve against the active plan root so navigating to another plan shows a fresh right side.</li>
+    <li>Changed the PTY websocket lifecycle so route changes detach browser clients while the local terminal process keeps running until explicit close or process exit.</li>
+    <li>Scoped agent prompt routing to the current terminal scope so hidden sessions from other plans are not reused accidentally.</li>
+    <li>Added launch and session-retention smoke coverage for detached plan sessions and plan reattach behavior.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:pty</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:launch</code>; full browser smoke remains blocked by an unrelated completed-stage dot color assertion.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 implementation | xterm terminal renderer</h2>
   <ul>
     <li>Replaced the browser terminal renderer with xterm.js, including the fit and web-link addons.</li>

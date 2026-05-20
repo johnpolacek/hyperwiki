@@ -31,7 +31,7 @@
   <li>Product category: Localhost Tooling for docs-driven agentic development.</li>
   <li>HTML canonical wiki files.</li>
   <li>Vanilla browser JS workspace.</li>
-  <li>@wterm/dom for terminal rendering and node-pty plus WebSocket for local PTY sessions.</li>
+  <li>xterm.js for terminal rendering and node-pty plus WebSocket for local PTY sessions.</li>
   <li>If node-pty cannot spawn in the current runtime, the backend reports the failure and uses a pipe-backed shell fallback so the workspace remains usable while PTY compatibility is investigated.</li>
   <li>Local-only server binding by default.</li>
   <li>The developer's local machine, repo files, Git state, terminal sessions, credentials, and environment variables define the primary trust boundary.</li>
@@ -39,6 +39,8 @@
   <li>Known projects are tracked in a user-level registry at <code>~/.hyperwiki/projects.json</code>; only hyperwiki-initialized repos are eligible in v1.</li>
   <li>The project switcher stays hidden until more than one project is registered.</li>
   <li>Agent startup is project-configured through <code>agent.launchCommand</code>, but workspace terminals are created lazily from the Execute control instead of opening on first load.</li>
+  <li>Terminal panels are scoped to the active plan root: feature-plan pages use their feature plan, MVP unit pages use their parent stage, and other app or wiki routes use separate runtime scopes.</li>
+  <li>Switching plans or projects detaches visible terminal panels without killing the underlying local process; explicit terminal close remains the process termination boundary.</li>
   <li>Execute targets include <code>on main</code> and <code>on worktree</code>; worktree execution instructs agents to use <code>parallel-dev-worktrees</code>.</li>
   <li>Portless is the default repo dev preview surface through <code>pnpm dev</code>, with main at <code>https://hyperwiki.localhost</code> and worktree URLs shaped as <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
   <li>Repo-local worktree commands are exposed as <code>pnpm wt:doctor</code>, <code>pnpm wt:create</code>, <code>pnpm wt:list</code>, <code>pnpm wt:resume</code>, <code>pnpm wt:open</code>, <code>pnpm wt:finish</code>, and <code>pnpm wt:prune</code>.</li>

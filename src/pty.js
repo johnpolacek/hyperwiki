@@ -54,10 +54,70 @@ function createAgentWriteGate(metadata, writeDirect) {
 }
 
 export function createPtySession(root, ws, metadata = {}) {
+  const session = createManagedPtySession(root, metadata);
+  session.attach(ws);
+  return {
+    id: session.id,
+    write(data) {
+      session.write(data);
+    },
+    close() {
+      session.close();
+    }
+  };
+}
+
+export function createManagedPtySession(root, metadata = {}) {
   const shell = process.env.SHELL || (os.platform() === "win32" ? "powershell.exe" : "bash");
   const id = metadata.id || randomUUID();
   const name = metadata.name || id;
   const registry = metadata.registry;
+  const clients = new Set();
+  let outputBuffer = "";
+  let closed = false;
+
+  function rememberOutput(data) {
+    outputBuffer = `${outputBuffer}${String(data)}`.slice(-CODEX_READY_BUFFER_LIMIT);
+  }
+
+  function broadcast(data) {
+    rememberOutput(data);
+    for (const client of clients) {
+      if (client.readyState === 1) {
+        client.send(data);
+      }
+    }
+  }
+
+  function markAttached() {
+    void registry?.upsert(id, {
+      status: "active",
+      connectedClients: clients.size,
+      lastAttachedAt: new Date().toISOString()
+    });
+  }
+
+  function markDetached() {
+    if (closed) return;
+    void registry?.upsert(id, {
+      status: clients.size > 0 ? "active" : "detached",
+      connectedClients: clients.size
+    });
+  }
+
+  function attachSocket(ws, onMessage) {
+    clients.add(ws);
+    if (outputBuffer && ws.readyState === 1) {
+      ws.send(outputBuffer);
+    }
+    markAttached();
+    ws.on("message", onMessage);
+    ws.on("close", () => {
+      clients.delete(ws);
+      markDetached();
+    });
+  }
+
   let terminal;
   try {
     ensureNodePtyHelperExecutable();
@@ -76,28 +136,44 @@ export function createPtySession(root, ws, metadata = {}) {
       command: metadata.command ?? null,
       shell,
       pid: terminal.pid,
-      cwd: root
+      cwd: root,
+      scope: metadata.scope || "global",
+      scopeKind: metadata.scopeKind || "global",
+      planPath: metadata.planPath || null,
+      connectedClients: 0
     });
   } catch (error) {
-    return createPipeSession(root, shell, ws, error, {
+    return createManagedPipeSession(root, shell, error, {
       id,
       name,
       registry,
       role: metadata.role || "shell",
-      command: metadata.command ?? null
+      command: metadata.command ?? null,
+      scope: metadata.scope || "global",
+      scopeKind: metadata.scopeKind || "global",
+      planPath: metadata.planPath || null
     });
   }
 
   const writeGate = createAgentWriteGate(metadata, (data) => terminal.write(data));
 
   terminal.onData((data) => {
-    if (ws.readyState === 1) {
-      ws.send(data);
-    }
+    broadcast(data);
     writeGate.observe(data);
   });
 
-  ws.on("message", (raw) => {
+  terminal.onExit(({ exitCode }) => {
+    closed = true;
+    void registry?.upsert(id, { status: "closed", connectedClients: 0 });
+    broadcast(`\r\n[hyperwiki] session exited with code ${exitCode ?? "unknown"}\r\n`);
+    for (const client of clients) {
+      if (client.readyState === 1) client.close();
+    }
+    clients.clear();
+    metadata.onClose?.(id);
+  });
+
+  function handleMessage(raw) {
     const message = raw.toString();
     if (message.startsWith("{")) {
       try {
@@ -111,15 +187,25 @@ export function createPtySession(root, ws, metadata = {}) {
       }
     }
     terminal.write(message);
-  });
+  }
+
   return {
     id,
+    attach(ws) {
+      attachSocket(ws, handleMessage);
+    },
     write(data) {
       writeGate.write(data);
     },
     close() {
-      void registry?.upsert(id, { status: "closed" });
+      closed = true;
+      void registry?.upsert(id, { status: "closed", connectedClients: 0 });
       terminal.kill();
+      for (const client of clients) {
+        if (client.readyState === 1) client.close();
+      }
+      clients.clear();
+      metadata.onClose?.(id);
     }
   };
 }
@@ -135,7 +221,10 @@ function ensureNodePtyHelperExecutable() {
   }
 }
 
-function createPipeSession(root, shell, ws, spawnError, metadata) {
+function createManagedPipeSession(root, shell, spawnError, metadata) {
+  const clients = new Set();
+  let outputBuffer = "";
+  let closed = false;
   const child = spawn(shell, [], {
     cwd: root,
     env: { ...process.env, TERM: "xterm-256color" },
@@ -143,7 +232,15 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
   });
 
   const warning = `\r\n[hyperwiki] PTY spawn failed; using pipe fallback for this session.\r\n[hyperwiki] ${spawnError.message}\r\n\r\n`;
-  ws.send(warning);
+  function rememberOutput(data) {
+    outputBuffer = `${outputBuffer}${String(data)}`.slice(-CODEX_READY_BUFFER_LIMIT);
+  }
+  function broadcast(data) {
+    rememberOutput(data);
+    for (const client of clients) {
+      if (client.readyState === 1) client.send(data);
+    }
+  }
   void metadata.registry?.upsert(metadata.id, {
     name: metadata.name,
     status: "active",
@@ -152,27 +249,36 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
     command: metadata.command ?? null,
     shell,
     pid: child.pid,
-    cwd: root
+    cwd: root,
+    scope: metadata.scope || "global",
+    scopeKind: metadata.scopeKind || "global",
+    planPath: metadata.planPath || null,
+    connectedClients: 0
   });
 
   const writeGate = createAgentWriteGate(metadata, (data) => child.stdin.write(data));
   child.stdout.on("data", (data) => {
-    if (ws.readyState === 1) ws.send(data);
+    broadcast(data);
     writeGate.observe(data);
   });
   child.stderr.on("data", (data) => {
-    if (ws.readyState === 1) ws.send(data);
+    broadcast(data);
     writeGate.observe(data);
   });
   child.on("exit", (code) => {
-    void metadata.registry?.upsert(metadata.id, { status: "closed" });
-    if (ws.readyState === 1) {
-      ws.send(`\r\n[hyperwiki] session exited with code ${code ?? "unknown"}\r\n`);
-      ws.close();
+    closed = true;
+    void metadata.registry?.upsert(metadata.id, { status: "closed", connectedClients: 0 });
+    broadcast(`\r\n[hyperwiki] session exited with code ${code ?? "unknown"}\r\n`);
+    for (const client of clients) {
+      if (client.readyState === 1) {
+        client.close();
+      }
     }
+    clients.clear();
+    metadata.onClose?.(metadata.id);
   });
 
-  ws.on("message", (raw) => {
+  function handleMessage(raw) {
     const message = raw.toString();
     if (message.startsWith("{")) {
       try {
@@ -185,15 +291,43 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
       }
     }
     child.stdin.write(message);
-  });
+  }
+
   return {
     id: metadata.id,
+    attach(ws) {
+      clients.add(ws);
+      if (ws.readyState === 1) {
+        ws.send(`${warning}${outputBuffer}`);
+      }
+      void metadata.registry?.upsert(metadata.id, {
+        status: "active",
+        connectedClients: clients.size,
+        lastAttachedAt: new Date().toISOString()
+      });
+      ws.on("message", handleMessage);
+      ws.on("close", () => {
+        clients.delete(ws);
+        if (!closed) {
+          void metadata.registry?.upsert(metadata.id, {
+            status: clients.size > 0 ? "active" : "detached",
+            connectedClients: clients.size
+          });
+        }
+      });
+    },
     write(data) {
       writeGate.write(data);
     },
     close() {
-      void metadata.registry?.upsert(metadata.id, { status: "closed" });
+      closed = true;
+      void metadata.registry?.upsert(metadata.id, { status: "closed", connectedClients: 0 });
       child.kill();
+      for (const client of clients) {
+        if (client.readyState === 1) client.close();
+      }
+      clients.clear();
+      metadata.onClose?.(metadata.id);
     }
   };
 }
