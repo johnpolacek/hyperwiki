@@ -46,6 +46,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri Rust domain layout</h2>
+  <ul>
+    <li>Split the initial Rust code into <code>command</code> and <code>domain</code> modules so future Tauri commands do not accumulate in <code>lib.rs</code>.</li>
+    <li>Added Rust ownership modules for app shell, projects, wiki, settings, Git, sessions, terminals, previews, verification, reviews, and MCP surfaces, each mapped back to the current Node reference files and parity gate.</li>
+    <li>Added Rust tests for the full surface inventory and JSON-serializable domain contract.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
