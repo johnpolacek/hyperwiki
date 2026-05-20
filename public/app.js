@@ -3943,6 +3943,7 @@ async function createTerminal(name, options = {}) {
   let transport;
   let lastLocalInputAt = 0;
   let lastLocalInputWasEnter = false;
+  let commandSent = false;
   const term = new WTerm(el, {
     cols: 100,
     rows: 24,
@@ -3954,6 +3955,7 @@ async function createTerminal(name, options = {}) {
       transport?.send(normalized);
     },
     onResize(cols, rows) {
+      if (panel.classList.contains("collapsed")) return;
       transport?.send(JSON.stringify({ type: "resize", cols, rows }));
     }
   });
@@ -4000,6 +4002,13 @@ async function createTerminal(name, options = {}) {
     onOpen: () => {
       tab.classList.add("connected");
       tab.classList.remove("closed", "error");
+      if (options.command && !commandSent) {
+        commandSent = true;
+        setTimeout(() => {
+          transport.send(JSON.stringify({ type: "resize", cols: 100, rows: 24 }));
+          transport.send(`${options.command}\r`);
+        }, 50);
+      }
     },
     onClose: () => {
       tab.classList.remove("connected");

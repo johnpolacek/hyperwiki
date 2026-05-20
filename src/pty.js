@@ -112,10 +112,6 @@ export function createPtySession(root, ws, metadata = {}) {
     }
     terminal.write(message);
   });
-  if (metadata.command) {
-    terminal.write(`${metadata.command}\r`);
-  }
-
   return {
     id,
     write(data) {
@@ -190,10 +186,6 @@ function createPipeSession(root, shell, ws, spawnError, metadata) {
     }
     child.stdin.write(message);
   });
-  if (metadata.command) {
-    child.stdin.write(`${metadata.command}\n`);
-  }
-
   return {
     id: metadata.id,
     write(data) {
