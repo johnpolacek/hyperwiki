@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "source": "wiki/plans/tauri-rewrite.html",
+  "surfaces": [
+    "app-shell",
+    "projects",
+    "wiki",
+    "settings",
+    "git",
+    "sessions",
+    "terminals",
+    "previews",
+    "verification",
+    "reviews",
+    "mcp"
+  ],
+  "requiredScripts": [
+    "check",
+    "check:tauri",
+    "test:tauri",
+    "smoke:api-adapter",
+    "smoke:tauri-harness",
+    "check:all"
+  ],
+  "manualChecklist": "wiki/plans/tauri-desktop-dogfood-checklist.html"
+}

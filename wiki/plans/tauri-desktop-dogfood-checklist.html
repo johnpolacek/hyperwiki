@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tauri Desktop Dogfood Checklist - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    <h1>Manual Desktop Dogfood Checklist</h1>
+    <section class="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: active checklist</li>
+        <li>Plan: <a href="/wiki/plans/tauri-rewrite.html">Complete Tauri Rewrite</a></li>
+        <li>Target: macOS first, then cross-platform parity when packaging reaches Stage 05.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Launch And App Shell</h2>
+      <ul>
+        <li>Start with <code>pnpm run tauri:dev</code> and confirm the dedicated desktop window opens without browser chrome.</li>
+        <li>Confirm app-shell navigation opens Projects, Settings, Planning Dashboard, and wiki pages without losing the active workspace route.</li>
+        <li>Confirm external preview links open outside the app window and local-only guardrails remain visible.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Project And Wiki Data</h2>
+      <ul>
+        <li>Open an existing registered project and verify projects, wiki, settings, and Git state match the Node reference app.</li>
+        <li>Create a project from a brief and verify generated wiki files, source briefs, roadmap, and plan dashboard are repo-visible.</li>
+        <li>Remove a project checkout and verify stale registry entries are handled without deleting files unless explicitly requested.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Terminal, Sessions, And Previews</h2>
+      <ul>
+        <li>Start agent and CLI terminals, then verify terminals, sessions, and plan-scoped reattach behavior.</li>
+        <li>Run a Portless dev preview, verify previews use exact checkout hostnames, and confirm Run Dev captures runtime URLs.</li>
+        <li>Create a worktree and verify Git branch state, preview URL, terminal scope, and reload persistence.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification, Reviews, And MCP</h2>
+      <ul>
+        <li>Open verification and project-contract data and compare with the Node reference outputs.</li>
+        <li>Prepare reviews for architecture, security, diff, and test gaps; verify review prompts route only to active agent sessions.</li>
+        <li>Run the mcp transport smoke and verify mcp resources stay local and permissioned.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
