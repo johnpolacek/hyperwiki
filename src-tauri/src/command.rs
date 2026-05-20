@@ -157,6 +157,36 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/workspace") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::verification::workspace_summary(project_root),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/verification") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::verification::verification_summary(project_root),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/guardrails") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::verification::guardrail_summary(project_root),
+        );
+    }
     if request.method == "POST" && request.path.starts_with("/api/git/init") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -575,14 +605,17 @@ mod tests {
     #[test]
     fn response_shape_is_json_serializable() {
         let response = hyperwiki_request(HyperwikiRequest {
-            path: "/api/workspace".to_string(),
+            path: "/api/not-implemented".to_string(),
             method: "GET".to_string(),
             body: None,
         });
         let value = serde_json::to_value(response).expect("response should serialize");
         assert_eq!(value["ok"], false);
         assert_eq!(value["status"], 501);
-        assert!(value["text"].as_str().unwrap().contains("/api/workspace"));
+        assert!(value["text"]
+            .as_str()
+            .unwrap()
+            .contains("/api/not-implemented"));
     }
 
     #[test]
@@ -715,6 +748,88 @@ mod tests {
         assert!(!response.ok);
         assert_eq!(response.status, 409);
         assert!(response.text.contains("Initialize Git"));
+    }
+
+    #[test]
+    fn workspace_verification_and_guardrail_endpoints_return_models() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-verification");
+        let home = temp_root("command-verification-home");
+        fs::create_dir_all(root.join(".hyperwiki").join("state")).unwrap();
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({
+                "projectName": "Command Verification",
+                "verification": {
+                    "loops": [{
+                        "id": "syntax-checks",
+                        "label": "Syntax checks",
+                        "command": "pnpm run check",
+                        "scope": "codebase",
+                        "trigger": "before commit"
+                    }]
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join(".hyperwiki")
+                .join("state")
+                .join("verification.json"),
+            serde_json::json!({
+                "runs": [{
+                    "loopId": "syntax-checks",
+                    "status": "passed",
+                    "ranAt": "2026-05-14T12:00:00.000Z"
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.html"),
+            "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li></ul></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("log.html"),
+            "<h1>Log</h1><h2>Entry</h2>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let workspace = hyperwiki_request(HyperwikiRequest {
+            path: "/api/workspace".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let verification = hyperwiki_request(HyperwikiRequest {
+            path: "/api/verification".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let guardrails = hyperwiki_request(HyperwikiRequest {
+            path: "/api/guardrails".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(workspace.ok);
+        assert!(workspace.text.contains("\"current\":\"Unit 01\""));
+        assert!(verification.ok);
+        assert!(verification.text.contains("\"status\":\"passed\""));
+        assert!(guardrails.ok);
+        assert!(guardrails.text.contains("Localhost Tooling"));
     }
 
     #[test]

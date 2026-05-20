@@ -160,6 +160,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri workspace verification models</h2>
+  <ul>
+    <li>Ported workspace summary, verification loop inference, configured verification loops, runtime verification evidence merge, package-manager detection, source brief summaries, and Localhost Tooling guardrails into Rust.</li>
+    <li>Added Tauri command transport handling for <code>/api/workspace</code>, <code>/api/verification</code>, and <code>/api/guardrails</code> so desktop mode can render agent-native project context without the Node server.</li>
+    <li>Marked Stage 04 Unit 01 complete and advanced the active migration unit to Stage 04 Unit 02 - Project Contract.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for configured/inferred loops, latest runtime evidence, workspace exposure, guardrails, and command endpoint response shapes.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
