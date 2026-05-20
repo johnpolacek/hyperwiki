@@ -20,6 +20,15 @@ const terminalPane = document.querySelector(".terminal-pane");
 const wikiPane = document.querySelector(".wiki-pane");
 const thinkingEffort = document.getElementById("thinking-effort");
 const newWorktreeTerminalButton = document.getElementById("new-worktree-terminal");
+const worktreePopover = document.getElementById("worktree-popover");
+const worktreeBranchInput = document.getElementById("worktree-branch");
+const worktreeSlugPreview = document.getElementById("worktree-slug-preview");
+const worktreePathPreview = document.getElementById("worktree-path-preview");
+const worktreeUrlPreview = document.getElementById("worktree-url-preview");
+const worktreeWarning = document.getElementById("worktree-warning");
+const worktreeStatus = document.getElementById("worktree-status");
+const worktreeCreate = document.getElementById("worktree-create");
+const worktreeCancel = document.getElementById("worktree-cancel");
 const newAgentTerminalButton = document.getElementById("new-agent-terminal");
 const newCliTerminalButton = document.getElementById("new-cli-terminal");
 const repoBranch = document.getElementById("repo-branch");
@@ -110,6 +119,7 @@ let guardrails = null;
 let terminalLayout = [];
 let projectDevCommand = "";
 let projectPreviewUrl = "";
+let repoContextState = null;
 let workspaceStatus = {};
 let activeAppPreview = null;
 let appPreviewStarting = false;
@@ -383,15 +393,24 @@ executeButton.addEventListener("click", () => {
     });
 });
 
-newWorktreeTerminalButton.addEventListener("click", () => {
-  planPromptStatus.textContent = "Starting worktree agent...";
-  void executeTarget("worktree")
-    .then(() => {
-      planPromptStatus.textContent = "Sent to agent.";
-    })
-    .catch((error) => {
-      planPromptStatus.textContent = error.message || "Agent unavailable.";
-    });
+newWorktreeTerminalButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  void openWorktreePopover();
+});
+
+worktreeBranchInput.addEventListener("input", updateWorktreePreview);
+
+worktreeCancel.addEventListener("click", () => {
+  worktreePopover.hidden = true;
+});
+
+worktreePopover.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+worktreePopover.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void createWorktreeFromPopover();
 });
 
 modifyButton.addEventListener("click", () => {
@@ -527,11 +546,13 @@ upNextPopover.addEventListener("click", (event) => {
 
 document.addEventListener("click", () => {
   closeTopbarPanels();
+  worktreePopover.hidden = true;
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeTopbarPanels();
+    worktreePopover.hidden = true;
   }
 });
 
@@ -709,11 +730,13 @@ async function restoreTerminals() {
 async function loadRepoContext() {
   try {
     const repo = await api(projectPath("/api/repo"));
+    repoContextState = repo;
     repoBranch.textContent = repo.git.worktree || "main";
     repoBranch.title = repo.root;
     document.getElementById("server-status").title = repo.root;
     updateWorktreeButtonVisibility(repo.git?.worktree || repo.git?.branch || "main");
   } catch {
+    repoContextState = null;
     repoBranch.textContent = "Unavailable";
     repoBranch.title = "";
     updateWorktreeButtonVisibility("");
@@ -2618,6 +2641,105 @@ async function handOffDashboardPrompt(prompt, currentPagePath) {
   await postAgentPromptWithRetry(prompt, currentPagePath);
 }
 
+async function openWorktreePopover() {
+  const context = await resolveExecutionContext();
+  const branch = `feature/${slugify(context.unitTitle || context.pageTitle || "worktree")}`;
+  worktreeBranchInput.value = branch;
+  worktreeStatus.textContent = "";
+  worktreeWarning.hidden = !repoContextState?.git?.dirty;
+  worktreeWarning.textContent = repoContextState?.git?.dirty
+    ? "Main has uncommitted changes. Commit them first if the worktree should include them."
+    : "";
+  updateWorktreePreview();
+  worktreePopover.hidden = false;
+  requestAnimationFrame(() => {
+    worktreeBranchInput.focus();
+    worktreeBranchInput.select();
+  });
+}
+
+function updateWorktreePreview() {
+  const branch = worktreeBranchInput.value.trim() || "feature/worktree";
+  const slug = slugify(branch.replace(/^refs\/heads\//, ""));
+  worktreeSlugPreview.textContent = slug;
+  worktreePathPreview.textContent = worktreePathPreviewForSlug(slug);
+  worktreeUrlPreview.textContent = previewUrl(slug);
+}
+
+function worktreePathPreviewForSlug(slug) {
+  const root = repoContextState?.git?.root || repoContextState?.root || "";
+  if (!root) return `../worktrees/${slug}`;
+  const normalized = root.replace(/\/+$/g, "");
+  const parent = normalized.split("/").slice(0, -1).join("/") || "/";
+  const base = normalized.split("/").pop() || "project";
+  return `${parent}/${base}.worktrees/${slug}`;
+}
+
+async function createWorktreeFromPopover() {
+  const context = await resolveExecutionContext();
+  worktreeStatus.textContent = "Checking Git...";
+  worktreeCreate.disabled = true;
+  try {
+    await ensureGitForExecution();
+    worktreeStatus.textContent = "Creating worktree...";
+    const result = await api(projectPath("/api/worktrees"), {
+      method: "POST",
+      body: JSON.stringify({ branch: worktreeBranchInput.value.trim() })
+    });
+    worktreeStatus.textContent = result.install?.ok === false
+      ? result.install.message
+      : "Switching to worktree...";
+    const switched = await switchToCreatedWorktree(result, context);
+    worktreePopover.hidden = true;
+    if (!switched.agentSent) {
+      planPromptStatus.textContent = switched.message;
+    } else if (result.install?.ok === false) {
+      planPromptStatus.textContent = `Worktree created. ${result.install.message}`;
+    } else {
+      planPromptStatus.textContent = "Worktree ready. Sent to agent.";
+    }
+  } catch (error) {
+    worktreeStatus.textContent = error.message || "Could not create worktree.";
+  } finally {
+    worktreeCreate.disabled = false;
+  }
+}
+
+async function switchToCreatedWorktree(result, context) {
+  const project = result.project;
+  const targetPath = displayWikiPath(context.agentPagePath || context.pagePath || requestedWikiPath);
+  closeAllTerminals();
+  hidePreviewLink();
+  activeProjectId = project.id;
+  activeProjectSlug = project.projectSlug;
+  activeWorktreeSlug = project.worktreeSlug;
+  history.pushState(null, "", `${result.workspaceUrl}#${targetPath}`);
+  requestedWikiPath = targetPath;
+  await loadProjects();
+  await loadProjectManagement();
+  await loadRepoContext();
+  await loadWikiNav();
+  await loadWorkspaceSummary();
+  await loadGuardrails();
+  activateWorkspaceLocation(targetPath);
+  await restoreTerminals();
+  showPreviewLink(result.previewUrl || previewUrl(project.worktreeSlug), `Preview: ${project.worktreeSlug}`);
+  workspace.dataset.executeTarget = "worktree";
+  workspace.dataset.executeWorkflow = "parallel-dev-worktrees";
+  try {
+    await ensureDevLogTerminal();
+    const agent = await ensureAgentTerminal();
+    activateTerminal(agent.name);
+    await postAgentPromptWithRetry(existingWorktreePrompt(context, result), targetPath);
+    return { agentSent: true };
+  } catch (error) {
+    return {
+      agentSent: false,
+      message: `Worktree ready. ${error.message || "Start an agent to continue."}`
+    };
+  }
+}
+
 async function executeTarget(target) {
   const executionContext = await resolveExecutionContext();
   switchTerminalScope(executionContext.agentPagePath || executionContext.pagePath);
@@ -2718,6 +2840,31 @@ function executePrompt(target, context, slug) {
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes."
   );
   return lines.join("\n");
+}
+
+function existingWorktreePrompt(context, result) {
+  const unitTitle = context.unitTitle || "No current unit resolved";
+  const unitPath = context.unitPath || "";
+  return [
+    "Execute exactly one hyperwiki unit in the already-created worktree.",
+    "",
+    `Execution unit: ${unitTitle}`,
+    `Execution unit path: ${unitPath ? displayWikiPath(unitPath) : "none"}`,
+    `Worktree branch: ${result.branch}`,
+    `Worktree path: ${result.path}`,
+    `Worktree preview URL: ${result.previewUrl || previewUrl(result.project?.worktreeSlug)}`,
+    "",
+    "Instructions:",
+    "- Use this existing worktree checkout directly; do not create another worktree.",
+    "- Use the parallel-dev-worktrees skill before changing files.",
+    "- Keep changes grounded in this execution unit and repo state.",
+    "- If the implementation creates or changes a previewable app, ensure package.json has a runnable dev script, preferably backed by Portless.",
+    "- Include the Preview URL in your final handoff.",
+    "- Complete exactly this execution unit.",
+    "- Do not complete sibling units, later units, or the entire stage unless this unit explicitly requires only status reconciliation for already-finished work.",
+    "- If the unit reaches a manual review, approval, or human validation gate, prepare the evidence/checklist and stop before continuing.",
+    "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes."
+  ].join("\n");
 }
 
 async function ensureDevLogTerminal() {

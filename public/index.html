@@ -407,6 +407,26 @@ Reading settings, previewing terminal contrast...
           </svg>
           <strong id="repo-branch">Unknown</strong>
           <button type="button" id="new-worktree-terminal" class="terminal-worktree-button" hidden>+ worktree</button>
+          <form id="worktree-popover" class="worktree-popover" hidden>
+            <header>
+              <strong>New worktree</strong>
+              <button type="button" id="worktree-cancel" aria-label="Close worktree creator">x</button>
+            </header>
+            <label>
+              <span>Branch</span>
+              <input id="worktree-branch" name="branch" autocomplete="off" required>
+            </label>
+            <dl>
+              <div><dt>Slug</dt><dd id="worktree-slug-preview">worktree</dd></div>
+              <div><dt>Path</dt><dd id="worktree-path-preview">...</dd></div>
+              <div><dt>Preview</dt><dd id="worktree-url-preview">...</dd></div>
+            </dl>
+            <p id="worktree-warning" class="worktree-warning" hidden></p>
+            <footer>
+              <p id="worktree-status" role="status"></p>
+              <button type="submit" id="worktree-create">Create Worktree</button>
+            </footer>
+          </form>
         </div>
         <div class="terminal-actions">
           <label class="terminal-effort-picker" for="thinking-effort">

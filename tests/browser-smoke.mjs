@@ -424,20 +424,21 @@ await page.locator("#plan-prompt").evaluate((element) => {
   if (element.hidden) throw new Error("Expected plan prompt to be visible when an agent session exists.");
 });
 await page.locator("#new-worktree-terminal").click();
-for (let attempt = 0; capturedPrompts.length < 2 && attempt < 350; attempt += 1) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
-}
-await page.locator("#preview-link").evaluate((link) => {
-  if (link.hidden || !link.href.includes(".hyperwiki.localhost")) {
-    throw new Error(`Expected worktree preview link, got ${link.href}`);
+await page.locator("#worktree-popover:not([hidden])").waitFor();
+await page.locator("#worktree-popover").evaluate((popover) => {
+  const branch = popover.querySelector("#worktree-branch")?.value || "";
+  const slug = popover.querySelector("#worktree-slug-preview")?.textContent || "";
+  const path = popover.querySelector("#worktree-path-preview")?.textContent || "";
+  const preview = popover.querySelector("#worktree-url-preview")?.textContent || "";
+  if (!branch.startsWith("feature/") || !slug.includes("unit-01-global-settings-page")) {
+    throw new Error(`Expected default branch and slug previews, got ${branch}/${slug}`);
+  }
+  if (!path.includes(".worktrees") || !preview.includes(".hyperwiki.localhost")) {
+    throw new Error(`Expected derived worktree path and preview URL, got ${path}/${preview}`);
   }
 });
+await page.locator("#worktree-cancel").click();
 await page.unroute(/\/api\/workspace(?:\?|$)/);
-await page.locator(".workspace").evaluate((workspaceElement) => {
-  if (workspaceElement.dataset.executeTarget !== "worktree" || workspaceElement.dataset.executeWorkflow !== "parallel-dev-worktrees") {
-    throw new Error(`Expected worktree execution workflow, got ${workspaceElement.dataset.executeTarget}/${workspaceElement.dataset.executeWorkflow}`);
-  }
-});
 const promptInput = page.locator("#plan-prompt-input");
 const initialPromptHeight = await promptInput.evaluate((element) => element.clientHeight);
 await promptInput.fill(["one", "two", "three", "four", "five", "six"].join("\n"));

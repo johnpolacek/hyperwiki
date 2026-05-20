@@ -13,7 +13,7 @@ import { createManagedPtySession } from "./pty.js";
 import { inithyperwiki } from "./init.js";
 import { ProjectRegistry, worktreeSlug } from "./projects.js";
 import { SessionRegistry } from "./sessions.js";
-import { gitContext, initializeGitOnboarding } from "./git.js";
+import { git, gitContext, initializeGitOnboarding } from "./git.js";
 import { readSettings, resetThemeSettings, syncAgentsFile, themeCss, writeSettings } from "./settings.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -251,6 +251,12 @@ async function handleRequest(defaultRoot, request, response, context) {
       await sendJson(response, { ok: true, result, repo: await repoContext(project.root) });
       return;
     }
+    if (url.pathname === "/api/worktrees" && request.method === "POST") {
+      const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
+      const body = await readJsonBody(request);
+      await sendJson(response, await createWorktreeCheckout(context.projectRegistry, project, body));
+      return;
+    }
     if (url.pathname === "/api/sessions") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
       const sessionRegistry = sessionRegistryFor(context.sessionRegistries, project.root);
@@ -377,6 +383,95 @@ async function requestedProjectId(projectRegistry, url, activeProjectId, fallbac
     }
   }
   return activeProjectId;
+}
+
+async function createWorktreeCheckout(projectRegistry, project, body = {}) {
+  const repo = await repoContext(project.root);
+  if (!repo.git.root) {
+    const error = new Error("Initialize Git before creating a worktree.");
+    error.statusCode = 409;
+    throw error;
+  }
+  const current = String(repo.git.worktree || repo.git.branch || "").trim().toLowerCase();
+  if (current !== "main" && current !== "master") {
+    const error = new Error("Create new worktrees from the main or master checkout.");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const branch = normalizeBranchName(body.branch || body.name);
+  const branchFormat = await git(repo.git.root, ["check-ref-format", "--branch", branch]);
+  if (!branchFormat.ok) {
+    const error = new Error("Branch name contains characters Git cannot use.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const slug = slugify(branch.replace(/^refs\/heads\//, ""));
+  const target = path.join(path.resolve(repo.git.root, ".."), `${path.basename(repo.git.root)}.worktrees`, slug);
+  if (existsSync(target)) {
+    const error = new Error(`Worktree path already exists: ${target}`);
+    error.statusCode = 409;
+    throw error;
+  }
+  const existingBranch = await git(repo.git.root, ["show-ref", "--verify", "--quiet", `refs/heads/${branch}`]);
+  if (existingBranch.ok) {
+    const error = new Error(`Branch already exists: ${branch}`);
+    error.statusCode = 409;
+    throw error;
+  }
+
+  await mkdir(path.dirname(target), { recursive: true });
+  const integration = await defaultGitBranch(repo.git.root, repo.git.branch);
+  const fetch = await git(repo.git.root, ["fetch", "origin", "--prune"]);
+  const baseRef = fetch.ok ? `origin/${integration}` : integration;
+  const added = await git(repo.git.root, ["worktree", "add", target, "-b", branch, baseRef]);
+  if (!added.ok) {
+    const error = new Error(added.stderr || added.stdout || "Could not create worktree.");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const install = await execFileResult("pnpm", ["install"], target, { timeout: 120000 });
+  const record = await projectRegistry.register(target);
+  const layout = await layoutConfigForRoot(target);
+  const previewUrl = previewUrlForProject(record, layout);
+  const workspaceUrl = `/workspace/${encodeURIComponent(record.projectSlug)}/${encodeURIComponent(record.worktreeSlug)}`;
+  return {
+    ok: true,
+    branch,
+    slug,
+    path: target,
+    previewUrl,
+    workspaceUrl,
+    project: record,
+    install: {
+      ok: install.ok,
+      message: install.ok ? "pnpm install completed." : install.stderr || install.stdout || "pnpm install failed."
+    }
+  };
+}
+
+function normalizeBranchName(value) {
+  const branch = String(value || "").trim().replace(/^\/+|\/+$/g, "");
+  if (!branch) {
+    const error = new Error("Branch name is required.");
+    error.statusCode = 400;
+    throw error;
+  }
+  if (branch.includes("..") || /[\s~^:?*[\]\\]/.test(branch) || branch.endsWith(".") || branch.endsWith("/")) {
+    const error = new Error("Branch name contains characters Git cannot use.");
+    error.statusCode = 400;
+    throw error;
+  }
+  return branch;
+}
+
+async function defaultGitBranch(root, fallback = "main") {
+  const remoteHead = await git(root, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
+  if (remoteHead.ok && remoteHead.stdout.includes("/")) {
+    return remoteHead.stdout.split("/").slice(1).join("/");
+  }
+  return fallback || "main";
 }
 
 function workspaceRoute(pathname) {
@@ -1614,9 +1709,9 @@ function checkoutSortKey(project) {
   return slug === "main" ? "000-main" : `100-${slug}`;
 }
 
-function execFileResult(command, args, cwd) {
+function execFileResult(command, args, cwd, options = {}) {
   return new Promise((resolve) => {
-    execFile(command, args, { cwd, timeout: 2000 }, (error, stdout, stderr) => {
+    execFile(command, args, { cwd, timeout: options.timeout ?? 2000 }, (error, stdout, stderr) => {
       resolve({
         ok: !error,
         stdout: String(stdout || "").trim(),

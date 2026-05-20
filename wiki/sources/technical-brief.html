@@ -21,8 +21,8 @@
     <h1>Technical Brief</h1>
 <h2>Status</h2>
 <ul>
-  <li>Last reviewed: 2026-05-14</li>
-  <li>Evidence basis: user prompt, Localhost Tooling product direction, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, agent-first launch layout implementation, Stage 07 code review, recent commits, and smoke coverage</li>
+  <li>Last reviewed: 2026-05-20</li>
+  <li>Evidence basis: user prompt, Localhost Tooling product direction, package checks, implementation plan, one-command launch implementation, multi-project workspace implementation, agent-first launch layout implementation, Stage 07 code review, worktree creation flow implementation, recent commits, and smoke coverage</li>
   <li>Confidence: high</li>
 </ul>
 <h2>Defaults</h2>
@@ -41,11 +41,12 @@
   <li>Agent startup is project-configured through <code>agent.launchCommand</code>, but workspace terminals are created lazily from the Execute control instead of opening on first load.</li>
   <li>Terminal panels are scoped to the active plan root: feature-plan pages use their feature plan, MVP unit pages use their parent stage, and other app or wiki routes use separate runtime scopes.</li>
   <li>Switching plans or projects detaches visible terminal panels without killing the underlying local process; explicit terminal close remains the process termination boundary.</li>
-  <li>Execute targets include <code>on main</code> and <code>on worktree</code>; worktree execution instructs agents to use <code>parallel-dev-worktrees</code>.</li>
+  <li>Execute is a single main-checkout action. Worktree execution starts from the terminal branch rail <code>+ worktree</code> flow, which creates and registers a checkout before sending the agent an existing-worktree handoff.</li>
+  <li>Active checkout identity is carried by the workspace URL shape <code>/workspace/&lt;project-slug&gt;/&lt;worktree-slug&gt;</code>; reloading or navigating back to that URL must preserve the worktree instead of falling back to main.</li>
   <li>Portless is the default repo dev preview surface through <code>pnpm dev</code>, with main at <code>https://hyperwiki.localhost</code> and worktree URLs shaped as <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
   <li>Repo-local worktree commands are exposed as <code>pnpm wt:doctor</code>, <code>pnpm wt:create</code>, <code>pnpm wt:list</code>, <code>pnpm wt:resume</code>, <code>pnpm wt:open</code>, <code>pnpm wt:finish</code>, and <code>pnpm wt:prune</code>.</li>
   <li>Feature worktrees live under <code>../hyperwiki.worktrees/&lt;branch-slug&gt;</code> and use a merge finish policy to preserve feature history.</li>
-  <li>The current local HTTP API exposes workspace summaries, guardrails, repo context, wiki pages, projects, sessions, agent prompt handoff, versioned verification loops, a versioned project contract, named agent review workflows, and a versioned MCP surface contract.</li>
+  <li>The current local HTTP API exposes workspace summaries, guardrails, repo context, wiki pages, projects, worktree creation, sessions, agent prompt handoff, versioned verification loops, a versioned project contract, named agent review workflows, and a versioned MCP surface contract.</li>
   <li><code>/api/verification</code> derives verification loops from <code>.hyperwiki/config.json</code> or package scripts and merges latest runtime evidence from ignored <code>.hyperwiki/state/verification.json</code>.</li>
   <li><code>/api/project-contract</code> composes project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, wiki page index, runtime boundaries, and copy-pasteable agent context.</li>
   <li><code>/api/review-workflows</code> exposes diff, architecture consistency, security, and test-gap review workflows; <code>/api/review-workflows/run</code> prepares or routes project-contract-aware prompts into the visible agent terminal, with results treated as runtime evidence until recorded.</li>

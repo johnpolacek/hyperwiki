@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-20 implementation | worktree creation flow</h2>
+  <ul>
+    <li>Changed the terminal branch rail <code>+ worktree</code> action from an agent prompt shortcut into an in-app create-and-switch flow.</li>
+    <li>Added a local worktree creation API that validates main or master, creates a Git worktree and branch, runs <code>pnpm install</code>, registers the checkout, and returns the workspace and preview URLs.</li>
+    <li>After creation, the UI switches to <code>/workspace/&lt;project&gt;/&lt;worktree&gt;</code> with the current plan hash, updates the branch rail to the worktree slug with ellipsis overflow, hides <code>+ worktree</code> off main, and sends the agent an existing-worktree handoff.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, and an agent-browser interaction check; <code>pnpm run smoke:browser</code> reaches the new popover coverage when pointed at the local server and remains blocked later by the existing completed-stage dot color assertion.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 implementation | plan-scoped terminals</h2>
   <ul>
     <li>Changed terminal panels to resolve against the active plan root so navigating to another plan shows a fresh right side.</li>

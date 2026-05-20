@@ -5,6 +5,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 
 const root = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-launch-smoke-a-"));
+const createdWorktreeRoot = `${root}.worktrees`;
 const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-launch-worktrees-"));
 const secondRoot = path.join(workspaceRoot, "plan-unit-navigation");
 const home = await mkdtemp(path.join(os.tmpdir(), "hyperwiki-home-smoke-"));
@@ -100,6 +101,39 @@ try {
     throw new Error(`Expected plan-scoped agent to reattach, got ${JSON.stringify(reattachedSessions)}`);
   }
 
+  await page.locator("#new-worktree-terminal").click();
+  await page.locator("#worktree-popover:not([hidden])").waitFor();
+  await page.locator("#worktree-branch").fill("feature/launch-worktree-flow");
+  await page.locator("#worktree-popover").evaluate((popover) => {
+    const slug = popover.querySelector("#worktree-slug-preview")?.textContent || "";
+    const targetPath = popover.querySelector("#worktree-path-preview")?.textContent || "";
+    const previewUrl = popover.querySelector("#worktree-url-preview")?.textContent || "";
+    if (slug !== "feature-launch-worktree-flow") {
+      throw new Error(`Expected worktree slug preview, got ${slug}`);
+    }
+    if (!targetPath.includes(".worktrees/feature-launch-worktree-flow")) {
+      throw new Error(`Expected worktree path preview, got ${targetPath}`);
+    }
+    if (!previewUrl.includes("feature-launch-worktree-flow.launch-smoke.localhost")) {
+      throw new Error(`Expected worktree preview URL, got ${previewUrl}`);
+    }
+  });
+  await page.locator("#worktree-create").click();
+  await page.waitForURL(/\/workspace\/launch-smoke\/feature-launch-worktree-flow#/);
+  await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "feature-launch-worktree-flow");
+  await page.locator("#new-worktree-terminal").evaluate((button) => {
+    if (!button.hidden) throw new Error("Expected + worktree to hide inside feature worktree checkout.");
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForURL(/\/workspace\/launch-smoke\/feature-launch-worktree-flow#/);
+  await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "feature-launch-worktree-flow");
+  const createdRegistry = JSON.parse(await readFile(path.join(home, "projects.json"), "utf8"));
+  if (!createdRegistry.projects.some((project) => project.worktreeSlug === "feature-launch-worktree-flow")) {
+    throw new Error(`Expected created worktree to be registered, got ${JSON.stringify(createdRegistry)}`);
+  }
+  await page.goto(workspaceUrl, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => document.querySelector("#repo-branch")?.textContent === "main");
+
   const secondOutput = await runCli(["launch", "--port", String(port)], {
     cwd: secondRoot,
     env: {
@@ -175,6 +209,7 @@ try {
     await new Promise((resolve) => child.once("exit", resolve));
   }
   await rm(root, { recursive: true, force: true });
+  await rm(createdWorktreeRoot, { recursive: true, force: true });
   await rm(workspaceRoot, { recursive: true, force: true });
   await rm(home, { recursive: true, force: true });
 }
