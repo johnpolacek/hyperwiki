@@ -300,21 +300,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         }
     }
     if request.method == "POST" && request.path.starts_with("/api/agent/prompt") {
-        let project = resolve_request_project(&request.path).or_else(|| {
-            let root = std::env::current_dir().ok()?;
-            let info = crate::domain::projects::project_from_root(&root);
-            info.available
-                .then_some(crate::domain::projects::ProjectRecord {
-                    id: "current".to_string(),
-                    root,
-                    name: info.name,
-                    project_slug: "current".to_string(),
-                    worktree_slug: "main".to_string(),
-                    last_opened_at: None,
-                    available: true,
-                    active: false,
-                })
-        });
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
         let Some(project) = project else {
             return error_response(404, "Project not found for agent prompt.");
         };
@@ -325,6 +311,54 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .unwrap_or(serde_json::Value::Null);
         return match send_agent_prompt(&project, &body) {
             Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/review-workflows") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::reviews::review_workflow_summary(project_root),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/review-workflows/run") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for review workflow.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+            .unwrap_or(serde_json::Value::Null);
+        let dry_run = body["dryRun"].as_bool() == Some(true);
+        let workflow_id = body["workflowId"].as_str().unwrap_or_default();
+        let current_page = body["currentPage"].as_str();
+        let prepared = match crate::domain::reviews::prepare_review_workflow(
+            &project.root,
+            workflow_id,
+            current_page,
+            dry_run,
+        ) {
+            Ok(prepared) => prepared,
+            Err(error) => return error_response(404, error),
+        };
+        if dry_run {
+            return json_response(200, &prepared);
+        }
+        let prompt_body = serde_json::json!({
+            "prompt": prepared.prompt.clone().unwrap_or_default(),
+            "currentPage": current_page.unwrap_or("/wiki/plans/index.html"),
+            "scope": body["scope"].as_str().unwrap_or_default()
+        });
+        return match send_agent_prompt(&project, &prompt_body) {
+            Ok(result) => json_response(
+                200,
+                &crate::domain::reviews::response_with_session(prepared, result["session"].clone()),
+            ),
             Err((status, error)) => error_response(status, error),
         };
     }
@@ -388,6 +422,22 @@ fn resolve_request_project(path: &str) -> Option<crate::domain::projects::Projec
         project_id.as_deref(),
         std::env::current_dir().ok().as_deref(),
     )
+}
+
+fn current_project_record() -> Option<crate::domain::projects::ProjectRecord> {
+    let root = std::env::current_dir().ok()?;
+    let info = crate::domain::projects::project_from_root(&root);
+    info.available
+        .then_some(crate::domain::projects::ProjectRecord {
+            id: "current".to_string(),
+            root,
+            name: info.name,
+            project_slug: "current".to_string(),
+            worktree_slug: "main".to_string(),
+            last_opened_at: None,
+            available: true,
+            active: false,
+        })
 }
 
 fn terminal_manager() -> &'static Mutex<crate::domain::terminals::TerminalManager> {
@@ -738,6 +788,62 @@ mod tests {
         assert!(close.ok);
     }
 
+    #[test]
+    fn review_workflow_endpoints_prepare_and_route_prompts() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-review-workflows");
+        let home = temp_root("command-review-workflows-home");
+        make_hyperwiki_project(&root, "Review Workflow Command");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let summary = hyperwiki_request(HyperwikiRequest {
+            path: "/api/review-workflows".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let prepared = hyperwiki_request(HyperwikiRequest {
+            path: "/api/review-workflows/run".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"dryRun\":true}".to_string()),
+        });
+        let start = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/start".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"id\":\"review-agent\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+        });
+        let routed = hyperwiki_request(HyperwikiRequest {
+            path: "/api/review-workflows/run".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+        });
+        let close = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/review-agent".to_string(),
+            method: "DELETE".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(summary.ok);
+        assert!(summary.text.contains("hyperwiki.review-workflows"));
+        assert!(summary.text.contains("security-review"));
+        assert!(prepared.ok);
+        assert!(prepared.text.contains("\"sent\":false"));
+        assert!(prepared.text.contains("Workflow: Security Review"));
+        assert!(prepared.text.contains("Project: Review Workflow Command"));
+        assert!(start.ok);
+        assert!(routed.ok);
+        assert!(routed.text.contains("\"sent\":true"));
+        assert!(routed.text.contains("\"id\":\"review-agent\""));
+        assert!(close.ok);
+    }
+
     fn wait_for_terminal_output(id: &str, needle: &str) -> String {
         for _ in 0..30 {
             let response = hyperwiki_request(HyperwikiRequest {
@@ -756,5 +862,21 @@ mod tests {
             body: None,
         })
         .text
+    }
+
+    fn make_hyperwiki_project(root: &std::path::Path, name: &str) {
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            format!("{{\"project\":{{\"name\":\"{name}\"}}}}"),
+        )
+        .unwrap();
+        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.html"),
+            "<h1>Plans</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
+        )
+        .unwrap();
     }
 }

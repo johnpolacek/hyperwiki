@@ -133,6 +133,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri review prompt routing</h2>
+  <ul>
+    <li>Ported built-in review workflow discovery and dry-run prompt preparation into Rust with the same workflow IDs, runtime-only boundary, and runtime-evidence marker.</li>
+    <li>Added Tauri command transport handling for <code>/api/review-workflows</code> and <code>/api/review-workflows/run</code>, including routed execution through the Rust-owned active command-backed agent session.</li>
+    <li>Marked Stage 03 Unit 02 complete and advanced the active migration unit to Stage 03 Unit 03 - Dev Preview Lifecycle.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for workflow summary, dry-run prompt content, missing-agent guardrails, direct agent prompt routing, and routed review workflow prompts.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
