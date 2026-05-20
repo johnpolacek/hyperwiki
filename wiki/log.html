@@ -106,6 +106,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri pipe terminal runtime</h2>
+  <ul>
+    <li>Added a Rust terminal manager that owns pipe-backed shell processes, records session metadata, captures stdout/stderr into a bounded replay buffer, accepts terminal input, acknowledges resize requests, and closes child processes.</li>
+    <li>Added Tauri command transport handling for terminal start, write, resize, output replay, and close operations.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for pipe-backed spawn, input, output replay on reattach, resize acknowledgment, close behavior, and command-level terminal routing.</li>
+    <li>Stage 03 Unit 01 remains in progress because native PTY support and frontend event transport still need to replace the browser WebSocket path.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

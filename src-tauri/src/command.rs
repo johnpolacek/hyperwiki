@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -208,6 +209,96 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             };
         }
     }
+    if request.method == "POST" && request.path.starts_with("/api/terminal/start") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::terminals::TerminalStartRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::terminals::TerminalStartRequest {
+                id: None,
+                name: None,
+                role: None,
+                command: None,
+                scope: None,
+                scope_kind: None,
+                plan_path: None,
+            });
+        let mut manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        return match manager.start_pipe_session(project_root, parsed) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(500, error),
+        };
+    }
+    if request.path.starts_with("/api/terminal/") {
+        let path_without_query = request
+            .path
+            .split_once('?')
+            .map(|(path, _)| path)
+            .unwrap_or(&request.path);
+        let mut parts = path_without_query
+            .trim_start_matches("/api/terminal/")
+            .split('/');
+        let id = parts.next().unwrap_or_default();
+        let action = parts.next().unwrap_or_default();
+        let mut manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        if request.method == "POST" && action == "write" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| {
+                    serde_json::from_str::<crate::domain::terminals::TerminalInputRequest>(body)
+                        .ok()
+                })
+                .unwrap_or(crate::domain::terminals::TerminalInputRequest {
+                    input: String::new(),
+                });
+            return match manager.write(id, &body.input) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(404, error),
+            };
+        }
+        if request.method == "POST" && action == "resize" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| {
+                    serde_json::from_str::<crate::domain::terminals::TerminalResizeRequest>(body)
+                        .ok()
+                })
+                .unwrap_or(crate::domain::terminals::TerminalResizeRequest {
+                    cols: None,
+                    rows: None,
+                });
+            return match manager.resize(id, body) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(404, error),
+            };
+        }
+        if request.method == "GET" && action == "output" {
+            return match manager.output(id) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(404, error),
+            };
+        }
+        if request.method == "DELETE" {
+            return match manager.close(id) {
+                Ok(session) => {
+                    json_response(200, &crate::domain::sessions::SessionResponse { session })
+                }
+                Err(error) => error_response(404, error),
+            };
+        }
+    }
     if request.method == "GET" && request.path == "/api/health" {
         return json_response(
             200,
@@ -270,12 +361,18 @@ fn resolve_request_project(path: &str) -> Option<crate::domain::projects::Projec
     )
 }
 
+fn terminal_manager() -> &'static Mutex<crate::domain::terminals::TerminalManager> {
+    static MANAGER: OnceLock<Mutex<crate::domain::terminals::TerminalManager>> = OnceLock::new();
+    MANAGER.get_or_init(|| Mutex::new(crate::domain::terminals::TerminalManager::new()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
     use std::sync::{Mutex, OnceLock};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::thread::sleep;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -449,5 +546,65 @@ mod tests {
         assert!(list.text.contains("agent-one"));
         assert!(rename.text.contains("agent renamed"));
         assert!(export.text.contains("runtime-only"));
+    }
+
+    #[test]
+    fn terminal_endpoints_start_write_replay_and_close_pipe_session() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-terminal");
+        let home = temp_root("command-terminal-home");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let start = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/start".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"id\":\"terminal-command\",\"name\":\"cli\"}".to_string()),
+        });
+        let write = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/terminal-command/write".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"input\":\"printf tauri-terminal-command\\\\n\\n\"}".to_string()),
+        });
+        let output = wait_for_terminal_output("terminal-command", "tauri-terminal-command");
+        let close = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/terminal-command".to_string(),
+            method: "DELETE".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(start.ok);
+        assert!(start.text.contains("\"mode\":\"pipe-fallback\""));
+        assert!(write.ok);
+        assert!(output.contains("tauri-terminal-command"));
+        assert!(close.ok);
+        assert!(close.text.contains("\"status\":\"closed\""));
+    }
+
+    fn wait_for_terminal_output(id: &str, needle: &str) -> String {
+        for _ in 0..30 {
+            let response = hyperwiki_request(HyperwikiRequest {
+                path: format!("/api/terminal/{id}/output"),
+                method: "GET".to_string(),
+                body: None,
+            });
+            if response.text.contains(needle) {
+                return response.text;
+            }
+            sleep(Duration::from_millis(50));
+        }
+        hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/terminal/{id}/output"),
+            method: "GET".to_string(),
+            body: None,
+        })
+        .text
     }
 }
