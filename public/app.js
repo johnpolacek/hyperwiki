@@ -12,6 +12,7 @@ const modifyPlanStatus = document.getElementById("modify-plan-status");
 const executeButton = document.getElementById("execute-button");
 const executeMenu = document.getElementById("execute-menu");
 const previewLink = document.getElementById("preview-link");
+const appOpenLink = document.getElementById("app-open-link");
 const terminals = document.getElementById("terminals");
 const terminalTabs = document.getElementById("terminal-tabs");
 const terminalPane = document.querySelector(".terminal-pane");
@@ -2875,6 +2876,9 @@ function showPreviewLink(url, label = "Open preview") {
   previewLink.textContent = label;
   previewLink.title = previewLinkTitle(url);
   previewLink.classList.remove("disabled", "starting", "stopped", "unknown", "running");
+  appOpenLink.hidden = true;
+  appOpenLink.href = "#";
+  appOpenLink.title = "";
 }
 
 function hidePreviewLink() {
@@ -2904,6 +2908,7 @@ function setProjectPreviewState(previews) {
 
 function renderPreviewLink(preview) {
   previewLink.classList.remove("disabled", "starting", "stopping", "stopped", "unknown", "running", "not-configured", "not-startable");
+  renderAppOpenLink(preview);
   if (appPreviewStarting) {
     previewLink.hidden = false;
     previewLink.href = preview?.url || "#";
@@ -2927,6 +2932,13 @@ function renderPreviewLink(preview) {
   if (!previewCanAct(preview)) {
     previewLink.classList.add("disabled");
   }
+}
+
+function renderAppOpenLink(preview) {
+  const canOpen = Boolean(preview?.url && (terminalSessions.has("dev") || preview.running || preview.status === "running"));
+  appOpenLink.hidden = !canOpen;
+  appOpenLink.href = canOpen ? preview.url : "#";
+  appOpenLink.title = canOpen ? preview.url : "";
 }
 
 function previewActionLabel(preview) {
@@ -4083,7 +4095,6 @@ function activateTerminal(name) {
     requestAnimationFrame(() => {
       resizeTerminalToElement(session);
       session.term.focus();
-      scrollTerminalToBottom(session.el);
     });
   }
 }
@@ -4097,15 +4108,41 @@ function toggleTerminalCollapsed(name) {
 function setTerminalCollapsed(name, collapsed) {
   const session = terminalSessions.get(name);
   if (!session) return;
+  if (collapsed) {
+    rememberTerminalScroll(session);
+  }
   session.panel.classList.toggle("collapsed", collapsed);
   session.collapseButton.textContent = collapsed ? "expand" : "collapse";
   session.collapseButton.setAttribute("aria-expanded", String(!collapsed));
   if (!collapsed) {
     requestAnimationFrame(() => {
       resizeTerminalToElement(session);
-      scrollTerminalToBottom(session.el);
+      scheduleTerminalScrollRestoreFromMemory(session);
       sendTerminalStartupCommand(session);
     });
+  }
+}
+
+function rememberTerminalScroll(session) {
+  const el = session.el;
+  const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+  session.scrollMemory = {
+    top: el.scrollTop,
+    ratio: maxScroll > 0 ? el.scrollTop / maxScroll : 0
+  };
+}
+
+function restoreTerminalScroll(session) {
+  const memory = session.scrollMemory;
+  if (!memory) return;
+  const el = session.el;
+  const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+  el.scrollTop = Math.min(maxScroll, Math.max(0, Math.round(maxScroll * memory.ratio)));
+}
+
+function scheduleTerminalScrollRestoreFromMemory(session) {
+  for (const delay of [0, 32, 96, 180, 320]) {
+    setTimeout(() => restoreTerminalScroll(session), delay);
   }
 }
 
