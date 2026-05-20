@@ -142,6 +142,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri dev preview lifecycle</h2>
+  <ul>
+    <li>Ported the app preview lifecycle model into Rust, including layout resolution, package-manager-aware dev command fallback, dev panel reconciliation, preview URL selection, and exact Portless route parsing.</li>
+    <li>Added Tauri command transport handling for <code>/api/layout</code>, <code>/api/app-previews</code>, and <code>/api/app-preview</code> so desktop mode can render Run Dev state without the Node server.</li>
+    <li>Marked Stage 03 Unit 03 complete and advanced the active migration unit to Stage 03 Unit 04 - Worktree Creation Flow.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for exact main/worktree hostname matching, package-derived <code>pnpm run dev</code>, dev panel insertion, and preview endpoint response shapes.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

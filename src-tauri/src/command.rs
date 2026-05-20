@@ -90,6 +90,35 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 .list(active_id.as_deref()),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/layout") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::previews::layout_config_for_root(project_root),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/app-previews") {
+        let active_id = query_param(&request.path, "project");
+        return json_response(
+            200,
+            &crate::domain::previews::app_preview_summary(
+                &crate::domain::projects::ProjectRegistry::from_environment(),
+                active_id.as_deref(),
+            ),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/app-preview") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let active_id = query_param(&request.path, "project");
+        let summary = crate::domain::previews::app_preview_summary(&registry, active_id.as_deref());
+        return match summary.active_preview {
+            Some(preview) => json_response(200, &preview),
+            None => json_response(200, &serde_json::Value::Null),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -545,6 +574,79 @@ mod tests {
         assert!(response.ok);
         assert_eq!(response.status, 200);
         assert!(response.text.contains("\"runtime\":\"tauri\""));
+    }
+
+    #[test]
+    fn app_preview_endpoints_return_active_preview_and_layout() {
+        let _guard = env_lock();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let home = temp_root("command-preview-home");
+        let root = temp_root("command-preview-project");
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({
+                "projectName": "Command Preview",
+                "dev": {
+                    "command": "",
+                    "previewUrl": "https://command-preview.localhost"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("package.json"),
+            serde_json::json!({
+                "scripts": { "dev": "vite" },
+                "packageManager": "pnpm@10.33.3"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::create_dir_all(&home).unwrap();
+        fs::write(
+            home.join("projects.json"),
+            serde_json::json!({
+                "version": 1,
+                "projects": [{
+                    "id": "preview-id",
+                    "root": root,
+                    "name": "Command Preview",
+                    "projectSlug": "command-preview",
+                    "worktreeSlug": "main",
+                    "available": true
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+
+        let layout = hyperwiki_request(HyperwikiRequest {
+            path: "/api/layout?project=preview-id".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let preview = hyperwiki_request(HyperwikiRequest {
+            path: "/api/app-preview?project=preview-id".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(layout.ok);
+        assert!(layout.text.contains("\"command\":\"pnpm run dev\""));
+        assert!(preview.ok);
+        assert!(preview.text.contains("\"projectId\":\"preview-id\""));
+        assert!(preview.text.contains("\"status\":\""));
+        assert!(preview
+            .text
+            .contains("\"expectedUrl\":\"https://command-preview.localhost\""));
     }
 
     #[test]
