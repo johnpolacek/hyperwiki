@@ -4301,19 +4301,15 @@ async function createTerminal(name, options = {}) {
     event.preventDefault();
     void handleTerminalDrop(event, name, transport);
   });
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const decoder = new TextDecoder();
-  transport = createTerminalTransport({
-    url: `${protocol}//${location.host}/pty?${new URLSearchParams({
-      project: activeProjectId || "",
-      id,
-      name,
-      role: options.role || "shell",
-      command: options.command || "",
-      scope: activeTerminalScope.scope,
-      scopeKind: activeTerminalScope.kind,
-      planPath: activeTerminalScope.planPath || ""
-    }).toString()}`,
+  const terminalTransportOptions = {
+    id,
+    name,
+    role: options.role || "shell",
+    command: options.command || "",
+    scope: activeTerminalScope.scope,
+    scopeKind: activeTerminalScope.kind,
+    planPath: activeTerminalScope.planPath || "",
     onData: (data) => {
       const text = typeof data === "string" ? data : decoder.decode(data, { stream: true });
       recordTerminalOutput(session, text);
@@ -4332,7 +4328,22 @@ async function createTerminal(name, options = {}) {
       tab.classList.remove("connected");
       tab.classList.add("error");
     }
-  });
+  };
+  transport = isTauriRuntime()
+    ? createTauriTerminalTransport(terminalTransportOptions)
+    : createTerminalTransport({
+      ...terminalTransportOptions,
+      url: `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/pty?${new URLSearchParams({
+        project: activeProjectId || "",
+        id,
+        name,
+        role: options.role || "shell",
+        command: options.command || "",
+        scope: activeTerminalScope.scope,
+        scopeKind: activeTerminalScope.kind,
+        planPath: activeTerminalScope.planPath || ""
+      }).toString()}`
+    });
 
   session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: Boolean(options.commandSent), startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, headerStatus, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
@@ -4379,6 +4390,101 @@ function createTerminalTransport({ url, onData, onOpen, onClose, onError }) {
       socket?.close();
     }
   };
+}
+
+function createTauriTerminalTransport({ id, name, role, command, scope, scopeKind, planPath, onData, onOpen, onClose, onError }) {
+  let closed = false;
+  let pollTimer = null;
+  let seenLength = 0;
+  const pending = [];
+
+  async function flushPending() {
+    while (!closed && pending.length > 0) {
+      await sendNow(pending.shift());
+    }
+  }
+
+  async function sendNow(data) {
+    const value = String(data || "");
+    if (value.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(value);
+        if (parsed.type === "resize") {
+          await api(projectPath(`/api/terminal/${encodeURIComponent(id)}/resize`), {
+            method: "POST",
+            body: JSON.stringify({ cols: parsed.cols, rows: parsed.rows })
+          });
+          return;
+        }
+      } catch {
+        // Fall through and send raw data.
+      }
+    }
+    await api(projectPath(`/api/terminal/${encodeURIComponent(id)}/write`), {
+      method: "POST",
+      body: JSON.stringify({ input: value })
+    });
+  }
+
+  async function pollOutput() {
+    if (closed) return;
+    try {
+      const result = await api(projectPath(`/api/terminal/${encodeURIComponent(id)}/output`));
+      const output = String(result.output || "");
+      if (output.length > seenLength) {
+        const next = output.slice(seenLength);
+        seenLength = output.length;
+        onData?.(next);
+      } else if (output.length < seenLength) {
+        seenLength = output.length;
+        onData?.(output);
+      }
+    } catch {
+      onError?.();
+    }
+  }
+
+  return {
+    async connect() {
+      try {
+        const started = await api(projectPath("/api/terminal/start"), {
+          method: "POST",
+          body: JSON.stringify({ id, name, role, command, scope, scopeKind, planPath })
+        });
+        const replay = String(started.replay || "");
+        if (replay) {
+          seenLength = replay.length;
+          onData?.(replay);
+        }
+        onOpen?.();
+        await flushPending();
+        pollTimer = setInterval(pollOutput, 250);
+        void pollOutput();
+      } catch {
+        onError?.();
+      }
+    },
+    send(data) {
+      if (closed) return;
+      pending.push(data);
+      void flushPending().catch(() => onError?.());
+    },
+    close() {
+      closed = true;
+      pending.length = 0;
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      void api(projectPath(`/api/terminal/${encodeURIComponent(id)}`), { method: "DELETE" })
+        .catch(() => {})
+        .finally(() => onClose?.());
+    }
+  };
+}
+
+function isTauriRuntime() {
+  return typeof globalThis.__TAURI__?.core?.invoke === "function";
 }
 
 function recordTerminalOutput(session, data) {

@@ -232,7 +232,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         let mut manager = terminal_manager()
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        return match manager.start_pipe_session(project_root, parsed) {
+        return match manager.start_session(project_root, parsed) {
             Ok(result) => json_response(200, &result),
             Err(error) => error_response(500, error),
         };
@@ -581,7 +581,10 @@ mod tests {
             None => std::env::remove_var("HYPERWIKI_HOME"),
         }
         assert!(start.ok);
-        assert!(start.text.contains("\"mode\":\"pipe-fallback\""));
+        assert!(
+            start.text.contains("\"mode\":\"pty\"")
+                || start.text.contains("\"mode\":\"pipe-fallback\"")
+        );
         assert!(write.ok);
         assert!(output.contains("tauri-terminal-command"));
         assert!(close.ok);

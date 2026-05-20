@@ -1,5 +1,6 @@
 use super::DomainSurface;
 use crate::domain::sessions::{SessionRecord, SessionRegistry, SessionUpdates};
+use portable_pty::{native_pty_system, Child as PtyChild, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -77,11 +78,20 @@ pub struct TerminalManager {
     sessions: HashMap<String, TerminalProcess>,
 }
 
-struct TerminalProcess {
-    child: Child,
-    stdin: Option<ChildStdin>,
-    output: Arc<Mutex<String>>,
-    registry: SessionRegistry,
+enum TerminalProcess {
+    Pty {
+        child: Box<dyn PtyChild + Send + Sync>,
+        master: Box<dyn MasterPty + Send>,
+        writer: Box<dyn Write + Send>,
+        output: Arc<Mutex<String>>,
+        registry: SessionRegistry,
+    },
+    Pipe {
+        child: Child,
+        stdin: Option<ChildStdin>,
+        output: Arc<Mutex<String>>,
+        registry: SessionRegistry,
+    },
 }
 
 impl TerminalManager {
@@ -91,13 +101,13 @@ impl TerminalManager {
         }
     }
 
-    pub fn start_pipe_session(
+    pub fn start_session(
         &mut self,
         root: impl AsRef<Path>,
         request: TerminalStartRequest,
     ) -> Result<TerminalStartResponse, String> {
         let root = root.as_ref();
-        let id = request.id.unwrap_or_else(next_terminal_id);
+        let id = request.id.clone().unwrap_or_else(next_terminal_id);
         if let Some(existing) = self.sessions.get(&id) {
             let registry = SessionRegistry::new(root);
             let session = registry
@@ -117,6 +127,119 @@ impl TerminalManager {
             });
         }
 
+        match self.start_pty_session(root, &id, request.clone()) {
+            Ok(response) => Ok(response),
+            Err(pty_error) => self.start_pipe_session_with_warning(root, &id, request, &pty_error),
+        }
+    }
+
+    pub fn start_pipe_session(
+        &mut self,
+        root: impl AsRef<Path>,
+        request: TerminalStartRequest,
+    ) -> Result<TerminalStartResponse, String> {
+        let root = root.as_ref();
+        let id = request.id.clone().unwrap_or_else(next_terminal_id);
+        if let Some(existing) = self.sessions.get(&id) {
+            let registry = SessionRegistry::new(root);
+            let session = registry
+                .upsert(
+                    &id,
+                    SessionUpdates {
+                        status: Some("active".to_string()),
+                        connected_clients: Some(1),
+                        last_attached_at: Some(timestamp()),
+                        ..SessionUpdates::default()
+                    },
+                )
+                .map_err(|error| format!("Could not reattach terminal session: {error}"))?;
+            return Ok(TerminalStartResponse {
+                session,
+                replay: existing.output(),
+            });
+        }
+        self.start_pipe_session_with_warning(root, &id, request, "")
+    }
+
+    fn start_pty_session(
+        &mut self,
+        root: &Path,
+        id: &str,
+        request: TerminalStartRequest,
+    ) -> Result<TerminalStartResponse, String> {
+        let shell = shell_path();
+        let pty_system = native_pty_system();
+        let pair = pty_system
+            .openpty(PtySize {
+                rows: 30,
+                cols: 100,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|error| format!("Could not open PTY: {error}"))?;
+        let mut command = CommandBuilder::new(&shell);
+        command.cwd(root);
+        command.env("TERM", "xterm-256color");
+        let child = pair
+            .slave
+            .spawn_command(command)
+            .map_err(|error| format!("Could not start PTY shell: {error}"))?;
+        drop(pair.slave);
+        let reader = pair
+            .master
+            .try_clone_reader()
+            .map_err(|error| format!("Could not read PTY output: {error}"))?;
+        let writer = pair
+            .master
+            .take_writer()
+            .map_err(|error| format!("Could not open PTY input: {error}"))?;
+        let output = Arc::new(Mutex::new(String::new()));
+        capture_output(reader, Arc::clone(&output));
+        let registry = SessionRegistry::new(root);
+        let session = registry
+            .upsert(
+                id,
+                SessionUpdates {
+                    name: Some(request.name.unwrap_or_else(|| id.to_string())),
+                    status: Some("active".to_string()),
+                    mode: Some("pty".to_string()),
+                    role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
+                    command: request.command,
+                    shell: Some(shell),
+                    pid: child.process_id(),
+                    cwd: Some(root.to_path_buf()),
+                    scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
+                    scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
+                    plan_path: request.plan_path,
+                    connected_clients: Some(1),
+                    last_attached_at: Some(timestamp()),
+                    ..SessionUpdates::default()
+                },
+            )
+            .map_err(|error| format!("Could not record PTY session: {error}"))?;
+        self.sessions.insert(
+            id.to_string(),
+            TerminalProcess::Pty {
+                child,
+                master: pair.master,
+                writer,
+                output,
+                registry,
+            },
+        );
+        Ok(TerminalStartResponse {
+            session,
+            replay: String::new(),
+        })
+    }
+
+    fn start_pipe_session_with_warning(
+        &mut self,
+        root: &Path,
+        id: &str,
+        request: TerminalStartRequest,
+        warning: &str,
+    ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
         let mut child = Command::new(&shell)
             .current_dir(root)
@@ -128,6 +251,14 @@ impl TerminalManager {
             .map_err(|error| format!("Could not start terminal shell: {error}"))?;
 
         let output = Arc::new(Mutex::new(String::new()));
+        if !warning.is_empty() {
+            append_output(
+                &output,
+                &format!(
+                    "\r\n[hyperwiki] PTY spawn failed; using pipe fallback for this session.\r\n[hyperwiki] {warning}\r\n\r\n"
+                ),
+            );
+        }
         if let Some(stdout) = child.stdout.take() {
             capture_output(stdout, Arc::clone(&output));
         }
@@ -140,7 +271,7 @@ impl TerminalManager {
             .upsert(
                 &id,
                 SessionUpdates {
-                    name: Some(request.name.unwrap_or_else(|| id.clone())),
+                    name: Some(request.name.unwrap_or_else(|| id.to_string())),
                     status: Some("active".to_string()),
                     mode: Some("pipe-fallback".to_string()),
                     role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
@@ -158,8 +289,8 @@ impl TerminalManager {
             )
             .map_err(|error| format!("Could not record terminal session: {error}"))?;
         self.sessions.insert(
-            id,
-            TerminalProcess {
+            id.to_string(),
+            TerminalProcess::Pipe {
                 child,
                 stdin,
                 output,
@@ -176,12 +307,18 @@ impl TerminalManager {
         let Some(process) = self.sessions.get_mut(id) else {
             return Err("Terminal session not found.".to_string());
         };
-        let Some(stdin) = process.stdin.as_mut() else {
-            return Err("Terminal session input is closed.".to_string());
+        let writer: &mut dyn Write = match process {
+            TerminalProcess::Pty { writer, .. } => writer.as_mut(),
+            TerminalProcess::Pipe { stdin, .. } => {
+                let Some(stdin) = stdin.as_mut() else {
+                    return Err("Terminal session input is closed.".to_string());
+                };
+                stdin
+            }
         };
-        stdin
+        writer
             .write_all(input.as_bytes())
-            .and_then(|_| stdin.flush())
+            .and_then(|_| writer.flush())
             .map_err(|error| format!("Could not write to terminal session: {error}"))?;
         Ok(TerminalWriteResponse { ok: true })
     }
@@ -191,12 +328,26 @@ impl TerminalManager {
         id: &str,
         request: TerminalResizeRequest,
     ) -> Result<TerminalResizeResponse, String> {
-        if !self.sessions.contains_key(id) {
+        let Some(process) = self.sessions.get_mut(id) else {
             return Err("Terminal session not found.".to_string());
-        }
+        };
+        let mode = match process {
+            TerminalProcess::Pty { master, .. } => {
+                master
+                    .resize(PtySize {
+                        rows: request.rows.unwrap_or(30),
+                        cols: request.cols.unwrap_or(100),
+                        pixel_width: 0,
+                        pixel_height: 0,
+                    })
+                    .map_err(|error| format!("Could not resize PTY session: {error}"))?;
+                "pty"
+            }
+            TerminalProcess::Pipe { .. } => "pipe-fallback",
+        };
         Ok(TerminalResizeResponse {
             ok: true,
-            mode: "pipe-fallback".to_string(),
+            mode: mode.to_string(),
             cols: request.cols,
             rows: request.rows,
         })
@@ -215,9 +366,8 @@ impl TerminalManager {
         let Some(mut process) = self.sessions.remove(id) else {
             return Err("Terminal session not found.".to_string());
         };
-        let _ = process.child.kill();
-        let _ = process.child.wait();
-        process.registry.close(id)
+        process.kill_and_wait();
+        process.registry().close(id)
     }
 }
 
@@ -229,10 +379,37 @@ impl Default for TerminalManager {
 
 impl TerminalProcess {
     fn output(&self) -> String {
-        self.output
+        self.output_buffer()
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .clone()
+    }
+
+    fn output_buffer(&self) -> &Arc<Mutex<String>> {
+        match self {
+            TerminalProcess::Pty { output, .. } => output,
+            TerminalProcess::Pipe { output, .. } => output,
+        }
+    }
+
+    fn registry(&self) -> &SessionRegistry {
+        match self {
+            TerminalProcess::Pty { registry, .. } => registry,
+            TerminalProcess::Pipe { registry, .. } => registry,
+        }
+    }
+
+    fn kill_and_wait(&mut self) {
+        match self {
+            TerminalProcess::Pty { child, .. } => {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            TerminalProcess::Pipe { child, .. } => {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+        }
     }
 }
 
@@ -345,6 +522,43 @@ mod tests {
 
         let closed = manager.close("pipe-one").unwrap();
         assert_eq!(closed.status, "closed");
+    }
+
+    #[test]
+    fn starts_preferred_pty_session_with_pipe_fallback() {
+        let root = temp_root("terminal-pty");
+        let mut manager = TerminalManager::new();
+        let started = manager
+            .start_session(
+                &root,
+                TerminalStartRequest {
+                    id: Some("preferred-one".to_string()),
+                    name: Some("preferred".to_string()),
+                    role: Some("shell".to_string()),
+                    command: None,
+                    scope: None,
+                    scope_kind: None,
+                    plan_path: None,
+                },
+            )
+            .unwrap();
+        assert!(started.session.mode == "pty" || started.session.mode == "pipe-fallback");
+        manager
+            .write("preferred-one", "printf preferred-terminal-ready\\n\n")
+            .unwrap();
+        let output = wait_for_output(&manager, "preferred-one", "preferred-terminal-ready");
+        assert!(output.contains("preferred-terminal-ready"));
+        let resized = manager
+            .resize(
+                "preferred-one",
+                TerminalResizeRequest {
+                    cols: Some(90),
+                    rows: Some(20),
+                },
+            )
+            .unwrap();
+        assert_eq!(resized.cols, Some(90));
+        manager.close("preferred-one").unwrap();
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {
