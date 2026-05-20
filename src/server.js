@@ -20,8 +20,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const publicRoot = path.resolve(here, "..", "public");
 const require = createRequire(import.meta.url);
 const vendorRoots = new Map([
-  ["@wterm/dom", path.dirname(require.resolve("@wterm/dom"))],
-  ["@wterm/core", path.dirname(require.resolve("@wterm/core"))]
+  ["@xterm/xterm", path.dirname(require.resolve("@xterm/xterm"))],
+  ["@xterm/addon-fit", path.dirname(require.resolve("@xterm/addon-fit"))],
+  ["@xterm/addon-web-links", path.dirname(require.resolve("@xterm/addon-web-links"))]
 ]);
 
 export async function startDevServer(root, options = {}) {

@@ -3865,27 +3865,35 @@ html[data-initial-route="settings"] .wiki-pane {
   -webkit-user-select: text;
 }
 
-.terminal.wterm {
+.terminal.xterm-host {
   background: transparent;
   border-radius: 0;
   box-shadow: none;
   font-family: var(--terminal-font);
   height: 100%;
-  scrollbar-gutter: stable;
   width: 100%;
   overflow-anchor: none;
+  overflow: hidden;
 }
 
-.terminal .term-grid,
-.terminal .term-row,
-.terminal .term-row > span {
-  contain: layout style;
+.terminal.xterm-host .xterm {
+  height: 100%;
+  padding: 12px;
+  width: 100%;
+}
+
+.terminal.xterm-host .xterm-viewport {
+  scrollbar-gutter: stable;
+}
+
+.terminal.xterm-host .xterm-rows,
+.terminal.xterm-host .xterm-rows > div {
   user-select: text;
   -webkit-user-select: text;
 }
 
 .terminal.active,
-.terminal.wterm.active {
+.terminal.xterm-host.active {
   outline: 0;
 }
 

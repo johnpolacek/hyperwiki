@@ -1,4 +1,6 @@
-import { WTerm, WebSocketTransport } from "/vendor/@wterm/dom/dist/index.js";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 
 const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
@@ -3922,7 +3924,7 @@ async function createTerminal(name, options = {}) {
   closeButton.textContent = "x";
   header.append(headerTitle, headerCommand, collapseButton, closeButton);
   const el = document.createElement("div");
-  el.className = "terminal theme-monokai";
+  el.className = "terminal xterm-host theme-monokai";
   el.dataset.name = name;
   el.tabIndex = 0;
   panel.append(header, el);
@@ -3955,27 +3957,51 @@ async function createTerminal(name, options = {}) {
   let transport;
   let lastLocalInputAt = 0;
   let lastLocalInputWasEnter = false;
-  const term = new WTerm(el, {
-    cols: 100,
-    rows: 24,
+  const term = new Terminal({
     cursorBlink: true,
-    onData(data) {
-      const normalized = normalizeTerminalInput(data);
-      lastLocalInputAt = performance.now();
-      lastLocalInputWasEnter = normalized === "\r" || normalized === "\n";
-      transport?.send(normalized);
-    },
-    onResize(cols, rows) {
-      if (panel.classList.contains("collapsed")) return;
-      transport?.send(JSON.stringify({ type: "resize", cols, rows }));
+    fontFamily: "Space Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    fontSize: 14,
+    lineHeight: 1.3,
+    scrollback: 10000,
+    theme: {
+      background: "#272822",
+      foreground: "#f8f8f2",
+      cursor: "#f8f8f0",
+      selectionBackground: "#49483e",
+      black: "#272822",
+      red: "#f92672",
+      green: "#a6e22e",
+      yellow: "#e6db74",
+      blue: "#66d9ef",
+      magenta: "#ae81ff",
+      cyan: "#66d9ef",
+      white: "#f8f8f2",
+      brightBlack: "#75715e",
+      brightRed: "#f92672",
+      brightGreen: "#a6e22e",
+      brightYellow: "#e6db74",
+      brightBlue: "#66d9ef",
+      brightMagenta: "#ae81ff",
+      brightCyan: "#66d9ef",
+      brightWhite: "#f9f8f5"
     }
   });
+  const fitAddon = new FitAddon();
+  const webLinksAddon = new WebLinksAddon();
+  const disposables = [];
+  term.loadAddon(fitAddon);
+  term.loadAddon(webLinksAddon);
+  disposables.push(term.onData((data) => {
+    const normalized = normalizeTerminalInput(data);
+    lastLocalInputAt = performance.now();
+    lastLocalInputWasEnter = normalized === "\r" || normalized === "\n";
+    transport?.send(normalized);
+  }));
+  disposables.push(term.onResize(({ cols, rows }) => {
+    if (panel.classList.contains("collapsed")) return;
+    transport?.send(JSON.stringify({ type: "resize", cols, rows }));
+  }));
   let session;
-  term._scrollToBottom = () => {
-    if (!isRecentLocalInput(lastLocalInputAt)) {
-      scrollTerminalToBottom(el);
-    }
-  };
   el.addEventListener("focusin", () => {
     if (activeTerminalName !== name) {
       activateTerminal(name);
@@ -3995,20 +4021,13 @@ async function createTerminal(name, options = {}) {
     void handleTerminalDrop(event, name, transport);
   });
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  transport = new WebSocketTransport({
+  const decoder = new TextDecoder();
+  transport = createTerminalTransport({
     url: `${protocol}//${location.host}/pty?project=${encodeURIComponent(activeProjectId || "")}&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}&role=${encodeURIComponent(options.role || "shell")}&command=${encodeURIComponent(options.command || "")}`,
-    reconnect: false,
     onData: (data) => {
-      recordTerminalOutput(session, data);
-      const shouldFollowOutput = isTerminalNearBottom(el);
-      const shouldHoldForLocalEcho = isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter);
-      const scrollTopBeforeEcho = el.scrollTop;
+      const text = typeof data === "string" ? data : decoder.decode(data, { stream: true });
+      recordTerminalOutput(session, text);
       term.write(data);
-      if (shouldHoldForLocalEcho) {
-        scheduleTerminalScrollRestore(el, scrollTopBeforeEcho);
-      } else if (shouldFollowOutput) {
-        scheduleTerminalScrollToBottom(el);
-      }
     },
     onOpen: () => {
       tab.classList.add("connected");
@@ -4025,9 +4044,9 @@ async function createTerminal(name, options = {}) {
     }
   });
 
-  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, transport, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
-  await term.init();
+  term.open(el);
   transport.connect();
   workspace.classList.add("terminal-active");
   setTerminalCollapsed(name, Boolean(options.collapsed));
@@ -4036,6 +4055,40 @@ async function createTerminal(name, options = {}) {
   }
   updateTerminalCloseButtons();
   return session;
+}
+
+function createTerminalTransport({ url, onData, onOpen, onClose, onError }) {
+  let socket = null;
+  const pending = [];
+  return {
+    connect() {
+      socket = new WebSocket(url);
+      socket.binaryType = "arraybuffer";
+      socket.addEventListener("open", () => {
+        while (pending.length > 0 && socket?.readyState === WebSocket.OPEN) {
+          socket.send(pending.shift());
+        }
+        onOpen?.();
+      });
+      socket.addEventListener("message", (event) => {
+        const data = event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : String(event.data);
+        onData?.(data);
+      });
+      socket.addEventListener("close", () => onClose?.());
+      socket.addEventListener("error", () => onError?.());
+    },
+    send(data) {
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(data);
+        return;
+      }
+      pending.push(data);
+    },
+    close() {
+      pending.length = 0;
+      socket?.close();
+    }
+  };
 }
 
 function recordTerminalOutput(session, data) {
@@ -4124,20 +4177,25 @@ function setTerminalCollapsed(name, collapsed) {
 }
 
 function rememberTerminalScroll(session) {
-  const el = session.el;
-  const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+  const buffer = session.term?.buffer?.active;
+  if (!buffer) return;
+  const maxScroll = Math.max(0, buffer.baseY);
   session.scrollMemory = {
-    top: el.scrollTop,
-    ratio: maxScroll > 0 ? el.scrollTop / maxScroll : 0
+    line: buffer.viewportY,
+    ratio: maxScroll > 0 ? buffer.viewportY / maxScroll : 0
   };
 }
 
 function restoreTerminalScroll(session) {
   const memory = session.scrollMemory;
   if (!memory) return;
-  const el = session.el;
-  const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
-  el.scrollTop = Math.min(maxScroll, Math.max(0, Math.round(maxScroll * memory.ratio)));
+  const buffer = session.term?.buffer?.active;
+  if (!buffer) return;
+  const maxScroll = Math.max(0, buffer.baseY);
+  const line = Number.isFinite(memory.ratio)
+    ? Math.round(maxScroll * memory.ratio)
+    : memory.line;
+  session.term.scrollToLine(Math.min(maxScroll, Math.max(0, line)));
 }
 
 function scheduleTerminalScrollRestoreFromMemory(session) {
@@ -4159,29 +4217,15 @@ function sendTerminalStartupCommand(session) {
 
 function resizeTerminalToElement(session) {
   if (!session?.term || session.panel.classList.contains("collapsed")) return;
-  const metrics = terminalElementMetrics(session.el);
-  if (!metrics) return;
-  session.term.resize(metrics.cols, metrics.rows);
-  return metrics;
-}
-
-function terminalElementMetrics(el) {
-  const width = el.clientWidth;
-  const height = el.clientHeight;
-  if (width <= 0 || height <= 0) return null;
-  const probe = document.createElement("span");
-  probe.textContent = "W";
-  probe.style.visibility = "hidden";
-  probe.style.position = "absolute";
-  probe.style.whiteSpace = "pre";
-  el.append(probe);
-  const rect = probe.getBoundingClientRect();
-  probe.remove();
-  const charWidth = rect.width || 8;
-  const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || rect.height || 17;
+  if (session.el.clientWidth <= 0 || session.el.clientHeight <= 0) return;
+  try {
+    session.fitAddon?.fit();
+  } catch {
+    return;
+  }
   return {
-    cols: Math.max(20, Math.floor(width / charWidth)),
-    rows: Math.max(3, Math.floor(height / rowHeight))
+    cols: session.term.cols,
+    rows: session.term.rows
   };
 }
 
@@ -4244,45 +4288,12 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
-function scheduleTerminalScrollToBottom(el) {
-  for (const delay of [0, 32, 96, 180, 320]) {
-    setTimeout(() => scrollTerminalToBottom(el), delay);
-  }
-}
-
-function scheduleTerminalScrollRestore(el, scrollTop) {
-  for (const delay of [0, 32, 96]) {
-    setTimeout(() => {
-      el.scrollTop = scrollTop;
-    }, delay);
-  }
-}
-
-function scrollTerminalToBottom(el) {
-  const maxScroll = el.scrollHeight - el.clientHeight;
-  if (maxScroll > 0) {
-    el.scrollTop = maxScroll;
-  }
-}
-
-function isTerminalNearBottom(el) {
-  const rowHeight = Number.parseFloat(getComputedStyle(el).getPropertyValue("--term-row-height")) || 17;
-  return el.scrollHeight - el.clientHeight - el.scrollTop < rowHeight * 2;
-}
-
-function isRecentLocalEcho(lastLocalInputAt, lastLocalInputWasEnter) {
-  return !lastLocalInputWasEnter && performance.now() - lastLocalInputAt < 1000;
-}
-
-function isRecentLocalInput(lastLocalInputAt) {
-  return performance.now() - lastLocalInputAt < 1000;
-}
-
 function closeTerminal(name) {
   const session = terminalSessions.get(name);
   if (!session) return;
   session.transport.close();
-  session.term.destroy();
+  session.disposables?.forEach((disposable) => disposable?.dispose?.());
+  session.term.dispose();
   session.panel.remove();
   session.tab.remove();
   terminalSessions.delete(name);
@@ -4308,7 +4319,8 @@ function closeAllTerminals() {
   for (const name of [...terminalSessions.keys()]) {
     const session = terminalSessions.get(name);
     session?.transport.close();
-    session?.term.destroy();
+    session?.disposables?.forEach((disposable) => disposable?.dispose?.());
+    session?.term.dispose();
     session?.panel.remove();
     session?.tab.remove();
     terminalSessions.delete(name);
