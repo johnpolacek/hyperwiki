@@ -142,6 +142,72 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(500, error),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/sessions") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let scope = query_param(&request.path, "scope");
+        return json_response(
+            200,
+            &crate::domain::sessions::SessionRegistry::new(&project_root)
+                .list(scope.as_deref(), true),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/sessions/prune") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let registry = crate::domain::sessions::SessionRegistry::new(&project_root);
+        if let Err(error) = registry.prune() {
+            return error_response(500, error);
+        }
+        return json_response(200, &registry.list(None, false));
+    }
+    if request.path.starts_with("/api/sessions/") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let registry = crate::domain::sessions::SessionRegistry::new(&project_root);
+        let path_without_query = request
+            .path
+            .split_once('?')
+            .map(|(path, _)| path)
+            .unwrap_or(&request.path);
+        if request.method == "POST" && path_without_query.ends_with("/export") {
+            let id = path_without_query
+                .trim_start_matches("/api/sessions/")
+                .trim_end_matches("/export");
+            return match registry.export(id) {
+                Ok(export) => json_response(200, &export),
+                Err(error) => error_response(404, error),
+            };
+        }
+        let id = path_without_query.trim_start_matches("/api/sessions/");
+        if request.method == "PATCH" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+                .unwrap_or(serde_json::Value::Null);
+            return match registry.rename(id, body["name"].as_str().unwrap_or_default()) {
+                Ok(session) => {
+                    json_response(200, &crate::domain::sessions::SessionResponse { session })
+                }
+                Err(error) => error_response(400, error),
+            };
+        }
+        if request.method == "DELETE" {
+            return match registry.close(id) {
+                Ok(session) => {
+                    json_response(200, &crate::domain::sessions::SessionResponse { session })
+                }
+                Err(error) => error_response(500, error),
+            };
+        }
+    }
     if request.method == "GET" && request.path == "/api/health" {
         return json_response(
             200,
@@ -195,6 +261,15 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     })
 }
 
+fn resolve_request_project(path: &str) -> Option<crate::domain::projects::ProjectRecord> {
+    let registry = crate::domain::projects::ProjectRegistry::from_environment();
+    let project_id = query_param(path, "project");
+    registry.resolve(
+        project_id.as_deref(),
+        std::env::current_dir().ok().as_deref(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,7 +279,9 @@ mod tests {
 
     fn env_lock() -> std::sync::MutexGuard<'static, ()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
     }
 
     #[test]
@@ -322,5 +399,55 @@ mod tests {
         assert!(response.ok);
         assert!(response.text.contains("\"worktree\":\"main\""));
         assert!(response.text.contains("README.md"));
+    }
+
+    #[test]
+    fn sessions_endpoint_lists_and_mutates_current_checkout_sessions() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-sessions");
+        let home = temp_root("command-sessions-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.html"), "<h1>Sessions</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+        let registry = crate::domain::sessions::SessionRegistry::new(&root);
+        registry
+            .upsert(
+                "agent-one",
+                crate::domain::sessions::SessionUpdates {
+                    name: Some("agent".to_string()),
+                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    ..crate::domain::sessions::SessionUpdates::default()
+                },
+            )
+            .unwrap();
+
+        let list = hyperwiki_request(HyperwikiRequest {
+            path: "/api/sessions?scope=plan:/wiki/plans/index.html".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let rename = hyperwiki_request(HyperwikiRequest {
+            path: "/api/sessions/agent-one".to_string(),
+            method: "PATCH".to_string(),
+            body: Some("{\"name\":\"agent renamed\"}".to_string()),
+        });
+        let export = hyperwiki_request(HyperwikiRequest {
+            path: "/api/sessions/agent-one/export".to_string(),
+            method: "POST".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(list.ok);
+        assert!(list.text.contains("agent-one"));
+        assert!(rename.text.contains("agent renamed"));
+        assert!(export.text.contains("runtime-only"));
     }
 }

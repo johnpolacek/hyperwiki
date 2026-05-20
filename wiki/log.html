@@ -97,6 +97,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri session metadata</h2>
+  <ul>
+    <li>Ported the persistent terminal session registry into Rust for ignored <code>.hyperwiki/sessions/</code> metadata.</li>
+    <li>Added Rust behavior for session upsert, scoped listing, rename, close, export, and closed-session pruning while preserving the runtime-only export boundary.</li>
+    <li>Added Tauri command transport handling for <code>/api/sessions</code>, <code>/api/sessions/prune</code>, <code>/api/sessions/:id</code>, and <code>/api/sessions/:id/export</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>. Stage 03 Unit 01 remains in progress because process spawn, terminal input, resize, output replay, and desktop event transport still need the Rust runtime implementation.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
