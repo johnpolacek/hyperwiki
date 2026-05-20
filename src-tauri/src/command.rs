@@ -187,6 +187,16 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::verification::guardrail_summary(project_root),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/project-contract") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::verification::project_contract(project_root),
+        );
+    }
     if request.method == "POST" && request.path.starts_with("/api/git/init") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -818,6 +828,11 @@ mod tests {
             method: "GET".to_string(),
             body: None,
         });
+        let contract = hyperwiki_request(HyperwikiRequest {
+            path: "/api/project-contract".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
 
         std::env::set_current_dir(previous_dir).unwrap();
         match previous_home {
@@ -830,6 +845,9 @@ mod tests {
         assert!(verification.text.contains("\"status\":\"passed\""));
         assert!(guardrails.ok);
         assert!(guardrails.text.contains("Localhost Tooling"));
+        assert!(contract.ok);
+        assert!(contract.text.contains("hyperwiki.project-contract"));
+        assert!(contract.text.contains("Verification loops:"));
     }
 
     #[test]

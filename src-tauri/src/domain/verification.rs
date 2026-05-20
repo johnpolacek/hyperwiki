@@ -124,11 +124,88 @@ pub struct GuardrailItem {
     pub detail: String,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectContract {
+    pub version: u16,
+    pub kind: String,
+    pub generated_at: String,
+    pub boundary: String,
+    pub project: ContractProject,
+    pub repo: crate::domain::git::RepoContext,
+    pub plan: ContractPlan,
+    pub sources: ContractSources,
+    pub verification: VerificationSummary,
+    pub guardrails: GuardrailSummary,
+    pub layout: crate::domain::previews::LayoutConfig,
+    pub wiki: ContractWiki,
+    pub agent: ContractAgent,
+    pub canonical_truth: Vec<String>,
+    pub runtime_truth: Vec<String>,
+    pub agent_context: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractProject {
+    pub name: String,
+    pub root: PathBuf,
+    pub canonical_wiki: String,
+    pub runtime_state: String,
+    pub sessions: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractPlan {
+    pub dashboard: WorkspacePlan,
+    pub status: WorkspaceStatus,
+    pub current_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractSources {
+    pub index_path: String,
+    pub briefs: Vec<SourceBrief>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractWiki {
+    pub index_path: String,
+    pub pages: Vec<crate::domain::wiki::WikiPage>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractAgent {
+    pub launch_command: String,
+    pub handoff: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct HyperwikiConfig {
     #[serde(default)]
+    project_name: Option<String>,
+    #[serde(default)]
+    canonical_wiki: Option<String>,
+    #[serde(default)]
+    runtime_state: Option<String>,
+    #[serde(default)]
+    sessions: Option<String>,
+    #[serde(default)]
+    agent: Option<AgentConfig>,
+    #[serde(default)]
     verification: Option<VerificationConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentConfig {
+    #[serde(default)]
+    launch_command: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -253,6 +330,77 @@ pub fn guardrail_summary(root: impl AsRef<Path>) -> GuardrailSummary {
         ],
         root: root.as_ref().to_path_buf(),
     }
+}
+
+pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
+    let root = root.as_ref();
+    let config = read_config(root);
+    let workspace = workspace_summary(root);
+    let verification = verification_summary(root);
+    let project = ContractProject {
+        name: config.project_name.unwrap_or_else(|| {
+            root.file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("project")
+                .to_string()
+        }),
+        root: root.to_path_buf(),
+        canonical_wiki: config.canonical_wiki.unwrap_or_else(|| "html".to_string()),
+        runtime_state: config
+            .runtime_state
+            .unwrap_or_else(|| ".hyperwiki/state".to_string()),
+        sessions: config
+            .sessions
+            .unwrap_or_else(|| ".hyperwiki/sessions".to_string()),
+    };
+    let plan = ContractPlan {
+        dashboard: workspace.plan.clone(),
+        status: workspace.status.clone(),
+        current_path: if workspace.status.current_path.is_empty() {
+            workspace.plan.path.clone()
+        } else {
+            workspace.status.current_path.clone()
+        },
+    };
+    let agent = ContractAgent {
+        launch_command: config
+            .agent
+            .and_then(|agent| agent.launch_command)
+            .unwrap_or_default(),
+        handoff: "Use visible terminal handoffs; do not treat runtime evidence as canonical until it is recorded in wiki files or Git.".to_string(),
+    };
+    let canonical_truth = vec!["wiki/".to_string(), ".git".to_string()];
+    let runtime_truth = vec![
+        project.runtime_state.clone(),
+        project.sessions.clone(),
+        verification.state_path.clone(),
+    ];
+    let mut contract = ProjectContract {
+        version: 1,
+        kind: "hyperwiki.project-contract".to_string(),
+        generated_at: generated_at(),
+        boundary: "localhost-tooling".to_string(),
+        project,
+        repo: crate::domain::git::repo_context(root),
+        plan,
+        sources: ContractSources {
+            index_path: "/wiki/sources.html".to_string(),
+            briefs: workspace.sources.briefs.clone(),
+        },
+        verification,
+        guardrails: guardrail_summary(root),
+        layout: workspace.layout,
+        wiki: ContractWiki {
+            index_path: "/wiki/index.html".to_string(),
+            pages: crate::domain::wiki::list_wiki_pages(root, None).pages,
+        },
+        agent,
+        canonical_truth,
+        runtime_truth,
+        agent_context: String::new(),
+    };
+    contract.agent_context = agent_context_from_contract(&contract);
+    contract
 }
 
 fn verification_loops(root: impl AsRef<Path>) -> Vec<VerificationLoop> {
@@ -444,7 +592,14 @@ fn read_config(root: &Path) -> HyperwikiConfig {
     fs::read_to_string(root.join(".hyperwiki").join("config.json"))
         .ok()
         .and_then(|raw| serde_json::from_str::<HyperwikiConfig>(&raw).ok())
-        .unwrap_or(HyperwikiConfig { verification: None })
+        .unwrap_or(HyperwikiConfig {
+            project_name: None,
+            canonical_wiki: None,
+            runtime_state: None,
+            sessions: None,
+            agent: None,
+            verification: None,
+        })
 }
 
 fn package_scripts(root: &Path) -> BTreeSet<String> {
@@ -745,6 +900,66 @@ fn guardrail_action(label: &str, detail: &str) -> GuardrailItem {
     }
 }
 
+fn agent_context_from_contract(contract: &ProjectContract) -> String {
+    let verification = contract
+        .verification
+        .loops
+        .iter()
+        .map(|loop_item| {
+            format!(
+                "- {}: {} [{}; {}]",
+                loop_item.label,
+                if loop_item.command.is_empty() {
+                    "manual"
+                } else {
+                    &loop_item.command
+                },
+                loop_item.status,
+                loop_item.trigger
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    [
+        format!("Project: {}", contract.project.name),
+        format!("Root: {}", contract.project.root.display()),
+        format!("Branch: {}", contract.repo.git.branch),
+        format!("Current plan: {}", contract.plan.status.current),
+        format!(
+            "Current path: {}",
+            if contract.plan.current_path.is_empty() {
+                "Unknown"
+            } else {
+                &contract.plan.current_path
+            }
+        ),
+        format!(
+            "Boundary: {}; canonical truth lives in {}.",
+            contract.boundary,
+            contract.canonical_truth.join(" and ")
+        ),
+        "Verification loops:".to_string(),
+        if verification.is_empty() {
+            "- None configured".to_string()
+        } else {
+            verification
+        },
+        format!(
+            "Runtime evidence remains local until recorded: {}.",
+            contract.verification.state_path
+        ),
+    ]
+    .join("\n")
+}
+
+fn generated_at() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default();
+    format!("{seconds}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -871,6 +1086,75 @@ mod tests {
             .command_history
             .detail
             .contains("unless the user exports"));
+    }
+
+    #[test]
+    fn project_contract_composes_agent_context_and_project_facts() {
+        let root = temp_root("contract");
+        make_project(&root);
+        fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({
+                "projectName": "Contract Smoke",
+                "canonicalWiki": "html",
+                "agent": { "launchCommand": "codex --yolo" }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("package.json"),
+            serde_json::json!({
+                "scripts": { "check": "node --check index.js" },
+                "packageManager": "pnpm@10.33.3"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("index.html"),
+            "<h1>Home</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("prd.html"),
+            "<h1>PRD</h1><section class=\"summary\"><ul><li>Source brief</li></ul></section>",
+        )
+        .unwrap();
+
+        let contract = project_contract(&root);
+
+        assert_eq!(contract.version, 1);
+        assert_eq!(contract.kind, "hyperwiki.project-contract");
+        assert_eq!(contract.boundary, "localhost-tooling");
+        assert_eq!(contract.project.name, "Contract Smoke");
+        assert_eq!(contract.project.canonical_wiki, "html");
+        assert_eq!(contract.plan.dashboard.path, "/wiki/plans/index.html");
+        assert_eq!(contract.sources.index_path, "/wiki/sources.html");
+        assert!(contract
+            .sources
+            .briefs
+            .iter()
+            .any(|brief| brief.path == "/wiki/sources/prd.html"));
+        assert!(contract
+            .verification
+            .loops
+            .iter()
+            .any(|loop_item| loop_item.id == "syntax-checks"));
+        assert!(contract
+            .guardrails
+            .canonical
+            .iter()
+            .any(|item| item.path.as_deref() == Some("wiki/")));
+        assert!(contract
+            .wiki
+            .pages
+            .iter()
+            .any(|page| page.path == "/wiki/index.html"));
+        assert_eq!(contract.agent.launch_command, "codex --yolo");
+        assert!(contract.agent_context.contains("Project: Contract Smoke"));
+        assert!(contract.agent_context.contains("Verification loops:"));
     }
 
     fn make_project(root: &Path) {
