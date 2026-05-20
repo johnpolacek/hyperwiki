@@ -4034,7 +4034,7 @@ function scheduleAgentWikiRefresh(session) {
   clearTimeout(agentWikiRefreshTimer);
   agentWikiRefreshTimer = setTimeout(() => {
     if (wikiFrame.hidden) return;
-    const path = displayWikiPath(requestedWikiPath);
+    const path = requestedWikiPath;
     if (!isWikiPath(path)) return;
     wikiFrame.setAttribute("src", `${path}?agentRefresh=${Date.now()}`);
   }, 1500);
