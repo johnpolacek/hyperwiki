@@ -1172,7 +1172,7 @@ mod tests {
         fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
         fs::write(
             root.join(".hyperwiki").join("config.json"),
-            format!("{{\"project\":{{\"name\":\"{name}\"}}}}"),
+            format!("{{\"projectName\":\"{name}\"}}"),
         )
         .unwrap();
         fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();

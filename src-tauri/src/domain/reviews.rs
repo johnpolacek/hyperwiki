@@ -1,7 +1,6 @@
 use super::DomainSurface;
 use serde::Serialize;
 use serde_json::Value;
-use std::fs;
 use std::path::Path;
 
 pub fn surface() -> DomainSurface {
@@ -91,7 +90,7 @@ pub struct ReviewRunResponse {
 }
 
 pub fn review_workflow_summary(root: impl AsRef<Path>) -> ReviewWorkflowSummary {
-    let contract = lightweight_contract(root.as_ref());
+    let contract = crate::domain::verification::project_contract(root.as_ref());
     ReviewWorkflowSummary {
         version: 1,
         kind: "hyperwiki.review-workflows",
@@ -99,8 +98,14 @@ pub fn review_workflow_summary(root: impl AsRef<Path>) -> ReviewWorkflowSummary 
         source: "built-in review workflow definitions plus the current project contract",
         result_truth: "Review findings are runtime evidence until a human or agent records them in wiki files or Git.",
         workflows: workflows().iter().map(review_workflow_view).collect(),
-        project: contract.project,
-        plan: contract.plan,
+        project: ReviewProject {
+            name: contract.project.name,
+            root: contract.project.root.display().to_string(),
+        },
+        plan: ReviewPlan {
+            current: contract.plan.status.current,
+            current_path: contract.plan.current_path,
+        },
     }
 }
 
@@ -115,7 +120,7 @@ pub fn prepare_review_workflow(
         .find(|workflow| workflow.id == workflow_id)
         .copied()
         .ok_or_else(|| "Unknown review workflow.".to_string())?;
-    let contract = lightweight_contract(root.as_ref());
+    let contract = crate::domain::verification::project_contract(root.as_ref());
     let current_page = current_page.unwrap_or_else(|| {
         if contract.plan.current_path.is_empty() {
             "/wiki/plans/index.html"
@@ -161,7 +166,7 @@ fn review_workflow_view(workflow: &ReviewWorkflow) -> ReviewWorkflowView {
 
 fn review_workflow_prompt(
     workflow: &ReviewWorkflow,
-    contract: &LightweightContract,
+    contract: &crate::domain::verification::ProjectContract,
     current_page: &str,
 ) -> String {
     let instructions = workflow
@@ -188,69 +193,6 @@ fn review_workflow_prompt(
         "- If a finding should become durable project knowledge, say exactly where it should be recorded.".to_string(),
     ]
     .join("\n")
-}
-
-#[derive(Debug, Clone)]
-struct LightweightContract {
-    project: ReviewProject,
-    plan: ReviewPlan,
-    agent_context: String,
-}
-
-fn lightweight_contract(root: &Path) -> LightweightContract {
-    let project_name = project_name(root);
-    let plan = current_plan(root);
-    let agent_context = format!(
-        "Project: {}\nRepo root: {}\nCurrent plan: {}\nCurrent plan path: {}\nVerification loops:\n- syntax-checks: pnpm run check [defined-loop]\n- tauri-checks: pnpm run check:tauri [defined-loop]",
-        project_name,
-        root.display(),
-        plan.current,
-        plan.current_path
-    );
-    LightweightContract {
-        project: ReviewProject {
-            name: project_name,
-            root: root.display().to_string(),
-        },
-        plan,
-        agent_context,
-    }
-}
-
-fn project_name(root: &Path) -> String {
-    let config = root.join(".hyperwiki").join("config.json");
-    fs::read_to_string(config)
-        .ok()
-        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .and_then(|value| {
-            value["project"]["name"]
-                .as_str()
-                .or_else(|| value["name"].as_str())
-                .map(str::to_string)
-        })
-        .unwrap_or_else(|| {
-            root.file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("project")
-                .to_string()
-        })
-}
-
-fn current_plan(root: &Path) -> ReviewPlan {
-    let pages = crate::domain::wiki::list_wiki_pages(root, None).pages;
-    if let Some(page) = pages
-        .iter()
-        .find(|page| page.status.as_deref() == Some("active") && page.path.contains("/wiki/plans/"))
-    {
-        return ReviewPlan {
-            current: page.title.clone(),
-            current_path: page.path.clone(),
-        };
-    }
-    ReviewPlan {
-        current: "Plans".to_string(),
-        current_path: "/wiki/plans/index.html".to_string(),
-    }
 }
 
 fn workflows() -> &'static [ReviewWorkflow] {
@@ -313,6 +255,7 @@ fn workflows() -> &'static [ReviewWorkflow] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
@@ -357,7 +300,7 @@ mod tests {
         fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
         fs::write(
             root.join(".hyperwiki").join("config.json"),
-            "{\"project\":{\"name\":\"Review Test\"}}",
+            "{\"projectName\":\"Review Test\"}",
         )
         .unwrap();
         fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
