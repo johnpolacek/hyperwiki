@@ -2950,15 +2950,14 @@ function renderPreviewLink(preview) {
 function renderAppOpenLink(preview) {
   const runtimeUrl = appPreviewRuntimeUrl || "";
   const openUrl = runtimeUrl || preview?.url || "";
-  const devTerminalRunning = terminalSessions.has("dev");
   const canOpen = Boolean(openUrl && (runtimeUrl || preview?.running || preview?.status === "running"));
-  const isStarting = devTerminalRunning && !runtimeUrl && !(preview?.running || preview?.status === "running");
-  appOpenLink.hidden = !canOpen && !isStarting;
+  const isStarting = terminalSessions.has("dev") && !runtimeUrl && !(preview?.running || preview?.status === "running");
+  appOpenLink.hidden = true;
   appOpenLink.href = canOpen ? openUrl : "#";
-  appOpenLink.textContent = runtimeUrl ? `-> ${runtimeUrl}` : isStarting ? "Starting..." : "Open App";
+  appOpenLink.textContent = "Open App";
   appOpenLink.title = canOpen ? openUrl : "Waiting for the dev server URL.";
   appOpenLink.classList.toggle("disabled", !canOpen);
-  appOpenLink.classList.toggle("starting", isStarting);
+  appOpenLink.classList.remove("starting");
   renderDevTerminalHeaderStatus({ runtimeUrl, isStarting });
 }
 
