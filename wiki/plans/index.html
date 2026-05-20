@@ -49,7 +49,7 @@
   <h2>Recently Completed</h2>
   <ul>
     <li><a href="/wiki/plans/features/dev-script-agent-guidance.html">Dev Script Agent Guidance</a> makes new-project and Execute handoffs explicitly require a runnable <code>package.json</code> <code>dev</code> script for previewable apps, preferably backed by Portless.</li>
-    <li><a href="/wiki/plans/features/dev-preview-lifecycle.html">Dev Preview Lifecycle</a> corrected preview lifecycle labels so configured previews without dev commands show Dev Not Available, stopped previews show Run Dev, and Hyperwiki-managed running dev terminals show Stop Dev.</li>
+    <li><a href="/wiki/plans/features/dev-preview-lifecycle.html">Dev Preview Lifecycle</a> corrected preview lifecycle labels and derives Run Dev from <code>package.json</code> when older project config still has an empty dev command.</li>
     <li><a href="/wiki/plans/features/git-onboarding.html">Git Onboarding</a> asks to initialize Git during onboarding, creates an initial Hyperwiki commit when accepted, and offers the same recovery before Execute on older non-Git projects.</li>
     <li><a href="/wiki/plans/features/agent-execute-launch-guard.html">Agent Execute Launch Guard</a> prevents Execute and New Agent from sending handoff prompts into a plain shell when a project has no configured agent launch command.</li>
     <li><a href="/wiki/plans/zzz_completed/features/project-open-current-work.html">Project Open Current Work</a> simplified Manage Projects actions to Open and navigates projects to their current unit of work.</li>

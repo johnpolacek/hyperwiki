@@ -31,7 +31,7 @@ try {
   const registry = new ProjectRegistry();
   await registry.register(root);
   const featureRecord = await registry.register(worktree);
-  await registry.register(noDevRoot);
+  const noDevRecord = await registry.register(noDevRoot);
   const featureSlug = featureRecord.worktreeSlug;
 
   const serverInfo = await startDevServer(root, { host: "127.0.0.1", port: 0 });
@@ -68,11 +68,19 @@ try {
 
   previews = await json(`${serverInfo.url}/api/app-previews`);
   const noDev = previews.previews.find((preview) => preview.projectName === "Preview Smoke No Dev");
-  if (noDev?.status !== "not-startable" || noDev.canStart || noDev.running) {
-    throw new Error(`Expected preview URL without dev command to be not-startable, got ${JSON.stringify(noDev)}`);
+  if (noDev?.status !== "stopped" || !noDev.canStart || noDev.running) {
+    throw new Error(`Expected blank config command to fall back to package dev script, got ${JSON.stringify(noDev)}`);
   }
   if (noDev.url !== "https://preview-smoke-no-dev.localhost" || noDev.expectedUrl !== "https://preview-smoke-no-dev.localhost") {
-    throw new Error(`Expected not-startable preview to preserve URL, got ${JSON.stringify(noDev)}`);
+    throw new Error(`Expected package-derived preview to preserve URL, got ${JSON.stringify(noDev)}`);
+  }
+  if (noDev.startCommand !== "pnpm run dev") {
+    throw new Error(`Expected package manager aware dev command, got ${JSON.stringify(noDev)}`);
+  }
+  const noDevLayout = await json(`${serverInfo.url}/api/layout?project=${encodeURIComponent(noDevRecord.id)}`);
+  const noDevPanel = noDevLayout.panels.find((panel) => panel.role === "dev");
+  if (noDevLayout.dev.command !== "pnpm run dev" || noDevPanel?.command !== "pnpm run dev") {
+    throw new Error(`Expected layout to derive dev command and panel from package.json, got ${JSON.stringify(noDevLayout)}`);
   }
 } finally {
   if (server) {

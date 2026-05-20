@@ -217,7 +217,7 @@ async function handleRequest(defaultRoot, request, response, context) {
     }
     if (url.pathname === "/api/layout") {
       const project = await resolveProject(context.projectRegistry, url, context.activeProjectId, defaultRoot);
-      await sendJson(response, layoutConfig(await readConfig(project.root)));
+      await sendJson(response, await layoutConfigForRoot(project.root));
       return;
     }
     if (url.pathname === "/api/repo") {
@@ -1354,10 +1354,15 @@ export async function readConfig(root) {
   return JSON.parse(await readFile(configPath, "utf8"));
 }
 
-function layoutConfig(config) {
+async function layoutConfigForRoot(root) {
+  return layoutConfig(await readConfig(root), await packageDevCommand(root));
+}
+
+function layoutConfig(config, packageCommand = "") {
+  const devCommand = config.dev?.command ? String(config.dev.command) : packageCommand;
   const panels = Array.isArray(config.layout?.panels) && config.layout.panels.length > 0
-    ? config.layout.panels
-    : fallbackPanels(config);
+    ? reconcileConfiguredPanels(config.layout.panels, devCommand)
+    : fallbackPanels(config, devCommand);
   return {
     panels: panels.map((panel) => {
       const role = String(panel.role || panel.name);
@@ -1370,7 +1375,7 @@ function layoutConfig(config) {
       };
     }),
     dev: {
-      command: config.dev?.command ? String(config.dev.command) : "",
+      command: devCommand,
       previewUrl: config.dev?.previewUrl ? String(config.dev.previewUrl) : ""
     },
     worktrees: {
@@ -1378,6 +1383,42 @@ function layoutConfig(config) {
       previewUrlPattern: config.worktrees?.previewUrlPattern ? String(config.worktrees.previewUrlPattern) : ""
     }
   };
+}
+
+async function packageDevCommand(root) {
+  try {
+    const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+    if (pkg.scripts?.dev) return packageRunCommand(pkg, "dev");
+  } catch {
+    // No package manifest or no readable dev script.
+  }
+  return "";
+}
+
+function packageRunCommand(pkg, script) {
+  const packageManager = String(pkg.packageManager || "");
+  const manager = packageManager.split("@")[0];
+  if (manager === "pnpm") return `pnpm run ${script}`;
+  if (manager === "yarn") return `yarn ${script}`;
+  if (manager === "bun") return `bun run ${script}`;
+  return `npm run ${script}`;
+}
+
+function reconcileConfiguredPanels(panels, devCommand) {
+  const normalized = panels.map((panel) => {
+    const role = String(panel.role || panel.name);
+    if (role === "dev" && !panel.command && devCommand) {
+      return { ...panel, command: devCommand };
+    }
+    return panel;
+  });
+  if (devCommand && !normalized.some((panel) => String(panel.role || panel.name) === "dev")) {
+    const cliIndex = normalized.findIndex((panel) => String(panel.role || panel.name) === "shell");
+    const devPanel = { name: "dev", role: "dev", command: devCommand };
+    if (cliIndex === -1) return [...normalized, devPanel];
+    return [...normalized.slice(0, cliIndex), devPanel, ...normalized.slice(cliIndex)];
+  }
+  return normalized;
 }
 
 async function appPreviewSummary(projectRegistry, url, activeProjectId, fallbackRoot) {
@@ -1391,8 +1432,7 @@ async function appPreviewSummary(projectRegistry, url, activeProjectId, fallback
 }
 
 async function appPreviewForProject(project) {
-  const config = await readConfig(project.root);
-  const layout = layoutConfig(config);
+  const layout = await layoutConfigForRoot(project.root);
   const worktreeSlugValue = project.worktreeSlug || "main";
   const expectedUrl = previewUrlForProject(project, layout);
   const startCommand = layout.dev.command || "";
@@ -1536,13 +1576,13 @@ function execFileResult(command, args, cwd) {
   });
 }
 
-function fallbackPanels(config) {
+function fallbackPanels(config, devCommand = config.dev?.command ? String(config.dev.command) : "") {
   const panels = [];
   if (config.agent?.launchCommand) {
     panels.push({ name: "agent", role: "agent", command: String(config.agent.launchCommand) });
   }
-  if (config.dev?.command) {
-    panels.push({ name: "dev", role: "dev", command: String(config.dev.command) });
+  if (devCommand) {
+    panels.push({ name: "dev", role: "dev", command: devCommand });
   }
   panels.push({ name: "cli", role: "shell", command: null });
   return panels;
