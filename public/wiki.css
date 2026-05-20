@@ -92,7 +92,7 @@ h1,
 h2 {
   color: var(--docs-text, #1d1b16);
   font-family: var(--docs-serif-font);
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1;
 }
 
