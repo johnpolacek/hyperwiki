@@ -3601,7 +3601,7 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-column: 3;
   grid-row: 2;
   display: grid;
-  grid-template-rows: auto auto auto auto 1fr;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
   background: #111312;
   border-right: 0;
 }
@@ -3744,6 +3744,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .terminals {
   --terminal-bottom-gutter: 72px;
   --terminal-bg: #272822;
+  grid-row: 3 / -1;
   background: var(--terminal-bg);
   display: flex;
   flex-direction: column;
@@ -3772,7 +3773,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .terminal-panel {
   display: grid;
   grid-template-rows: auto 1fr;
-  flex: 1 0 220px;
+  flex: 1 1 0;
   min-height: 0;
   background: var(--terminal-bg);
 }
