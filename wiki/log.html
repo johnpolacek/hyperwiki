@@ -72,6 +72,14 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri wiki filesystem</h2>
+  <ul>
+    <li>Ported wiki page listing into Rust with recursive HTML discovery, <code>h1</code> title extraction, fallback title generation, summary item parsing, plan status parsing, completed-plan detection, and project-scoped wiki paths.</li>
+    <li>Added <code>/api/wiki</code> handling to the Tauri command transport, resolving the requested project through the Rust project registry and falling back to the current checkout when needed.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for wiki listing, project-scoped paths, status parsing, and the existing Tauri harness smoke.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

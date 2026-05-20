@@ -162,6 +162,27 @@ impl ProjectRegistry {
         })
     }
 
+    pub fn resolve(&self, id: Option<&str>, fallback_root: Option<&Path>) -> Option<ProjectRecord> {
+        let registry = self.read_raw();
+        let fallback = fallback_root.and_then(|root| {
+            registry
+                .projects
+                .iter()
+                .find(|item| same_path(&item.root, root))
+        });
+        let record = id
+            .and_then(|id| registry.projects.iter().find(|item| item.id == id))
+            .or(fallback)
+            .or_else(|| registry.projects.first())?
+            .clone();
+        let project = project_from_root(&record.root);
+        project.available.then_some(ProjectRecord {
+            name: project.name,
+            available: true,
+            ..record
+        })
+    }
+
     pub fn remove(&self, id: &str, delete_files: bool) -> Result<Option<ProjectRecord>, String> {
         let mut registry = self.read_raw();
         let Some(index) = registry
@@ -398,6 +419,10 @@ fn unsafe_removal_root(root: &Path) -> bool {
             .unwrap_or(false)
 }
 
+fn same_path(left: &Path, right: &Path) -> bool {
+    left.canonicalize().ok() == right.canonicalize().ok()
+}
+
 fn slugify(value: &str) -> String {
     let mut slug = String::new();
     let mut last_dash = false;
@@ -519,6 +544,27 @@ mod tests {
             .resolve_by_slug("resolve-project", Some("main"))
             .expect("project should resolve");
         assert_eq!(resolved.id, "main");
+        assert!(resolved.available);
+    }
+
+    #[test]
+    fn resolves_by_id_with_available_project_data() {
+        let home = temp_root("resolve-id");
+        let root = home.join("Resolve By Id");
+        make_project(&root, "Resolve By Id");
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![record("project-id", &root, "Old Name", "old-name", "main")],
+            },
+        )
+        .unwrap();
+
+        let resolved = ProjectRegistry::new(&home)
+            .resolve(Some("project-id"), None)
+            .expect("project should resolve by id");
+        assert_eq!(resolved.name, "Resolve By Id");
         assert!(resolved.available);
     }
 
