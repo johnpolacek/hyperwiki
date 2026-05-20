@@ -37,6 +37,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri command contract skeleton</h2>
+  <ul>
+    <li>Added <code>public/app-api.js</code> as the frontend request adapter so browser mode uses fetch while Tauri mode can call the Rust <code>hyperwiki_request</code> command with the same normalized shape.</li>
+    <li>Changed <code>public/app.js</code> to route app-side API and wiki-page text reads through the adapter instead of direct fetch calls.</li>
+    <li>Added an adapter smoke test and updated syntax checks to cover the new module.</li>
+    <li>Verified with <code>pnpm run smoke:api-adapter</code>, <code>pnpm run check</code>, and <code>pnpm run check:tauri</code>. Browser smoke against an explicit random-port server reached workspace assertions and then stopped at the Portless preview expectation because that server was not a Portless route.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

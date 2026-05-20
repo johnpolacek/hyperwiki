@@ -1,6 +1,7 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { hyperwikiApi } from "./app-api.js";
 
 const wikiFrame = document.getElementById("wiki-frame");
 const wikiNav = document.getElementById("wiki-nav");
@@ -750,8 +751,7 @@ function updateWorktreeButtonVisibility(branch) {
 
 async function loadWikiNav() {
   try {
-    const response = await fetch(projectPath("/api/wiki"));
-    const data = await response.json();
+    const data = await api(projectPath("/api/wiki"));
     await hydrateWikiPageStatuses(data.pages || []);
     wikiPageTitles.clear();
     wikiPageStatus.clear();
@@ -777,9 +777,7 @@ async function hydrateWikiPageStatuses(pages) {
   });
   await Promise.all(candidates.map(async (page) => {
     try {
-      const response = await fetch(page.path, { cache: "no-store" });
-      if (!response.ok) return;
-      const html = await response.text();
+      const html = await hyperwikiApi.text(page.path, { cache: "no-store" });
       page.summary = summaryItemsFromHtml(html);
     } catch {
       // Keep sidebar usable even if a wiki page cannot be inspected.
@@ -4641,15 +4639,7 @@ function closeAllTerminals() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { "content-type": "application/json" },
-    ...options
-  });
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed: ${response.status}`);
-  }
-  return response.json();
+  return hyperwikiApi.json(path, options);
 }
 
 function projectPath(path) {

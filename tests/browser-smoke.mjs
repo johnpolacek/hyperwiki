@@ -287,11 +287,11 @@ const workspaceSummary = await page.evaluate(async () => {
   const response = await fetch("/api/workspace");
   return response.json();
 });
-if (workspaceSummary.status.current !== "none") {
+if (workspaceSummary.status.current !== "Stage 01 / Unit 03 - Rust Domain Crate Layout") {
   throw new Error(`Expected workspace status to derive current unit from wiki, got ${workspaceSummary.status.current}`);
 }
 if (workspaceSummary.status.currentPath !== "") {
-  throw new Error(`Expected no current unit path after active feature completion, got ${workspaceSummary.status.currentPath}`);
+  throw new Error(`Expected no current unit page path until Tauri rewrite units are split, got ${workspaceSummary.status.currentPath}`);
 }
 await page.locator("#current-page").evaluate((element) => {
   if (!element.textContent.includes("Planning Dashboard")) {
@@ -299,13 +299,13 @@ await page.locator("#current-page").evaluate((element) => {
   }
 });
 await page.locator("#execute-button").evaluate((button) => {
-  if (!button.hidden) {
-    throw new Error("Expected Execute to be hidden when no current unit is active.");
+  if (button.hidden) {
+    throw new Error("Expected Execute to be visible for the active Tauri rewrite plan.");
   }
 });
 await page.locator("#modify-button").evaluate((button) => {
-  if (!button.hidden) {
-    throw new Error("Expected Modify to be hidden when no current unit is active.");
+  if (button.hidden) {
+    throw new Error("Expected Modify to be visible for the active Tauri rewrite plan.");
   }
 });
 const initialTerminalCount = await page.locator(".terminal-panel").count();
