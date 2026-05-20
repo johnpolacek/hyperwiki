@@ -1,14 +1,14 @@
-mod app_shell;
-mod git;
-mod mcp;
-mod previews;
-mod projects;
-mod reviews;
-mod sessions;
-mod settings;
-mod terminals;
-mod verification;
-mod wiki;
+pub mod app_shell;
+pub mod git;
+pub mod mcp;
+pub mod previews;
+pub mod projects;
+pub mod reviews;
+pub mod sessions;
+pub mod settings;
+pub mod terminals;
+pub mod verification;
+pub mod wiki;
 
 use serde::Serialize;
 
