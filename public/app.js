@@ -2720,7 +2720,9 @@ async function ensureDevLogTerminal() {
   if (terminalSessions.has("dev")) return terminalSessions.get("dev");
   const template = terminalTemplate("dev");
   if (!template.command) return null;
-  return createTerminal("dev", { ...template, name: "dev", collapsed: true, startWhenCollapsed: true });
+  const session = await createTerminal("dev", { ...template, name: "dev", collapsed: true, startWhenCollapsed: true });
+  renderPreviewLink(activeAppPreview);
+  return session;
 }
 
 async function ensureAgentTerminal() {
@@ -2957,6 +2959,35 @@ function renderAppOpenLink(preview) {
   appOpenLink.title = canOpen ? openUrl : "Waiting for the dev server URL.";
   appOpenLink.classList.toggle("disabled", !canOpen);
   appOpenLink.classList.toggle("starting", isStarting);
+  renderDevTerminalHeaderStatus({ runtimeUrl, isStarting });
+}
+
+function renderDevTerminalHeaderStatus(state = {}) {
+  const session = terminalSessions.get("dev");
+  if (!session?.headerStatus) return;
+  const runtimeUrl = state.runtimeUrl || appPreviewRuntimeUrl || "";
+  const isStarting = Boolean(state.isStarting);
+  if (runtimeUrl) {
+    session.headerStatus.hidden = false;
+    session.headerStatus.href = runtimeUrl;
+    session.headerStatus.textContent = `-> ${runtimeUrl}`;
+    session.headerStatus.title = runtimeUrl;
+    session.headerStatus.classList.remove("starting", "disabled");
+    return;
+  }
+  if (isStarting) {
+    session.headerStatus.hidden = false;
+    session.headerStatus.href = "#";
+    session.headerStatus.textContent = "Starting...";
+    session.headerStatus.title = "Waiting for the dev server URL.";
+    session.headerStatus.classList.add("starting", "disabled");
+    return;
+  }
+  session.headerStatus.hidden = true;
+  session.headerStatus.href = "#";
+  session.headerStatus.textContent = "";
+  session.headerStatus.title = "";
+  session.headerStatus.classList.remove("starting", "disabled");
 }
 
 function previewActionLabel(preview) {
@@ -3930,6 +3961,12 @@ async function createTerminal(name, options = {}) {
   headerTitle.textContent = name;
   const headerCommand = document.createElement("span");
   headerCommand.textContent = terminalCommandLabel(options);
+  const headerStatus = document.createElement("a");
+  headerStatus.className = "terminal-header-status";
+  headerStatus.href = "#";
+  headerStatus.target = "_blank";
+  headerStatus.rel = "noreferrer";
+  headerStatus.hidden = true;
   const collapseButton = document.createElement("button");
   collapseButton.type = "button";
   collapseButton.className = "terminal-collapse";
@@ -3940,7 +3977,7 @@ async function createTerminal(name, options = {}) {
   closeButton.className = "terminal-close";
   closeButton.setAttribute("aria-label", `Close ${name} terminal`);
   closeButton.textContent = "x";
-  header.append(headerTitle, headerCommand, collapseButton, closeButton);
+  header.append(headerTitle, headerCommand, headerStatus, collapseButton, closeButton);
   const el = document.createElement("div");
   el.className = "terminal xterm-host theme-monokai";
   el.dataset.name = name;
@@ -3955,6 +3992,12 @@ async function createTerminal(name, options = {}) {
   closeButton.addEventListener("click", (event) => {
     event.stopPropagation();
     closeTerminal(name);
+  });
+  headerStatus.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (headerStatus.getAttribute("href") === "#") {
+      event.preventDefault();
+    }
   });
 
   const tab = document.createElement("button");
@@ -4062,7 +4105,7 @@ async function createTerminal(name, options = {}) {
     }
   });
 
-  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
+  session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: false, startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, headerStatus, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
   term.open(el);
   transport.connect();
