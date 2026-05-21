@@ -1,6 +1,7 @@
 use super::DomainSurface;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::io::{Read, Write};
 use std::path::Path;
 
 pub fn surface() -> DomainSurface {
@@ -142,6 +143,60 @@ pub fn handle_mcp_message(root: impl AsRef<Path>, message: JsonRpcMessage) -> Op
 pub fn frame_json_message(message: &Value) -> String {
     let body = serde_json::to_string(message).expect("MCP response should serialize");
     format!("Content-Length: {}\r\n\r\n{body}", body.len())
+}
+
+pub fn run_stdio_server(root: impl AsRef<Path>) -> Result<(), String> {
+    let root = root.as_ref().to_path_buf();
+    let mut input = std::io::stdin().lock();
+    let mut output = std::io::stdout().lock();
+    let mut buffer = Vec::<u8>::new();
+    let mut chunk = [0_u8; 4096];
+    loop {
+        let count = input.read(&mut chunk).map_err(|error| error.to_string())?;
+        if count == 0 {
+            return Ok(());
+        }
+        buffer.extend_from_slice(&chunk[..count]);
+        while let Some(raw_message) = next_framed_message(&mut buffer)? {
+            let message = serde_json::from_slice::<JsonRpcMessage>(&raw_message)
+                .map_err(|error| error.to_string())?;
+            let Some(response) = handle_mcp_message(&root, message) else {
+                continue;
+            };
+            output
+                .write_all(frame_json_message(&response).as_bytes())
+                .map_err(|error| error.to_string())?;
+            output.flush().map_err(|error| error.to_string())?;
+        }
+    }
+}
+
+fn next_framed_message(buffer: &mut Vec<u8>) -> Result<Option<Vec<u8>>, String> {
+    let Some(header_end) = find_bytes(buffer, b"\r\n\r\n") else {
+        return Ok(None);
+    };
+    let header = String::from_utf8_lossy(&buffer[..header_end]);
+    let Some(length) = header.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.eq_ignore_ascii_case("content-length")
+            .then(|| value.trim().parse::<usize>().ok())
+            .flatten()
+    }) else {
+        return Err("MCP message missing Content-Length header.".to_string());
+    };
+    let body_start = header_end + 4;
+    if buffer.len() < body_start + length {
+        return Ok(None);
+    }
+    let body = buffer[body_start..body_start + length].to_vec();
+    buffer.drain(..body_start + length);
+    Ok(Some(body))
+}
+
+fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
 }
 
 fn dispatch_mcp(root: &Path, method: &str, params: Value) -> Result<Value, (i32, String)> {

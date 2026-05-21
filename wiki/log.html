@@ -205,6 +205,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri compatibility CLI</h2>
+  <ul>
+    <li>Added Rust binary command handling for <code>hyperwiki</code>, <code>launch</code>, <code>dev</code>, <code>help</code>, and <code>mcp</code>, with <code>mcp</code> backed by the Rust stdio JSON-RPC transport.</li>
+    <li>Documented migration guidance in the Rust CLI for <code>init</code> and <code>reset</code>, which continue to use the Node compatibility CLI until scaffold/reset are ported.</li>
+    <li>Marked Stage 05 Unit 02 complete and advanced the active migration unit to Stage 05 Unit 03 - Packaging And Distribution.</li>
+    <li>Verified with <code>pnpm run check:all</code>, <code>cargo run --manifest-path src-tauri/Cargo.toml -- help</code>, and a framed MCP <code>initialize</code> request through <code>cargo run --manifest-path src-tauri/Cargo.toml -- mcp</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
