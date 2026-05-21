@@ -1067,7 +1067,6 @@ function renderProjectSwitcher(groups) {
   projectList.replaceChildren(...groups.map((group) => {
     const project = selectedProjectCheckout(group);
     const active = (group.checkouts || []).some((checkout) => checkout.id === activeProjectId);
-    const preview = projectPreviewState.get(project?.id);
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.projectSlug = group.projectSlug || slugify(group.name);
@@ -1077,7 +1076,7 @@ function renderProjectSwitcher(groups) {
     button.disabled = !project?.available;
     button.setAttribute("aria-label", group.name);
     button.title = project?.available ? project.root : `${project?.root || group.name} unavailable`;
-    button.append(projectSwitcherLabel(group, project), previewStatusPill(preview, project?.available));
+    button.append(projectSwitcherLabel(group, project));
     button.addEventListener("click", () => switchProject(project));
     return button;
   }));
