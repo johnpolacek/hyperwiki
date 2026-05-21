@@ -8,6 +8,20 @@ const wikiNav = document.getElementById("wiki-nav");
 const currentPage = document.getElementById("current-page");
 const openPage = document.getElementById("open-page");
 const completionBadge = document.getElementById("completion-badge");
+const newPlanButton = document.getElementById("new-plan-button");
+const newPlanUi = document.getElementById("new-plan-ui");
+const newPlanClose = document.getElementById("new-plan-close");
+const newPlanTitle = document.getElementById("new-plan-title");
+const newPlanType = document.getElementById("new-plan-type");
+const newPlanIntent = document.getElementById("new-plan-intent");
+const newPlanScore = document.getElementById("new-plan-score");
+const newPlanSummary = document.getElementById("new-plan-summary");
+const newPlanPath = document.getElementById("new-plan-path");
+const newPlanQuestions = document.getElementById("new-plan-questions");
+const newPlanStatus = document.getElementById("new-plan-status");
+const newPlanDefer = document.getElementById("new-plan-defer");
+const newPlanClarify = document.getElementById("new-plan-clarify");
+const newPlanCreate = document.getElementById("new-plan-create");
 const modifyButton = document.getElementById("modify-button");
 const modifyPlanUi = document.getElementById("modify-plan-ui");
 const modifyPlanInput = document.getElementById("modify-plan-input");
@@ -133,6 +147,7 @@ let projectSwitchVersion = 0;
 let pendingProjectRemovalId = null;
 const selectedProjectCheckoutBySlug = new Map();
 let currentPlanPath = "/wiki/plans/index.html";
+let planCreationState = { answers: new Map(), response: null };
 let sidebarFocusKey = "";
 let nonPlanPromptSubmitted = false;
 let settingsState = null;
@@ -395,6 +410,36 @@ executeButton.addEventListener("click", () => {
     });
 });
 
+newPlanButton.addEventListener("click", () => {
+  const open = newPlanUi.hidden;
+  newPlanUi.hidden = !open;
+  newPlanButton.setAttribute("aria-expanded", String(open));
+  if (open) {
+    modifyPlanUi.hidden = true;
+    modifyButton.setAttribute("aria-expanded", "false");
+    void clarifyNewPlan();
+    requestAnimationFrame(() => newPlanTitle.focus());
+  }
+});
+
+newPlanClose.addEventListener("click", closeNewPlanUi);
+newPlanTitle.addEventListener("input", debounceNewPlanClarify);
+newPlanIntent.addEventListener("input", debounceNewPlanClarify);
+newPlanType.addEventListener("change", () => void clarifyNewPlan());
+newPlanClarify.addEventListener("click", () => void clarifyNewPlan());
+
+newPlanUi.addEventListener("input", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLTextAreaElement) || !target.dataset.questionId) return;
+  planCreationState.answers.set(target.dataset.questionId, target.value);
+  newPlanCreate.disabled = true;
+});
+
+newPlanUi.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await createNewPlan();
+});
+
 newWorktreeTerminalButton.addEventListener("click", (event) => {
   event.stopPropagation();
   if (repoContextState && !repoContextState.git?.root) {
@@ -424,6 +469,8 @@ modifyButton.addEventListener("click", () => {
   modifyPlanUi.hidden = !open;
   modifyButton.setAttribute("aria-expanded", String(open));
   if (open) {
+    newPlanUi.hidden = true;
+    newPlanButton.setAttribute("aria-expanded", "false");
     resizePlanTextarea(modifyPlanInput);
     requestAnimationFrame(() => modifyPlanInput.focus());
   }
@@ -449,6 +496,112 @@ modifyPlanUi.addEventListener("submit", async (event) => {
     modifyPlanStatus.textContent = error.message || "Agent unavailable.";
   }
 });
+
+let newPlanClarifyTimer = null;
+
+function debounceNewPlanClarify() {
+  clearTimeout(newPlanClarifyTimer);
+  newPlanClarifyTimer = setTimeout(() => void clarifyNewPlan(), 350);
+}
+
+function closeNewPlanUi() {
+  newPlanUi.hidden = true;
+  newPlanButton.setAttribute("aria-expanded", "false");
+}
+
+function newPlanPayload() {
+  return {
+    title: newPlanTitle.value.trim(),
+    intent: newPlanIntent.value.trim(),
+    planType: newPlanType.value,
+    answers: [...planCreationState.answers.entries()].map(([id, answer]) => ({ id, answer }))
+  };
+}
+
+async function clarifyNewPlan() {
+  const payload = newPlanPayload();
+  newPlanStatus.textContent = "Checking clarity...";
+  try {
+    const response = await api(projectPath("/api/plans/clarify"), {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    planCreationState.response = response;
+    renderNewPlanClarification(response);
+    newPlanStatus.textContent = response.ready
+      ? "Ready to create."
+      : "Answer the next questions to improve clarity.";
+  } catch (error) {
+    newPlanStatus.textContent = error.message || "Unable to clarify plan.";
+  }
+}
+
+function renderNewPlanClarification(response) {
+  newPlanScore.textContent = `Clarity ${response.score || 0}%`;
+  const conflict = response.pathAvailable === false
+    ? ` Path already exists${response.suggestedSlug ? `; try ${response.suggestedSlug}.` : "."}`
+    : "";
+  newPlanSummary.textContent = `${response.summary || "Answer the next questions."}${conflict}`;
+  newPlanPath.textContent = response.path || "/wiki/plans/features/new-plan.html";
+  newPlanCreate.disabled = response.pathAvailable === false || (!response.ready && !newPlanDefer.checked);
+  newPlanQuestions.replaceChildren(...(response.questions || []).map(renderNewPlanQuestion));
+}
+
+function renderNewPlanQuestion(question) {
+  const label = document.createElement("label");
+  label.className = `new-plan-question impact-${question.impact || "optional"}`;
+  const header = document.createElement("span");
+  header.textContent = `${question.label} · ${question.impact}`;
+  const prompt = document.createElement("strong");
+  prompt.textContent = question.prompt;
+  const textarea = document.createElement("textarea");
+  textarea.rows = 2;
+  textarea.dataset.questionId = question.id;
+  textarea.value = planCreationState.answers.get(question.id) || "";
+  textarea.placeholder = "Answer with the details future implementation needs...";
+  label.append(header, prompt, textarea);
+  return label;
+}
+
+async function createNewPlan() {
+  await clarifyNewPlan();
+  const response = planCreationState.response;
+  if (!response?.ready && !newPlanDefer.checked) {
+    newPlanStatus.textContent = "Plan creation is blocked until required questions are answered.";
+    return;
+  }
+  newPlanStatus.textContent = "Creating plan...";
+  try {
+    const result = await api(projectPath("/api/plans/create"), {
+      method: "POST",
+      body: JSON.stringify({
+        ...newPlanPayload(),
+        allowDeferredUnknowns: newPlanDefer.checked
+      })
+    });
+    newPlanStatus.textContent = `Created ${result.displayPath || result.path}.`;
+    closeNewPlanUi();
+    await loadWikiNav();
+    await loadWorkspaceSummary();
+    activateWorkspaceLocation(result.displayPath || result.path);
+    resetNewPlanForm();
+  } catch (error) {
+    newPlanStatus.textContent = error.message || "Unable to create plan.";
+  }
+}
+
+function resetNewPlanForm() {
+  planCreationState = { answers: new Map(), response: null };
+  newPlanTitle.value = "";
+  newPlanIntent.value = "";
+  newPlanType.value = "feature";
+  newPlanDefer.checked = false;
+  newPlanQuestions.replaceChildren();
+  newPlanScore.textContent = "Clarity 0%";
+  newPlanSummary.textContent = "Add a title and intent to start.";
+  newPlanPath.textContent = "wiki/plans/features/new-plan.html";
+  newPlanCreate.disabled = true;
+}
 
 planPromptInput.addEventListener("input", resizePlanPromptInput);
 planPromptInput.addEventListener("keydown", submitFormWithCommandEnter);
@@ -904,6 +1057,7 @@ async function showProjectsPage(options = {}) {
   openPage.href = "/projects";
   modifyPlanUi.hidden = true;
   modifyButton.setAttribute("aria-expanded", "false");
+  closeNewPlanUi();
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
   syncSidebarKeyboardState();
@@ -928,6 +1082,7 @@ async function showNewProjectPage(options = {}) {
   openPage.href = "/projects/new";
   modifyPlanUi.hidden = true;
   modifyButton.setAttribute("aria-expanded", "false");
+  closeNewPlanUi();
   setCommandBarCompleted(false);
   wikiNav.querySelectorAll("a").forEach((link) => link.classList.remove("active"));
   syncSidebarKeyboardState();
@@ -4214,9 +4369,11 @@ function embeddedWikiPageComplete() {
 
 function setCommandBarCompleted(completed) {
   completionBadge.hidden = !completed;
+  newPlanButton.hidden = completed;
   modifyButton.hidden = completed;
   executeButton.hidden = completed;
   if (completed) {
+    closeNewPlanUi();
     modifyPlanUi.hidden = true;
     modifyButton.setAttribute("aria-expanded", "false");
   }

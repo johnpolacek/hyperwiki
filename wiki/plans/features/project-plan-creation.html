@@ -205,7 +205,7 @@
       <dl class="summary-grid">
         <div>
           <dt>Status</dt>
-          <dd>active</dd>
+          <dd>complete</dd>
         </div>
         <div>
           <dt>Shape</dt>
@@ -213,11 +213,11 @@
         </div>
         <div>
           <dt>Current unit</dt>
-          <dd>Unit 01 - Clarification contract</dd>
+          <dd>All units complete</dd>
         </div>
         <div>
           <dt>Next action</dt>
-          <dd>Define the LLM Q&amp;A loop before project-scoped writes.</dd>
+          <dd>Review the feature worktree, then finish/merge when accepted.</dd>
         </div>
         <div>
           <dt>Blockers</dt>
@@ -225,7 +225,7 @@
         </div>
         <div>
           <dt>Validation</dt>
-          <dd><code>pnpm run check</code>, Rust command tests, and app workflow smoke.</dd>
+          <dd><code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, targeted Rust tests, and static browser shell check.</dd>
         </div>
       </dl>
     </section>
@@ -395,6 +395,16 @@
         <li>2026-05-21: Fixed the existing plan sidebar tree so active feature plans under <code>wiki/plans/features/*.html</code> render as top-level plan entries. This was discovered after adding this plan directly to the wiki and finding that the Tauri app listed the planning dashboard but not the active feature plan.</li>
         <li>2026-05-21: Fixed wiki status extraction so completed plans with a plain <code>Summary</code> section, such as <code>Remove Legacy Node Runtime</code>, group under Completed Plans in the Tauri sidebar.</li>
         <li>2026-05-21: Added the requirement that project plan creation include an LLM-led Q&amp;A clarification loop before generating plan files.</li>
+        <li>2026-05-21: Implemented the full project plan creation workflow in branch <code>feature/project-plan-creation</code>: Rust clarify/create endpoints, clarity gate tests, generated plan file writes, dashboard/log updates, conflict feedback, and the workspace <code>+ plan</code> Q&amp;A surface.</li>
+      </ul>
+    </section>
+
+    <section class="panel" aria-labelledby="closeout">
+      <h2 id="closeout">Closeout</h2>
+      <ul>
+        <li>Status: complete in the feature worktree.</li>
+        <li>Verification passed: <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml plan_creation</code>, and static agent-browser shell inspection.</li>
+        <li>Manual Tauri command-transport clickthrough remains the review step after launching the worktree app, because file-based browser inspection cannot invoke desktop Tauri commands.</li>
       </ul>
     </section>
 
