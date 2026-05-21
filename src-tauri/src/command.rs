@@ -196,6 +196,52 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
+    if request.method == "POST" && request.path.starts_with("/api/plans/clarify") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::plan_creation::PlanClarifyRequest>(body)
+                    .ok()
+            })
+            .unwrap_or(crate::domain::plan_creation::PlanClarifyRequest {
+                title: String::new(),
+                intent: String::new(),
+                plan_type: String::new(),
+                answers: Vec::new(),
+            });
+        return json_response(
+            200,
+            &crate::domain::plan_creation::clarify_plan_for_root(
+                project.as_ref().map(|project| project.root.as_path()),
+                parsed,
+            ),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/plans/create") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for plan creation.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::plan_creation::PlanCreateRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::plan_creation::PlanCreateRequest {
+                title: String::new(),
+                intent: String::new(),
+                plan_type: String::new(),
+                answers: Vec::new(),
+                allow_deferred_unknowns: false,
+            });
+        return match crate::domain::plan_creation::create_plan(&project.root, parsed) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/repo") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -1104,6 +1150,41 @@ mod tests {
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
         assert!(response.text.contains("/wiki/index.html"));
+    }
+
+    #[test]
+    fn plan_creation_endpoints_clarify_and_create_project_plan() {
+        let _guard = env_lock();
+        let root = temp_root("command-plan-create");
+        let home = temp_root("command-plan-create-home");
+        make_hyperwiki_project(&root, "Plan Create Command");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+        let project = crate::domain::projects::ProjectRegistry::from_environment()
+            .register(&root)
+            .unwrap();
+
+        let clarify = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/plans/clarify?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[]}".to_string()),
+        });
+        assert!(clarify.ok);
+        assert!(clarify.text.contains("\"ready\":false"));
+        assert!(clarify.text.contains("\"questions\""));
+
+        let create = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/plans/create?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[{\"id\":\"outcome\",\"answer\":\"Visible import workflow.\"},{\"id\":\"workflow\",\"answer\":\"Open import, choose file, preview, commit.\"},{\"id\":\"scope\",\"answer\":\"CSV import only; no scheduled sync.\"},{\"id\":\"surface\",\"answer\":\"Planning page and import route.\"},{\"id\":\"validation\",\"answer\":\"Rust and UI smoke tests.\"},{\"id\":\"risks\",\"answer\":\"Malformed rows and duplicate customers.\"}]}".to_string()),
+        });
+        assert!(create.ok, "{}", create.text);
+        assert!(root
+            .join("wiki")
+            .join("plans")
+            .join("features")
+            .join("import-csv.html")
+            .exists());
     }
 
     #[test]

@@ -119,6 +119,7 @@
       <div class="wiki-command-bar">
         <nav id="current-page" class="wiki-breadcrumbs" aria-label="Current wiki location">/wiki/index.html</nav>
         <span id="completion-badge" class="completion-badge" hidden>Completed</span>
+        <button type="button" id="new-plan-button" class="modify-button" aria-expanded="false" aria-controls="new-plan-ui">+ plan</button>
         <button type="button" id="modify-button" class="modify-button" aria-expanded="false" aria-controls="modify-plan-ui">Modify</button>
         <button type="button" id="execute-button" class="execute-button">Execute</button>
         <a id="preview-link" class="preview-link" href="#" target="_blank" rel="noreferrer" hidden>Open preview</a>
@@ -136,6 +137,51 @@
           <span>Send</span>
         </button>
         <p id="modify-plan-status" role="status"></p>
+      </form>
+      <form id="new-plan-ui" class="new-plan-ui" hidden>
+        <header>
+          <div>
+            <h2>Create Plan</h2>
+            <p>Answer the highest-impact questions until the clarity gate passes.</p>
+          </div>
+          <button type="button" id="new-plan-close" aria-label="Close create plan">Close</button>
+        </header>
+        <div class="new-plan-grid">
+          <label>
+            <span>Title</span>
+            <input id="new-plan-title" autocomplete="off" placeholder="Example: CSV Import Pipeline">
+          </label>
+          <label>
+            <span>Type</span>
+            <select id="new-plan-type">
+              <option value="feature">Feature</option>
+              <option value="fix">Fix</option>
+              <option value="cleanup">Cleanup</option>
+              <option value="research">Research</option>
+            </select>
+          </label>
+          <label class="new-plan-intent">
+            <span>Intent</span>
+            <textarea id="new-plan-intent" rows="3" placeholder="What should this plan accomplish?"></textarea>
+          </label>
+        </div>
+        <section class="new-plan-status-panel" aria-label="Plan clarity">
+          <div>
+            <strong id="new-plan-score">Clarity 0%</strong>
+            <span id="new-plan-summary">Add a title and intent to start.</span>
+          </div>
+          <code id="new-plan-path">wiki/plans/features/new-plan.html</code>
+        </section>
+        <section id="new-plan-questions" class="new-plan-questions" aria-label="Clarifying questions"></section>
+        <p id="new-plan-status" class="new-plan-status" role="status"></p>
+        <footer>
+          <label class="new-plan-defer">
+            <input id="new-plan-defer" type="checkbox">
+            <span>Allow low-risk unknowns to be recorded as deferred</span>
+          </label>
+          <button type="button" id="new-plan-clarify">Ask next questions</button>
+          <button type="submit" id="new-plan-create" disabled>Create plan</button>
+        </footer>
       </form>
       <section id="projects-page" class="dashboard-page projects-page" aria-label="hyperwiki Projects" hidden>
         <header class="dashboard-page-header">
