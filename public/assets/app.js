@@ -4476,7 +4476,7 @@ async function createTerminal(name, options = {}) {
     onData: (data) => {
       const text = typeof data === "string" ? data : decoder.decode(data, { stream: true });
       recordTerminalOutput(session, text);
-      term.write(data);
+      term.write(normalizeTerminalOutputForDisplay(text));
     },
     onOpen: () => {
       tab.classList.add("connected");
@@ -4656,6 +4656,10 @@ function codexReadyFromOutput(output) {
 
 function stripTerminalControl(value) {
   return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, "");
+}
+
+function normalizeTerminalOutputForDisplay(data) {
+  return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
 }
 
 function normalizeTerminalInput(data) {

@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 fix | terminal control sequence display</h2>
+  <ul>
+    <li>Filtered synchronized-output private mode toggles from terminal display output so Codex handoffs do not leave visible <code>?2026h</code> text in the agent prompt line.</li>
+    <li>Kept terminal input, session output recording, and prompt routing behavior unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 implementation | non-Git worktree onboarding</h2>
   <ul>
     <li>Changed the branch rail to show an <code>init git</code> action instead of <code>+ worktree</code> when the active project has no Git root, avoiding the previous failed worktree creation request.</li>
