@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 implementation | Tauri project create and removal parity</h2>
+  <ul>
+    <li>Ported dashboard project creation into Rust, including compatible HTML wiki scaffold creation, optional initial Git commit, project registry registration, and workspace URL generation.</li>
+    <li>Ported project removal into Rust with stale-id root fallback, safe delete guardrails, registry updates, and optional file deletion.</li>
+    <li>Added Tauri command transport coverage for <code>POST /api/projects/create</code> and <code>DELETE /api/projects/:id</code>.</li>
+    <li>Verified with focused Rust domain and command tests. Stage 06 Unit 02 remains open for Rust-native <code>init</code>/<code>reset</code>, generated-project instruction reconciliation, and final packaging docs before Node runtime removal.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | complete Tauri rewrite</h2>
   <ul>
     <li>Decision: plan Hyperwiki's desktop direction as a complete Tauri rewrite rather than an Electron app or Tauri shell around the existing Node server.</li>

@@ -90,6 +90,49 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 .list(active_id.as_deref()),
         );
     }
+    if request.method == "POST" && request.path.starts_with("/api/projects/create") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::projects::ProjectCreateRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::projects::ProjectCreateRequest {
+                title: String::new(),
+                summary: None,
+                document: None,
+                document_type: None,
+                initialize_git: None,
+            });
+        return match crate::domain::projects::create_project_from_dashboard(&registry, body) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "DELETE" && request.path.starts_with("/api/projects/") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let path_without_query = request
+            .path
+            .split_once('?')
+            .map(|(path, _)| path)
+            .unwrap_or(&request.path);
+        let id = path_without_query.trim_start_matches("/api/projects/");
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::projects::ProjectRemoveRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::projects::ProjectRemoveRequest {
+                delete_files: false,
+                root: None,
+            });
+        return match registry.remove_with_root_fallback(id, body) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/layout") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
@@ -734,6 +777,62 @@ mod tests {
         assert!(dropped.text.contains(".hyperwiki"));
         assert!(!rejected_open.ok);
         assert_eq!(rejected_open.status, 400);
+    }
+
+    #[test]
+    fn project_create_and_remove_endpoints_manage_registry() {
+        let _guard = env_lock();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let home = temp_root("command-project-create-home");
+        let projects_dir = temp_root("command-projects-dir");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+
+        let created = hyperwiki_request(HyperwikiRequest {
+            path: "/api/projects/create".to_string(),
+            method: "POST".to_string(),
+            body: Some(
+                serde_json::json!({
+                    "title": "Command Project",
+                    "summary": "Created through Rust command transport.",
+                    "initializeGit": false
+                })
+                .to_string(),
+            ),
+        });
+        let created_value = serde_json::from_str::<serde_json::Value>(&created.text).unwrap();
+        let project_id = created_value["project"]["id"].as_str().unwrap().to_string();
+        let project_root = created_value["project"]["root"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let removed = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/projects/{project_id}"),
+            method: "DELETE".to_string(),
+            body: Some(
+                serde_json::json!({
+                    "deleteFiles": true,
+                    "root": project_root
+                })
+                .to_string(),
+            ),
+        });
+
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+        assert!(created.ok);
+        assert!(created
+            .text
+            .contains("\"workspaceUrl\":\"/workspace/command-project/main\""));
+        assert!(removed.ok);
+        assert!(removed.text.contains("\"deletedFiles\":true"));
     }
 
     #[test]

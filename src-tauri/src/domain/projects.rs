@@ -66,6 +66,44 @@ pub struct ProjectList {
     pub active_project_id: Option<String>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectCreateRequest {
+    pub title: String,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub document: Option<String>,
+    #[serde(default)]
+    pub document_type: Option<String>,
+    #[serde(default)]
+    pub initialize_git: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectCreateResponse {
+    pub project: ProjectRecord,
+    pub workspace_url: String,
+    pub git: crate::domain::git::GitInitResult,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectRemoveRequest {
+    #[serde(default)]
+    pub delete_files: bool,
+    #[serde(default)]
+    pub root: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectRemoveResponse {
+    pub project: ProjectRecord,
+    pub deleted_files: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectInfo {
     pub root: PathBuf,
@@ -249,6 +287,151 @@ impl ProjectRegistry {
         }
         Ok(Some(removed))
     }
+
+    pub fn remove_with_root_fallback(
+        &self,
+        id: &str,
+        request: ProjectRemoveRequest,
+    ) -> Result<ProjectRemoveResponse, (u16, String)> {
+        let mut registry = self.read_raw();
+        let requested_root = request.root.as_deref();
+        let Some(index) = registry.projects.iter().position(|project| {
+            project.id == id
+                || requested_root
+                    .map(|root| same_path(&project.root, root))
+                    .unwrap_or(false)
+        }) else {
+            return Err((404, "Project not found.".to_string()));
+        };
+        let removed = registry.projects.remove(index);
+        if request.delete_files && unsafe_removal_root(&removed.root) {
+            return Err((400, "Refusing to delete unsafe project root.".to_string()));
+        }
+        write_registry_file(&self.file_path, &registry).map_err(|error| (500, error))?;
+        if request.delete_files {
+            fs::remove_dir_all(&removed.root).map_err(|error| (500, error.to_string()))?;
+        }
+        Ok(ProjectRemoveResponse {
+            project: removed,
+            deleted_files: request.delete_files,
+        })
+    }
+}
+
+pub fn create_project_from_dashboard(
+    registry: &ProjectRegistry,
+    request: ProjectCreateRequest,
+) -> Result<ProjectCreateResponse, (u16, String)> {
+    let title = request.title.trim();
+    if title.is_empty() {
+        return Err((400, "Project title is required.".to_string()));
+    }
+    let summary = request
+        .summary
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("Imported from Dashboard markdown.");
+    let project_root = unique_project_root(title).map_err(|error| (500, error))?;
+    fs::create_dir_all(&project_root).map_err(|error| (500, error.to_string()))?;
+    init_hyperwiki_project(
+        &project_root,
+        InitProjectOptions {
+            project_name: title.to_string(),
+            summary: summary.to_string(),
+            source_document: request.document.unwrap_or_default(),
+            source_document_type: request.document_type.unwrap_or_default(),
+            agent_launch_command: String::new(),
+            overwrite: false,
+        },
+    )
+    .map_err(|error| (500, error))?;
+    let git = if request.initialize_git == Some(false) {
+        crate::domain::git::GitInitResult {
+            status: "skipped".to_string(),
+            git_root: None,
+            committed: false,
+            message: None,
+        }
+    } else {
+        crate::domain::git::initialize_git_onboarding(&project_root)
+            .map_err(|error| (500, error))?
+            .result
+    };
+    let record = registry
+        .register(&project_root)
+        .map_err(|error| (500, error))?;
+    let workspace_url = format!(
+        "/workspace/{}/{}",
+        percent_encode_path_segment(&record.project_slug),
+        percent_encode_path_segment(&record.worktree_slug)
+    );
+    Ok(ProjectCreateResponse {
+        project: record,
+        workspace_url,
+        git,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub struct InitProjectOptions {
+    pub project_name: String,
+    pub summary: String,
+    pub source_document: String,
+    pub source_document_type: String,
+    pub agent_launch_command: String,
+    pub overwrite: bool,
+}
+
+pub fn init_hyperwiki_project(
+    root: impl AsRef<Path>,
+    options: InitProjectOptions,
+) -> Result<(), String> {
+    let root = root.as_ref();
+    let slug = slugify(&options.project_name);
+    fs::create_dir_all(root.join(".hyperwiki").join("state")).map_err(|error| error.to_string())?;
+    fs::create_dir_all(root.join(".hyperwiki").join("sessions"))
+        .map_err(|error| error.to_string())?;
+    write_if_safe(
+        &root.join(".hyperwiki").join("config.json"),
+        &format!(
+            "{}\n",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "projectName": options.project_name,
+                "canonicalWiki": "html",
+                "dev": {
+                    "host": "127.0.0.1",
+                    "port": 4177,
+                    "command": "",
+                    "previewUrl": format!("https://{slug}.localhost")
+                },
+                "worktrees": {
+                    "previewUrlPattern": format!("https://<branch-slug>.{slug}.localhost"),
+                    "workflow": "parallel-dev-worktrees"
+                },
+                "agent": {
+                    "launchCommand": options.agent_launch_command
+                },
+                "layout": {
+                    "panels": [
+                        { "name": "agent", "role": "agent", "command": options.agent_launch_command },
+                        { "name": "cli", "role": "shell", "command": null }
+                    ]
+                },
+                "runtimeState": ".hyperwiki/state",
+                "sessions": ".hyperwiki/sessions"
+            }))
+            .map_err(|error| error.to_string())?
+        ),
+        options.overwrite,
+    )?;
+    write_if_safe(
+        &root.join("AGENTS.md"),
+        &agents_markdown(&options),
+        options.overwrite,
+    )?;
+    write_basic_wiki(root, &options)?;
+    Ok(())
 }
 
 pub fn project_from_root(root: impl AsRef<Path>) -> ProjectInfo {
@@ -470,6 +653,225 @@ fn same_path(left: &Path, right: &Path) -> bool {
     left.canonicalize().ok() == right.canonicalize().ok()
 }
 
+fn unique_project_root(title: &str) -> Result<PathBuf, String> {
+    let base_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Projects")))
+        .unwrap_or_else(|| PathBuf::from("Projects"));
+    let base_slug = slugify(title);
+    let mut candidate = base_dir.join(&base_slug);
+    let mut count = 2;
+    while candidate.exists() {
+        candidate = base_dir.join(format!("{base_slug}-{count}"));
+        count += 1;
+    }
+    Ok(candidate)
+}
+
+fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
+    let pages = [
+        ("wiki/index.html", index_page(options)),
+        ("wiki/AGENTS.html", wiki_agent_page(options)),
+        ("wiki/log.html", log_page(options)),
+        ("wiki/sources.html", sources_page(options)),
+        ("wiki/scaffold-contract.html", simple_page(options, "Scaffold Contract", "Hyperwiki scaffold conventions for HTML-first project wikis.")),
+        ("wiki/roadmap.html", simple_page(options, "Roadmap", "Confirm project goals, implement the first slice, and record validation.")),
+        ("wiki/architecture.html", simple_page(options, "Architecture", "Document the project architecture as implementation evidence grows.")),
+        ("wiki/dev.html", simple_page(options, "Development Workflow", "Use local commands, Git, Portless previews, and Hyperwiki plans for implementation work.")),
+        ("wiki/plans/index.html", plans_index_page(options)),
+        ("wiki/plans/mvp/index.html", simple_page(options, "MVP Plan", "Track MVP stages and implementation units.")),
+        ("wiki/plans/mvp/implementation-spec.html", simple_page(options, "Implementation Spec", "Capture implementation scope, constraints, and verification expectations.")),
+        ("wiki/plans/mvp/stage-01-foundation.html", stage_page(options)),
+        ("wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html", unit_page(options, "Unit 01 - Confirm Project Direction", "Confirm project goals, audience, non-goals, and success criteria.")),
+        ("wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html", unit_page(options, "Unit 02 - Review Repository Setup", "Review repository setup and development commands.")),
+        ("wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html", unit_page(options, "Unit 03 - Update Source Briefs", "Update source briefs and roadmap from real project evidence.")),
+        ("wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html", unit_page(options, "Unit 04 - Define First Implementation Unit", "Define the first implementation unit and verification path.")),
+        ("wiki/plans/mvp/stage-02-dev-workspace.html", simple_page(options, "Stage 02 - First Implementation Track", "Implement the first approved feature or architecture slice.")),
+        ("wiki/plans/mvp/stage-03-dogfood-hardening.html", simple_page(options, "Stage 03 - Hardening And Release Readiness", "Close verification gaps and update durable docs.")),
+        ("wiki/sources/prd.html", source_page(options, "Product Brief")),
+        ("wiki/sources/technical-brief.html", source_page(options, "Technical Brief")),
+        ("wiki/sources/design-brief.html", source_page(options, "Design Brief")),
+        ("wiki/sources/planning-interview.html", source_page(options, "Planning Interview")),
+        ("wiki/sources/import.html", import_page(options)),
+    ];
+    for (relative, content) in pages {
+        write_if_safe(&root.join(relative), &content, options.overwrite)?;
+    }
+    Ok(())
+}
+
+fn write_if_safe(path: &Path, content: &str, overwrite: bool) -> Result<(), String> {
+    if path.exists() && !overwrite {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn layout(options: &InitProjectOptions, title: &str, body: &str) -> String {
+    format!(
+        r#"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{} - {}</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">{}</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page">
+    {body}
+  </main>
+</body>
+</html>
+"#,
+        escape_html(title),
+        escape_html(&options.project_name),
+        escape_html(&options.project_name),
+    )
+}
+
+fn index_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Home",
+        &format!(
+            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul><li><a href=\"/wiki/plans/mvp/index.html\">MVP plan</a></li><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li></ul></section>",
+            escape_html(&options.project_name),
+            escape_html(&options.summary)
+        ),
+    )
+}
+
+fn plans_index_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Plans",
+        "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.html\">Stage 01 - Project Direction And Setup</a></li></ul>",
+    )
+}
+
+fn stage_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Stage 01 - Project Direction And Setup",
+        "<h1>Stage 01 - Project Direction And Setup</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html\">Unit 01 - Confirm Project Direction</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html\">Unit 02 - Review Repository Setup</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html\">Unit 03 - Update Source Briefs</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html\">Unit 04 - Define First Implementation Unit</a></li></ul>",
+    )
+}
+
+fn unit_page(options: &InitProjectOptions, title: &str, summary: &str) -> String {
+    layout(
+        options,
+        title,
+        &format!(
+            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>",
+            escape_html(title),
+            escape_html(summary)
+        ),
+    )
+}
+
+fn source_page(options: &InitProjectOptions, title: &str) -> String {
+    layout(
+        options,
+        title,
+        &format!(
+            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>{}</li></ul></section>",
+            escape_html(title),
+            escape_html(&options.summary)
+        ),
+    )
+}
+
+fn import_page(options: &InitProjectOptions) -> String {
+    let body = if options.source_document.is_empty() {
+        "<h1>Source Import</h1><p>No source document was imported.</p>".to_string()
+    } else {
+        format!(
+            "<h1>Source Import</h1><p>Type: {}</p><pre>{}</pre>",
+            escape_html(&options.source_document_type),
+            escape_html(&options.source_document)
+        )
+    };
+    layout(options, "Source Import", &body)
+}
+
+fn simple_page(options: &InitProjectOptions, title: &str, text: &str) -> String {
+    layout(
+        options,
+        title,
+        &format!(
+            "<h1>{}</h1><p>{}</p>",
+            escape_html(title),
+            escape_html(text)
+        ),
+    )
+}
+
+fn log_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Log",
+        "<h1>Project Log</h1><article><h2>bootstrap | initialize HTML-first project wiki</h2><ul><li>Mode: bootstrap_new.</li><li>Canonical wiki format: HTML.</li></ul></article>",
+    )
+}
+
+fn sources_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Sources",
+        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li></ul>",
+    )
+}
+
+fn wiki_agent_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Wiki Agent Guide",
+        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.html before project-specific work and use wiki/sources.html as the source index.</p>",
+    )
+}
+
+fn agents_markdown(options: &InitProjectOptions) -> String {
+    format!(
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        options.project_name
+    )
+}
+
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    value
+        .bytes()
+        .flat_map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => {
+                vec![byte as char]
+            }
+            _ => format!("%{byte:02X}").chars().collect(),
+        })
+        .collect()
+}
+
 fn generated_id() -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -658,6 +1060,79 @@ mod tests {
         assert_eq!(removed.id, "remove");
         assert!(root.exists());
         assert!(ProjectRegistry::new(&home).read_raw().projects.is_empty());
+    }
+
+    #[test]
+    fn creates_dashboard_project_with_wiki_git_and_registry_record() {
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let projects_dir = temp_root("create-projects-dir");
+        let home = temp_root("create-home");
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let registry = ProjectRegistry::new(&home);
+
+        let created = create_project_from_dashboard(
+            &registry,
+            ProjectCreateRequest {
+                title: "MarkdownStack".to_string(),
+                summary: Some("A Markdown pattern library.".to_string()),
+                document: Some("# Source\n".to_string()),
+                document_type: Some("markdown".to_string()),
+                initialize_git: Some(true),
+            },
+        )
+        .unwrap();
+
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+        assert_eq!(created.project.name, "MarkdownStack");
+        assert_eq!(created.project.project_slug, "markdownstack");
+        assert_eq!(created.workspace_url, "/workspace/markdownstack/main");
+        assert_eq!(created.git.status, "committed");
+        assert!(created
+            .project
+            .root
+            .join("wiki")
+            .join("index.html")
+            .is_file());
+        assert!(created
+            .project
+            .root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-foundation.html")
+            .is_file());
+        assert!(registry
+            .list(Some(&created.project.id))
+            .checkouts
+            .iter()
+            .any(|project| project.id == created.project.id));
+    }
+
+    #[test]
+    fn removes_project_by_root_fallback_and_deletes_files_when_requested() {
+        let home = temp_root("remove-root-home");
+        let root = temp_root("remove-root-project");
+        make_project(&root, "Remove Root Project");
+        let registry = ProjectRegistry::new(&home);
+        let registered = registry.register(&root).unwrap();
+
+        let removed = registry
+            .remove_with_root_fallback(
+                "stale-id",
+                ProjectRemoveRequest {
+                    delete_files: true,
+                    root: Some(root.clone()),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(removed.project.id, registered.id);
+        assert!(removed.deleted_files);
+        assert!(!root.exists());
+        assert!(registry.read_raw().projects.is_empty());
     }
 
     fn record(
