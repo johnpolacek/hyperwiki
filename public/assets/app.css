@@ -4050,7 +4050,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminal.xterm-host {
-  background: transparent;
+  background: var(--terminal-bg);
   border-radius: 0;
   box-shadow: none;
   font-family: var(--terminal-font);
@@ -4067,6 +4067,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminal.xterm-host .xterm-viewport {
+  background-color: var(--terminal-bg);
   scrollbar-gutter: stable;
 }
 

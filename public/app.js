@@ -1843,6 +1843,7 @@ function applyTheme(settings) {
     "--terminal-accent": theme.tokens.terminal.accent,
     "--terminal-font": theme.tokens.terminal.font || defaultTerminalFont()
   });
+  refreshTerminalTheme();
   applyWikiFrameTheme(theme);
 }
 
@@ -1998,6 +1999,49 @@ function inferTerminalMode(terminal, fallbackMode) {
 
 function defaultTerminalFont() {
   return monoFontOptions.find((font) => font.label === "Sometype Mono")?.value || monoFontOptions[0]?.value || fontOptions[0].value;
+}
+
+function currentTerminalOptions() {
+  const styles = getComputedStyle(document.documentElement);
+  const value = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+  const bg = value("--terminal-bg", "#272822");
+  const text = value("--terminal-text", "#f8f8f2");
+  const muted = value("--terminal-muted", "#75715e");
+  const accent = value("--terminal-accent", "#66d9ef");
+  const border = value("--terminal-border", "#49483e");
+  return {
+    fontFamily: value("--terminal-font", defaultTerminalFont()),
+    theme: {
+      background: bg,
+      foreground: text,
+      cursor: text,
+      selectionBackground: border,
+      black: bg,
+      red: "#f92672",
+      green: "#a6e22e",
+      yellow: "#e6db74",
+      blue: accent,
+      magenta: "#ae81ff",
+      cyan: accent,
+      white: text,
+      brightBlack: muted,
+      brightRed: "#f92672",
+      brightGreen: "#a6e22e",
+      brightYellow: "#e6db74",
+      brightBlue: accent,
+      brightMagenta: "#ae81ff",
+      brightCyan: accent,
+      brightWhite: text
+    }
+  };
+}
+
+function refreshTerminalTheme() {
+  const options = currentTerminalOptions();
+  terminalSessions.forEach((session) => {
+    session.term.options.fontFamily = options.fontFamily;
+    session.term.options.theme = options.theme;
+  });
 }
 
 function ensureAccent(color, mode) {
@@ -4303,34 +4347,14 @@ async function createTerminal(name, options = {}) {
   let transport;
   let lastLocalInputAt = 0;
   let lastLocalInputWasEnter = false;
+  const terminalOptions = currentTerminalOptions();
   const term = new Terminal({
     cursorBlink: true,
-    fontFamily: "Space Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    fontFamily: terminalOptions.fontFamily,
     fontSize: 14,
     lineHeight: 1.3,
     scrollback: 10000,
-    theme: {
-      background: "#272822",
-      foreground: "#f8f8f2",
-      cursor: "#f8f8f0",
-      selectionBackground: "#49483e",
-      black: "#272822",
-      red: "#f92672",
-      green: "#a6e22e",
-      yellow: "#e6db74",
-      blue: "#66d9ef",
-      magenta: "#ae81ff",
-      cyan: "#66d9ef",
-      white: "#f8f8f2",
-      brightBlack: "#75715e",
-      brightRed: "#f92672",
-      brightGreen: "#a6e22e",
-      brightYellow: "#e6db74",
-      brightBlue: "#66d9ef",
-      brightMagenta: "#ae81ff",
-      brightCyan: "#66d9ef",
-      brightWhite: "#f9f8f5"
-    }
+    theme: terminalOptions.theme
   });
   const fitAddon = new FitAddon();
   const webLinksAddon = new WebLinksAddon();
