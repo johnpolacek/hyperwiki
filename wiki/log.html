@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 fix | custom plan status parsing</h2>
+  <ul>
+    <li>Extended wiki status parsing to recognize custom plan summary metrics such as the Tauri rewrite page's <code>Status</code> definition-list field.</li>
+    <li>This lets completed custom-layout plans group under Completed Plans in the sidebar without moving their durable wiki files.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and Rust wiki status coverage.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 fix | completed plan sidebar grouping</h2>
   <ul>
     <li>Changed the workspace sidebar so completed top-level plan pages render under the Completed Plans group instead of remaining as peer rows beside MVP Plan.</li>

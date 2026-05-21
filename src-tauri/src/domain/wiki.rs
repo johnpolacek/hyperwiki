@@ -120,26 +120,58 @@ fn first_heading(html: &str) -> Option<String> {
 }
 
 fn list_items_from_first_summary(html: &str) -> Vec<String> {
-    let Some(section) =
-        first_between_case_insensitive(html, "<section class=\"summary\"", "</section>")
-    else {
-        return Vec::new();
-    };
     let mut items = Vec::new();
-    let mut rest = section.as_str();
-    while let Some(item) = first_between_case_insensitive(rest, "<li", "</li>") {
-        let content = item
-            .split_once('>')
-            .map(|(_, content)| content)
-            .unwrap_or(&item);
-        items.push(strip_html(content));
-        if let Some((_, next)) = rest.split_once("</li>") {
-            rest = next;
-        } else {
-            break;
+    if let Some(section) =
+        first_between_case_insensitive(html, "<section class=\"summary\"", "</section>")
+    {
+        let mut rest = section.as_str();
+        while let Some(item) = first_between_case_insensitive(rest, "<li", "</li>") {
+            let content = item
+                .split_once('>')
+                .map(|(_, content)| content)
+                .unwrap_or(&item);
+            items.push(strip_html(content));
+            if let Some((_, next)) = rest.split_once("</li>") {
+                rest = next;
+            } else {
+                break;
+            }
+        }
+    }
+    if !items
+        .iter()
+        .any(|item| item.to_lowercase().starts_with("status:"))
+    {
+        if let Some(status) = definition_value_after_term(html, "Status") {
+            items.insert(0, format!("Status: {status}"));
         }
     }
     items
+}
+
+fn definition_value_after_term(html: &str, term: &str) -> Option<String> {
+    let lower = html.to_lowercase();
+    let mut search_from = 0;
+    while let Some(relative_index) = lower[search_from..].find("<dt") {
+        let start = search_from + relative_index;
+        let end = lower[start..].find("</dt>")? + start;
+        let element = &html[start..end];
+        let content = element
+            .split_once('>')
+            .map(|(_, content)| strip_html(content))
+            .unwrap_or_else(|| strip_html(element));
+        if content.trim().eq_ignore_ascii_case(term) {
+            let after = &html[end + "</dt>".len()..];
+            let value = first_between_case_insensitive(after, "<dd", "</dd>")?;
+            let content = value
+                .split_once('>')
+                .map(|(_, content)| content)
+                .unwrap_or(&value);
+            return Some(strip_html(content));
+        }
+        search_from = end + "</dt>".len();
+    }
+    None
 }
 
 fn page_status(summary: &[String], path: &str) -> Option<String> {
@@ -243,6 +275,23 @@ mod tests {
         assert_eq!(pages[0].title, "Home");
         assert_eq!(pages[0].status.as_deref(), Some("active"));
         assert_eq!(pages[1].title, "Feature Plan");
+    }
+
+    #[test]
+    fn parses_custom_plan_status_metric() {
+        let root = temp_root("wiki-custom-status");
+        let plan_dir = root.join("wiki").join("plans");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("tauri-rewrite.html"),
+            "<h1>Tauri Rewrite</h1><dl><div><dt>Status</dt><dd><span>complete</span></dd></div></dl>",
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        assert_eq!(pages[0].path, "/wiki/plans/tauri-rewrite.html");
+        assert_eq!(pages[0].status.as_deref(), Some("complete"));
+        assert_eq!(pages[0].summary[0], "Status: complete");
     }
 
     #[test]

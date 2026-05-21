@@ -798,7 +798,15 @@ async function hydrateWikiPageStatuses(pages) {
 
 function summaryItemsFromHtml(html) {
   const documentElement = new DOMParser().parseFromString(html, "text/html");
-  return [...documentElement.querySelectorAll("section.summary li")].map((item) => item.textContent.trim());
+  const items = [...documentElement.querySelectorAll("section.summary li")].map((item) => item.textContent.trim());
+  const statusMetric = [...documentElement.querySelectorAll("dt")]
+    .find((item) => item.textContent.trim().toLowerCase() === "status")
+    ?.nextElementSibling;
+  const status = statusMetric?.textContent?.trim();
+  if (status && !items.some((item) => /^status:/i.test(item))) {
+    items.unshift(`Status: ${status}`);
+  }
+  return items;
 }
 
 async function loadWorkspaceSummary() {
