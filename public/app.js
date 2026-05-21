@@ -1078,11 +1078,21 @@ function renderProjectSwitcher(groups) {
     button.setAttribute("aria-label", group.name);
     button.title = project?.available ? project.root : `${project?.root || group.name} unavailable`;
     button.append(projectSwitcherLabel(group, project));
+    let pointerSwitchStarted = false;
     button.addEventListener("pointerdown", () => {
+      pointerSwitchStarted = true;
       markProjectSwitcherActive(project);
-      setTimeout(closeTopbarPanels, 10);
+      setTimeout(closeTopbarPanels, 50);
+      void switchProject(project);
     });
-    button.addEventListener("click", () => switchProject(project));
+    button.addEventListener("click", () => {
+      if (pointerSwitchStarted) {
+        pointerSwitchStarted = false;
+        return;
+      }
+      setTimeout(closeTopbarPanels, 50);
+      void switchProject(project);
+    });
     return button;
   }));
 }
