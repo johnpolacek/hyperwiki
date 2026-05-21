@@ -201,7 +201,7 @@
     <section class="hero-strip" aria-labelledby="title">
       <span class="badge status-active">Active</span>
       <h1 id="title">Project Plan Creation</h1>
-      <p>Plan the in-app workflow for creating a durable Hyperwiki plan inside any selected project, using the project root as the write boundary and the project wiki as the source of truth.</p>
+      <p>Plan the in-app workflow for creating a durable Hyperwiki plan inside any selected project, using an LLM-led clarification loop, the project root as the write boundary, and the project wiki as the source of truth.</p>
       <dl class="summary-grid">
         <div>
           <dt>Status</dt>
@@ -209,15 +209,15 @@
         </div>
         <div>
           <dt>Shape</dt>
-          <dd>compact feature plan with four units</dd>
+          <dd>compact feature plan with five units</dd>
         </div>
         <div>
           <dt>Current unit</dt>
-          <dd>Unit 01 - Contract and routing</dd>
+          <dd>Unit 01 - Clarification contract</dd>
         </div>
         <div>
           <dt>Next action</dt>
-          <dd>Implement the project-scoped create-plan API contract.</dd>
+          <dd>Define the LLM Q&amp;A loop before project-scoped writes.</dd>
         </div>
         <div>
           <dt>Blockers</dt>
@@ -232,17 +232,17 @@
 
     <section class="reader-goal" aria-labelledby="reader-goal">
       <h2 id="reader-goal">Reader Goal</h2>
-      <p>After 2 minutes, the reader can start implementation of project-scoped plan creation without confusing Hyperwiki's own repo plan files with a user's selected project plan files.</p>
+      <p>After 2 minutes, the reader can start implementation of project-scoped plan creation with a clear Q&amp;A contract: the LLM keeps asking useful questions until the plan has enough clarity to write, while still avoiding endless interrogation.</p>
     </section>
 
     <section class="panel" aria-labelledby="concept">
       <h2 id="concept">Visual Concept</h2>
-      <p><strong>Local planning control panel.</strong> The feature should feel like a precise repo operation: scoped path preview, explicit write targets, conflict checks, and one clear post-create handoff into the new project plan.</p>
+      <p><strong>Local planning control panel.</strong> The feature should feel like a precise repo operation with an interview rail: scoped path preview, explicit write targets, visible open questions, confidence gates, conflict checks, and one clear post-create handoff into the new project plan.</p>
     </section>
 
     <section class="panel" aria-labelledby="intent">
       <h2 id="intent">Intent</h2>
-      <p>Extend Hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.html">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for Hyperwiki's own repository. The app should create or update files under the selected project's <code>wiki/</code> directory, update that project's planning dashboard, and navigate the user into the newly created project plan.</p>
+      <p>Extend Hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.html">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for Hyperwiki's own repository. The app should interview the user through an LLM-guided clarification loop, create or update files under the selected project's <code>wiki/</code> directory only after the clarity gate passes, update that project's planning dashboard, and navigate the user into the newly created project plan.</p>
     </section>
 
     <section class="workflow-map" aria-labelledby="flow">
@@ -258,16 +258,16 @@
         <text x="95" y="126" text-anchor="middle" fill="#11332f">root selected</text>
         <path d="M170 111 H250" stroke="#9ee6d8" stroke-width="3" marker-end="url(#arrow)"></path>
         <rect x="250" y="50" width="170" height="122" rx="8" fill="#fffdfa" stroke="#9ee6d8"></rect>
-        <text x="335" y="82" text-anchor="middle" fill="#11332f" font-weight="700">Plan Draft</text>
-        <text x="335" y="106" text-anchor="middle" fill="#11332f">title, intent, type</text>
-        <text x="335" y="130" text-anchor="middle" fill="#11332f">slug and path preview</text>
-        <text x="335" y="154" text-anchor="middle" fill="#11332f">dirty-state warning</text>
+        <text x="335" y="82" text-anchor="middle" fill="#11332f" font-weight="700">Q&amp;A Loop</text>
+        <text x="335" y="106" text-anchor="middle" fill="#11332f">ask high-value questions</text>
+        <text x="335" y="130" text-anchor="middle" fill="#11332f">track answers</text>
+        <text x="335" y="154" text-anchor="middle" fill="#11332f">clarity gate</text>
         <path d="M420 111 H500" stroke="#9ee6d8" stroke-width="3" marker-end="url(#arrow)"></path>
         <rect x="500" y="50" width="170" height="122" rx="8" fill="#fffdfa" stroke="#9ee6d8"></rect>
-        <text x="585" y="82" text-anchor="middle" fill="#11332f" font-weight="700">Repo Writes</text>
-        <text x="585" y="106" text-anchor="middle" fill="#11332f">plan page</text>
-        <text x="585" y="130" text-anchor="middle" fill="#11332f">plans index</text>
-        <text x="585" y="154" text-anchor="middle" fill="#11332f">log entry</text>
+        <text x="585" y="82" text-anchor="middle" fill="#11332f" font-weight="700">Plan Draft</text>
+        <text x="585" y="106" text-anchor="middle" fill="#11332f">shape and units</text>
+        <text x="585" y="130" text-anchor="middle" fill="#11332f">slug and path preview</text>
+        <text x="585" y="154" text-anchor="middle" fill="#11332f">repo writes</text>
         <path d="M670 111 H750" stroke="#9ee6d8" stroke-width="3" marker-end="url(#arrow)"></path>
         <rect x="750" y="72" width="150" height="78" rx="8" fill="#f7f5ef" stroke="#9ee6d8"></rect>
         <text x="825" y="103" text-anchor="middle" fill="#11332f" font-weight="700">Workspace</text>
@@ -300,8 +300,8 @@
           </tr>
           <tr>
             <td>UI flow</td>
-            <td>Expose a dense creation surface with title, intent, plan type, generated path, conflict checks, and post-create navigation.</td>
-            <td>Starting implementation automatically before the user reviews the new plan.</td>
+            <td>Expose a dense creation surface with an LLM interview rail, title, intent, plan type, generated path, conflict checks, and post-create navigation.</td>
+            <td>Starting implementation automatically before the user reviews the new plan, or writing a plan while important unanswered questions remain.</td>
           </tr>
           <tr>
             <td>Compatibility</td>
@@ -312,26 +312,66 @@
       </table>
     </section>
 
+    <section class="panel" aria-labelledby="qa-loop">
+      <h2 id="qa-loop">Q&amp;A Clarification Loop</h2>
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th>Gate</th>
+            <th>LLM Behavior</th>
+            <th>Exit Condition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Initial intake</td>
+            <td>Ask for the feature outcome, user workflow, non-goals, affected surface, validation expectation, and hard constraints not visible from repo/wiki context.</td>
+            <td>The LLM can summarize the intended plan in concrete terms and name remaining unknowns.</td>
+          </tr>
+          <tr>
+            <td>Clarity scoring</td>
+            <td>Classify open questions by impact: blocking, important, optional, or safely deferrable. Ask the next batch from the highest-impact unresolved category.</td>
+            <td>No blocking questions remain, and important unknowns are answered or explicitly recorded as assumptions.</td>
+          </tr>
+          <tr>
+            <td>Continuous follow-up</td>
+            <td>After each answer, detect contradictions, newly exposed risks, missing acceptance criteria, schema/API/UX ambiguity, and validation gaps. Ask follow-ups instead of rushing to write.</td>
+            <td>The plan has clear scope, non-goals, dependencies, implementation shape, first execution unit, and verification path.</td>
+          </tr>
+          <tr>
+            <td>Write approval</td>
+            <td>Present a compact proposed plan shape and ask for confirmation only when the remaining ambiguity would materially affect the plan.</td>
+            <td>The user approves the shape, asks to skip questions, or all remaining unknowns are low-risk and documented.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
     <section class="panel" aria-labelledby="units">
       <h2 id="units">Execution Units</h2>
       <ol class="track">
         <li>
-          <h3>Unit 01 - Contract and routing</h3>
+          <h3>Unit 01 - Clarification contract</h3>
+          <p>Define the LLM interview state, clarity scoring, question batching, answer tracking, contradiction handling, and write gate that must pass before plan files are generated.</p>
+          <p><strong>Verification:</strong> Rust or fixture tests for clarity states, blocked writes, deferred unknowns, and generated prompt/context payloads.</p>
+        </li>
+        <li>
+          <h3>Unit 02 - Contract and routing</h3>
           <p>Add the Rust command/API path that accepts project id, title, intent, plan type, and optional first unit, then resolves the selected project root safely.</p>
           <p><strong>Verification:</strong> Rust tests for root resolution, slug conflicts, path refusal, and payload validation.</p>
         </li>
         <li>
-          <h3>Unit 02 - Wiki file generation</h3>
+          <h3>Unit 03 - Wiki file generation</h3>
           <p>Write the compact plan page, update the selected project's planning dashboard, and append a project-context log entry only when appropriate.</p>
           <p><strong>Verification:</strong> fixture tests that inspect generated HTML and confirm no placeholder leakage.</p>
         </li>
         <li>
-          <h3>Unit 03 - Workspace UI</h3>
-          <p>Add the project-scoped creation surface, path preview, dirty-state warning, conflict handling, and create action from the planning workspace.</p>
+          <h3>Unit 04 - Workspace UI</h3>
+          <p>Add the project-scoped creation surface, Q&amp;A rail, path preview, dirty-state warning, conflict handling, clarity status, and create action from the planning workspace.</p>
           <p><strong>Verification:</strong> frontend syntax check and browser or agent-browser smoke of the create modal/form states.</p>
         </li>
         <li>
-          <h3>Unit 04 - Activation and recovery</h3>
+          <h3>Unit 05 - Activation and recovery</h3>
           <p>After creation, navigate to the new plan, refresh wiki navigation, scope Execute and terminal context to the new plan, and recover cleanly after reload.</p>
           <p><strong>Verification:</strong> end-to-end app smoke using a temporary project fixture and <code>pnpm run check</code>.</p>
         </li>
@@ -343,6 +383,7 @@
       <ul>
         <li><span class="badge status-active">Decision</span> Default to compact feature plans; promote to staged plans only after the user chooses a larger planning shape.</li>
         <li><span class="badge status-active">Decision</span> Creation should navigate to the new plan for review; it should not launch an agent implementation session automatically.</li>
+        <li><span class="badge status-active">Decision</span> The LLM should keep asking clarification questions until no blocking unknowns remain and important unknowns are answered or explicitly recorded as assumptions.</li>
         <li><span class="badge status-decision">Assumption</span> The first implementation should support feature, fix, cleanup, and research labels as metadata without creating different file trees.</li>
         <li><span class="badge status-decision">Unknown</span> Whether pasted briefs should be captured as a source brief during creation or deferred to a later import flow.</li>
       </ul>
@@ -353,6 +394,7 @@
       <ul>
         <li>2026-05-21: Fixed the existing plan sidebar tree so active feature plans under <code>wiki/plans/features/*.html</code> render as top-level plan entries. This was discovered after adding this plan directly to the wiki and finding that the Tauri app listed the planning dashboard but not the active feature plan.</li>
         <li>2026-05-21: Fixed wiki status extraction so completed plans with a plain <code>Summary</code> section, such as <code>Remove Legacy Node Runtime</code>, group under Completed Plans in the Tauri sidebar.</li>
+        <li>2026-05-21: Added the requirement that project plan creation include an LLM-led Q&amp;A clarification loop before generating plan files.</li>
       </ul>
     </section>
 
@@ -361,7 +403,7 @@
       <div class="copy-row">
         <button type="button" id="copyPrompt">Copy prompt</button>
         <span id="copyStatus" aria-live="polite">Ready for Unit 01.</span>
-        <textarea id="promptText" readonly>Use $project-html-wiki to continue wiki/plans/features/project-plan-creation.html. Start with Unit 01 - Contract and routing. Implement the project-scoped create-plan API contract, preserving Hyperwiki scaffold conventions and refusing writes outside the selected project root. Verify with targeted Rust tests and pnpm run check.</textarea>
+        <textarea id="promptText" readonly>Use $project-html-wiki to continue wiki/plans/features/project-plan-creation.html. Start with Unit 01 - Clarification contract. Implement the LLM-led Q&amp;A loop contract for project plan creation: question batching, clarity scoring, answer tracking, contradiction handling, deferred unknowns, and a write gate that prevents plan generation while blocking unknowns remain. Verify with targeted Rust or fixture tests and pnpm run check.</textarea>
       </div>
     </section>
   </main>
