@@ -121,9 +121,7 @@ fn first_heading(html: &str) -> Option<String> {
 
 fn list_items_from_first_summary(html: &str) -> Vec<String> {
     let mut items = Vec::new();
-    if let Some(section) =
-        first_between_case_insensitive(html, "<section class=\"summary\"", "</section>")
-    {
+    if let Some(section) = first_summary_section(html) {
         let mut rest = section.as_str();
         while let Some(item) = first_between_case_insensitive(rest, "<li", "</li>") {
             let content = item
@@ -147,6 +145,42 @@ fn list_items_from_first_summary(html: &str) -> Vec<String> {
         }
     }
     items
+}
+
+fn first_summary_section(html: &str) -> Option<String> {
+    if let Some(section) =
+        first_between_case_insensitive(html, "<section class=\"summary\"", "</section>")
+    {
+        return Some(section);
+    }
+    let mut rest = html;
+    while let Some(section) = first_between_case_insensitive(rest, "<section", "</section>") {
+        if section_contains_heading(&section, "Summary") {
+            return Some(section);
+        }
+        if let Some((_, next)) = rest.split_once("</section>") {
+            rest = next;
+        } else {
+            break;
+        }
+    }
+    None
+}
+
+fn section_contains_heading(section: &str, heading: &str) -> bool {
+    (1..=6).any(|level| {
+        let start = format!("<h{level}");
+        let end = format!("</h{level}>");
+        first_between_case_insensitive(section, &start, &end)
+            .map(|value| {
+                let content = value
+                    .split_once('>')
+                    .map(|(_, content)| strip_html(content))
+                    .unwrap_or_else(|| strip_html(&value));
+                content.trim().eq_ignore_ascii_case(heading)
+            })
+            .unwrap_or(false)
+    })
 }
 
 fn definition_value_after_term(html: &str, term: &str) -> Option<String> {
@@ -290,6 +324,23 @@ mod tests {
 
         let pages = list_wiki_pages(&root, None).pages;
         assert_eq!(pages[0].path, "/wiki/plans/tauri-rewrite.html");
+        assert_eq!(pages[0].status.as_deref(), Some("complete"));
+        assert_eq!(pages[0].summary[0], "Status: complete");
+    }
+
+    #[test]
+    fn parses_plain_summary_section_status() {
+        let root = temp_root("wiki-plain-summary-status");
+        let plan_dir = root.join("wiki").join("plans").join("features");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("remove-legacy-node-runtime.html"),
+            "<h1>Remove Legacy Node Runtime</h1><section><h2>Summary</h2><ul><li>Status: complete</li></ul></section>",
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        assert_eq!(pages[0].path, "/wiki/plans/features/remove-legacy-node-runtime.html");
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
     }
