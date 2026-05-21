@@ -299,9 +299,21 @@ fn default_settings() -> Value {
                         }
                     }
                 },
-                "atlas": preset("Atlas", "light", "#f4f7f8", "#ffffff", "#cad8dc", "#17252a", "#5d6d72", "#0b7285", "#fafcfb", "#ffffff", "#d3dddc", "#1f2928", "#637170", "#0b7285", "#e9f1f1", "#1a2428", "#10181b", "#142025", "#1b2a30", "#34464c", "#eef7f8", "#a9b8bb", "#6bd6e6"),
-                "obsidian": preset("Obsidian", "dark", "#141516", "#1d1f20", "#363a3b", "#eeeeea", "#a5aaa8", "#9dc4ff", "#151617", "#202223", "#383c3e", "#f0ede5", "#b1aaa0", "#9dc4ff", "#2a2c2d", "#0c0d0e", "#08090a", "#111314", "#17191b", "#303438", "#f2f4f3", "#a8b0ae", "#9dc4ff"),
-                "graphite": preset("Graphite", "dark", "#171819", "#202224", "#3a3f43", "#f0f2f2", "#a6adb1", "#7dd3a8", "#17191a", "#222426", "#3c4145", "#edf1ee", "#aab2ad", "#7dd3a8", "#2a2d2f", "#0d0f10", "#090a0b", "#121516", "#181c1e", "#333a3d", "#eef5f1", "#a7b2ad", "#7dd3a8")
+                "atlas": preset("Atlas", "light", font("inter"), font("sometype"), "#f4f7f8", "#ffffff", "#cad8dc", "#17252a", "#5d6d72", "#0b7285", "#fafcfb", "#ffffff", "#d3dddc", "#1f2928", "#637170", "#0b7285", "#e9f1f1", "#1a2428", "#10181b", "#142025", "#1b2a30", "#34464c", "#eef7f8", "#a9b8bb", "#6bd6e6"),
+                "grove": preset("Grove", "light", font("sourceSerif"), font("ibmMono"), "#f5f6ef", "#fffffb", "#d4d8c8", "#20261d", "#626b5b", "#4f7d36", "#fbfaf0", "#fffdf4", "#ded9c5", "#252318", "#706a56", "#5f7426", "#eeead8", "#20251d", "#11150f", "#171d14", "#1d2419", "#3d4736", "#f0f4e8", "#b1b9a8", "#b8d986"),
+                "studio": preset("Studio", "light", font("ibmSans"), font("ibmMono"), "#f7f5f1", "#ffffff", "#d8d2c7", "#24211c", "#6c655b", "#a14f2a", "#fcfaf6", "#fffdf9", "#ddd4c6", "#28221c", "#75695d", "#a14f2a", "#efe7dc", "#29211c", "#15100d", "#1d1713", "#241c17", "#4b3a31", "#f6eee6", "#b9aaa0", "#f0a06f"),
+                "linen": preset("Linen", "light", font("lora"), font("sometype"), "#f8f3ea", "#fffdf7", "#dfd4c2", "#272118", "#716758", "#8b6f21", "#fffaf1", "#fffdf7", "#e2d7c4", "#282116", "#716551", "#8b6f21", "#f1e8d9", "#282318", "#15120d", "#1d1911", "#242016", "#4b432e", "#f6f1e6", "#bbb29e", "#d9bf64"),
+                "signal": preset("Signal", "light", font("workSans"), font("spaceMono"), "#f5f5f7", "#ffffff", "#d2d4dc", "#20222a", "#646978", "#3f5bf6", "#fbfbff", "#ffffff", "#d8d9e6", "#202133", "#666a7e", "#3f5bf6", "#eceef8", "#181b29", "#0e1019", "#141725", "#1a1f32", "#333b5a", "#f1f3ff", "#aeb4cc", "#8ea0ff"),
+                "daybreak": preset("Daybreak", "light", font("dmSans"), font("jetBrainsMono"), "#f4f8fb", "#ffffff", "#cddbe7", "#172432", "#607284", "#2563eb", "#fbfdff", "#ffffff", "#d7e3ef", "#182536", "#667589", "#2563eb", "#eaf2fb", "#f8fafc", "#eef4fa", "#e6edf5", "#f1f6fb", "#cad7e4", "#17202c", "#64748b", "#2563eb"),
+                "archive": preset("Archive", "light", font("ebGaramond"), font("sourceCodePro"), "#f7f3ea", "#fffdf8", "#ddd2bf", "#28221a", "#766b5e", "#9a5f2d", "#fffaf1", "#fffdf7", "#e2d5c0", "#2b2318", "#766855", "#8e5528", "#f0e6d7", "#fffaf2", "#f2eadf", "#ece1d3", "#f6eee4", "#dbcbb6", "#2b241b", "#776a5b", "#9a5f2d"),
+                "obsidian": preset("Obsidian", "dark", font("merriweather"), font("sometype"), "#141516", "#1d1f20", "#363a3b", "#eeeeea", "#a5aaa8", "#9dc4ff", "#151617", "#202223", "#383c3e", "#f0ede5", "#b1aaa0", "#9dc4ff", "#2a2c2d", "#0c0d0e", "#08090a", "#111314", "#17191b", "#303438", "#f2f4f3", "#a8b0ae", "#9dc4ff"),
+                "ember": preset("Ember", "dark", font("sourceSans"), font("ibmMono"), "#1a1411", "#241d18", "#45362d", "#f4eee8", "#b6a79d", "#ef8354", "#1b1512", "#261e19", "#49382e", "#f5eadf", "#bda99a", "#f2a06f", "#33271f", "#120d0a", "#0c0806", "#1a120e", "#221813", "#493428", "#fbefe6", "#bea99b", "#ef8354"),
+                "nocturne": preset("Nocturne", "dark", font("newsreader"), font("spaceMono"), "#18151b", "#221e27", "#403746", "#f1edf3", "#afa3b8", "#d497ff", "#1a161d", "#241f28", "#44394a", "#f2eadf", "#b9aa9d", "#d497ff", "#332a32", "#130f15", "#0d0a0f", "#1a141d", "#211926", "#433549", "#f5edf5", "#b8a8bd", "#d497ff"),
+                "graphite": preset("Graphite", "dark", font("montserrat"), font("sometype"), "#171819", "#202224", "#3a3f43", "#f0f2f2", "#a6adb1", "#7dd3a8", "#17191a", "#222426", "#3c4145", "#edf1ee", "#aab2ad", "#7dd3a8", "#2a2d2f", "#0d0f10", "#090a0b", "#121516", "#181c1e", "#333a3d", "#eef5f1", "#a7b2ad", "#7dd3a8"),
+                "aubergine": preset("Aubergine", "dark", font("instrument"), font("ibmMono"), "#1c141a", "#261d24", "#493644", "#f5edf2", "#b8a5b0", "#ff8fb3", "#1d151b", "#292027", "#4d3948", "#f4e9ee", "#b9a5ae", "#ff8fb3", "#352830", "#130d11", "#0d090c", "#1b1218", "#241920", "#4b3544", "#f8edf3", "#bca8b4", "#ff8fb3"),
+                "cobalt": preset("Cobalt", "dark", font("inter"), font("spaceMono"), "#111827", "#1b2433", "#334158", "#eff4ff", "#a7b2c7", "#60a5fa", "#121a2a", "#1c2638", "#34445f", "#eef4ff", "#aab6cd", "#93c5fd", "#253149", "#0b1020", "#070b16", "#10172a", "#17213a", "#33415f", "#eff6ff", "#a9b7cf", "#60a5fa"),
+                "basalt": preset("Basalt", "dark", font("notoSans"), font("firaCode"), "#121417", "#1c2024", "#343b42", "#eef2f4", "#a8b0b7", "#38bdf8", "#13161a", "#1f2429", "#374049", "#edf3f6", "#a9b3bb", "#7dd3fc", "#293039", "#090c10", "#07090c", "#10151a", "#171e25", "#303b45", "#eff6fb", "#a9b4bd", "#38bdf8"),
+                "velvet": preset("Velvet", "dark", font("cormorant"), font("robotoMono"), "#19131a", "#241c26", "#44364a", "#f5eff7", "#b7a8be", "#c084fc", "#1a141c", "#261f2a", "#47394e", "#f3edf5", "#b8aabc", "#d8b4fe", "#322938", "#100b12", "#0b080d", "#18101b", "#211729", "#44324e", "#f7effa", "#b9a8c2", "#c084fc")
             },
             "customTokens": {}
         },
@@ -322,6 +334,8 @@ fn default_settings() -> Value {
 fn preset(
     label: &str,
     mode: &str,
+    body_font: &str,
+    mono_font: &str,
     ui_bg: &str,
     ui_panel: &str,
     ui_border: &str,
@@ -355,7 +369,7 @@ fn preset(
                 "text": ui_text,
                 "muted": ui_muted,
                 "accent": ui_accent,
-                "sidebarFont": "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+                "sidebarFont": mono_font
             },
             "docs": {
                 "bg": docs_bg,
@@ -365,8 +379,8 @@ fn preset(
                 "muted": docs_muted,
                 "link": docs_link,
                 "code": docs_code,
-                "serifFont": "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif",
-                "monoFont": "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+                "serifFont": body_font,
+                "monoFont": mono_font
             },
             "terminal": {
                 "bg": terminal_bg,
@@ -377,10 +391,42 @@ fn preset(
                 "text": terminal_text,
                 "muted": terminal_muted,
                 "accent": terminal_accent,
-                "font": "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+                "font": mono_font
             }
         }
     })
+}
+
+fn font(name: &str) -> &'static str {
+    match name {
+        "inter" => "\"Inter\", ui-sans-serif, system-ui, sans-serif",
+        "ibmSans" => "\"IBM Plex Sans\", ui-sans-serif, system-ui, sans-serif",
+        "workSans" => "\"Work Sans\", ui-sans-serif, system-ui, sans-serif",
+        "sourceSans" => "\"Source Sans 3\", ui-sans-serif, system-ui, sans-serif",
+        "montserrat" => "\"Montserrat\", ui-sans-serif, system-ui, sans-serif",
+        "dmSans" => "\"DM Sans\", ui-sans-serif, system-ui, sans-serif",
+        "notoSans" => "\"Noto Sans\", ui-sans-serif, system-ui, sans-serif",
+        "instrument" => {
+            "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
+        }
+        "sourceSerif" => "\"Source Serif 4\", ui-serif, Georgia, serif",
+        "lora" => "\"Lora\", ui-serif, Georgia, serif",
+        "newsreader" => "\"Newsreader\", ui-serif, Georgia, serif",
+        "merriweather" => "\"Merriweather\", ui-serif, Georgia, serif",
+        "ebGaramond" => "\"EB Garamond\", ui-serif, Georgia, serif",
+        "cormorant" => "\"Cormorant Garamond\", ui-serif, Georgia, serif",
+        "ibmMono" => "\"IBM Plex Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        "spaceMono" => "\"Space Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        "jetBrainsMono" => {
+            "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+        }
+        "firaCode" => "\"Fira Code\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        "sourceCodePro" => {
+            "\"Source Code Pro\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+        }
+        "robotoMono" => "\"Roboto Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+        _ => "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    }
 }
 
 #[cfg(test)]
@@ -394,6 +440,13 @@ mod tests {
         let settings = SettingsStore::new(&home).read();
         assert_eq!(settings["theme"]["activePreset"], "paper");
         assert!(settings["theme"]["presets"]["atlas"].is_object());
+        assert_eq!(
+            settings["theme"]["presets"]
+                .as_object()
+                .expect("theme presets should be an object")
+                .len(),
+            16
+        );
         assert!(settings["soul"]["principles"].as_array().unwrap().len() >= 3);
     }
 
@@ -416,8 +469,8 @@ mod tests {
         )
         .unwrap();
         let settings = SettingsStore::new(&home).read();
-        assert_eq!(settings["theme"]["activePreset"], "paper");
-        assert!(settings["theme"]["presets"]["paper"].is_object());
+        assert_eq!(settings["theme"]["activePreset"], "signal");
+        assert!(settings["theme"]["presets"]["signal"].is_object());
     }
 
     #[test]
