@@ -727,11 +727,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
         ("wiki/sources.html", sources_page(options)),
         (
             "wiki/scaffold-contract.html",
-            simple_page(
-                options,
-                "Scaffold Contract",
-                "Hyperwiki scaffold conventions for HTML-first project wikis.",
-            ),
+            scaffold_contract_page(options),
         ),
         (
             "wiki/roadmap.html",
@@ -812,11 +808,75 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html",
+            unit_page(
+                options,
+                "Unit 01 - Implement First Slice",
+                "Implement the first approved feature or architecture slice.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html",
+            unit_page(
+                options,
+                "Unit 02 - Sync Plan Status",
+                "Keep plan status and source context synchronized with discoveries.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html",
+            unit_page(
+                options,
+                "Unit 03 - Record Validation",
+                "Record validation that changes project confidence or next steps.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html",
+            unit_page(
+                options,
+                "Unit 04 - Preserve Canonical Truth",
+                "Avoid hidden UI-only state; keep repo files and Git canonical.",
+            ),
+        ),
+        (
             "wiki/plans/mvp/stage-03-dogfood-hardening.html",
             simple_page(
                 options,
                 "Stage 03 - Hardening And Release Readiness",
                 "Close verification gaps and update durable docs.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html",
+            unit_page(
+                options,
+                "Unit 01 - Close Verification Gaps",
+                "Close gaps found during implementation and verification.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html",
+            unit_page(
+                options,
+                "Unit 02 - Harden Workflows",
+                "Harden setup, test, security, accessibility, or release workflows as relevant.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html",
+            unit_page(
+                options,
+                "Unit 03 - Update Durable Docs",
+                "Update durable docs and source briefs from final implementation evidence.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html",
+            unit_page(
+                options,
+                "Unit 04 - Record Handoff Notes",
+                "Record completion criteria and release or handoff notes.",
             ),
         ),
         (
@@ -1004,6 +1064,14 @@ fn simple_page(options: &InitProjectOptions, title: &str, text: &str) -> String 
     )
 }
 
+fn scaffold_contract_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Scaffold Contract",
+        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for HTML-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.html</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.html</code> for wiki agent guidance.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
+    )
+}
+
 fn dev_page(options: &InitProjectOptions) -> String {
     let mut items = Vec::new();
     if !options.dev_command.is_empty() {
@@ -1038,7 +1106,7 @@ fn sources_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Sources",
-        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li></ul>",
+        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.html</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li><li><a href=\"/wiki/sources/planning-interview.html\">Planning interview</a></li><li><a href=\"/wiki/sources/import.html\">Imported source</a></li></ul>",
     )
 }
 
@@ -1052,7 +1120,7 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nDo not add a duplicate `wiki/Sources.html`; Hyperwiki uses lowercase `wiki/sources.html`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -1309,6 +1377,30 @@ mod tests {
             .join("mvp")
             .join("stage-01-foundation.html")
             .is_file());
+        assert!(created
+            .project
+            .root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-03-dogfood-hardening")
+            .join("unit-04-record-handoff-notes.html")
+            .is_file());
+        let agents = fs::read_to_string(created.project.root.join("AGENTS.md")).unwrap();
+        let sources =
+            fs::read_to_string(created.project.root.join("wiki").join("sources.html")).unwrap();
+        let contract = fs::read_to_string(
+            created
+                .project
+                .root
+                .join("wiki")
+                .join("scaffold-contract.html"),
+        )
+        .unwrap();
+        assert!(agents.contains("Do not add a duplicate `wiki/Sources.html`"));
+        assert!(agents.contains("Portless-backed `dev` script"));
+        assert!(sources.contains("lowercase <code>wiki/sources.html</code>"));
+        assert!(contract.contains("wiki/AGENTS.html"));
         assert!(registry
             .list(Some(&created.project.id))
             .checkouts
