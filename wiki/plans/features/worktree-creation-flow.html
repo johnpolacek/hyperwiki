@@ -59,6 +59,15 @@
         <li>Browser smoke coverage checks the popover preview behavior; the full browser smoke reached that flow and remains blocked later by the existing completed-stage dot color assertion.</li>
       </ul>
     </section>
+    <section>
+      <h2>Follow-up: Non-Git Projects</h2>
+      <ul>
+        <li>Status: complete.</li>
+        <li>Intent: if a project has not been initialized as a Git repository, the worktree popover should offer Git initialization instead of submitting a worktree creation request that can only fail.</li>
+        <li>Implementation: reuse the existing Git initialization endpoint, refresh repo context after initialization, and only show the create-worktree submit action once Git exists.</li>
+        <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a static browser check of the non-Git popover state.</li>
+      </ul>
+    </section>
   </main>
 </body>
 </html>

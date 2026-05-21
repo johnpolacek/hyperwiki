@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 implementation | non-Git worktree onboarding</h2>
+  <ul>
+    <li>Changed the worktree popover to show an <code>Init Git</code> submit action when the active project has no Git root, avoiding the previous failed worktree creation request.</li>
+    <li>Reused the existing Git initialization endpoint, refreshed repo context after initialization, and then restored the normal <code>Create Worktree</code> action.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a static browser check of the non-Git popover state.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 implementation | legacy Node runtime removal</h2>
   <ul>
     <li>Decision: Hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>

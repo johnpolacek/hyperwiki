@@ -746,6 +746,10 @@ async function loadRepoContext() {
 }
 
 function updateWorktreeButtonVisibility(branch) {
+  if (repoContextState && !repoContextState.git?.root) {
+    newWorktreeTerminalButton.hidden = false;
+    return;
+  }
   const normalized = String(branch || "").trim().toLowerCase();
   newWorktreeTerminalButton.hidden = !(normalized === "main" || normalized === "master");
 }
@@ -2710,16 +2714,31 @@ async function openWorktreePopover() {
   const branch = `feature/${slugify(context.unitTitle || context.pageTitle || "worktree")}`;
   worktreeBranchInput.value = branch;
   worktreeStatus.textContent = "";
-  worktreeWarning.hidden = !repoContextState?.git?.dirty;
-  worktreeWarning.textContent = repoContextState?.git?.dirty
-    ? "Main has uncommitted changes. Commit them first if the worktree should include them."
-    : "";
+  updateWorktreeGitMode();
   updateWorktreePreview();
   worktreePopover.hidden = false;
   requestAnimationFrame(() => {
-    worktreeBranchInput.focus();
-    worktreeBranchInput.select();
+    if (repoContextState?.git?.root) {
+      worktreeBranchInput.focus();
+      worktreeBranchInput.select();
+    } else {
+      worktreeCreate.focus();
+    }
   });
+}
+
+function updateWorktreeGitMode() {
+  const hasGit = Boolean(repoContextState?.git?.root);
+  worktreeBranchInput.disabled = !hasGit;
+  worktreeCreate.textContent = hasGit ? "Create Worktree" : "Init Git";
+  worktreeWarning.hidden = hasGit && !repoContextState?.git?.dirty;
+  if (!hasGit) {
+    worktreeWarning.textContent = "Initialize Git before creating a worktree.";
+  } else {
+    worktreeWarning.textContent = repoContextState?.git?.dirty
+      ? "Main has uncommitted changes. Commit them first if the worktree should include them."
+      : "";
+  }
 }
 
 function updateWorktreePreview() {
@@ -2744,7 +2763,13 @@ async function createWorktreeFromPopover() {
   worktreeStatus.textContent = "Checking Git...";
   worktreeCreate.disabled = true;
   try {
-    await ensureGitForExecution();
+    const repo = await api(projectPath("/api/repo"));
+    repoContextState = repo;
+    if (!repo.git?.root) {
+      worktreeStatus.textContent = "Initializing Git...";
+      await initializeGitForWorktreePopover();
+      return;
+    }
     worktreeStatus.textContent = "Creating worktree...";
     const result = await api(projectPath("/api/worktrees"), {
       method: "POST",
@@ -2767,6 +2792,21 @@ async function createWorktreeFromPopover() {
   } finally {
     worktreeCreate.disabled = false;
   }
+}
+
+async function initializeGitForWorktreePopover() {
+  const result = await api(projectPath("/api/git/init"), { method: "POST", body: "{}" });
+  repoContextState = result.repo;
+  await loadRepoContext();
+  updateWorktreeGitMode();
+  updateWorktreePreview();
+  worktreeStatus.textContent = result.result?.committed
+    ? "Git initialized. Create a worktree when ready."
+    : result.result?.message || "Git initialized. Create a worktree when ready.";
+  requestAnimationFrame(() => {
+    worktreeBranchInput.focus();
+    worktreeBranchInput.select();
+  });
 }
 
 async function switchToCreatedWorktree(result, context) {
