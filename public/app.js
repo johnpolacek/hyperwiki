@@ -3284,11 +3284,11 @@ function delay(ms) {
 async function switchProject(project) {
   if (!project?.available) return;
   markProjectSwitcherActive(project);
+  closeTopbarPanels();
   const switchVersion = ++projectSwitchVersion;
   const immediatePath = immediateProjectOpenPath();
   const targetPathPromise = projectOpenPath(project);
   if (project.id === activeProjectId) {
-    closeTopbarPanels();
     history.pushState(null, "", `${workspacePath(project)}#${immediatePath}`);
     activateWorkspaceLocation(immediatePath);
     const targetPath = await targetPathPromise;
@@ -3326,7 +3326,6 @@ async function switchProject(project) {
   if (switchVersion !== projectSwitchVersion) return;
   await restoreTerminals();
   if (switchVersion !== projectSwitchVersion) return;
-  closeTopbarPanels();
 }
 
 async function projectOpenPath(project) {
