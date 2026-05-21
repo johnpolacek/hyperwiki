@@ -4312,7 +4312,7 @@ async function createTerminal(name, options = {}) {
   el.dataset.name = name;
   el.tabIndex = 0;
   panel.append(header, el);
-  terminals.append(panel);
+  insertTerminalPanel(name, panel);
   header.addEventListener("click", () => activateTerminal(name));
   collapseButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -4431,6 +4431,14 @@ async function createTerminal(name, options = {}) {
   }
   updateTerminalCloseButtons();
   return session;
+}
+
+function insertTerminalPanel(name, panel) {
+  if (name === "dev") {
+    terminals.prepend(panel);
+    return;
+  }
+  terminals.append(panel);
 }
 
 function createTauriTerminalTransport({ id, name, role, command, scope, scopeKind, planPath, onData, onOpen, onClose, onError }) {
