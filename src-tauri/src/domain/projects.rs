@@ -342,6 +342,8 @@ pub fn create_project_from_dashboard(
             source_document: request.document.unwrap_or_default(),
             source_document_type: request.document_type.unwrap_or_default(),
             agent_launch_command: String::new(),
+            dev_command: String::new(),
+            package_scripts: Vec::new(),
             overwrite: false,
         },
     )
@@ -380,7 +382,15 @@ pub struct InitProjectOptions {
     pub source_document: String,
     pub source_document_type: String,
     pub agent_launch_command: String,
+    pub dev_command: String,
+    pub package_scripts: Vec<String>,
     pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResetAction {
+    pub kind: &'static str,
+    pub path: PathBuf,
 }
 
 pub fn init_hyperwiki_project(
@@ -389,6 +399,7 @@ pub fn init_hyperwiki_project(
 ) -> Result<(), String> {
     let root = root.as_ref();
     let slug = slugify(&options.project_name);
+    let layout_panels = layout_panels(&options)?;
     fs::create_dir_all(root.join(".hyperwiki").join("state")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".hyperwiki").join("sessions"))
         .map_err(|error| error.to_string())?;
@@ -402,7 +413,7 @@ pub fn init_hyperwiki_project(
                 "dev": {
                     "host": "127.0.0.1",
                     "port": 4177,
-                    "command": "",
+                    "command": options.dev_command,
                     "previewUrl": format!("https://{slug}.localhost")
                 },
                 "worktrees": {
@@ -413,10 +424,7 @@ pub fn init_hyperwiki_project(
                     "launchCommand": options.agent_launch_command
                 },
                 "layout": {
-                    "panels": [
-                        { "name": "agent", "role": "agent", "command": options.agent_launch_command },
-                        { "name": "cli", "role": "shell", "command": null }
-                    ]
+                    "panels": layout_panels
                 },
                 "runtimeState": ".hyperwiki/state",
                 "sessions": ".hyperwiki/sessions"
@@ -432,6 +440,49 @@ pub fn init_hyperwiki_project(
     )?;
     write_basic_wiki(root, &options)?;
     Ok(())
+}
+
+pub fn reset_hyperwiki_state(
+    root: impl AsRef<Path>,
+    registry: &ProjectRegistry,
+    dry_run: bool,
+) -> Result<Vec<ResetAction>, String> {
+    let mut targets = BTreeMap::<PathBuf, ProjectInfo>::new();
+    for record in registry.read_raw().projects {
+        let project = project_from_root(record.root);
+        if project.available {
+            targets.insert(project.root.clone(), project);
+        }
+    }
+    let current = project_from_root(root);
+    if current.available {
+        targets.insert(current.root.clone(), current);
+    }
+    let mut actions = vec![ResetAction {
+        kind: "file",
+        path: registry.file_path.clone(),
+    }];
+    for project in targets.values() {
+        actions.push(ResetAction {
+            kind: "dir-contents",
+            path: project.root.join(".hyperwiki").join("state"),
+        });
+        actions.push(ResetAction {
+            kind: "dir-contents",
+            path: project.root.join(".hyperwiki").join("sessions"),
+        });
+    }
+    if dry_run {
+        return Ok(actions);
+    }
+    let _ = fs::remove_file(&registry.file_path);
+    for action in actions
+        .iter()
+        .filter(|action| action.kind == "dir-contents")
+    {
+        remove_directory_contents(&action.path)?;
+    }
+    Ok(actions)
 }
 
 pub fn project_from_root(root: impl AsRef<Path>) -> ProjectInfo {
@@ -674,24 +725,116 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
         ("wiki/AGENTS.html", wiki_agent_page(options)),
         ("wiki/log.html", log_page(options)),
         ("wiki/sources.html", sources_page(options)),
-        ("wiki/scaffold-contract.html", simple_page(options, "Scaffold Contract", "Hyperwiki scaffold conventions for HTML-first project wikis.")),
-        ("wiki/roadmap.html", simple_page(options, "Roadmap", "Confirm project goals, implement the first slice, and record validation.")),
-        ("wiki/architecture.html", simple_page(options, "Architecture", "Document the project architecture as implementation evidence grows.")),
-        ("wiki/dev.html", simple_page(options, "Development Workflow", "Use local commands, Git, Portless previews, and Hyperwiki plans for implementation work.")),
+        (
+            "wiki/scaffold-contract.html",
+            simple_page(
+                options,
+                "Scaffold Contract",
+                "Hyperwiki scaffold conventions for HTML-first project wikis.",
+            ),
+        ),
+        (
+            "wiki/roadmap.html",
+            simple_page(
+                options,
+                "Roadmap",
+                "Confirm project goals, implement the first slice, and record validation.",
+            ),
+        ),
+        (
+            "wiki/architecture.html",
+            simple_page(
+                options,
+                "Architecture",
+                "Document the project architecture as implementation evidence grows.",
+            ),
+        ),
+        ("wiki/dev.html", dev_page(options)),
         ("wiki/plans/index.html", plans_index_page(options)),
-        ("wiki/plans/mvp/index.html", simple_page(options, "MVP Plan", "Track MVP stages and implementation units.")),
-        ("wiki/plans/mvp/implementation-spec.html", simple_page(options, "Implementation Spec", "Capture implementation scope, constraints, and verification expectations.")),
-        ("wiki/plans/mvp/stage-01-foundation.html", stage_page(options)),
-        ("wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html", unit_page(options, "Unit 01 - Confirm Project Direction", "Confirm project goals, audience, non-goals, and success criteria.")),
-        ("wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html", unit_page(options, "Unit 02 - Review Repository Setup", "Review repository setup and development commands.")),
-        ("wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html", unit_page(options, "Unit 03 - Update Source Briefs", "Update source briefs and roadmap from real project evidence.")),
-        ("wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html", unit_page(options, "Unit 04 - Define First Implementation Unit", "Define the first implementation unit and verification path.")),
-        ("wiki/plans/mvp/stage-02-dev-workspace.html", simple_page(options, "Stage 02 - First Implementation Track", "Implement the first approved feature or architecture slice.")),
-        ("wiki/plans/mvp/stage-03-dogfood-hardening.html", simple_page(options, "Stage 03 - Hardening And Release Readiness", "Close verification gaps and update durable docs.")),
-        ("wiki/sources/prd.html", source_page(options, "Product Brief")),
-        ("wiki/sources/technical-brief.html", source_page(options, "Technical Brief")),
-        ("wiki/sources/design-brief.html", source_page(options, "Design Brief")),
-        ("wiki/sources/planning-interview.html", source_page(options, "Planning Interview")),
+        (
+            "wiki/plans/mvp/index.html",
+            simple_page(
+                options,
+                "MVP Plan",
+                "Track MVP stages and implementation units.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/implementation-spec.html",
+            simple_page(
+                options,
+                "Implementation Spec",
+                "Capture implementation scope, constraints, and verification expectations.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-01-foundation.html",
+            stage_page(options),
+        ),
+        (
+            "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html",
+            unit_page(
+                options,
+                "Unit 01 - Confirm Project Direction",
+                "Confirm project goals, audience, non-goals, and success criteria.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html",
+            unit_page(
+                options,
+                "Unit 02 - Review Repository Setup",
+                "Review repository setup and development commands.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html",
+            unit_page(
+                options,
+                "Unit 03 - Update Source Briefs",
+                "Update source briefs and roadmap from real project evidence.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html",
+            unit_page(
+                options,
+                "Unit 04 - Define First Implementation Unit",
+                "Define the first implementation unit and verification path.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-02-dev-workspace.html",
+            simple_page(
+                options,
+                "Stage 02 - First Implementation Track",
+                "Implement the first approved feature or architecture slice.",
+            ),
+        ),
+        (
+            "wiki/plans/mvp/stage-03-dogfood-hardening.html",
+            simple_page(
+                options,
+                "Stage 03 - Hardening And Release Readiness",
+                "Close verification gaps and update durable docs.",
+            ),
+        ),
+        (
+            "wiki/sources/prd.html",
+            source_page(options, "Product Brief"),
+        ),
+        (
+            "wiki/sources/technical-brief.html",
+            source_page(options, "Technical Brief"),
+        ),
+        (
+            "wiki/sources/design-brief.html",
+            source_page(options, "Design Brief"),
+        ),
+        (
+            "wiki/sources/planning-interview.html",
+            source_page(options, "Planning Interview"),
+        ),
         ("wiki/sources/import.html", import_page(options)),
     ];
     for (relative, content) in pages {
@@ -708,6 +851,46 @@ fn write_if_safe(path: &Path, content: &str, overwrite: bool) -> Result<(), Stri
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn layout_panels(options: &InitProjectOptions) -> Result<Vec<serde_json::Value>, String> {
+    let mut panels = Vec::new();
+    if !options.agent_launch_command.trim().is_empty() {
+        panels.push(serde_json::json!({
+            "name": "agent",
+            "role": "agent",
+            "command": options.agent_launch_command
+        }));
+    }
+    if !options.dev_command.trim().is_empty() {
+        panels.push(serde_json::json!({
+            "name": "dev",
+            "role": "dev",
+            "command": options.dev_command
+        }));
+    }
+    panels.push(serde_json::json!({
+        "name": "cli",
+        "role": "shell",
+        "command": null
+    }));
+    Ok(panels)
+}
+
+fn remove_directory_contents(directory: &Path) -> Result<(), String> {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return Ok(());
+    };
+    for entry in entries {
+        let entry = entry.map_err(|error| error.to_string())?;
+        let path = entry.path();
+        if path.is_dir() {
+            fs::remove_dir_all(path).map_err(|error| error.to_string())?;
+        } else {
+            fs::remove_file(path).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 fn layout(options: &InitProjectOptions, title: &str, body: &str) -> String {
@@ -817,6 +1000,28 @@ fn simple_page(options: &InitProjectOptions, title: &str, text: &str) -> String 
             "<h1>{}</h1><p>{}</p>",
             escape_html(title),
             escape_html(text)
+        ),
+    )
+}
+
+fn dev_page(options: &InitProjectOptions) -> String {
+    let mut items = Vec::new();
+    if !options.dev_command.is_empty() {
+        items.push(format!(
+            "<li><code>{}</code></li>",
+            escape_html(&options.dev_command)
+        ));
+    }
+    for script in &options.package_scripts {
+        items.push(format!("<li><code>{}</code></li>", escape_html(script)));
+    }
+    items.push("<li><code>npx hyperwiki</code></li>".to_string());
+    layout(
+        options,
+        "Development Workflow",
+        &format!(
+            "<h1>Development Workflow</h1><p>Use local commands, Git, Portless previews, and Hyperwiki plans for implementation work.</p><h2>Commands</h2><ul>{}</ul>",
+            items.join("")
         ),
     )
 }
@@ -1133,6 +1338,84 @@ mod tests {
         assert!(removed.deleted_files);
         assert!(!root.exists());
         assert!(registry.read_raw().projects.is_empty());
+    }
+
+    #[test]
+    fn reset_clears_registry_and_runtime_state_without_touching_wiki() {
+        let home = temp_root("reset-home");
+        let root = temp_root("reset-current");
+        let other = temp_root("reset-other");
+        let unsafe_root = temp_root("reset-unsafe");
+        make_project(&root, "Reset Current");
+        make_project(&other, "Reset Other");
+        fs::create_dir_all(root.join(".hyperwiki").join("state")).unwrap();
+        fs::create_dir_all(root.join(".hyperwiki").join("sessions")).unwrap();
+        fs::create_dir_all(other.join(".hyperwiki").join("state")).unwrap();
+        fs::create_dir_all(other.join(".hyperwiki").join("sessions")).unwrap();
+        fs::create_dir_all(unsafe_root.join(".hyperwiki").join("state")).unwrap();
+        fs::write(
+            unsafe_root
+                .join(".hyperwiki")
+                .join("state")
+                .join("danger.json"),
+            "runtime\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("state").join("workspace.json"),
+            "runtime\n",
+        )
+        .unwrap();
+        fs::write(
+            other.join(".hyperwiki").join("sessions").join("cli.json"),
+            "runtime\n",
+        )
+        .unwrap();
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![
+                    record("one", &root, "Reset Current", "reset-current", "main"),
+                    record("two", &other, "Reset Other", "reset-other", "main"),
+                    record("unsafe", &unsafe_root, "Unsafe", "unsafe", "main"),
+                ],
+            },
+        )
+        .unwrap();
+        let registry = ProjectRegistry::new(&home);
+
+        let dry_run = reset_hyperwiki_state(&root, &registry, true).unwrap();
+        assert!(dry_run
+            .iter()
+            .any(|action| action.path == home.join("projects.json")));
+        assert!(home.join("projects.json").exists());
+        assert!(root
+            .join(".hyperwiki")
+            .join("state")
+            .join("workspace.json")
+            .exists());
+
+        let actions = reset_hyperwiki_state(&root, &registry, false).unwrap();
+        assert!(actions
+            .iter()
+            .any(|action| action.path == other.join(".hyperwiki").join("sessions")));
+        assert!(!home.join("projects.json").exists());
+        assert!(root.join(".hyperwiki").join("config.json").exists());
+        assert!(root.join("wiki").exists());
+        assert!(fs::read_dir(root.join(".hyperwiki").join("state"))
+            .unwrap()
+            .next()
+            .is_none());
+        assert!(fs::read_dir(other.join(".hyperwiki").join("sessions"))
+            .unwrap()
+            .next()
+            .is_none());
+        assert!(unsafe_root
+            .join(".hyperwiki")
+            .join("state")
+            .join("danger.json")
+            .exists());
     }
 
     fn record(

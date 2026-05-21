@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 implementation | Tauri init and reset CLI parity</h2>
+  <ul>
+    <li>Replaced the temporary Rust <code>init</code>/<code>reset</code> migration message with working compatibility CLI commands.</li>
+    <li>Rust <code>init</code> now scaffolds the HTML-first wiki and config from package metadata, writes dev and agent panel configuration, supports <code>--no-git</code> and <code>--overwrite</code>, and creates the initial Hyperwiki commit with <code>init --yes</code>.</li>
+    <li>Rust <code>reset</code> now removes the user project registry and clears ignored runtime state/session directories for available Hyperwiki projects while preserving repo wiki and config files.</li>
+    <li>Verified with targeted Rust tests plus manual <code>cargo run --manifest-path src-tauri/Cargo.toml -- init/reset</code> checks. Stage 06 Unit 02 remains open for generated-project instruction reconciliation and final packaging docs.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 implementation | Tauri project create and removal parity</h2>
   <ul>
     <li>Ported dashboard project creation into Rust, including compatible HTML wiki scaffold creation, optional initial Git commit, project registry registration, and workspace URL generation.</li>
