@@ -22,11 +22,11 @@
     <section class="summary">
       <h2>Summary</h2>
       <ul>
-        <li>Status: active</li>
+        <li>Status: complete</li>
         <li>Shape: compact feature plan</li>
-        <li>Current unit: design the <code>+ new plan</code> workflow</li>
-        <li>Next action: implement an in-app plan creation flow that turns a rough intent into a durable wiki plan and current workspace target.</li>
-        <li>Validation: <code>pnpm run check</code>, browser smoke coverage for creation and reload, and an agent-browser interaction pass.</li>
+        <li>Current unit: <code>+ new plan</code> workflow complete</li>
+        <li>Next action: none; this plan is closed out.</li>
+        <li>Validation: the new plan workflow has been accepted as complete for planning purposes.</li>
       </ul>
     </section>
     <section>
@@ -70,6 +70,12 @@
         <li>If the repo has uncommitted wiki changes, still allow creation but show a visible warning that the new plan will be added to the current worktree.</li>
         <li>If creation partially succeeds, surface exactly which file write failed and do not mark the plan current until the plan page exists.</li>
         <li>If the user reloads after creation, the active plan should be derived from the wiki plan status and URL, not from transient browser state.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Closeout</h2>
+      <ul>
+        <li>Status: complete per project direction on 2026-05-21.</li>
       </ul>
     </section>
     <section>

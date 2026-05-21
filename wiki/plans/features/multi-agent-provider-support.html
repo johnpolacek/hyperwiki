@@ -22,11 +22,11 @@
     <section class="summary">
       <h2>Summary</h2>
       <ul>
-        <li>Status: active</li>
+        <li>Status: complete</li>
         <li>Shape: compact feature plan</li>
-        <li>Current unit: Unit 01 - Provider-Aware Agent Terminals</li>
-        <li>Next action: implement provider-aware Codex and Claude agent terminal support while keeping Codex as the default.</li>
-        <li>Validation: <code>pnpm run check</code>, targeted smoke coverage, and browser verification of provider controls.</li>
+        <li>Current unit: Unit 01 - Provider-Aware Agent Terminals complete</li>
+        <li>Next action: none; this plan is closed out.</li>
+        <li>Validation: provider-aware terminal support has been accepted as complete for planning purposes.</li>
       </ul>
     </section>
     <section>
@@ -55,7 +55,7 @@
     <section>
       <h2>Unit 01 - Provider-Aware Agent Terminals</h2>
       <ul>
-        <li>Status: active</li>
+        <li>Status: complete</li>
         <li>Normalize agent config to expose <code>defaultProvider</code> plus provider command entries for Codex and Claude.</li>
         <li>Infer provider metadata for existing terminal layout panels so older projects keep working.</li>
         <li>Update terminal creation and prompt submission to target the default provider, an explicit provider, or an explicit active session.</li>
@@ -65,6 +65,7 @@
       </ul>
       <h3>Verification</h3>
       <ul>
+        <li>Closeout: complete per project direction on 2026-05-21.</li>
         <li><code>pnpm run check</code> passes.</li>
         <li>Legacy <code>agent.launchCommand: "codex --yolo"</code> still creates a Codex default provider and launches existing agent flows.</li>
         <li>Fresh provider config defaults Execute and handoffs to Codex while exposing Claude as an available provider.</li>
