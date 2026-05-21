@@ -469,6 +469,51 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             }),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/app-shell") {
+        return json_response(200, &crate::domain::app_shell::app_shell_summary());
+    }
+    if request.method == "POST" && request.path.starts_with("/api/app/open-external") {
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::app_shell::OpenTargetRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::app_shell::OpenTargetRequest {
+                target: String::new(),
+            });
+        return match crate::domain::app_shell::open_external_target(&body.target) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(400, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/app/reveal-project") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::app_shell::reveal_project_folder(project_root) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(400, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/terminal/drop") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::app_shell::DroppedFilesRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::app_shell::DroppedFilesRequest { files: Vec::new() });
+        return match crate::domain::app_shell::save_dropped_files(project_root, body) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(400, error),
+        };
+    }
     let text = serde_json::json!({
         "error": "Tauri command transport is not implemented for this endpoint yet.",
         "path": request.path,
@@ -645,6 +690,50 @@ mod tests {
         assert!(response.ok);
         assert_eq!(response.status, 200);
         assert!(response.text.contains("\"runtime\":\"tauri\""));
+    }
+
+    #[test]
+    fn app_shell_and_drop_endpoints_are_implemented() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let root = temp_root("command-app-shell");
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({ "projectName": "Command App Shell" }).to_string(),
+        )
+        .unwrap();
+        std::env::set_current_dir(&root).unwrap();
+
+        let summary = hyperwiki_request(HyperwikiRequest {
+            path: "/api/app-shell".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let dropped = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/drop".to_string(),
+            method: "POST".to_string(),
+            body: Some(
+                serde_json::json!({
+                    "files": [{ "name": "../drop.txt", "content": "aGVsbG8=" }]
+                })
+                .to_string(),
+            ),
+        });
+        let rejected_open = hyperwiki_request(HyperwikiRequest {
+            path: "/api/app/open-external".to_string(),
+            method: "POST".to_string(),
+            body: Some(serde_json::json!({ "target": "/tmp/not-url" }).to_string()),
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        assert!(summary.ok);
+        assert!(summary.text.contains("\"windowTitle\":\"Hyperwiki\""));
+        assert!(dropped.ok);
+        assert!(dropped.text.contains(".hyperwiki"));
+        assert!(!rejected_open.ok);
+        assert_eq!(rejected_open.status, 400);
     }
 
     #[test]

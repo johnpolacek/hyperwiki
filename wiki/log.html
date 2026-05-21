@@ -196,6 +196,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri desktop app actions</h2>
+  <ul>
+    <li>Updated Tauri product/window title metadata to <code>Hyperwiki</code> and added Rust app-shell metadata for local-only desktop actions.</li>
+    <li>Added Rust-backed external URL validation/open action, project folder reveal action, and <code>/api/terminal/drop</code> file-save parity into ignored <code>.hyperwiki/state/drops/</code>.</li>
+    <li>Marked Stage 05 Unit 01 complete and advanced the active migration unit to Stage 05 Unit 02 - Compatibility CLI.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for desktop action metadata, safe dropped-file names, base64 file saving, endpoint routing, and non-URL external-open rejection.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
