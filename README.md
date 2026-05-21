@@ -4,7 +4,7 @@ hyperwiki is Localhost Tooling for docs-driven agentic development. It runs as a
 
 It turns project docs, plans, logs, source references, terminal panels, and verification status into a repo-local development surface.
 
-hyperwiki is early and experimental. The current package is useful for trying the workflow and reserving the `npx hyperwiki` command, but the terminal and agent-integration surfaces are still MVP-grade.
+hyperwiki is early and experimental. The current product direction is a Tauri desktop app with a Rust-owned local runtime. The legacy Node localhost server remains in the repo as migration reference and smoke-test coverage, not as the shipping desktop backend.
 
 ## Usage
 
@@ -14,16 +14,30 @@ Initialize a wiki in a project:
 npx hyperwiki init --yes
 ```
 
-Launch the local workspace from any hyperwiki project:
+Build the desktop app:
 
 ```bash
-npx hyperwiki
+pnpm run tauri:build
 ```
 
-The command registers the current hyperwiki-initialized project in your user-level project registry, starts or attaches to the local server, opens the browser workspace, and restores the configured wterm panels. Use <code>npx hyperwiki launch</code> when you want the explicit subcommand. It also prints the workspace URL, usually:
+The verified macOS bundle target is:
 
 ```text
-http://127.0.0.1:4177
+src-tauri/target/release/bundle/macos/Hyperwiki.app
+```
+
+Launch the compatibility CLI from a built binary:
+
+```bash
+src-tauri/target/release/hyperwiki
+```
+
+The Rust binary opens the desktop app without browser chrome. It also provides compatibility commands for `init`, `reset`, `dev`, `launch`, and `mcp`.
+
+```bash
+src-tauri/target/release/hyperwiki init --yes
+src-tauri/target/release/hyperwiki reset --dry-run
+src-tauri/target/release/hyperwiki mcp
 ```
 
 For local development in this repo, use Portless:
@@ -32,15 +46,17 @@ For local development in this repo, use Portless:
 pnpm dev
 ```
 
-Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`. `pnpm dev` opens the active Portless preview URL automatically. Use `pnpm run dev:app` for the direct non-opening server command.
+Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`. `pnpm dev` remains the local development preview for this repository and currently runs the legacy Node reference server through Portless.
 
 ## Commands
 
 ```bash
-npx hyperwiki
-npx hyperwiki init
-npx hyperwiki dev
-npx hyperwiki launch
+hyperwiki
+hyperwiki init
+hyperwiki reset
+hyperwiki dev
+hyperwiki launch
+hyperwiki mcp
 ```
 
 `init` creates:
@@ -67,18 +83,16 @@ Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` s
 
 ## Current Status
 
-The MVP includes an HTML wiki scaffold, local static workspace, local dev server, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, WebSocket PTY transport for terminal panels, and multi-project switching through a user-level registry. Refresh restores active retained terminal tabs plus required layout panels, then starts fresh PTYs. Terminal session exports are returned to the caller as runtime data; hyperwiki does not write terminal state into repo-visible wiki files automatically.
+The Tauri rewrite includes an HTML wiki scaffold, local static workspace, visible Git/repo context, read-only plan/log/source/verification summaries, config-driven terminal layouts, session metadata under `.hyperwiki/sessions/`, Rust PTY-backed terminal panels, app preview status, review workflows, stdio MCP, and multi-project switching through a user-level registry. Terminal session exports are returned to the caller as runtime data; hyperwiki does not write terminal state into repo-visible wiki files automatically.
 
 Local verification:
 
 ```bash
 pnpm run check
+pnpm run check:all
+pnpm run tauri:build
 pnpm wt:doctor
-pnpm run smoke:browser
-pnpm run smoke:init
-pnpm run smoke:launch
-pnpm run smoke:pty
-pnpm run smoke:sessions
+pnpm run smoke:tauri-static-assets
 ```
 
 Parallel feature worktrees:

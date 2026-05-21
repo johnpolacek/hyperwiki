@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 implementation | Tauri shipping path packaging closeout</h2>
+  <ul>
+    <li>Vendored xterm browser assets under <code>public/vendor/@xterm/</code> so the Tauri bundle no longer depends on the legacy Node server's dynamic <code>/vendor</code> route.</li>
+    <li>Moved runtime-only Node packages out of production dependencies; remaining Node usage is development/reference tooling while the shipping desktop path is Rust/Tauri.</li>
+    <li>Updated README and <code>wiki/dev.html</code> to describe Tauri as the canonical app runtime, document <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>, and record DMG generation as deferred release packaging work.</li>
+    <li>Verified with <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:all</code>, and <code>pnpm run tauri:build</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 implementation | Tauri generated project instruction parity</h2>
   <ul>
     <li>Updated the Rust project scaffold so generated projects preserve Hyperwiki's lowercase <code>wiki/sources.html</code> convention and app-visible <code>wiki/AGENTS.html</code> guidance.</li>
