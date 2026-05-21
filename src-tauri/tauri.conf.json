@@ -11,8 +11,8 @@
     "windows": [
       {
         "title": "Hyperwiki",
-        "width": 1440,
-        "height": 960,
+        "width": 1720,
+        "height": 1000,
         "minWidth": 1040,
         "minHeight": 720,
         "resizable": true,
