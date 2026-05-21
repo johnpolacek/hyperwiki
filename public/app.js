@@ -1525,7 +1525,8 @@ function closeThemeEditor() {
 
 function renderThemeEditor() {
   const presets = themeDraft?.presets || {};
-  const activePreset = themeDraft?.activePreset || "paper";
+  const activePreset = presets[themeDraft?.activePreset] ? themeDraft.activePreset : Object.keys(presets)[0] || "paper";
+  if (themeDraft) themeDraft.activePreset = activePreset;
   themePresetBar.replaceChildren(themeSelectedPreset(activePreset, presets[activePreset]));
   themePresetPicker.replaceChildren(...Object.entries(presets).map(([value, preset]) => themePresetCard(value, preset, "picker")));
   themePresetBar.hidden = false;

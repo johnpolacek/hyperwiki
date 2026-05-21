@@ -222,6 +222,13 @@ fn effective_theme(settings: &Value) -> Value {
 
 fn normalize_built_in_presets(mut settings: Value) -> Value {
     settings["theme"]["presets"] = default_settings()["theme"]["presets"].clone();
+    let active = settings["theme"]["activePreset"]
+        .as_str()
+        .unwrap_or("paper")
+        .to_string();
+    if !settings["theme"]["presets"][&active].is_object() {
+        settings["theme"]["activePreset"] = json!("paper");
+    }
     settings
 }
 
@@ -388,6 +395,29 @@ mod tests {
         assert_eq!(settings["theme"]["activePreset"], "paper");
         assert!(settings["theme"]["presets"]["atlas"].is_object());
         assert!(settings["soul"]["principles"].as_array().unwrap().len() >= 3);
+    }
+
+    #[test]
+    fn normalizes_missing_active_preset_to_paper() {
+        let home = temp_root("settings-active-preset");
+        fs::create_dir_all(&home).unwrap();
+        fs::write(
+            home.join("settings.json"),
+            json!({
+                "theme": {
+                    "activePreset": "signal",
+                    "presets": {
+                        "signal": { "label": "Signal", "tokens": {} }
+                    },
+                    "customTokens": {}
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let settings = SettingsStore::new(&home).read();
+        assert_eq!(settings["theme"]["activePreset"], "paper");
+        assert!(settings["theme"]["presets"]["paper"].is_object());
     }
 
     #[test]
