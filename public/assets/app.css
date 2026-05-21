@@ -6,6 +6,7 @@
   --text: #20231f;
   --muted: #62675f;
   --accent: #276ef1;
+  --accent-text: #ffffff;
   --mono-font: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --sidebar-font: var(--mono-font);
   --docs-serif-font: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -3387,7 +3388,7 @@ html[data-initial-route="settings"] .wiki-pane {
   gap: 7px;
   border-color: color-mix(in srgb, var(--accent) 82%, var(--text));
   background: var(--accent);
-  color: #ffffff;
+  color: var(--accent-text);
   box-shadow:
     0 1px 0 color-mix(in srgb, #ffffff 24%, transparent) inset,
     0 8px 18px color-mix(in srgb, var(--accent) 20%, transparent);

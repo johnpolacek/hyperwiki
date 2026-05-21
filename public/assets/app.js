@@ -1821,6 +1821,7 @@ function applyTheme(settings) {
     "--text": theme.tokens.ui.text,
     "--muted": theme.tokens.ui.muted,
     "--accent": theme.tokens.ui.accent,
+    "--accent-text": readableTextOn(theme.tokens.ui.accent),
     "--sidebar-font": theme.tokens.ui.sidebarFont,
     "--docs-bg": theme.tokens.docs.bg,
     "--docs-panel": theme.tokens.docs.panel,
@@ -1856,6 +1857,7 @@ function applyThemePreview(theme) {
     "--text": theme.tokens.ui.text,
     "--muted": theme.tokens.ui.muted,
     "--accent": theme.tokens.ui.accent,
+    "--accent-text": readableTextOn(theme.tokens.ui.accent),
     "--sidebar-font": theme.tokens.ui.sidebarFont,
     "--docs-bg": theme.tokens.docs.bg,
     "--docs-panel": theme.tokens.docs.panel,
@@ -2002,6 +2004,11 @@ function ensureAccent(color, mode) {
   const contrastTarget = mode === "dark" ? "#111312" : "#ffffff";
   if (contrastRatio(normalized, contrastTarget) >= 4.5) return normalized;
   return mode === "dark" ? mixHex(normalized, "#ffffff", 0.45) : mixHex(normalized, "#000000", 0.38);
+}
+
+function readableTextOn(color) {
+  const normalized = normalizeColor(color);
+  return contrastRatio("#ffffff", normalized) >= contrastRatio("#111312", normalized) ? "#ffffff" : "#111312";
 }
 
 function mixHex(a, b, amount) {
