@@ -1083,7 +1083,7 @@ function renderProjectSwitcher(groups) {
       pointerSwitchStarted = true;
       markProjectSwitcherActive(project);
       setTimeout(closeTopbarPanels, 50);
-      void switchProject(project);
+      setTimeout(() => void switchProject(project), 60);
     });
     button.addEventListener("click", () => {
       if (pointerSwitchStarted) {
@@ -1091,7 +1091,7 @@ function renderProjectSwitcher(groups) {
         return;
       }
       setTimeout(closeTopbarPanels, 50);
-      void switchProject(project);
+      setTimeout(() => void switchProject(project), 60);
     });
     return button;
   }));
