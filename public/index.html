@@ -165,21 +165,21 @@
             <textarea id="new-plan-intent" rows="3" placeholder="What should this plan accomplish?"></textarea>
           </label>
         </div>
-        <section class="new-plan-status-panel" aria-label="Plan clarity">
+        <section id="new-plan-status-panel" class="new-plan-status-panel" aria-label="Plan clarity" hidden>
           <div>
             <strong id="new-plan-score">Clarity 0%</strong>
             <span id="new-plan-summary">Add a title and intent to start.</span>
           </div>
           <code id="new-plan-path">wiki/plans/features/new-plan.html</code>
         </section>
-        <section id="new-plan-questions" class="new-plan-questions" aria-label="Clarifying questions"></section>
+        <section id="new-plan-questions" class="new-plan-questions" aria-label="Clarifying questions" hidden></section>
         <p id="new-plan-status" class="new-plan-status" role="status"></p>
         <footer>
-          <label class="new-plan-defer">
+          <label id="new-plan-defer-label" class="new-plan-defer" hidden>
             <input id="new-plan-defer" type="checkbox">
             <span>Allow low-risk unknowns to be recorded as deferred</span>
           </label>
-          <button type="button" id="new-plan-clarify">Ask next questions</button>
+          <button type="button" id="new-plan-clarify">Start Plan</button>
           <button type="submit" id="new-plan-create" disabled>Create plan</button>
         </footer>
       </form>

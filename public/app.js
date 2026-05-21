@@ -17,8 +17,10 @@ const newPlanIntent = document.getElementById("new-plan-intent");
 const newPlanScore = document.getElementById("new-plan-score");
 const newPlanSummary = document.getElementById("new-plan-summary");
 const newPlanPath = document.getElementById("new-plan-path");
+const newPlanStatusPanel = document.getElementById("new-plan-status-panel");
 const newPlanQuestions = document.getElementById("new-plan-questions");
 const newPlanStatus = document.getElementById("new-plan-status");
+const newPlanDeferLabel = document.getElementById("new-plan-defer-label");
 const newPlanDefer = document.getElementById("new-plan-defer");
 const newPlanClarify = document.getElementById("new-plan-clarify");
 const newPlanCreate = document.getElementById("new-plan-create");
@@ -147,7 +149,7 @@ let projectSwitchVersion = 0;
 let pendingProjectRemovalId = null;
 const selectedProjectCheckoutBySlug = new Map();
 let currentPlanPath = "/wiki/plans/index.html";
-let planCreationState = { answers: new Map(), response: null };
+let planCreationState = { answers: new Map(), response: null, stage: "draft" };
 let sidebarFocusKey = "";
 let nonPlanPromptSubmitted = false;
 let settingsState = null;
@@ -417,16 +419,16 @@ newPlanButton.addEventListener("click", () => {
   if (open) {
     modifyPlanUi.hidden = true;
     modifyButton.setAttribute("aria-expanded", "false");
-    renderNewPlanWaitingForIntent();
+    renderNewPlanDraftState();
     requestAnimationFrame(() => newPlanTitle.focus());
   }
 });
 
 newPlanClose.addEventListener("click", closeNewPlanUi);
-newPlanTitle.addEventListener("input", debounceNewPlanClarify);
-newPlanIntent.addEventListener("input", debounceNewPlanClarify);
-newPlanType.addEventListener("change", () => void clarifyNewPlan());
-newPlanClarify.addEventListener("click", () => void clarifyNewPlan());
+newPlanTitle.addEventListener("input", handleNewPlanDraftInput);
+newPlanIntent.addEventListener("input", handleNewPlanDraftInput);
+newPlanType.addEventListener("change", handleNewPlanDraftInput);
+newPlanClarify.addEventListener("click", () => void startNewPlanQuestions());
 
 newPlanUi.addEventListener("input", (event) => {
   const target = event.target;
@@ -497,16 +499,17 @@ modifyPlanUi.addEventListener("submit", async (event) => {
   }
 });
 
-let newPlanClarifyTimer = null;
-
-function debounceNewPlanClarify() {
-  clearTimeout(newPlanClarifyTimer);
-  newPlanClarifyTimer = setTimeout(() => void clarifyNewPlan(), 350);
-}
-
 function closeNewPlanUi() {
   newPlanUi.hidden = true;
   newPlanButton.setAttribute("aria-expanded", "false");
+}
+
+function handleNewPlanDraftInput() {
+  if (planCreationState.stage !== "questions") {
+    renderNewPlanDraftState();
+    return;
+  }
+  void clarifyNewPlan();
 }
 
 function newPlanPayload() {
@@ -521,7 +524,7 @@ function newPlanPayload() {
 async function clarifyNewPlan() {
   const payload = newPlanPayload();
   if (!newPlanHasInitialIntent(payload)) {
-    renderNewPlanWaitingForIntent(payload);
+    renderNewPlanDraftState(payload, "Add a little more intent before starting the Q&A stage.");
     return;
   }
   newPlanStatus.textContent = "Checking clarity...";
@@ -540,21 +543,41 @@ async function clarifyNewPlan() {
   }
 }
 
+async function startNewPlanQuestions() {
+  const payload = newPlanPayload();
+  if (!newPlanHasInitialIntent(payload)) {
+    renderNewPlanDraftState(payload, "Add a short title and a clearer intent before starting the Q&A stage.");
+    return;
+  }
+  planCreationState.stage = "questions";
+  await clarifyNewPlan();
+}
+
 function newPlanHasInitialIntent(payload = newPlanPayload()) {
   return payload.title.length >= 2 && payload.intent.split(/\s+/).filter(Boolean).length >= 8;
 }
 
-function renderNewPlanWaitingForIntent(payload = newPlanPayload()) {
-  const slug = slugifyForPreview(payload.title || "new-plan");
+function renderNewPlanDraftState(payload = newPlanPayload(), message = "") {
   planCreationState.response = null;
-  newPlanScore.textContent = "Clarity pending";
-  newPlanSummary.textContent = payload.title || payload.intent
-    ? "Describe the plan a little more before Hyperwiki asks follow-up questions."
-    : "Start with a title and short intent. Questions appear after Hyperwiki knows what you want to plan.";
-  newPlanPath.textContent = `/wiki/plans/features/${slug}.html`;
+  planCreationState.stage = "draft";
+  newPlanStatusPanel.hidden = true;
+  newPlanQuestions.hidden = true;
+  newPlanDeferLabel.hidden = true;
+  newPlanCreate.hidden = true;
+  newPlanClarify.textContent = "Start Plan";
+  newPlanClarify.disabled = !newPlanHasInitialIntent(payload);
   newPlanQuestions.replaceChildren();
   newPlanCreate.disabled = true;
-  newPlanStatus.textContent = "Waiting for the initial plan idea.";
+  newPlanStatus.textContent = message || "Describe what you want to plan, then start the Q&A stage.";
+}
+
+function renderNewPlanQuestionsState() {
+  newPlanStatusPanel.hidden = false;
+  newPlanQuestions.hidden = false;
+  newPlanDeferLabel.hidden = false;
+  newPlanCreate.hidden = false;
+  newPlanClarify.textContent = "Ask next questions";
+  newPlanClarify.disabled = false;
 }
 
 function slugifyForPreview(value) {
@@ -566,6 +589,7 @@ function slugifyForPreview(value) {
 }
 
 function renderNewPlanClarification(response) {
+  renderNewPlanQuestionsState();
   newPlanScore.textContent = `Clarity ${response.score || 0}%`;
   const conflict = response.pathAvailable === false
     ? ` Path already exists${response.suggestedSlug ? `; try ${response.suggestedSlug}.` : "."}`
@@ -620,7 +644,7 @@ async function createNewPlan() {
 }
 
 function resetNewPlanForm() {
-  planCreationState = { answers: new Map(), response: null };
+  planCreationState = { answers: new Map(), response: null, stage: "draft" };
   newPlanTitle.value = "";
   newPlanIntent.value = "";
   newPlanType.value = "feature";
@@ -630,6 +654,7 @@ function resetNewPlanForm() {
   newPlanSummary.textContent = "Add a title and intent to start.";
   newPlanPath.textContent = "wiki/plans/features/new-plan.html";
   newPlanCreate.disabled = true;
+  renderNewPlanDraftState();
 }
 
 planPromptInput.addEventListener("input", resizePlanPromptInput);
