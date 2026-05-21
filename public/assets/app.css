@@ -3782,13 +3782,24 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .worktree-popover header button {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
   padding: 0;
-  border-color: #303832;
-  border-radius: 6px;
-  color: #9da79f;
+  border: 0;
+  background: transparent;
+  color: #aeb8b0;
+  font: 700 22px/1 var(--terminal-font);
+}
+
+.worktree-popover header button:hover,
+.worktree-popover header button:focus-visible {
+  background: transparent;
+  color: #eef2ec;
+  outline: 2px solid color-mix(in srgb, var(--terminal-accent, #9fd1ff) 34%, transparent);
+  outline-offset: 2px;
 }
 
 .worktree-popover label {
@@ -3862,10 +3873,32 @@ html[data-initial-route="settings"] .wiki-pane {
 
 #worktree-create {
   flex: 0 0 auto;
-  border-color: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 74%, #ffffff);
-  background: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 16%, transparent);
-  color: #ffffff;
-  font-weight: 700;
+  min-height: 32px;
+  border: 1px solid color-mix(in srgb, var(--terminal-accent, #9fd1ff) 58%, #303832);
+  border-radius: 6px;
+  padding: 7px 11px;
+  background: #eef2ec;
+  color: #111513;
+  box-shadow: none;
+  cursor: pointer;
+  font: 800 12px/1.2 var(--terminal-font);
+}
+
+#worktree-create:hover,
+#worktree-create:focus-visible {
+  border-color: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 72%, #ffffff);
+  background: #ffffff;
+  color: #111513;
+  outline: 2px solid color-mix(in srgb, var(--terminal-accent, #9fd1ff) 34%, transparent);
+  outline-offset: 2px;
+}
+
+#worktree-create:disabled:hover,
+#worktree-create:disabled:focus-visible {
+  border-color: color-mix(in srgb, var(--terminal-accent, #9fd1ff) 58%, #303832);
+  background: #eef2ec;
+  color: #111513;
+  outline: none;
 }
 
 #worktree-create:disabled {
