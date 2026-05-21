@@ -214,6 +214,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri packaging</h2>
+  <ul>
+    <li>Updated Tauri package metadata to use identifier <code>dev.hyperwiki.desktop</code> and scoped verified bundle output to the macOS <code>.app</code> target.</li>
+    <li>Verified release packaging with <code>pnpm run tauri:build</code>, producing <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+    <li>Recorded that the initial all-target build produced the release binary and <code>.app</code> but failed during DMG script execution, so DMG distribution remains deferred until a focused packaging pass.</li>
+    <li>Marked Stage 05 Unit 03 complete and advanced the active migration unit to Stage 05 Unit 04 - Frontend Styling Decision; <code>pnpm run check:all</code> also passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
