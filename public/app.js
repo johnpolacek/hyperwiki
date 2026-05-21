@@ -1078,6 +1078,7 @@ function renderProjectSwitcher(groups) {
     button.setAttribute("aria-label", group.name);
     button.title = project?.available ? project.root : `${project?.root || group.name} unavailable`;
     button.append(projectSwitcherLabel(group, project));
+    button.addEventListener("pointerdown", () => markProjectSwitcherActive(project));
     button.addEventListener("click", () => switchProject(project));
     return button;
   }));
