@@ -613,9 +613,16 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     })
 }
 
+fn path_project_id(path: &str) -> Option<String> {
+    let path_without_query = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
+    let rest = path_without_query.strip_prefix("/projects/")?;
+    let (id, _) = rest.split_once('/')?;
+    (!id.is_empty()).then(|| id.to_string())
+}
+
 fn resolve_request_project(path: &str) -> Option<crate::domain::projects::ProjectRecord> {
     let registry = crate::domain::projects::ProjectRegistry::from_environment();
-    let project_id = query_param(path, "project");
+    let project_id = query_param(path, "project").or_else(|| path_project_id(path));
     registry.resolve(
         project_id.as_deref(),
         std::env::current_dir().ok().as_deref(),
@@ -1106,6 +1113,7 @@ mod tests {
         let previous_home = std::env::var_os("HYPERWIKI_HOME");
         let root = temp_root("command-wiki-page");
         let home = temp_root("command-wiki-page-home");
+        let unrelated = temp_root("command-wiki-page-unrelated-cwd");
         fs::create_dir_all(root.join(".hyperwiki")).unwrap();
         fs::create_dir_all(root.join("wiki")).unwrap();
         fs::write(
@@ -1121,7 +1129,7 @@ mod tests {
         let registry = crate::domain::projects::ProjectRegistry::new(&home);
         let project = registry.register(&root).unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
-        std::env::set_current_dir(&root).unwrap();
+        std::env::set_current_dir(&unrelated).unwrap();
 
         let response = hyperwiki_request(HyperwikiRequest {
             path: format!("/projects/{}/wiki/index.html", project.id),

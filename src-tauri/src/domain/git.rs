@@ -261,13 +261,7 @@ pub fn create_worktree_checkout(
 
     fs::create_dir_all(target.parent().unwrap_or(parent))
         .map_err(|error| (500, error.to_string()))?;
-    let integration = default_git_branch(git_root, &repo.git.branch);
-    let fetch = git(git_root, &["fetch", "origin", "--prune"]);
-    let base_ref = if fetch.ok {
-        format!("origin/{integration}")
-    } else {
-        integration
-    };
+    let base_ref = default_git_branch(git_root, &repo.git.branch);
     let added = git(
         git_root,
         &[
@@ -541,6 +535,20 @@ mod tests {
                 "Initial",
             ],
         );
+        fs::write(root.join("local-only-marker.txt"), "local commit").unwrap();
+        git(&root, &["add", "-A"]);
+        git(
+            &root,
+            &[
+                "-c",
+                "user.name=Hyperwiki Test",
+                "-c",
+                "user.email=hyperwiki-test@localhost",
+                "commit",
+                "-m",
+                "Local-only marker",
+            ],
+        );
         let fake_bin = fake_pnpm();
         let _path_guard = PathGuard::prepend(fake_bin);
         let registry = crate::domain::projects::ProjectRegistry::new(&home);
@@ -573,6 +581,7 @@ mod tests {
         );
         assert!(result.install.ok);
         assert_eq!(result.project.worktree_slug, "feature-worktree-flow");
+        assert!(result.path.join("local-only-marker.txt").exists());
         let listed = registry.list(Some(&result.project.id));
         assert!(listed
             .checkouts

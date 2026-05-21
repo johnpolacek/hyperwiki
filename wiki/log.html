@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 validation | Tauri rewrite release dogfood complete</h2>
+  <ul>
+    <li>Completed Stage 06 Unit 04 by using the packaged <code>Hyperwiki.app</code> to render project-scoped wiki pages, create a real worktree, start a dev preview terminal, hand off to an agent terminal, and update the active plan/log.</li>
+    <li>Dogfood found and fixed two release-path defects: worktree creation used stale <code>origin/main</code> instead of local committed <code>main</code>, and packaged project-scoped wiki iframe reads did not resolve <code>/projects/:id/wiki/...</code> paths outside the repo CWD.</li>
+    <li>Verified the fresh dogfood worktree was based on current local <code>main</code> and contained <code>wiki/plans/tauri-rewrite.html</code>; the runtime preview URL returned HTTP 200 through Portless.</li>
+    <li>Cleaned up the temporary dogfood branch/worktree and spawned app/dev/agent processes. The complete Tauri rewrite plan is now marked complete; signed DMG/notarization remains deferred release packaging work.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 validation | packaged app desktop dogfood</h2>
   <ul>
     <li>Opened the packaged <code>Hyperwiki.app</code> and found a real desktop packaging bug: the Tauri window did not have the legacy Node server's <code>/assets</code> route and iframe wiki URLs fell back to the app shell.</li>

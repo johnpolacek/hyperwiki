@@ -20,6 +20,23 @@ for (const asset of requiredAssets) {
   await access(path.resolve(asset));
 }
 
+const mirroredAssets = [
+  ["public/app.css", "public/assets/app.css"],
+  ["public/app.js", "public/assets/app.js"],
+  ["public/app-api.js", "public/assets/app-api.js"],
+  ["public/wiki.css", "public/assets/wiki.css"]
+];
+
+for (const [source, mirror] of mirroredAssets) {
+  const [sourceText, mirrorText] = await Promise.all([
+    readFile(path.resolve(source), "utf8"),
+    readFile(path.resolve(mirror), "utf8")
+  ]);
+  if (sourceText !== mirrorText) {
+    throw new Error(`Tauri static asset mirror is stale: ${mirror} must match ${source}`);
+  }
+}
+
 const index = await readFile(path.resolve("public/index.html"), "utf8");
 if (!index.includes("/vendor/@xterm/xterm/lib/xterm.mjs")) {
   throw new Error("Tauri static app no longer maps xterm to vendored browser assets.");

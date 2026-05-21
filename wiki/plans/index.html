@@ -23,23 +23,28 @@
   <h2>Summary</h2>
   <ul>
     <li>Status: active</li>
-    <li>Shape: post-MVP architecture migration</li>
-    <li>Current plan: <a href="/wiki/plans/tauri-rewrite.html">Complete Tauri Rewrite</a></li>
-    <li>Current unit: Stage 02 / Unit 02 - Wiki Filesystem And Navigation</li>
-    <li>Next action: port wiki page listing, title extraction, project-scoped wiki serving, and plan status parsing into Rust.</li>
+    <li>Shape: post-MVP feature plan</li>
+    <li>Current plan: <a href="/wiki/plans/features/multi-agent-provider-support.html">Multi-Agent Provider Support</a></li>
+    <li>Current unit: Unit 01 - Provider-Aware Agent Terminals</li>
+    <li>Next action: implement provider-aware Codex and Claude agent terminal support while keeping Codex as the default.</li>
   </ul>
 </section>
 <section>
   <h2>Current Planning State</h2>
-  <p>The MVP is complete. The active post-MVP direction is a complete Tauri rewrite with Rust-owned runtime behavior, feature compatibility as the release target, and full compatibility with existing Hyperwiki project/wiki data.</p>
+  <p>The MVP and complete Tauri rewrite are complete. The active post-MVP direction is provider-aware local agent terminals that keep Codex as the default while adding Claude as an additional visible local CLI provider.</p>
 </section>
 <section>
   <h2>Active Plans</h2>
   <ul>
-    <li><a href="/wiki/plans/tauri-rewrite.html">Complete Tauri Rewrite</a> is the current multi-stage architecture migration. Read first with <code>sed -n '1,160p' wiki/plans/tauri-rewrite.html</code>.</li>
-    <li><a href="/wiki/plans/tauri-desktop-dogfood-checklist.html">Tauri Desktop Dogfood Checklist</a> tracks manual desktop verification that cannot be covered by ordinary browser smoke tests.</li>
     <li><a href="/wiki/plans/features/new-plan-workflow.html">New Plan Workflow</a></li>
     <li><a href="/wiki/plans/features/multi-agent-provider-support.html">Multi-Agent Provider Support</a> keeps Codex as the default agent provider while adding Claude and mixed provider sessions.</li>
+  </ul>
+</section>
+<section>
+  <h2>Recently Completed</h2>
+  <ul>
+    <li><a href="/wiki/plans/tauri-rewrite.html">Complete Tauri Rewrite</a> completed the Rust-owned Tauri desktop app migration and packaged-app dogfood closeout.</li>
+    <li><a href="/wiki/plans/tauri-desktop-dogfood-checklist.html">Tauri Desktop Dogfood Checklist</a> remains as desktop-only validation evidence.</li>
   </ul>
 </section>
 <section>
