@@ -187,6 +187,15 @@
   </ul>
 </article>
 <article>
+  <h2>2026-05-20 implementation | Tauri MCP surface</h2>
+  <ul>
+    <li>Ported the MCP surface contract into Rust, including project contract mapping, read-only resources, permissioned action-tool metadata, use cases, and implementation notes.</li>
+    <li>Added Tauri command transport handling for <code>/api/mcp-surface</code> and Rust JSON-RPC handling for initialize, resource list/read, tool list, and read-only tool calls with Content-Length framing support.</li>
+    <li>Marked Stage 04 Unit 04 and Stage 04 complete, then advanced the active migration unit to Stage 05 Unit 01 - Desktop Window And App Actions.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for MCP resource/tool contract shape, permissioned action tools, read-only stdio tool filtering, resource reads, tool calls, and framed responses.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-20 planning | new plan workflow</h2>
   <ul>
     <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>

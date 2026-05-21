@@ -197,6 +197,13 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::verification::project_contract(project_root),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/mcp-surface") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(200, &crate::domain::mcp::mcp_surface_summary(project_root));
+    }
     if request.method == "POST" && request.path.starts_with("/api/git/init") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -833,6 +840,11 @@ mod tests {
             method: "GET".to_string(),
             body: None,
         });
+        let mcp_surface = hyperwiki_request(HyperwikiRequest {
+            path: "/api/mcp-surface".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
 
         std::env::set_current_dir(previous_dir).unwrap();
         match previous_home {
@@ -848,6 +860,9 @@ mod tests {
         assert!(contract.ok);
         assert!(contract.text.contains("hyperwiki.project-contract"));
         assert!(contract.text.contains("Verification loops:"));
+        assert!(mcp_surface.ok);
+        assert!(mcp_surface.text.contains("hyperwiki.mcp-surface"));
+        assert!(mcp_surface.text.contains("hyperwiki://project-contract"));
     }
 
     #[test]
