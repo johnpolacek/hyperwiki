@@ -3284,7 +3284,7 @@ function delay(ms) {
 async function switchProject(project) {
   if (!project?.available) return;
   markProjectSwitcherActive(project);
-  closeTopbarPanels();
+  setTimeout(closeTopbarPanels, 300);
   const switchVersion = ++projectSwitchVersion;
   const immediatePath = immediateProjectOpenPath();
   const targetPathPromise = projectOpenPath(project);
