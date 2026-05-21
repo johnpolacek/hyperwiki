@@ -1078,7 +1078,10 @@ function renderProjectSwitcher(groups) {
     button.setAttribute("aria-label", group.name);
     button.title = project?.available ? project.root : `${project?.root || group.name} unavailable`;
     button.append(projectSwitcherLabel(group, project));
-    button.addEventListener("pointerdown", () => markProjectSwitcherActive(project));
+    button.addEventListener("pointerdown", () => {
+      markProjectSwitcherActive(project);
+      setTimeout(closeTopbarPanels, 300);
+    });
     button.addEventListener("click", () => switchProject(project));
     return button;
   }));
@@ -3284,7 +3287,6 @@ function delay(ms) {
 async function switchProject(project) {
   if (!project?.available) return;
   markProjectSwitcherActive(project);
-  setTimeout(closeTopbarPanels, 300);
   const switchVersion = ++projectSwitchVersion;
   const immediatePath = immediateProjectOpenPath();
   const targetPathPromise = projectOpenPath(project);
