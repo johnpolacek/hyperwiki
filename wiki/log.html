@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 planning | project plan creation</h2>
+  <ul>
+    <li>Added the active <a href="/wiki/plans/features/project-plan-creation.html">Project Plan Creation</a> plan for creating durable wiki plans inside a selected project root.</li>
+    <li>Planning direction: project plan creation should write to the selected project's <code>wiki/</code> files, preserve Hyperwiki scaffold conventions, show scoped path and conflict checks, and navigate to the new plan for review before implementation.</li>
+    <li>Next unit: implement the project-scoped create-plan API contract.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 fix | custom plan status parsing</h2>
   <ul>
     <li>Extended wiki status parsing to recognize custom plan summary metrics such as the Tauri rewrite page's <code>Status</code> definition-list field.</li>
