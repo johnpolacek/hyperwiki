@@ -23,7 +23,7 @@
 <article>
   <h2>2026-05-21 implementation | non-Git worktree onboarding</h2>
   <ul>
-    <li>Changed the branch rail to show an <code>Init Git</code> action instead of <code>+ worktree</code> when the active project has no Git root, avoiding the previous failed worktree creation request.</li>
+    <li>Changed the branch rail to show an <code>init git</code> action instead of <code>+ worktree</code> when the active project has no Git root, avoiding the previous failed worktree creation request.</li>
     <li>Reused the existing Git initialization endpoint, refreshed repo context after initialization, and then restored the normal <code>+ worktree</code> action.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a static browser check of the non-Git branch rail state.</li>
   </ul>

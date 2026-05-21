@@ -752,7 +752,7 @@ async function loadRepoContext() {
 function updateWorktreeButtonVisibility(branch) {
   if (repoContextState && !repoContextState.git?.root) {
     newWorktreeTerminalButton.hidden = false;
-    newWorktreeTerminalButton.textContent = "Init Git";
+    newWorktreeTerminalButton.textContent = "init git";
     return;
   }
   const normalized = String(branch || "").trim().toLowerCase();
@@ -2736,7 +2736,7 @@ async function openWorktreePopover() {
 function updateWorktreeGitMode() {
   const hasGit = Boolean(repoContextState?.git?.root);
   worktreeBranchInput.disabled = !hasGit;
-  worktreeCreate.textContent = hasGit ? "Create Worktree" : "Init Git";
+  worktreeCreate.textContent = hasGit ? "Create Worktree" : "init git";
   worktreeWarning.hidden = hasGit && !repoContextState?.git?.dirty;
   if (!hasGit) {
     worktreeWarning.textContent = "Initialize Git before creating a worktree.";
