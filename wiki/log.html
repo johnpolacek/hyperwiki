@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 fix | completed plan sidebar grouping</h2>
+  <ul>
+    <li>Changed the workspace sidebar so completed top-level plan pages render under the Completed Plans group instead of remaining as peer rows beside MVP Plan.</li>
+    <li>Marked the Tauri desktop dogfood checklist complete so it follows the same completed-plan grouping as the closed Tauri rewrite work.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 fix | split agent terminal control sequences</h2>
   <ul>
     <li>Made terminal display normalization stateful per terminal session so Codex synchronized-output control sequences split across output polling chunks do not leak visible tail text such as <code>026l</code> into xterm.</li>

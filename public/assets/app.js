@@ -3588,7 +3588,7 @@ function renderPlanTree(pages) {
 
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const currentTargets = currentPlanTargets(sorted);
-  const topLevel = sorted.filter((page) => isTopLevelPlanPage(page));
+  const topLevel = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
   for (const page of topLevel) {
     section.append(renderPlanNode(page, sorted, currentTargets));
   }
@@ -3804,6 +3804,13 @@ function isTopLevelPlanPage(page) {
   return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
 }
 
+function isCompletedTopLevelPlanPage(page) {
+  const path = displayWikiPath(page.path);
+  if (!isTopLevelPlanPage(page)) return false;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return false;
+  return isCompletedPage(page);
+}
+
 function isUnitPage(page) {
   return /\/unit-\d+-[^/]+\.html$/.test(displayWikiPath(page.path));
 }
@@ -3820,8 +3827,9 @@ function isImmediateChildPlanPage(parent, candidate, pages) {
     return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
   }
   if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
-    return /^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
-      && !candidatePath.endsWith("/index.html");
+    return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
+      && !candidatePath.endsWith("/index.html"))
+      || isCompletedTopLevelPlanPage(candidate);
   }
   const parentBase = parentPath.replace(/\.html$/, "");
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
