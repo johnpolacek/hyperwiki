@@ -54,9 +54,9 @@
     <section>
       <h2>Verification, Reviews, And MCP</h2>
       <ul>
-        <li>Open verification and project-contract data and compare with the Node reference outputs.</li>
-        <li>Prepare reviews for architecture, security, diff, and test gaps; verify review prompts route only to active agent sessions.</li>
-        <li>Run the mcp transport smoke and verify mcp resources stay local and permissioned.</li>
+        <li>Complete: verification and project-contract data are covered by the Rust project-contract smoke and full <code>pnpm run check:all</code> parity gate.</li>
+        <li>Complete: architecture, security, diff, and test-gap review prompts are prepared by smoke coverage, and routed review execution returns <code>409</code> unless an active agent session exists.</li>
+        <li>Complete: <code>pnpm run smoke:mcp-transport</code> exercises the stdio MCP server, confirms resources stay local, and verifies action tools remain hidden/rejected.</li>
       </ul>
     </section>
   </main>

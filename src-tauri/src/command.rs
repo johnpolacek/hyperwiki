@@ -1376,6 +1376,11 @@ mod tests {
             method: "POST".to_string(),
             body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"dryRun\":true}".to_string()),
         });
+        let unrouted = hyperwiki_request(HyperwikiRequest {
+            path: "/api/review-workflows/run".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+        });
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
@@ -1404,6 +1409,8 @@ mod tests {
         assert!(prepared.text.contains("\"sent\":false"));
         assert!(prepared.text.contains("Workflow: Security Review"));
         assert!(prepared.text.contains("Project: Review Workflow Command"));
+        assert!(!unrouted.ok);
+        assert_eq!(unrouted.status, 409);
         assert!(start.ok);
         assert!(routed.ok);
         assert!(routed.text.contains("\"sent\":true"));

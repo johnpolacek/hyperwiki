@@ -276,23 +276,33 @@ mod tests {
     fn prepares_review_prompt_with_runtime_evidence_boundary() {
         let root = temp_root("reviews-prepare");
         make_project(&root);
-        let prepared = prepare_review_workflow(
-            &root,
-            "security-review",
-            Some("/wiki/plans/index.html"),
-            true,
-        )
-        .unwrap();
-        assert!(!prepared.sent);
-        assert_eq!(prepared.evidence.status, "prepared");
-        let prompt = prepared.prompt.unwrap();
-        assert!(prompt.contains("Workflow: Security Review"));
-        assert!(prompt.contains("Project: Review Test"));
-        assert!(prompt.contains("Current plan:"));
-        assert!(prompt.contains("Verification loops:"));
-        assert!(prompt.contains(
-            "Do not edit wiki files, commit, or change code unless the user explicitly asks"
-        ));
+        for (workflow_id, label) in [
+            ("diff-review", "Diff Review"),
+            ("architecture-review", "Architecture Consistency Review"),
+            ("security-review", "Security Review"),
+            ("test-gap-review", "Test Gap Review"),
+        ] {
+            let prepared = prepare_review_workflow(
+                &root,
+                workflow_id,
+                Some("/wiki/plans/index.html"),
+                true,
+            )
+            .unwrap();
+            assert!(!prepared.sent);
+            assert_eq!(prepared.workflow.id, workflow_id);
+            assert_eq!(prepared.evidence.status, "prepared");
+            assert_eq!(prepared.evidence.boundary, "runtime-evidence");
+            assert!(!prepared.evidence.recorded);
+            let prompt = prepared.prompt.unwrap();
+            assert!(prompt.contains(&format!("Workflow: {label}")));
+            assert!(prompt.contains("Project: Review Test"));
+            assert!(prompt.contains("Current plan:"));
+            assert!(prompt.contains("Verification loops:"));
+            assert!(prompt.contains(
+                "Do not edit wiki files, commit, or change code unless the user explicitly asks"
+            ));
+        }
     }
 
     fn make_project(root: &Path) {

@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 validation | verification reviews and MCP closeout</h2>
+  <ul>
+    <li>Closed the final Tauri migration verification checklist step for project-contract, review workflow, and MCP transport parity.</li>
+    <li>Added executable smoke commands for project contract, review workflows, and stdio MCP transport, and included them in <code>pnpm run check:all</code>.</li>
+    <li>Verified all four review prompts are prepared with project-contract context, remain runtime evidence, and only route when an active agent session exists.</li>
+    <li>Verified the MCP stdio transport serves localhost-scoped resources, lists only read-only tools, rejects action tools, and rejects unexpected read-tool arguments.</li>
+    <li>Validated with <code>pnpm run check:all</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 fix | terminal control sequence display</h2>
   <ul>
     <li>Filtered synchronized-output private mode toggles from terminal display output so Codex handoffs do not leave visible <code>?2026h</code> text in the agent prompt line.</li>
