@@ -42,4 +42,9 @@ if (!index.includes("/vendor/@xterm/xterm/lib/xterm.mjs")) {
   throw new Error("Tauri static app no longer maps xterm to vendored browser assets.");
 }
 
+const app = await readFile(path.resolve("public/app.js"), "utf8");
+if (!app.includes("wiki\\/plans\\/features") || !app.includes(".test(path)) return true")) {
+  throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
+}
+
 console.log("tauri static assets smoke test passed");

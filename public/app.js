@@ -3809,6 +3809,7 @@ function isTopLevelPlanPage(page) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
   if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return true;
+  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(path)) return true;
   return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
 }
 
@@ -3838,6 +3839,9 @@ function isImmediateChildPlanPage(parent, candidate, pages) {
     return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath)
       && !candidatePath.endsWith("/index.html"))
       || isCompletedTopLevelPlanPage(candidate);
+  }
+  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(parentPath)) {
+    return false;
   }
   const parentBase = parentPath.replace(/\.html$/, "");
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
