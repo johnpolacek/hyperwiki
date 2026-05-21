@@ -1080,7 +1080,7 @@ function renderProjectSwitcher(groups) {
     button.append(projectSwitcherLabel(group, project));
     button.addEventListener("pointerdown", () => {
       markProjectSwitcherActive(project);
-      setTimeout(closeTopbarPanels, 100);
+      setTimeout(closeTopbarPanels, 10);
     });
     button.addEventListener("click", () => switchProject(project));
     return button;
