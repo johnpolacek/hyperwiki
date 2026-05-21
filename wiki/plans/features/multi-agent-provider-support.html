@@ -76,6 +76,15 @@
       </ul>
     </section>
     <section>
+      <h2>Post-Closeout Fix - Agent Terminal Control Sequences</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Fixed terminal display normalization so split Codex synchronized-output control sequences do not leak visible tail text into xterm.</li>
+        <li>Keep prompt handoff behavior and visible agent terminals unchanged.</li>
+        <li>Verified with <code>pnpm run check</code> and a targeted split-output normalizer check.</li>
+      </ul>
+    </section>
+    <section>
       <h2>Assumptions</h2>
       <ul>
         <li>Default to Codex means the default provider for new handoffs and Execute actions, not automatic startup of Codex terminals on workspace load.</li>

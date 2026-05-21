@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 fix | split agent terminal control sequences</h2>
+  <ul>
+    <li>Made terminal display normalization stateful per terminal session so Codex synchronized-output control sequences split across output polling chunks do not leak visible tail text such as <code>026l</code> into xterm.</li>
+    <li>Kept terminal recording, prompt routing, and agent handoff behavior unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and a targeted split-output normalizer check.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 planning | close active plans</h2>
   <ul>
     <li>Marked <a href="/wiki/plans/features/new-plan-workflow.html">New Plan Workflow</a> complete.</li>

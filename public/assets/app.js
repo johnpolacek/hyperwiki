@@ -4465,6 +4465,7 @@ async function createTerminal(name, options = {}) {
     void handleTerminalDrop(event, name, transport);
   });
   const decoder = new TextDecoder();
+  const displayNormalizer = createTerminalDisplayNormalizer();
   const terminalTransportOptions = {
     id,
     name,
@@ -4476,7 +4477,7 @@ async function createTerminal(name, options = {}) {
     onData: (data) => {
       const text = typeof data === "string" ? data : decoder.decode(data, { stream: true });
       recordTerminalOutput(session, text);
-      term.write(normalizeTerminalOutputForDisplay(text));
+      term.write(displayNormalizer.write(text));
     },
     onOpen: () => {
       tab.classList.add("connected");
@@ -4658,7 +4659,27 @@ function stripTerminalControl(value) {
   return value.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1B\\))/g, "");
 }
 
-function normalizeTerminalOutputForDisplay(data) {
+function createTerminalDisplayNormalizer() {
+  let pending = "";
+  return {
+    write(data) {
+      const value = `${pending}${String(data || "")}`;
+      pending = terminalControlPrefix(value);
+      return stripTerminalDisplayControlSequences(value.slice(0, value.length - pending.length));
+    }
+  };
+}
+
+function terminalControlPrefix(value) {
+  const control = "\x1b[?2026";
+  const max = Math.min(control.length - 1, value.length);
+  for (let length = max; length > 0; length -= 1) {
+    if (control.startsWith(value.slice(-length))) return value.slice(-length);
+  }
+  return "";
+}
+
+function stripTerminalDisplayControlSequences(data) {
   return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
 }
 
