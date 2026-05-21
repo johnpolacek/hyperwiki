@@ -103,6 +103,7 @@ const planPromptInput = document.getElementById("plan-prompt-input");
 const planPromptStatus = document.getElementById("plan-prompt-status");
 const workspace = document.querySelector(".workspace");
 const projectToggle = document.getElementById("project-toggle");
+const projectToggleLabel = projectToggle.querySelector("span");
 const projectPanel = document.getElementById("project-panel");
 const projectList = document.getElementById("project-list");
 const manageProjectsLink = document.getElementById("manage-projects-link");
@@ -1045,6 +1046,7 @@ async function loadProjects() {
   activeProjectId = activeProject?.id || activeProjectId;
   activeProjectSlug = activeProject?.projectSlug || activeProjectSlug;
   activeWorktreeSlug = activeProject?.worktreeSlug || activeWorktreeSlug;
+  updateProjectToggleLabel(activeProject);
   if (activeProject && !prettyWorkspacePath(location.pathname) && !isAppShellPath(location.pathname)) {
     history.replaceState(null, "", `${workspacePath(activeProject)}${location.hash}`);
   }
@@ -1115,6 +1117,11 @@ function projectSwitcherLabel(group, project) {
   path.textContent = project?.root || "";
   label.append(name, path);
   return label;
+}
+
+function updateProjectToggleLabel(project) {
+  if (!projectToggleLabel) return;
+  projectToggleLabel.textContent = project?.name || project?.projectSlug || "Projects";
 }
 
 function previewStatusPill(preview, available = true) {
@@ -3300,6 +3307,7 @@ async function switchProject(project) {
   activeProjectId = project.id;
   activeProjectSlug = project.projectSlug;
   activeWorktreeSlug = project.worktreeSlug;
+  updateProjectToggleLabel(project);
   terminalScopeVersion += 1;
   activeTerminalScope = terminalScopeForLocation(immediatePath);
   history.pushState(null, "", `${workspacePath(project)}#${immediatePath}`);
