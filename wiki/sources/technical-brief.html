@@ -27,7 +27,7 @@
 </ul>
 <h2>Defaults</h2>
 <ul>
-  <li>Current implementation: single Node npm package. Active architecture migration target: complete Tauri rewrite with Rust-owned runtime behavior while preserving feature compatibility and existing project/wiki data compatibility.</li>
+  <li>Current implementation direction: Tauri desktop app with Rust-owned runtime behavior while preserving feature compatibility and existing project/wiki data compatibility. The legacy Node npm package code remains as migration reference and smoke-test coverage.</li>
   <li>Product category: Localhost Tooling for docs-driven agentic development.</li>
   <li>HTML canonical wiki files.</li>
   <li>Vanilla browser JS workspace.</li>
@@ -57,7 +57,7 @@
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
   <li>Hosted sync, telemetry, remote execution, and cloud-backed project memory are not default assumptions; any future hosted integration must be explicit and subordinate to local repo truth.</li>
-  <li>The Tauri rewrite should not use a Node sidecar as the long-term core architecture. Node modules remain a reference implementation until the Rust runtime reaches feature parity.</li>
+  <li>The Tauri rewrite does not use a Node sidecar as the long-term core architecture. Node modules are development/reference tooling unless deliberately removed or archived in a later cleanup.</li>
   <li>Tauri desktop UI automation has platform-specific constraints, so the rewrite validation plan should combine Rust tests, compatibility smoke tests, targeted app checks, and explicit manual desktop dogfood evidence.</li>
 </ul>
   </main>

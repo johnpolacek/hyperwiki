@@ -19,7 +19,7 @@
   </header>
   <main class="wiki-page">
     <h1>Architecture</h1>
-<p>hyperwiki is Localhost Tooling packaged as a single npm package with three surfaces: a CLI, repo-local canonical wiki files, and a localhost-only dev runtime.</p>
+<p>hyperwiki is Localhost Tooling packaged as a Tauri desktop app with a Rust-owned local runtime, repo-local canonical wiki files, and compatibility CLI commands. The legacy Node localhost server remains as migration reference and smoke-test coverage, not as the shipping desktop backend.</p>
 <p>Its trust boundary is the developer's own machine, repo files, Git state, terminal sessions, credentials, and environment variables. Hosted services are optional integrations, not the source of truth.</p>
 <h2>Boundaries</h2>
 <ul>

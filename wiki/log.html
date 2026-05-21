@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 validation | Tauri release binary dogfood</h2>
+  <ul>
+    <li>Verified the built release binary can initialize a temporary project, run <code>reset --dry-run</code>, and answer a framed stdio MCP <code>initialize</code> request.</li>
+    <li>Verified the packaged macOS app binary at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app/Contents/MacOS/hyperwiki</code> launches and stays alive for a 5-second smoke window.</li>
+    <li>Updated durable docs that still described the old localhost server as the main product architecture. Stage 06 Unit 04 remains active for an interactive packaged-app workflow pass.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 implementation | Tauri shipping path packaging closeout</h2>
   <ul>
     <li>Vendored xterm browser assets under <code>public/vendor/@xterm/</code> so the Tauri bundle no longer depends on the legacy Node server's dynamic <code>/vendor</code> route.</li>
