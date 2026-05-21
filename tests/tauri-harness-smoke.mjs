@@ -17,4 +17,4 @@ for (const surface of fixture.surfaces) {
 
 assert.match(checklist, /Manual Desktop Dogfood Checklist/);
 assert.match(checklist, /macOS/);
-assert.match(checklist, /Portless/);
+assert.doesNotMatch(domainMod, /node_reference/);

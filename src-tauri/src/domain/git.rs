@@ -11,7 +11,7 @@ const FALLBACK_AUTHOR_EMAIL: &str = "hyperwiki@localhost";
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "git",
-        node_reference: "src/git.js, scripts/worktree.mjs",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "repo context and dirty state",
             "Git initialization onboarding",

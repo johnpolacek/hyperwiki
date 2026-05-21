@@ -10,7 +10,7 @@ const MANAGED_END: &str = "<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->";
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "settings",
-        node_reference: "src/settings.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "global settings persistence",
             "theme token generation",

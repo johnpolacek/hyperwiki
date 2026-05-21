@@ -13,6 +13,7 @@ pub fn run_cli_or_app() {
                 std::process::exit(1);
             }
         }
+        Some("wt") => run_worktree_cli(&raw_args[1..]),
         Some("help") | Some("--help") | Some("-h") => print_help(),
         Some("launch") | Some("dev") | None => run(),
         Some("init") => run_init_cli(&raw_args[1..]),
@@ -96,6 +97,224 @@ fn run_init_cli(args: &[String]) {
     println!("Run: hyperwiki");
 }
 
+fn run_worktree_cli(args: &[String]) {
+    let command = args.first().map(String::as_str).unwrap_or("help");
+    let rest = &args.get(1..).unwrap_or(&[]);
+    let root = std::env::current_dir().unwrap_or_else(|_| ".".into());
+    let registry = domain::projects::ProjectRegistry::from_environment();
+    let result = match command {
+        "doctor" => wt_doctor(&root, &registry),
+        "list" => wt_list(&registry),
+        "create" => wt_create(&root, &registry, rest),
+        "resume" | "open" => wt_open(&root, &registry, rest),
+        "finish" => wt_finish(&root),
+        "prune" => wt_prune(&root),
+        "help" | "--help" | "-h" => {
+            print_worktree_help();
+            Ok(())
+        }
+        other => Err(format!("Unknown worktree command: {other}")),
+    };
+    if let Err(error) = result {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
+}
+
+fn wt_doctor(
+    root: &std::path::Path,
+    registry: &domain::projects::ProjectRegistry,
+) -> Result<(), String> {
+    let repo = domain::git::repo_context(root);
+    println!("Repo: {}", root.display());
+    println!(
+        "Git root: {}",
+        repo.git.root.as_deref().unwrap_or("not initialized")
+    );
+    println!("Branch: {}", repo.git.branch);
+    println!("Worktree: {}", repo.git.worktree);
+    println!("Dirty: {}", repo.git.dirty.unwrap_or(false));
+    println!(
+        "Registered checkouts: {}",
+        registry.list(None).checkouts.len()
+    );
+    Ok(())
+}
+
+fn wt_list(registry: &domain::projects::ProjectRegistry) -> Result<(), String> {
+    let list = registry.list(None);
+    if list.checkouts.is_empty() {
+        println!("No registered Hyperwiki checkouts.");
+        return Ok(());
+    }
+    for project in list.checkouts {
+        println!(
+            "{}\t{}\t{}",
+            project.project_slug,
+            project.worktree_slug,
+            project.root.display()
+        );
+    }
+    Ok(())
+}
+
+fn wt_create(
+    root: &std::path::Path,
+    registry: &domain::projects::ProjectRegistry,
+    args: &[String],
+) -> Result<(), String> {
+    let branch = args.first().cloned();
+    let project = registry.register(root)?;
+    let response = domain::git::create_worktree_checkout(
+        registry,
+        &project,
+        domain::git::WorktreeCreateRequest { branch, name: None },
+    )
+    .map_err(|(_, message)| message)?;
+    println!("Created worktree: {}", response.path.display());
+    println!("Branch: {}", response.branch);
+    println!("Workspace: {}", response.workspace_url);
+    if !response.preview_url.is_empty() {
+        println!("Preview: {}", response.preview_url);
+    }
+    if !response.install.ok {
+        println!("Install warning: {}", response.install.message);
+    }
+    Ok(())
+}
+
+fn wt_open(
+    root: &std::path::Path,
+    registry: &domain::projects::ProjectRegistry,
+    args: &[String],
+) -> Result<(), String> {
+    let target = resolve_worktree_target(root, registry, args.first());
+    let result = std::process::Command::new("open").arg(&target).output();
+    match result {
+        Ok(output) if output.status.success() => {
+            println!("Opened {}", target.display());
+            Ok(())
+        }
+        Ok(output) => Err(String::from_utf8_lossy(&output.stderr).trim().to_string()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn resolve_worktree_target(
+    root: &std::path::Path,
+    registry: &domain::projects::ProjectRegistry,
+    value: Option<&String>,
+) -> std::path::PathBuf {
+    let Some(value) = value else {
+        return root.to_path_buf();
+    };
+    let direct = std::path::PathBuf::from(value);
+    if direct.exists() {
+        return direct;
+    }
+    let slug = cli_slug(value);
+    registry
+        .list(None)
+        .checkouts
+        .into_iter()
+        .find(|project| {
+            project.worktree_slug == slug
+                || project.project_slug == slug
+                || cli_slug(&project.name) == slug
+        })
+        .map(|project| project.root)
+        .unwrap_or(direct)
+}
+
+fn wt_finish(root: &std::path::Path) -> Result<(), String> {
+    let branch = domain::git::git(root, &["branch", "--show-current"]);
+    if !branch.ok || branch.stdout.is_empty() {
+        return Err("Could not determine current branch.".to_string());
+    }
+    let main_root = primary_worktree(root)?;
+    let base = default_local_base_branch(&main_root);
+    let checkout = domain::git::git(&main_root, &["checkout", &base]);
+    if !checkout.ok {
+        return Err(format!("Could not checkout {base}: {}", checkout.stderr));
+    }
+    let merge = domain::git::git(&main_root, &["merge", "--no-ff", &branch.stdout]);
+    if !merge.ok {
+        return Err(format!(
+            "Could not merge {}: {}",
+            branch.stdout, merge.stderr
+        ));
+    }
+    println!(
+        "Merged {} into {} at {}",
+        branch.stdout,
+        base,
+        main_root.display()
+    );
+    Ok(())
+}
+
+fn wt_prune(root: &std::path::Path) -> Result<(), String> {
+    let result = domain::git::git(root, &["worktree", "prune"]);
+    if !result.ok {
+        return Err(format!("Could not prune worktrees: {}", result.stderr));
+    }
+    println!("Pruned stale Git worktree metadata.");
+    Ok(())
+}
+
+fn primary_worktree(root: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    let result = domain::git::git(root, &["worktree", "list", "--porcelain"]);
+    if !result.ok {
+        return Err(format!("Could not list worktrees: {}", result.stderr));
+    }
+    result
+        .stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("worktree "))
+        .map(std::path::PathBuf::from)
+        .ok_or_else(|| "Could not find primary worktree.".to_string())
+}
+
+fn default_local_base_branch(root: &std::path::Path) -> String {
+    for branch in ["main", "master"] {
+        if domain::git::git(
+            root,
+            &[
+                "show-ref",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/{branch}"),
+            ],
+        )
+        .ok
+        {
+            return branch.to_string();
+        }
+    }
+    "main".to_string()
+}
+
+fn print_worktree_help() {
+    println!(
+        "hyperwiki wt\n\nUsage:\n  hyperwiki wt doctor\n  hyperwiki wt create <branch>\n  hyperwiki wt list\n  hyperwiki wt resume [path]\n  hyperwiki wt open [path]\n  hyperwiki wt finish\n  hyperwiki wt prune\n"
+    );
+}
+
+fn cli_slug(value: &str) -> String {
+    let mut slug = String::new();
+    let mut last_dash = false;
+    for character in value.trim().to_lowercase().chars() {
+        if character.is_ascii_alphanumeric() {
+            slug.push(character);
+            last_dash = false;
+        } else if !last_dash && !slug.is_empty() {
+            slug.push('-');
+            last_dash = true;
+        }
+    }
+    slug.trim_matches('-').to_string()
+}
+
 fn run_reset_cli(args: &[String]) {
     let options = CliOptions::parse(args);
     let root = std::env::current_dir().unwrap_or_else(|_| ".".into());
@@ -134,7 +353,7 @@ pub fn run() {
 
 fn print_help() {
     println!(
-        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki help\n\nCommands:\n  init     Scaffold an HTML-first repo-local wiki and hyperwiki config.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n"
+        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an HTML-first repo-local wiki and hyperwiki config.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
     );
 }
 

@@ -6,7 +6,7 @@ use std::path::Path;
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "reviews",
-        node_reference: "src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "named review workflow discovery",
             "review prompt preparation",

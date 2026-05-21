@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 implementation | legacy Node runtime removal</h2>
+  <ul>
+    <li>Decision: Hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>
+    <li>Added the active <a href="/wiki/plans/features/remove-legacy-node-runtime.html">Remove Legacy Node Runtime</a> plan and updated current source truth to treat <code>pnpm dev</code> as Tauri desktop startup.</li>
+    <li>Preserved <code>package.json</code> as developer tooling for <code>pnpm</code>, Tauri, frontend syntax checks, static asset smoke tests, and Rust-backed worktree command shortcuts.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 validation | Tauri rewrite release dogfood complete</h2>
   <ul>
     <li>Completed Stage 06 Unit 04 by using the packaged <code>Hyperwiki.app</code> to render project-scoped wiki pages, create a real worktree, start a dev preview terminal, hand off to an agent terminal, and update the active plan/log.</li>

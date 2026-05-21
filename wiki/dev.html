@@ -33,15 +33,15 @@ src-tauri/target/release/hyperwiki</code></pre>
 <h2>Desktop Runtime</h2>
 <ul>
   <li>The canonical app runtime is the Tauri bundle at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
-  <li>The Rust binary provides compatibility commands for <code>init</code>, <code>reset</code>, <code>dev</code>, <code>launch</code>, and <code>mcp</code>.</li>
-  <li>The legacy Node server remains in the repo as migration reference and smoke-test coverage, not as the shipping desktop backend.</li>
+  <li>The Rust binary provides commands for <code>init</code>, <code>reset</code>, <code>dev</code>, <code>launch</code>, <code>mcp</code>, and <code>wt</code>.</li>
+  <li><code>pnpm dev</code> runs <code>tauri dev</code>; Hyperwiki no longer has a browser-server development runtime.</li>
   <li>Browser assets required by the Tauri bundle must live under <code>public/</code>, including vendored xterm files under <code>public/vendor/@xterm/</code>.</li>
 </ul>
-<h2>Portless Preview</h2>
+<h2>Project Previews</h2>
 <ul>
-  <li>Main preview: <code>https://hyperwiki.localhost</code>.</li>
-  <li>Feature worktree preview: <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code>.</li>
-  <li><code>pnpm dev</code> remains the local development preview for this repository and currently runs the legacy Node reference server through Portless.</li>
+  <li>Portless remains the preferred preview mechanism for user projects opened inside Hyperwiki.</li>
+  <li>Feature worktree preview URLs should continue to use <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code> when a project provides a Portless-backed preview.</li>
+  <li>Hyperwiki's own development runtime is the Tauri desktop app, not a Portless browser route.</li>
 </ul>
 <h2>Parallel Worktrees</h2>
 <pre><code>pnpm wt:doctor

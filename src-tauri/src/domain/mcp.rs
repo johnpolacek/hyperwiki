@@ -7,7 +7,7 @@ use std::path::Path;
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "mcp",
-        node_reference: "src/mcp.js, src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "MCP surface contract",
             "read-only resource and tool definitions",

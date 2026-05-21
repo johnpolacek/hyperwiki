@@ -16,7 +16,7 @@ use serde::Serialize;
 #[serde(rename_all = "camelCase")]
 pub struct DomainSurface {
     pub id: &'static str,
-    pub node_reference: &'static str,
+    pub runtime_owner: &'static str,
     pub responsibilities: &'static [&'static str],
     pub parity_gate: &'static str,
 }
@@ -46,7 +46,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn all_current_node_surfaces_have_rust_owners() {
+    fn all_current_surfaces_have_rust_owners() {
         let ids = surface_ids();
         assert_eq!(
             ids,
@@ -71,5 +71,6 @@ mod tests {
         let value = serde_json::to_value(surfaces()).expect("surfaces should serialize");
         assert_eq!(value.as_array().expect("array").len(), 11);
         assert_eq!(value[0]["id"], "app-shell");
+        assert_eq!(value[0]["runtimeOwner"], "rust-tauri");
     }
 }

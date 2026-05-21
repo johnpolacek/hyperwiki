@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "sessions",
-        node_reference: "src/sessions.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "ignored session metadata",
             "terminal layout retention",

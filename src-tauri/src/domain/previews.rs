@@ -8,7 +8,7 @@ use std::process::Command;
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "previews",
-        node_reference: "src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "Portless route parsing",
             "exact checkout preview status",

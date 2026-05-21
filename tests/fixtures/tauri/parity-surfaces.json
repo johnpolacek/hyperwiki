@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "wiki/plans/tauri-rewrite.html",
+  "source": "wiki/plans/features/remove-legacy-node-runtime.html",
   "surfaces": [
     "app-shell",
     "projects",

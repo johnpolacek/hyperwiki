@@ -4,14 +4,14 @@ hyperwiki is Localhost Tooling for docs-driven agentic development. It runs as a
 
 It turns project docs, plans, logs, source references, terminal panels, and verification status into a repo-local development surface.
 
-hyperwiki is early and experimental. The current product direction is a Tauri desktop app with a Rust-owned local runtime. The legacy Node localhost server remains in the repo as migration reference and smoke-test coverage, not as the shipping desktop backend.
+hyperwiki is early and experimental. The product is a Tauri desktop app with a Rust-owned local runtime. The legacy Node localhost server has been removed; the desktop app is the canonical runtime.
 
 ## Usage
 
 Initialize a wiki in a project:
 
 ```bash
-npx hyperwiki init --yes
+cargo run --manifest-path src-tauri/Cargo.toml -- init --yes
 ```
 
 Build the desktop app:
@@ -32,21 +32,22 @@ Launch the compatibility CLI from a built binary:
 src-tauri/target/release/hyperwiki
 ```
 
-The Rust binary opens the desktop app without browser chrome. It also provides compatibility commands for `init`, `reset`, `dev`, `launch`, and `mcp`.
+The Rust binary opens the desktop app without browser chrome. It also provides commands for `init`, `reset`, `dev`, `launch`, `mcp`, and `wt`.
 
 ```bash
 src-tauri/target/release/hyperwiki init --yes
 src-tauri/target/release/hyperwiki reset --dry-run
 src-tauri/target/release/hyperwiki mcp
+src-tauri/target/release/hyperwiki wt doctor
 ```
 
-For local development in this repo, use Portless:
+For local development in this repo, start the Tauri desktop app:
 
 ```bash
 pnpm dev
 ```
 
-Main previews use `https://hyperwiki.localhost`. Feature worktree previews use `https://<branch-slug>.hyperwiki.localhost`. `pnpm dev` remains the local development preview for this repository and currently runs the legacy Node reference server through Portless.
+`pnpm dev` runs `tauri dev`. Portless remains useful for previewing user projects from inside Hyperwiki, but Hyperwiki itself no longer has a browser-server development runtime.
 
 ## Commands
 
@@ -57,6 +58,7 @@ hyperwiki reset
 hyperwiki dev
 hyperwiki launch
 hyperwiki mcp
+hyperwiki wt doctor
 ```
 
 `init` creates:
@@ -74,7 +76,7 @@ Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` s
 ## Local-Only Guardrails
 
 - hyperwiki identifies as Localhost Tooling, not a hosted project dashboard.
-- `dev` binds to localhost addresses only.
+- `dev` opens the local Tauri desktop runtime.
 - Repo files and Git remain canonical.
 - The browser workspace should not become a hidden source of truth.
 - Terminal/session state is local runtime state by default.
@@ -101,5 +103,5 @@ Parallel feature worktrees:
 pnpm wt:create feature/my-change
 cd ../hyperwiki.worktrees/feature-my-change
 pnpm dev
-pnpm wt:finish feature/my-change
+pnpm wt:finish
 ```

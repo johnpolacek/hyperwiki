@@ -4,9 +4,9 @@ Prefer to commit and pull whenever confident that the code is good and there are
 
 Always use `pnpm` for package management and package scripts in this repository.
 
-Prefer the `agent-browser` CLI for browser automation and visual checks before falling back to Playwright.
+Prefer the `agent-browser` CLI for browser automation and visual checks when inspecting project previews.
 
-Use Portless for local app previews and prefer named `.localhost` URLs over fixed ports when working across worktrees.
+Use Portless for user project previews and prefer named `.localhost` URLs over fixed ports when working across worktrees. Hyperwiki's own `pnpm dev` command starts the Tauri desktop app.
 
 Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree previews should use `https://<branch-slug>.hyperwiki.localhost`.
 

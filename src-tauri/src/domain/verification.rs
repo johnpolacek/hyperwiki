@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "verification",
-        node_reference: "src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "workspace summary",
             "verification loop inference",
@@ -473,7 +473,7 @@ fn default_verification_loops(root: &Path, package_manager: &str) -> Vec<Configu
     loops.push(configured_loop(
         "local-workspace-launch",
         "Local workspace launch",
-        "npx hyperwiki",
+        "hyperwiki",
         "local-runtime",
         "manual dogfood",
         "manual",
@@ -1040,7 +1040,7 @@ mod tests {
                         {
                             "id": "manual-dogfood",
                             "label": "Manual dogfood",
-                            "command": "npx hyperwiki",
+                            "command": "hyperwiki",
                             "scope": "local-runtime",
                             "trigger": "before finish",
                             "kind": "manual",

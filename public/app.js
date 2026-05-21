@@ -4351,21 +4351,7 @@ async function createTerminal(name, options = {}) {
       tab.classList.add("error");
     }
   };
-  transport = isTauriRuntime()
-    ? createTauriTerminalTransport(terminalTransportOptions)
-    : createTerminalTransport({
-      ...terminalTransportOptions,
-      url: `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/pty?${new URLSearchParams({
-        project: activeProjectId || "",
-        id,
-        name,
-        role: options.role || "shell",
-        command: options.command || "",
-        scope: activeTerminalScope.scope,
-        scopeKind: activeTerminalScope.kind,
-        planPath: activeTerminalScope.planPath || ""
-      }).toString()}`
-    });
+  transport = createTauriTerminalTransport(terminalTransportOptions);
 
   session = { id, name, role: options.role || "shell", command: options.command || null, commandSent: Boolean(options.commandSent), startWhenCollapsed: Boolean(options.startWhenCollapsed), panel, header, headerTitle, headerCommand, headerStatus, collapseButton, closeButton, el, tab, label, term, fitAddon, transport, disposables, outputBuffer: "", codexReady: false, codexReadyWaiters: [] };
   terminalSessions.set(name, session);
@@ -4378,40 +4364,6 @@ async function createTerminal(name, options = {}) {
   }
   updateTerminalCloseButtons();
   return session;
-}
-
-function createTerminalTransport({ url, onData, onOpen, onClose, onError }) {
-  let socket = null;
-  const pending = [];
-  return {
-    connect() {
-      socket = new WebSocket(url);
-      socket.binaryType = "arraybuffer";
-      socket.addEventListener("open", () => {
-        while (pending.length > 0 && socket?.readyState === WebSocket.OPEN) {
-          socket.send(pending.shift());
-        }
-        onOpen?.();
-      });
-      socket.addEventListener("message", (event) => {
-        const data = event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : String(event.data);
-        onData?.(data);
-      });
-      socket.addEventListener("close", () => onClose?.());
-      socket.addEventListener("error", () => onError?.());
-    },
-    send(data) {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(data);
-        return;
-      }
-      pending.push(data);
-    },
-    close() {
-      pending.length = 0;
-      socket?.close();
-    }
-  };
 }
 
 function createTauriTerminalTransport({ id, name, role, command, scope, scopeKind, planPath, onData, onOpen, onClose, onError }) {
@@ -4503,10 +4455,6 @@ function createTauriTerminalTransport({ id, name, role, command, scope, scopeKin
         .finally(() => onClose?.());
     }
   };
-}
-
-function isTauriRuntime() {
-  return typeof globalThis.__TAURI__?.core?.invoke === "function";
 }
 
 function recordTerminalOutput(session, data) {

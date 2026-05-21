@@ -6,7 +6,7 @@ use std::path::Path;
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "wiki",
-        node_reference: "src/server.js, src/init.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "repo-visible HTML wiki file reads",
             "wiki page listing and title extraction",

@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "app-shell",
-        node_reference: "src/cli.js, src/launch.js, src/open.js, src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "desktop startup and app window lifecycle",
             "compatibility CLI entrypoints",

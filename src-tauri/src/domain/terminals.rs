@@ -13,7 +13,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "terminals",
-        node_reference: "src/pty.js, src/server.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "PTY and pipe-backed process lifecycle",
             "terminal input, output, resize, and replay",

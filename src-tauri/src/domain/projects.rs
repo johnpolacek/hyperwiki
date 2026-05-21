@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub fn surface() -> DomainSurface {
     DomainSurface {
         id: "projects",
-        node_reference: "src/projects.js, src/init.js, src/reset.js",
+        runtime_owner: "rust-tauri",
         responsibilities: &[
             "user-level project registry",
             "project and worktree slug resolution",
@@ -135,8 +135,7 @@ impl ProjectRegistry {
         let project = project_from_root(&root);
         if !project.available {
             return Err(
-                "hyperwiki project not found. Run `npx hyperwiki init` in this repo first."
-                    .to_string(),
+                "hyperwiki project not found. Run `hyperwiki init` in this repo first.".to_string(),
             );
         }
         let mut registry = self.read_raw();
@@ -1083,7 +1082,7 @@ fn dev_page(options: &InitProjectOptions) -> String {
     for script in &options.package_scripts {
         items.push(format!("<li><code>{}</code></li>", escape_html(script)));
     }
-    items.push("<li><code>npx hyperwiki</code></li>".to_string());
+    items.push("<li><code>hyperwiki</code></li>".to_string());
     layout(
         options,
         "Development Workflow",
