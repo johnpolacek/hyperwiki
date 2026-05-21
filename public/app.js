@@ -397,7 +397,11 @@ executeButton.addEventListener("click", () => {
 
 newWorktreeTerminalButton.addEventListener("click", (event) => {
   event.stopPropagation();
-  void openWorktreePopover();
+  if (repoContextState && !repoContextState.git?.root) {
+    void initializeGitFromBranchRail();
+  } else {
+    void openWorktreePopover();
+  }
 });
 
 worktreeBranchInput.addEventListener("input", updateWorktreePreview);
@@ -748,10 +752,12 @@ async function loadRepoContext() {
 function updateWorktreeButtonVisibility(branch) {
   if (repoContextState && !repoContextState.git?.root) {
     newWorktreeTerminalButton.hidden = false;
+    newWorktreeTerminalButton.textContent = "Init Git";
     return;
   }
   const normalized = String(branch || "").trim().toLowerCase();
   newWorktreeTerminalButton.hidden = !(normalized === "main" || normalized === "master");
+  newWorktreeTerminalButton.textContent = "+ worktree";
 }
 
 async function loadWikiNav() {
@@ -2807,6 +2813,23 @@ async function initializeGitForWorktreePopover() {
     worktreeBranchInput.focus();
     worktreeBranchInput.select();
   });
+}
+
+async function initializeGitFromBranchRail() {
+  newWorktreeTerminalButton.disabled = true;
+  planPromptStatus.textContent = "Initializing Git...";
+  try {
+    const result = await api(projectPath("/api/git/init"), { method: "POST", body: "{}" });
+    repoContextState = result.repo;
+    await loadRepoContext();
+    planPromptStatus.textContent = result.result?.committed
+      ? "Git initialized. Worktrees are now available."
+      : result.result?.message || "Git initialized. Worktrees are now available.";
+  } catch (error) {
+    planPromptStatus.textContent = error.message || "Could not initialize Git.";
+  } finally {
+    newWorktreeTerminalButton.disabled = false;
+  }
 }
 
 async function switchToCreatedWorktree(result, context) {
