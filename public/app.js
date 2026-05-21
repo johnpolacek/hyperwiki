@@ -417,7 +417,7 @@ newPlanButton.addEventListener("click", () => {
   if (open) {
     modifyPlanUi.hidden = true;
     modifyButton.setAttribute("aria-expanded", "false");
-    void clarifyNewPlan();
+    renderNewPlanWaitingForIntent();
     requestAnimationFrame(() => newPlanTitle.focus());
   }
 });
@@ -520,6 +520,10 @@ function newPlanPayload() {
 
 async function clarifyNewPlan() {
   const payload = newPlanPayload();
+  if (!newPlanHasInitialIntent(payload)) {
+    renderNewPlanWaitingForIntent(payload);
+    return;
+  }
   newPlanStatus.textContent = "Checking clarity...";
   try {
     const response = await api(projectPath("/api/plans/clarify"), {
@@ -534,6 +538,31 @@ async function clarifyNewPlan() {
   } catch (error) {
     newPlanStatus.textContent = error.message || "Unable to clarify plan.";
   }
+}
+
+function newPlanHasInitialIntent(payload = newPlanPayload()) {
+  return payload.title.length >= 2 && payload.intent.split(/\s+/).filter(Boolean).length >= 8;
+}
+
+function renderNewPlanWaitingForIntent(payload = newPlanPayload()) {
+  const slug = slugifyForPreview(payload.title || "new-plan");
+  planCreationState.response = null;
+  newPlanScore.textContent = "Clarity pending";
+  newPlanSummary.textContent = payload.title || payload.intent
+    ? "Describe the plan a little more before Hyperwiki asks follow-up questions."
+    : "Start with a title and short intent. Questions appear after Hyperwiki knows what you want to plan.";
+  newPlanPath.textContent = `/wiki/plans/features/${slug}.html`;
+  newPlanQuestions.replaceChildren();
+  newPlanCreate.disabled = true;
+  newPlanStatus.textContent = "Waiting for the initial plan idea.";
+}
+
+function slugifyForPreview(value) {
+  return String(value || "new-plan")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "new-plan";
 }
 
 function renderNewPlanClarification(response) {
