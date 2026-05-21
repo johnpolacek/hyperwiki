@@ -58,8 +58,15 @@
   box-sizing: border-box;
 }
 
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
+  height: 100%;
   margin: 0;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.45 var(--sidebar-font);
@@ -3581,6 +3588,7 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-row: 2;
   display: grid;
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  overflow: hidden;
   background: #111312;
   border-right: 0;
 }
@@ -3898,7 +3906,6 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminals {
-  --terminal-bottom-gutter: 72px;
   --terminal-bg: #272822;
   grid-row: 3 / -1;
   background: var(--terminal-bg);
@@ -3906,7 +3913,7 @@ html[data-initial-route="settings"] .wiki-pane {
   flex-direction: column;
   gap: 1px;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .workspace:not(.terminal-active) .terminals {
