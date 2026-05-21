@@ -133,6 +133,19 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err((status, error)) => error_response(status, error),
         };
     }
+    if request.method == "GET"
+        && (request.path.starts_with("/wiki/")
+            || (request.path.starts_with("/projects/") && request.path.contains("/wiki/")))
+    {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::read_wiki_page(project_root, &request.path) {
+            Ok(html) => text_response(200, html),
+            Err(error) => error_response(404, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/layout") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
@@ -1084,6 +1097,46 @@ mod tests {
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
         assert!(response.text.contains("/wiki/index.html"));
+    }
+
+    #[test]
+    fn wiki_page_paths_return_html_for_tauri_iframes() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-page");
+        let home = temp_root("command-wiki-page-home");
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(
+            root.join(".hyperwiki").join("config.json"),
+            serde_json::json!({ "projectName": "Command Wiki Page" }).to_string(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("index.html"),
+            "<h1>Command Wiki Page</h1>",
+        )
+        .unwrap();
+        let registry = crate::domain::projects::ProjectRegistry::new(&home);
+        let project = registry.register(&root).unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: format!("/projects/{}/wiki/index.html", project.id),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok);
+        assert_eq!(response.status, 200);
+        assert!(response.text.contains("Command Wiki Page"));
     }
 
     fn temp_root(label: &str) -> std::path::PathBuf {

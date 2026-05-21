@@ -3,6 +3,11 @@ import path from "node:path";
 
 const requiredAssets = [
   "public/index.html",
+  "public/assets/app.css",
+  "public/assets/app.js",
+  "public/assets/app-api.js",
+  "public/assets/wiki.css",
+  "public/assets/theme.css",
   "public/app.js",
   "public/app-api.js",
   "public/vendor/@xterm/xterm/lib/xterm.mjs",

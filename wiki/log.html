@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 validation | packaged app desktop dogfood</h2>
+  <ul>
+    <li>Opened the packaged <code>Hyperwiki.app</code> and found a real desktop packaging bug: the Tauri window did not have the legacy Node server's <code>/assets</code> route and iframe wiki URLs fell back to the app shell.</li>
+    <li>Added static <code>public/assets</code> copies for the Tauri bundle and changed desktop wiki rendering to fetch wiki HTML through the Tauri command transport before rendering it into the iframe.</li>
+    <li>Added Rust coverage for direct wiki page HTML reads used by desktop iframes.</li>
+    <li>Rebuilt the app and verified styled wiki rendering, Tauri command-backed wiki navigation, and a packaged-app CLI terminal command.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 validation | Tauri release binary dogfood</h2>
   <ul>
     <li>Verified the built release binary can initialize a temporary project, run <code>reset --dry-run</code>, and answer a framed stdio MCP <code>initialize</code> request.</li>

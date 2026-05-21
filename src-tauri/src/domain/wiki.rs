@@ -44,6 +44,33 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
     WikiPageList { pages }
 }
 
+pub fn read_wiki_page(root: impl AsRef<Path>, request_path: &str) -> Result<String, String> {
+    let Some(relative) = wiki_relative_path(request_path) else {
+        return Err("Not a wiki page path.".to_string());
+    };
+    if relative
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err("Invalid wiki page path.".to_string());
+    }
+    let page_path = root.as_ref().join("wiki").join(relative);
+    if page_path.extension().and_then(|value| value.to_str()) != Some("html") {
+        return Err("Only HTML wiki pages can be served.".to_string());
+    }
+    fs::read_to_string(page_path).map_err(|error| error.to_string())
+}
+
+fn wiki_relative_path(path: &str) -> Option<&str> {
+    let path = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
+    if let Some(relative) = path.strip_prefix("/wiki/") {
+        return Some(relative);
+    }
+    let marker = "/wiki/";
+    path.find(marker)
+        .and_then(|index| path.get(index + marker.len()..))
+}
+
 fn walk_wiki(
     base_root: &Path,
     directory: &Path,
