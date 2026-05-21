@@ -3282,6 +3282,7 @@ function delay(ms) {
 
 async function switchProject(project) {
   if (!project?.available) return;
+  markProjectSwitcherActive(project);
   const switchVersion = ++projectSwitchVersion;
   const immediatePath = immediateProjectOpenPath();
   const targetPathPromise = projectOpenPath(project);
@@ -3304,7 +3305,6 @@ async function switchProject(project) {
   activeTerminalScope = terminalScopeForLocation(immediatePath);
   history.pushState(null, "", `${workspacePath(project)}#${immediatePath}`);
   requestedWikiPath = immediatePath;
-  markProjectSwitcherActive(project);
   activateWorkspaceLocation(immediatePath);
 
   const targetPath = await targetPathPromise;
@@ -3344,10 +3344,7 @@ function immediateProjectOpenPath() {
 
 function markProjectSwitcherActive(project) {
   projectList.querySelectorAll("button").forEach((button) => {
-    button.classList.toggle(
-      "active",
-      button.dataset.projectId === project.id || button.dataset.projectSlug === project.projectSlug
-    );
+    button.classList.toggle("active", button.dataset.projectId === project.id);
   });
 }
 
