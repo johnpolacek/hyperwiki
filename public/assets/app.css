@@ -3906,7 +3906,6 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminals {
-  --terminal-bg: #272822;
   grid-row: 3 / -1;
   background: var(--terminal-bg);
   display: flex;
@@ -4308,7 +4307,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminal-pane {
-  background: var(--terminal-pane);
+  background: var(--terminal-bg);
 }
 
 .terminal-toolbar {
@@ -4342,7 +4341,12 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .terminals,
-.terminal-panel {
+.terminal-panel,
+.terminal,
+.terminal.xterm-host,
+.terminal.xterm-host .xterm,
+.terminal.xterm-host .xterm-screen,
+.terminal.xterm-host .xterm-viewport {
   background: var(--terminal-bg);
 }
 
