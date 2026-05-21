@@ -129,6 +129,7 @@ let projectPreviewState = new Map();
 let activeProjectId = new URLSearchParams(location.search).get("project");
 let activeProjectSlug = workspaceSlugs().projectSlug;
 let activeWorktreeSlug = workspaceSlugs().worktreeSlug;
+let projectSwitchVersion = 0;
 let pendingProjectRemovalId = null;
 const selectedProjectCheckoutBySlug = new Map();
 let currentPlanPath = "/wiki/plans/index.html";
@@ -3236,11 +3237,18 @@ function delay(ms) {
 }
 
 async function switchProject(project) {
+  if (!project?.available) return;
   closeTopbarPanels();
-  const targetPath = await projectOpenPath(project);
+  const switchVersion = ++projectSwitchVersion;
+  const immediatePath = immediateProjectOpenPath();
+  const targetPathPromise = projectOpenPath(project);
   if (project.id === activeProjectId) {
-    history.pushState(null, "", `${workspacePath(project)}#${targetPath}`);
-    activateWorkspaceLocation(targetPath);
+    history.pushState(null, "", `${workspacePath(project)}#${immediatePath}`);
+    activateWorkspaceLocation(immediatePath);
+    const targetPath = await targetPathPromise;
+    if (switchVersion === projectSwitchVersion && targetPath !== immediatePath) {
+      activateWorkspaceLocation(targetPath);
+    }
     return;
   }
   closeAllTerminals();
@@ -3248,15 +3256,29 @@ async function switchProject(project) {
   activeProjectId = project.id;
   activeProjectSlug = project.projectSlug;
   activeWorktreeSlug = project.worktreeSlug;
-  history.pushState(null, "", `${workspacePath(project)}#${targetPath}`);
-  requestedWikiPath = targetPath;
-  await loadProjects();
-  await loadProjectManagement();
-  await loadRepoContext();
-  await loadWikiNav();
-  await loadWorkspaceSummary();
-  await loadGuardrails();
-  activateWorkspaceLocation(targetPath);
+  terminalScopeVersion += 1;
+  activeTerminalScope = terminalScopeForLocation(immediatePath);
+  history.pushState(null, "", `${workspacePath(project)}#${immediatePath}`);
+  requestedWikiPath = immediatePath;
+  markProjectSwitcherActive(project);
+  activateWorkspaceLocation(immediatePath);
+
+  const targetPath = await targetPathPromise;
+  if (switchVersion !== projectSwitchVersion) return;
+  if (targetPath !== immediatePath) {
+    requestedWikiPath = targetPath;
+    activateWorkspaceLocation(targetPath);
+  }
+
+  await Promise.allSettled([
+    loadProjects(),
+    loadProjectManagement(),
+    loadRepoContext(),
+    loadWikiNav(),
+    loadWorkspaceSummary(),
+    loadGuardrails()
+  ]);
+  if (switchVersion !== projectSwitchVersion) return;
   await restoreTerminals();
 }
 
@@ -3267,6 +3289,20 @@ async function projectOpenPath(project) {
   } catch {
     return "/wiki/plans/index.html";
   }
+}
+
+function immediateProjectOpenPath() {
+  const path = displayWikiPath(requestedWikiPath || workspaceLocation());
+  return isWikiPath(path) ? path : "/wiki/plans/index.html";
+}
+
+function markProjectSwitcherActive(project) {
+  projectList.querySelectorAll("button").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.projectId === project.id || button.dataset.projectSlug === project.projectSlug
+    );
+  });
 }
 
 function switchTerminalScope(path) {
