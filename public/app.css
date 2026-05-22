@@ -3725,7 +3725,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .new-plan-question {
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 12px;
+  padding: 14px;
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 58%),
     color-mix(in srgb, var(--bg) 70%, var(--panel));
@@ -3733,13 +3733,24 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .new-plan-question strong {
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: 17px;
+  line-height: 1.38;
 }
 
 .new-plan-question em {
   color: var(--muted);
+  font-size: 13px;
   font-style: normal;
+  line-height: 1.45;
+}
+
+.new-plan-question > span {
+  font-size: 11px;
+}
+
+.new-plan-question textarea {
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .new-plan-question.impact-blocking {
