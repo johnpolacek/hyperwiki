@@ -545,7 +545,7 @@ function TopBar(props: {
           <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
           Projects
         </Button>
-        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} /> : null}
+        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onClose={() => props.setIsProjectsOpen(false)} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} /> : null}
         <Button size="sm" variant="outline" onClick={() => props.onNavigate({ kind: "settings" })}>
           <Settings aria-hidden="true" data-icon="inline-start" />
           Settings
@@ -581,10 +581,12 @@ function UpNextPopover({ workspace }: { workspace: WorkspaceResponse | null }) {
 
 function ProjectsPopover({
   groups,
+  onClose,
   onNavigate,
   onSwitchProject,
 }: {
   groups: ProjectGroup[];
+  onClose: () => void;
   onNavigate: (route: ViewRoute) => void;
   onSwitchProject: (project: ProjectRecord) => void;
 }) {
@@ -599,7 +601,10 @@ function ProjectsPopover({
       <div className="mb-4 flex flex-col gap-2">
         <button
           className="flex min-h-11 items-center justify-center gap-2 rounded-md border bg-foreground px-3 text-sm font-bold text-background shadow-sm"
-          onClick={() => onNavigate({ kind: "new-project" })}
+          onClick={() => {
+            onClose();
+            onNavigate({ kind: "new-project" });
+          }}
           type="button"
         >
           <Plus aria-hidden="true" className="size-4" />
@@ -607,7 +612,10 @@ function ProjectsPopover({
         </button>
         <button
           className="flex min-h-10 items-center justify-center gap-2 rounded-md border bg-background px-3 text-sm font-bold"
-          onClick={() => onNavigate({ kind: "projects" })}
+          onClick={() => {
+            onClose();
+            onNavigate({ kind: "projects" });
+          }}
           type="button"
         >
           <span aria-hidden="true" className="text-base leading-none">⇥</span>
@@ -623,7 +631,10 @@ function ProjectsPopover({
                 group.checkouts.some((checkout) => checkout.active) && "border-primary bg-primary/12",
               )}
               key={group.projectSlug}
-              onClick={() => onSwitchProject(project)}
+              onClick={() => {
+                onClose();
+                onSwitchProject(project);
+              }}
               type="button"
             >
               <span className="truncate text-base font-bold">{group.name || project.name}</span>
