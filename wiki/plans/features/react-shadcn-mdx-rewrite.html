@@ -378,8 +378,8 @@
       <dl class="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>active</dd>
         <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
-        <dt>Current unit</dt><dd>Stage 03 Unit 01 - Port Workspace Shell And Navigation</dd>
-        <dt>Next action</dt><dd>Begin app shell parity by porting the workspace shell, project switcher, sidebar wiki tree, command bar, and app routes into React.</dd>
+        <dt>Current unit</dt><dd>Stage 03 Unit 02 - Port Terminal Surfaces</dd>
+        <dt>Next action</dt><dd>Continue terminal parity by replacing the initial React session list with full xterm attachment, scoped restore, live output, resize, rename, and restart workflows.</dd>
         <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
         <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
       </dl>
@@ -587,29 +587,33 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <header>
         <div>
           <h2>Stage 03 - React App Shell Parity</h2>
-          <p>Port the existing desktop workspace route by route while keeping user workflows intact.</p>
+          <p>In progress. Batch 2 ported the primary React workspace shell, project switcher, wiki navigation/rendering, app route surfaces, and an initial scoped terminal session pane. Full terminal attachment and agent workflow parity continue in the next units.</p>
         </div>
         <span class="stage-number">Stage 03</span>
       </header>
       <ol class="units">
         <li class="unit">
           <h3>Unit 03.1 - Port Workspace Shell And Navigation</h3>
-          <p>Rebuild the topbar, project switcher, sidebar wiki tree, command bar, route state, Settings route, Projects route, and New Project route.</p>
+          <p>Complete for the React shell pass. Rebuilt the topbar, project switcher, sidebar wiki tree, command bar, route state, Settings route, Projects route, New Project route placeholder, and iframe-backed wiki rendering against the existing Tauri API adapter.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Open the app and switch between registered projects.</li>
-            <li>Navigate wiki pages and app routes without stale breadcrumbs or broken command-bar state.</li>
-            <li>Run relevant JS and Rust smoke checks.</li>
+            <li>Ran <code>pnpm run check</code>.</li>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Manual desktop dogfood remains outstanding because <code>pnpm dev</code> is a long-running Tauri launch and was not started during this batch.</li>
           </ul>
         </li>
         <li class="unit">
           <h3>Unit 03.2 - Port Terminal Surfaces</h3>
-          <p>Preserve xterm session lifecycle, scoped terminal panels, restore behavior, close controls, plan-scoped sessions, and dev preview terminals.</p>
+          <p>In progress. Batch 2 added the React terminal pane, scoped session listing through <code>/api/sessions</code>, agent/CLI start actions through <code>/api/terminal/start</code>, and close controls. The remaining work is full xterm attachment, live output, write/resize handling, rename/restart flows, and dev preview terminal parity.</p>
           <strong>Verification</strong>
           <ul>
+            <li>Verify the React pane lists retained sessions for wiki, plan, and app-route scopes.</li>
             <li>Create agent and CLI terminals, reload the app, and confirm sessions restore.</li>
             <li>Switch between plan/project scopes and confirm terminal visibility rules.</li>
-            <li>Run terminal/session Rust tests.</li>
+            <li>Run terminal/session Rust tests after xterm attachment is ported.</li>
           </ul>
         </li>
         <li class="unit">
@@ -808,10 +812,11 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <h2>Copy Handoff</h2>
       <div class="copy-row">
         <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.html
-Current unit: Stage 03 Unit 01 - Port Workspace Shell And Navigation
-Next action: port the workspace shell, project switcher, sidebar wiki tree, command bar, and app routes into React.
+Current unit: Stage 03 Unit 02 - Port Terminal Surfaces
+Next action: replace the initial React terminal session list with full xterm attachment, scoped restore, live output, resize, rename, and restart workflows.
 Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
 Batch 1 is complete: Vite, React, TypeScript, Tailwind v4, shadcn config, first Button primitive, Tauri dist build wiring, typed API adapter, and dist static smoke coverage are in place.
+Batch 2 shell pass is complete: React now owns the topbar, project switcher, wiki navigation/rendering shell, app route surfaces, and initial scoped terminal pane.
 Required skill commands:
 npx skills add https://github.com/shadcn/ui --skill shadcn
 npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>
