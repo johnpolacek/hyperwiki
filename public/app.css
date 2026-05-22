@@ -3627,6 +3627,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.new-plan-mode .new-plan-ui h2 {
+  font-family: var(--font);
   font-size: 27px;
   line-height: 1.05;
   text-transform: none;
@@ -3635,6 +3636,10 @@ html[data-initial-route="settings"] .wiki-pane {
 .workspace.new-plan-mode .new-plan-ui p,
 .workspace.new-plan-mode .new-plan-status {
   font-size: 16px;
+}
+
+.workspace.new-plan-mode .new-plan-ui header p {
+  font-family: var(--font);
 }
 
 .workspace.new-plan-mode .new-plan-grid {
@@ -3665,27 +3670,8 @@ html[data-initial-route="settings"] .wiki-pane {
 .new-plan-ui header {
   align-items: flex-start;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-}
-
-.new-plan-orb {
-  display: none;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 34% 28%, #ffffff 0 8%, transparent 9%),
-    color-mix(in srgb, var(--accent) 52%, #ffffff);
-  color: var(--accent-text);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 20%, transparent);
-  font-size: 21px;
-  font-weight: 900;
-}
-
-.workspace.new-plan-mode .new-plan-orb {
-  display: grid;
 }
 
 .new-plan-actions {
