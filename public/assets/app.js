@@ -3418,7 +3418,7 @@ function renderPreviewLink(preview) {
   if (appPreviewStarting) {
     previewLink.hidden = false;
     previewLink.href = "#";
-    previewLink.textContent = "Starting...";
+    previewLink.textContent = "starting...";
     previewLink.title = preview?.startCommand
       ? `Starting: ${preview.startCommand}`
       : "Starting app preview.";
@@ -3428,7 +3428,7 @@ function renderPreviewLink(preview) {
   if (!preview?.url) {
     previewLink.hidden = true;
     previewLink.href = "#";
-    previewLink.textContent = "App Not Configured";
+    previewLink.textContent = "app not configured";
     previewLink.title = preview?.reason || "";
     return;
   }
@@ -3472,7 +3472,7 @@ function renderDevTerminalHeaderStatus(state = {}) {
   if (isStarting) {
     session.headerStatus.hidden = false;
     session.headerStatus.href = "#";
-    session.headerStatus.textContent = "Starting...";
+    session.headerStatus.textContent = "starting...";
     session.headerStatus.title = "Waiting for the dev server URL.";
     session.headerStatus.classList.add("starting", "disabled");
     return;
@@ -3485,15 +3485,15 @@ function renderDevTerminalHeaderStatus(state = {}) {
 }
 
 function previewActionLabel(preview) {
-  if (!preview?.url) return "App Not Configured";
-  if (terminalSessions.has("dev")) return "Stop Dev";
+  if (!preview?.url) return "app not configured";
+  if (terminalSessions.has("dev")) return "stop dev";
   if (preview.running || preview.status === "running") {
-    return "Dev Running";
+    return "dev running";
   }
-  if (preview.canStart) return "Run Dev";
-  if (preview.status === "unknown") return "Preview Unknown";
-  if (preview.status === "not-startable") return "Dev Not Available";
-  return "App Not Configured";
+  if (preview.canStart) return "run dev";
+  if (preview.status === "unknown") return "preview unknown";
+  if (preview.status === "not-startable") return "dev not available";
+  return "app not configured";
 }
 
 function previewCanAct(preview) {
