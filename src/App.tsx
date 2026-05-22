@@ -1101,17 +1101,24 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
     <section className="min-h-0 overflow-auto bg-background">
       <header className="flex min-h-40 items-center border-b px-10">
         <div>
-          <h1 className="m-0 text-4xl font-bold leading-none">New Project</h1>
-          <p className="m-0 mt-3 text-sm text-muted-foreground">Initialize a fresh hyperwiki project from a brief and hand it to the agent.</p>
+          <h1 className="font-ui m-0 text-4xl font-bold leading-none">New Project</h1>
+          <p className="font-ui m-0 mt-3 text-sm text-muted-foreground">Initialize a fresh hyperwiki project from a brief and hand it to the agent.</p>
         </div>
       </header>
       <div className="flex justify-center px-8 py-7">
         <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" onSubmit={handleSubmit}>
-          <header className="mb-5">
-            <h2 className="m-0 text-3xl font-normal leading-tight">Project Brief</h2>
-            <p className="m-0 mt-2 max-w-[48rem] text-base text-muted-foreground">
-              Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.
-            </p>
+          <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6 max-md:grid-cols-1">
+            <div>
+              <h2 className="font-ui m-0 text-3xl font-normal leading-tight">Project Brief</h2>
+              <p className="font-ui m-0 mt-2 max-w-[42rem] text-base text-muted-foreground">
+                Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.
+              </p>
+            </div>
+            <label className="mt-10 flex min-h-14 min-w-52 cursor-pointer flex-col items-center justify-center rounded-md border bg-background px-5 text-center text-muted-foreground hover:bg-secondary max-md:mt-0 max-md:w-full">
+              <span className="text-sm font-bold uppercase">Import Project File</span>
+              <small className="text-xs font-bold">Markdown or HTML</small>
+              <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+            </label>
           </header>
           <label className="mb-4 grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
@@ -1124,16 +1131,6 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
           <label className="mb-4 flex items-center gap-3 text-sm font-bold text-muted-foreground">
             <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
             <span>Initialize Git and create an initial commit</span>
-          </label>
-          <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
-            <span className="h-px bg-border" />
-            <span>OR</span>
-            <span className="h-px bg-border" />
-          </div>
-          <label className="mb-4 flex min-h-20 cursor-pointer flex-col items-center justify-center rounded-md border bg-background text-center text-muted-foreground hover:bg-secondary">
-            <span className="text-base font-bold uppercase">Choose File</span>
-            <small className="text-xs font-bold">Markdown or HTML</small>
-            <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
           </label>
           <Button className="min-h-11 w-full" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Initializing Project..." : "Review Source And Plan MVP"}

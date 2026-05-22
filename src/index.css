@@ -92,6 +92,10 @@
     background: var(--background);
   }
 
+  .font-ui {
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
   .brand-dots {
     display: grid;
     grid-template-columns: repeat(3, 3px);
