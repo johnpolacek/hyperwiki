@@ -14,14 +14,8 @@ const newPlanClose = document.getElementById("new-plan-close");
 const newPlanTitle = document.getElementById("new-plan-title");
 const newPlanType = document.getElementById("new-plan-type");
 const newPlanIntent = document.getElementById("new-plan-intent");
-const newPlanScore = document.getElementById("new-plan-score");
-const newPlanSummary = document.getElementById("new-plan-summary");
-const newPlanPath = document.getElementById("new-plan-path");
-const newPlanStatusPanel = document.getElementById("new-plan-status-panel");
 const newPlanQuestions = document.getElementById("new-plan-questions");
 const newPlanStatus = document.getElementById("new-plan-status");
-const newPlanDeferLabel = document.getElementById("new-plan-defer-label");
-const newPlanDefer = document.getElementById("new-plan-defer");
 const newPlanClarify = document.getElementById("new-plan-clarify");
 const newPlanCreate = document.getElementById("new-plan-create");
 const modifyButton = document.getElementById("modify-button");
@@ -560,9 +554,7 @@ function newPlanHasInitialIntent(payload = newPlanPayload()) {
 function renderNewPlanDraftState(payload = newPlanPayload(), message = "") {
   planCreationState.response = null;
   planCreationState.stage = "draft";
-  newPlanStatusPanel.hidden = true;
   newPlanQuestions.hidden = true;
-  newPlanDeferLabel.hidden = true;
   newPlanCreate.hidden = true;
   newPlanClarify.textContent = "Start Plan";
   newPlanClarify.disabled = !newPlanHasInitialIntent(payload);
@@ -572,9 +564,7 @@ function renderNewPlanDraftState(payload = newPlanPayload(), message = "") {
 }
 
 function renderNewPlanQuestionsState() {
-  newPlanStatusPanel.hidden = false;
   newPlanQuestions.hidden = false;
-  newPlanDeferLabel.hidden = false;
   newPlanCreate.hidden = false;
   newPlanClarify.textContent = "Ask next questions";
   newPlanClarify.disabled = false;
@@ -590,13 +580,13 @@ function slugifyForPreview(value) {
 
 function renderNewPlanClarification(response) {
   renderNewPlanQuestionsState();
-  newPlanScore.textContent = `Clarity ${response.score || 0}%`;
   const conflict = response.pathAvailable === false
     ? ` Path already exists${response.suggestedSlug ? `; try ${response.suggestedSlug}.` : "."}`
     : "";
-  newPlanSummary.textContent = `${response.summary || "Answer the next questions."}${conflict}`;
-  newPlanPath.textContent = response.path || "/wiki/plans/features/new-plan.html";
-  newPlanCreate.disabled = response.pathAvailable === false || (!response.ready && !newPlanDefer.checked);
+  newPlanStatus.textContent = response.ready
+    ? `Ready to create.${conflict}`
+    : `${response.summary || "Answer the next questions."}${conflict}`;
+  newPlanCreate.disabled = response.pathAvailable === false || !response.ready;
   newPlanQuestions.replaceChildren(...(response.questions || []).map(renderNewPlanQuestion));
 }
 
@@ -619,7 +609,7 @@ function renderNewPlanQuestion(question) {
 async function createNewPlan() {
   await clarifyNewPlan();
   const response = planCreationState.response;
-  if (!response?.ready && !newPlanDefer.checked) {
+  if (!response?.ready) {
     newPlanStatus.textContent = "Plan creation is blocked until required questions are answered.";
     return;
   }
@@ -629,7 +619,7 @@ async function createNewPlan() {
       method: "POST",
       body: JSON.stringify({
         ...newPlanPayload(),
-        allowDeferredUnknowns: newPlanDefer.checked
+        allowDeferredUnknowns: false
       })
     });
     newPlanStatus.textContent = `Created ${result.displayPath || result.path}.`;
@@ -648,11 +638,7 @@ function resetNewPlanForm() {
   newPlanTitle.value = "";
   newPlanIntent.value = "";
   newPlanType.value = "feature";
-  newPlanDefer.checked = false;
   newPlanQuestions.replaceChildren();
-  newPlanScore.textContent = "Clarity 0%";
-  newPlanSummary.textContent = "Add a title and intent to start.";
-  newPlanPath.textContent = "wiki/plans/features/new-plan.html";
   newPlanCreate.disabled = true;
   renderNewPlanDraftState();
 }

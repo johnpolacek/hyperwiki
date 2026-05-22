@@ -3718,18 +3718,6 @@ html[data-initial-route="settings"] .wiki-pane {
   border-left: 4px solid #b9791f;
 }
 
-.new-plan-defer {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.new-plan-defer input {
-  width: auto;
-}
-
 .new-plan-status {
   min-height: 16px;
   color: var(--muted);
