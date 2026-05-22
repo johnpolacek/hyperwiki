@@ -3589,11 +3589,16 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-plan-ui header,
-.new-plan-ui footer,
 .new-plan-status-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+
+.new-plan-actions {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
@@ -3628,6 +3633,13 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-plan-ui button[type="submit"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.new-plan-ui #new-plan-clarify {
+  margin-left: auto;
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-text);
@@ -3719,6 +3731,8 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-plan-status {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 16px;
   color: var(--muted);
 }
@@ -3730,10 +3744,14 @@ html[data-initial-route="settings"] .wiki-pane {
   }
 
   .new-plan-ui header,
-  .new-plan-ui footer,
+  .new-plan-actions,
   .new-plan-status-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .new-plan-ui #new-plan-clarify {
+    margin-left: 0;
   }
 }
 
