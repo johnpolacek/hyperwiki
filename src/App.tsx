@@ -193,6 +193,7 @@ function App() {
   const [wikiError, setWikiError] = useState("");
   const [isWikiLoading, setIsWikiLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectListResponse>({});
+  const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [activeProject, setActiveProject] = useState<ProjectRecord | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
@@ -211,6 +212,7 @@ function App() {
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
   const groupedWikiPages = useMemo(() => groupWikiPages(wikiPages), [wikiPages]);
   const projectGroups = useMemo(() => normalizeProjectGroups(projects), [projects]);
+  const hasRegisteredProjects = projectGroups.length > 0;
 
   useEffect(() => {
     function onPopState() {
@@ -225,7 +227,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!hasLoadedProjects || hasRegisteredProjects || route.kind !== "wiki") return;
+    setRoute({ kind: "new-project" });
+    window.history.replaceState(null, "", "/projects/new");
+  }, [hasLoadedProjects, hasRegisteredProjects, route.kind]);
+
+  useEffect(() => {
     if (route.kind !== "wiki") return;
+    if (hasLoadedProjects && !hasRegisteredProjects) return;
     let cancelled = false;
     setIsWikiLoading(true);
     setWikiError("");
@@ -268,6 +277,7 @@ function App() {
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
       setActiveProject(findActiveProject(projectsResult.value));
+      setHasLoadedProjects(true);
     }
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
     if (previewResult.status === "fulfilled") setPreview(previewResult.value);
@@ -925,9 +935,18 @@ function ProjectsView({
         </Button>
       </header>
       <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
-        {groups.map((group) => (
-          <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />
-        ))}
+        {groups.length ? (
+          groups.map((group) => <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />)
+        ) : (
+          <div className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card p-8">
+            <h2 className="m-0 text-3xl font-bold">No projects yet</h2>
+            <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh Hyperwiki project from a brief to start the workspace.</p>
+            <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
+              <Plus aria-hidden="true" data-icon="inline-start" />
+              New Project
+            </Button>
+          </div>
+        )}
       </div>
     </section>
   );
