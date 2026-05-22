@@ -92,6 +92,11 @@ interface ProjectCreateResponse {
   workspaceUrl?: string;
 }
 
+interface ProjectRemoveResponse {
+  project: ProjectRecord;
+  deletedFiles?: boolean;
+}
+
 interface AppPreviewResponse {
   url?: string;
   status?: string;
@@ -498,6 +503,21 @@ function App() {
     navigate({ kind: "projects" });
   }
 
+  async function removeProject(project: ProjectRecord, deleteFiles: boolean) {
+    setStatus(deleteFiles ? "Deleting project files" : "Removing project");
+    await hyperwikiApi.json<ProjectRemoveResponse>(`/api/projects/${encodeURIComponent(project.id)}`, {
+      method: "DELETE",
+      body: {
+        deleteFiles,
+        root: project.root,
+      },
+    });
+    const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
+    setProjects(projectsResult);
+    setActiveProject(findActiveProject(projectsResult));
+    setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
+  }
+
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project";
 
   return (
@@ -529,6 +549,7 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
+          onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
@@ -718,6 +739,7 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
+  onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   onSwitchProject: (project: ProjectRecord) => void;
@@ -731,7 +753,7 @@ function WorkspacePane(props: {
   wikiPages: WikiPage[];
 }) {
   if (props.route.kind === "projects") {
-    return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} />;
+    return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
@@ -883,10 +905,12 @@ function ProjectsView({
   groups,
   onNewProject,
   onOpenProject,
+  onRemoveProject,
 }: {
   groups: ProjectGroup[];
   onNewProject: () => void;
   onOpenProject: (project: ProjectRecord) => void;
+  onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
 }) {
   return (
     <section className="min-h-0 overflow-auto bg-background">
@@ -902,18 +926,46 @@ function ProjectsView({
       </header>
       <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
         {groups.map((group) => (
-          <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} />
+          <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />
         ))}
       </div>
     </section>
   );
 }
 
-function ProjectCard({ group, onOpenProject }: { group: ProjectGroup; onOpenProject: (project: ProjectRecord) => void }) {
+function ProjectCard({
+  group,
+  onOpenProject,
+  onRemoveProject,
+}: {
+  group: ProjectGroup;
+  onOpenProject: (project: ProjectRecord) => void;
+  onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
+}) {
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
+  const [removeStatus, setRemoveStatus] = useState("");
+  const [isRemoving, setIsRemoving] = useState(false);
   const selected = group.checkouts.find((checkout) => checkout.active) || group.checkouts.find((checkout) => checkout.worktreeSlug === "main") || group.checkouts[0];
   const isActive = group.checkouts.some((checkout) => checkout.active);
   const available = group.checkouts.some((checkout) => checkout.available !== false);
   const appUrl = `https://${group.projectSlug}.localhost`;
+  const checkoutCount = group.checkouts.length;
+
+  async function confirmRemoval() {
+    if (!selected) return;
+    setIsRemoving(true);
+    setRemoveStatus(deleteFiles ? "Deleting project files..." : "Removing project...");
+    try {
+      await onRemoveProject(selected, deleteFiles);
+      setIsConfirmingRemoval(false);
+    } catch (error) {
+      setRemoveStatus(error instanceof Error ? error.message : "Project removal failed.");
+    } finally {
+      setIsRemoving(false);
+    }
+  }
+
   return (
     <article className={cn("flex min-h-[23rem] flex-col rounded-md border bg-card p-5", isActive && "border-primary/45 ring-1 ring-primary/25")}>
       <div className="mb-7 flex items-start justify-between gap-4">
@@ -941,10 +993,33 @@ function ProjectCard({ group, onOpenProject }: { group: ProjectGroup; onOpenProj
         <Button onClick={() => selected && onOpenProject(selected)} disabled={!selected}>
           » Open Project
         </Button>
-        <button className="rounded p-1 text-muted-foreground hover:text-foreground" type="button" aria-label={`Remove ${group.name}`}>
+        <button className="rounded p-1 text-muted-foreground hover:text-foreground" type="button" aria-label={`Remove ${group.name}`} onClick={() => setIsConfirmingRemoval(true)}>
           <Trash2 aria-hidden="true" className="size-4" />
         </button>
       </div>
+      {isConfirmingRemoval ? (
+        <div className="mt-4 rounded-md border bg-background p-3">
+          <div className="grid gap-1 text-sm">
+            <strong>{checkoutCount > 1 ? `Remove checkout: ${selected?.worktreeSlug || "main"}` : "Destructive option"}</strong>
+            <span className="text-muted-foreground">
+              Removing this {checkoutCount > 1 ? "checkout" : "project"} only forgets it in Hyperwiki. File deletion permanently deletes the {checkoutCount > 1 ? "checkout" : "project"} folder.
+            </span>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground">
+            <input className="size-4 accent-primary" checked={deleteFiles} disabled={!selected?.available || isRemoving} type="checkbox" onChange={(event) => setDeleteFiles(event.target.checked)} />
+            <span>{selected?.available ? `Also delete ${checkoutCount > 1 ? "checkout" : "project"} files` : "Project files unavailable"}</span>
+          </label>
+          {removeStatus ? <p className="m-0 mt-2 text-xs text-muted-foreground" role="status">{removeStatus}</p> : null}
+          <div className="mt-3 flex justify-end gap-2">
+            <Button disabled={isRemoving} variant="outline" onClick={() => setIsConfirmingRemoval(false)}>
+              Cancel
+            </Button>
+            <Button disabled={isRemoving} onClick={() => void confirmRemoval()}>
+              {isRemoving ? (deleteFiles ? "Deleting..." : "Removing...") : deleteFiles ? "Confirm Delete" : "Confirm Remove"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
