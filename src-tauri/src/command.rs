@@ -202,8 +202,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .body
             .as_deref()
             .and_then(|body| {
-                serde_json::from_str::<crate::domain::plan_creation::PlanClarifyRequest>(body)
-                    .ok()
+                serde_json::from_str::<crate::domain::plan_creation::PlanClarifyRequest>(body).ok()
             })
             .unwrap_or(crate::domain::plan_creation::PlanClarifyRequest {
                 title: String::new(),
@@ -1176,7 +1175,7 @@ mod tests {
         let create = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/plans/create?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[{\"id\":\"outcome\",\"answer\":\"Visible import workflow.\"},{\"id\":\"workflow\",\"answer\":\"Open import, choose file, preview, commit.\"},{\"id\":\"scope\",\"answer\":\"CSV import only; no scheduled sync.\"},{\"id\":\"surface\",\"answer\":\"Planning page and import route.\"},{\"id\":\"validation\",\"answer\":\"Rust and UI smoke tests.\"},{\"id\":\"risks\",\"answer\":\"Malformed rows and duplicate customers.\"}]}".to_string()),
+            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[{\"id\":\"desired-outcome\",\"answer\":\"Visible import workflow.\"},{\"id\":\"success-example\",\"answer\":\"Open import, choose file, preview, commit.\"},{\"id\":\"scope-boundary\",\"answer\":\"CSV import only; no scheduled sync.\"},{\"id\":\"affected-surfaces\",\"answer\":\"Planning page and import route.\"},{\"id\":\"acceptance-checks\",\"answer\":\"Rust and UI smoke tests.\"},{\"id\":\"clarity-risks\",\"answer\":\"Malformed rows and duplicate customers.\"}]}".to_string()),
         });
         assert!(create.ok, "{}", create.text);
         assert!(root

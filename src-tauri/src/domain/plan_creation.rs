@@ -58,6 +58,7 @@ pub struct PlanQuestion {
     pub label: String,
     pub prompt: String,
     pub impact: String,
+    pub rationale: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -90,12 +91,22 @@ pub fn clarify_plan(request: PlanClarifyRequest) -> PlanClarifyResponse {
     clarify_plan_for_root(None, request)
 }
 
-pub fn clarify_plan_for_root(root: Option<&Path>, request: PlanClarifyRequest) -> PlanClarifyResponse {
+pub fn clarify_plan_for_root(
+    root: Option<&Path>,
+    request: PlanClarifyRequest,
+) -> PlanClarifyResponse {
     let title = request.title.trim();
     let slug = slugify(if title.is_empty() { "new-plan" } else { title });
     let path = format!("/wiki/plans/features/{slug}.html");
     let path_available = root
-        .map(|root| !root.join("wiki").join("plans").join("features").join(format!("{slug}.html")).exists())
+        .map(|root| {
+            !root
+                .join("wiki")
+                .join("plans")
+                .join("features")
+                .join(format!("{slug}.html"))
+                .exists()
+        })
         .unwrap_or(true);
     let suggested_slug = if path_available {
         None
@@ -103,34 +114,35 @@ pub fn clarify_plan_for_root(root: Option<&Path>, request: PlanClarifyRequest) -
         root.map(|root| unique_slug(root, &slug))
     };
     let answered = answered_question_ids(&request.answers);
-    let mut questions = Vec::new();
-    for question in question_bank() {
-        if !answered.iter().any(|id| id == &question.id) {
-            questions.push(question.clone());
-        }
-    }
-    let blocking_missing = questions
+    let question_sequence = generated_question_sequence(&request);
+    let questions = question_sequence
         .iter()
-        .filter(|question| question.impact == "blocking")
-        .count();
-    let important_missing = questions
+        .filter(|question| !answered.iter().any(|id| id == &question.id))
+        .take(1)
+        .cloned()
+        .collect::<Vec<_>>();
+    let required_count = question_sequence
         .iter()
-        .filter(|question| question.impact == "important")
+        .filter(|question| question.impact != "optional")
         .count();
-    let answered_count = answered.len().min(question_bank().len());
-    let score = ((answered_count * 100) / question_bank().len()) as u8;
-    let ready = !title.is_empty()
-        && !request.intent.trim().is_empty()
-        && blocking_missing == 0
-        && important_missing == 0;
+    let answered_required = question_sequence
+        .iter()
+        .filter(|question| {
+            question.impact != "optional" && answered.iter().any(|id| id == &question.id)
+        })
+        .count();
+    let required_missing = required_count.saturating_sub(answered_required);
+    let score = ((answered_required * 100) / required_count.max(1)) as u8;
+    let ready = !title.is_empty() && !request.intent.trim().is_empty() && required_missing == 0;
     let summary = if ready {
-        format!("Ready to create a {} plan for {title}.", normalized_plan_type(&request.plan_type))
+        format!(
+            "Ready to create a {} plan for {title}.",
+            normalized_plan_type(&request.plan_type)
+        )
     } else if title.is_empty() || request.intent.trim().is_empty() {
         "Title and intent are required before Hyperwiki can evaluate plan clarity.".to_string()
     } else {
-        format!(
-            "Need {blocking_missing} blocking and {important_missing} important answer(s) before writing the plan."
-        )
+        format!("Need {required_missing} more focused answer(s) before writing the plan.")
     };
     PlanClarifyResponse {
         ready,
@@ -139,10 +151,10 @@ pub fn clarify_plan_for_root(root: Option<&Path>, request: PlanClarifyRequest) -
         path,
         path_available,
         suggested_slug,
-        questions: questions.into_iter().take(4).collect(),
+        questions,
         answered,
         assumptions: assumptions_from_answers(&request.answers),
-        unknowns: unknowns_from_questions(blocking_missing, important_missing),
+        unknowns: unknowns_from_questions(required_missing),
         summary,
     }
 }
@@ -152,12 +164,15 @@ pub fn create_plan(
     request: PlanCreateRequest,
 ) -> Result<PlanCreateResponse, (u16, String)> {
     let root = root.as_ref();
-    let clarify = clarify_plan_for_root(Some(root), PlanClarifyRequest {
-        title: request.title.clone(),
-        intent: request.intent.clone(),
-        plan_type: request.plan_type.clone(),
-        answers: request.answers.clone(),
-    });
+    let clarify = clarify_plan_for_root(
+        Some(root),
+        PlanClarifyRequest {
+            title: request.title.clone(),
+            intent: request.intent.clone(),
+            plan_type: request.plan_type.clone(),
+            answers: request.answers.clone(),
+        },
+    );
     if !clarify.ready && !request.allow_deferred_unknowns {
         return Err((
             409,
@@ -174,7 +189,10 @@ pub fn create_plan(
             .as_deref()
             .map(|slug| format!(" Try {slug}."))
             .unwrap_or_default();
-        return Err((409, format!("Plan already exists at {}.{suggestion}", clarify.path)));
+        return Err((
+            409,
+            format!("Plan already exists at {}.{suggestion}", clarify.path),
+        ));
     }
     fs::create_dir_all(
         plan_path
@@ -196,31 +214,108 @@ pub fn create_plan(
     }
     Ok(PlanCreateResponse {
         plan: clarify.clone(),
-        path: format!("/wiki/{}", slash_path(&relative.strip_prefix("wiki").unwrap_or(&relative))),
+        path: format!(
+            "/wiki/{}",
+            slash_path(&relative.strip_prefix("wiki").unwrap_or(&relative))
+        ),
         display_path: clarify.path,
         wrote,
     })
 }
 
-fn question_bank() -> Vec<PlanQuestion> {
+fn generated_question_sequence(request: &PlanClarifyRequest) -> Vec<PlanQuestion> {
+    let title = request.title.trim();
+    let intent = request.intent.trim();
+    let plan_type = normalized_plan_type(&request.plan_type);
+    let topic = if title.is_empty() { "this plan" } else { title };
+    let lower_intent = intent.to_lowercase();
+    let likely_ui = lower_intent.contains("ui")
+        || lower_intent.contains("page")
+        || lower_intent.contains("button")
+        || lower_intent.contains("sidebar")
+        || lower_intent.contains("top bar")
+        || lower_intent.contains("workflow");
+    let likely_data = lower_intent.contains("data")
+        || lower_intent.contains("model")
+        || lower_intent.contains("api")
+        || lower_intent.contains("file")
+        || lower_intent.contains("sync");
+    let likely_agent = lower_intent.contains("agent")
+        || lower_intent.contains("llm")
+        || lower_intent.contains("codex")
+        || lower_intent.contains("question")
+        || lower_intent.contains("prompt");
+
     vec![
-        question("outcome", "Outcome", "What concrete user-visible or developer-visible outcome should this plan produce?", "blocking"),
-        question("workflow", "Workflow", "What is the expected user workflow from start to finish?", "blocking"),
-        question("scope", "Scope", "What is in scope, and what should this plan explicitly not do?", "blocking"),
-        question("surface", "Surface", "Which app surfaces, commands, files, APIs, or data models are expected to change?", "important"),
-        question("validation", "Validation", "What automated and manual checks should prove the plan is complete?", "important"),
-        question("risks", "Risks", "What ambiguity, migration risk, security concern, or compatibility issue should the plan preserve?", "important"),
-        question("rollout", "Rollout", "Should the work ship immediately, stay behind review, or require staged follow-up?", "optional"),
-        question("sources", "Sources", "Should any pasted brief or external source be captured in wiki/sources before writing the plan?", "optional"),
+        question(
+            "desired-outcome",
+            "Outcome",
+            &format!("When {topic} is finished, what should a user or maintainer be able to do that they cannot do now?"),
+            "blocking",
+            "This turns the idea into a concrete finish line.",
+        ),
+        question(
+            "success-example",
+            "Success Example",
+            &format!("Describe one realistic before-and-after example for {topic}. What does the user do, and what changes on screen, in files, or in behavior?"),
+            "blocking",
+            "A concrete example exposes hidden workflow and data requirements.",
+        ),
+        question(
+            "scope-boundary",
+            "Scope Boundary",
+            &format!("What should this {plan_type} plan explicitly avoid, defer, or leave unchanged?"),
+            "blocking",
+            "The plan needs a boundary so implementation does not expand accidentally.",
+        ),
+        question(
+            "affected-surfaces",
+            "Affected Surfaces",
+            if likely_ui {
+                "Which exact screens, buttons, panels, sidebars, states, and copy should change?"
+            } else if likely_data {
+                "Which files, APIs, commands, data models, or persisted state should change?"
+            } else {
+                "Which app surfaces, commands, files, APIs, or data models do you expect this plan to touch?"
+            },
+            "important",
+            "This identifies the implementation surface area before writing the plan.",
+        ),
+        question(
+            "clarity-risks",
+            "Risk Check",
+            if likely_agent {
+                "Where should the agent be trusted to infer details, and where must it ask the user instead of guessing?"
+            } else {
+                "What ambiguity, compatibility issue, migration concern, or edge case would make the wrong implementation costly?"
+            },
+            "important",
+            "Good plans preserve the dangerous unknowns instead of smoothing them over.",
+        ),
+        question(
+            "acceptance-checks",
+            "Acceptance",
+            &format!("What checks would convince you that {topic} is actually done, including any manual UI checks and automated commands?"),
+            "important",
+            "This gives the future implementer a verification target.",
+        ),
+        question(
+            "source-material",
+            "Source Material",
+            "Is there any pasted brief, screenshot, external doc, or prior decision that the plan must preserve as source context?",
+            "optional",
+            "Optional source capture keeps durable context tied to the generated plan.",
+        ),
     ]
 }
 
-fn question(id: &str, label: &str, prompt: &str, impact: &str) -> PlanQuestion {
+fn question(id: &str, label: &str, prompt: &str, impact: &str, rationale: &str) -> PlanQuestion {
     PlanQuestion {
         id: id.to_string(),
         label: label.to_string(),
         prompt: prompt.to_string(),
         impact: impact.to_string(),
+        rationale: rationale.to_string(),
     }
 }
 
@@ -243,13 +338,12 @@ fn assumptions_from_answers(answers: &[PlanAnswer]) -> Vec<String> {
     assumptions
 }
 
-fn unknowns_from_questions(blocking_missing: usize, important_missing: usize) -> Vec<String> {
+fn unknowns_from_questions(required_missing: usize) -> Vec<String> {
     let mut unknowns = Vec::new();
-    if blocking_missing > 0 {
-        unknowns.push(format!("{blocking_missing} blocking question(s) still need answers."));
-    }
-    if important_missing > 0 {
-        unknowns.push(format!("{important_missing} important question(s) still need answers."));
+    if required_missing > 0 {
+        unknowns.push(format!(
+            "{required_missing} focused clarification question(s) still need answers."
+        ));
     }
     unknowns
 }
@@ -379,8 +473,16 @@ fn update_plans_index(
         "Current plan:",
         &format!(r#"Current plan: <a href="{}">{}</a>"#, clarify.path, title),
     );
-    let html = replace_summary_item(&html, "Current unit:", "Current unit: Unit 01 - Implement first slice");
-    let html = replace_summary_item(&html, "Next action:", "Next action: review the generated plan, then execute Unit 01.");
+    let html = replace_summary_item(
+        &html,
+        "Current unit:",
+        "Current unit: Unit 01 - Implement first slice",
+    );
+    let html = replace_summary_item(
+        &html,
+        "Next action:",
+        "Next action: review the generated plan, then execute Unit 01.",
+    );
     let html = replace_section_list(&html, "Active Plans", &active_item).unwrap_or(html);
     fs::write(&path, html).map_err(|error| error.to_string())?;
     Ok(true)
@@ -474,9 +576,14 @@ fn ensure_inside(root: &Path, path: &Path) -> Result<(), (u16, String)> {
         .parent()
         .ok_or_else(|| (400, "Path has no parent.".to_string()))?;
     fs::create_dir_all(parent).map_err(|error| (500, error.to_string()))?;
-    let parent = parent.canonicalize().map_err(|error| (500, error.to_string()))?;
+    let parent = parent
+        .canonicalize()
+        .map_err(|error| (500, error.to_string()))?;
     if !parent.starts_with(&root) {
-        return Err((400, "Refusing to write outside the project root.".to_string()));
+        return Err((
+            400,
+            "Refusing to write outside the project root.".to_string(),
+        ));
     }
     Ok(())
 }
@@ -544,7 +651,11 @@ mod tests {
             }],
         });
         assert!(!response.ready);
-        assert!(response.questions.iter().any(|question| question.id == "workflow"));
+        assert_eq!(response.questions.len(), 1);
+        assert!(response
+            .questions
+            .iter()
+            .any(|question| question.id == "desired-outcome"));
         assert!(response.path_available);
     }
 
@@ -554,7 +665,10 @@ mod tests {
         make_wiki(&root);
         let request = ready_request("Import CSV");
         let response = create_plan(&root, request).expect("plan should create");
-        assert_eq!(response.display_path, "/wiki/plans/features/import-csv.html");
+        assert_eq!(
+            response.display_path,
+            "/wiki/plans/features/import-csv.html"
+        );
         assert!(root
             .join("wiki")
             .join("plans")
@@ -562,7 +676,9 @@ mod tests {
             .join("import-csv.html")
             .exists());
         let index = fs::read_to_string(root.join("wiki").join("plans").join("index.html")).unwrap();
-        assert!(index.contains("Current plan: <a href=\"/wiki/plans/features/import-csv.html\">Import CSV</a>"));
+        assert!(index.contains(
+            "Current plan: <a href=\"/wiki/plans/features/import-csv.html\">Import CSV</a>"
+        ));
     }
 
     #[test]
@@ -582,14 +698,19 @@ mod tests {
             intent: "Let users import structured customer rows.".to_string(),
             plan_type: "feature".to_string(),
             allow_deferred_unknowns: false,
-            answers: question_bank()
-                .into_iter()
-                .filter(|question| question.impact != "optional")
-                .map(|question| PlanAnswer {
-                    id: question.id,
-                    answer: "Answered with concrete scope.".to_string(),
-                })
-                .collect(),
+            answers: generated_question_sequence(&PlanClarifyRequest {
+                title: title.to_string(),
+                intent: "Let users import structured customer rows.".to_string(),
+                plan_type: "feature".to_string(),
+                answers: Vec::new(),
+            })
+            .into_iter()
+            .filter(|question| question.impact != "optional")
+            .map(|question| PlanAnswer {
+                id: question.id,
+                answer: "Answered with concrete scope.".to_string(),
+            })
+            .collect(),
         }
     }
 

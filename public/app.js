@@ -429,6 +429,7 @@ newPlanUi.addEventListener("input", (event) => {
   if (!(target instanceof HTMLTextAreaElement) || !target.dataset.questionId) return;
   planCreationState.answers.set(target.dataset.questionId, target.value);
   newPlanCreate.disabled = true;
+  newPlanClarify.disabled = !target.value.trim();
 });
 
 newPlanUi.addEventListener("submit", async (event) => {
@@ -543,6 +544,16 @@ async function startNewPlanQuestions() {
     renderNewPlanDraftState(payload, "Add a short title and a clearer intent before starting the Q&A stage.");
     return;
   }
+  const activeQuestion = planCreationState.response?.questions?.[0];
+  if (planCreationState.stage === "questions" && activeQuestion) {
+    const answer = (planCreationState.answers.get(activeQuestion.id) || "").trim();
+    if (!answer) {
+      newPlanStatus.textContent = "Answer this question before moving to the next one.";
+      const activeTextarea = newPlanQuestions.querySelector("textarea");
+      if (activeTextarea) activeTextarea.focus();
+      return;
+    }
+  }
   planCreationState.stage = "questions";
   await clarifyNewPlan();
 }
@@ -556,6 +567,7 @@ function renderNewPlanDraftState(payload = newPlanPayload(), message = "") {
   planCreationState.stage = "draft";
   newPlanQuestions.hidden = true;
   newPlanCreate.hidden = true;
+  newPlanClarify.hidden = false;
   newPlanClarify.textContent = "Start Plan";
   newPlanClarify.disabled = !newPlanHasInitialIntent(payload);
   newPlanQuestions.replaceChildren();
@@ -566,7 +578,7 @@ function renderNewPlanDraftState(payload = newPlanPayload(), message = "") {
 function renderNewPlanQuestionsState() {
   newPlanQuestions.hidden = false;
   newPlanCreate.hidden = false;
-  newPlanClarify.textContent = "Ask next questions";
+  newPlanClarify.textContent = "Next Question";
   newPlanClarify.disabled = false;
 }
 
@@ -587,22 +599,30 @@ function renderNewPlanClarification(response) {
     ? `Ready to create.${conflict}`
     : `${response.summary || "Answer the next questions."}${conflict}`;
   newPlanCreate.disabled = response.pathAvailable === false || !response.ready;
+  newPlanClarify.hidden = response.ready;
   newPlanQuestions.replaceChildren(...(response.questions || []).map(renderNewPlanQuestion));
+  if (!response.ready) {
+    const activeTextarea = newPlanQuestions.querySelector("textarea");
+    newPlanClarify.disabled = !activeTextarea?.value.trim();
+    requestAnimationFrame(() => activeTextarea?.focus());
+  }
 }
 
 function renderNewPlanQuestion(question) {
   const label = document.createElement("label");
   label.className = `new-plan-question impact-${question.impact || "optional"}`;
   const header = document.createElement("span");
-  header.textContent = `${question.label} · ${question.impact}`;
+  header.textContent = `${question.label} · ${question.impact || "clarity"}`;
   const prompt = document.createElement("strong");
   prompt.textContent = question.prompt;
+  const rationale = document.createElement("em");
+  rationale.textContent = question.rationale || "Answer with enough detail for the future implementation.";
   const textarea = document.createElement("textarea");
-  textarea.rows = 2;
+  textarea.rows = 4;
   textarea.dataset.questionId = question.id;
   textarea.value = planCreationState.answers.get(question.id) || "";
-  textarea.placeholder = "Answer with the details future implementation needs...";
-  label.append(header, prompt, textarea);
+  textarea.placeholder = "Answer this, then continue to the next question...";
+  label.append(header, prompt, rationale, textarea);
   return label;
 }
 
@@ -639,6 +659,7 @@ function resetNewPlanForm() {
   newPlanIntent.value = "";
   newPlanType.value = "feature";
   newPlanQuestions.replaceChildren();
+  newPlanClarify.hidden = false;
   newPlanCreate.disabled = true;
   renderNewPlanDraftState();
 }

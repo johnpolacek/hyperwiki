@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-21 fix | project plan interview wizard</h2>
+  <ul>
+    <li>Reworked create-plan clarification so the app asks one generated, plan-specific question at a time instead of rendering a grid of canned question cards.</li>
+    <li>Updated the clarity endpoint to synthesize the next highest-impact question from the current title, intent, plan type, and prior answers, with the create action gated until the required interview questions are answered.</li>
+    <li>Updated the workspace UI to focus the active answer, advance with <code>Next Question</code>, and reveal <code>Create plan</code> once the clarity gate passes.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-21 planning | theme-aware generated plans</h2>
   <ul>
     <li>Added the active <a href="/wiki/plans/features/theme-aware-generated-plans.html">Theme-Aware Generated Plans</a> plan for keeping newly generated rich HTML plan layouts aligned with Hyperwiki Settings themes.</li>

@@ -396,6 +396,7 @@
         <li>2026-05-21: Fixed wiki status extraction so completed plans with a plain <code>Summary</code> section, such as <code>Remove Legacy Node Runtime</code>, group under Completed Plans in the Tauri sidebar.</li>
         <li>2026-05-21: Added the requirement that project plan creation include an LLM-led Q&amp;A clarification loop before generating plan files.</li>
         <li>2026-05-21: Implemented the full project plan creation workflow in branch <code>feature/project-plan-creation</code>: Rust clarify/create endpoints, clarity gate tests, generated plan file writes, dashboard/log updates, conflict feedback, and the workspace <code>+ plan</code> Q&amp;A surface.</li>
+        <li>2026-05-21: Reworked the create-plan clarification UI from multi-card canned questions into a focused one-question wizard. The clarify endpoint now generates the next highest-impact question from the title, intent, plan type, and prior answers, then returns only that question until the required clarity gate passes.</li>
       </ul>
     </section>
 

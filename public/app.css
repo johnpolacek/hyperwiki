@@ -3718,24 +3718,32 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .new-plan-questions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .new-plan-question {
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 10px;
-  background: color-mix(in srgb, var(--bg) 70%, var(--panel));
+  padding: 12px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 58%),
+    color-mix(in srgb, var(--bg) 70%, var(--panel));
 }
 
 .new-plan-question strong {
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.new-plan-question em {
+  color: var(--muted);
+  font-style: normal;
 }
 
 .new-plan-question.impact-blocking {
-  border-left: 4px solid #a33a2c;
+  border-left: 4px solid var(--accent);
 }
 
 .new-plan-question.impact-important {
