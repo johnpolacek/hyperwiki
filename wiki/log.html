@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 3</h2>
+  <ul>
+    <li>Ported the core terminal lifecycle into the React shell with xterm-backed active terminals, attach/replay, output polling, keyboard input, resize forwarding, scoped session tabs, rename, close, and attach/restart controls.</li>
+    <li>Imported xterm styles through the Vite entrypoint so the React terminal renderer owns its display instead of depending on copied legacy static assets.</li>
+    <li>Advanced the rewrite plan from Stage 03 Unit 02 to Stage 03 Unit 03. Remaining Stage 03 work is Execute, Modify, New Plan, review workflows, preview lifecycle, worktree flows, and guardrail parity.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml terminal</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml sessions</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 2</h2>
   <ul>
     <li>Replaced the Batch 1 React placeholder with a desktop workspace shell covering the topbar, Up Next popover, project switcher, wiki sidebar, command bar, iframe-backed wiki rendering, Projects, New Project, and Settings route surfaces.</li>

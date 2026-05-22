@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   BookOpen,
@@ -14,12 +14,16 @@ import {
   PanelRight,
   Play,
   Plus,
+  RotateCcw,
   RefreshCw,
   Search,
   Settings,
   Square,
   TerminalSquare,
 } from "lucide-react";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Terminal } from "@xterm/xterm";
 import { Button } from "@/components/ui/button";
 import { hyperwikiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -120,6 +124,11 @@ interface SessionsResponse {
   sessions?: SessionRecord[];
 }
 
+interface TerminalStartResponse {
+  session: SessionRecord;
+  replay?: string;
+}
+
 const defaultWikiPath = "/wiki/index.html";
 
 function App() {
@@ -134,6 +143,7 @@ function App() {
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -211,9 +221,12 @@ function App() {
     setIsSessionsLoading(true);
     try {
       const response = await hyperwikiApi.json<SessionsResponse>(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`);
-      setSessions(response.sessions || []);
+      const nextSessions = response.sessions || [];
+      setSessions(nextSessions);
+      setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
     } catch {
       setSessions([]);
+      setActiveSessionId(null);
     } finally {
       setIsSessionsLoading(false);
     }
@@ -235,7 +248,7 @@ function App() {
     const name = role === "agent" ? "Agent" : "Terminal";
     setStatus(`Starting ${name.toLowerCase()}`);
     try {
-      await hyperwikiApi.json("/api/terminal/start", {
+      const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
         method: "POST",
         body: {
           name,
@@ -245,6 +258,7 @@ function App() {
           plan_path: terminalScope.planPath,
         },
       });
+      setActiveSessionId(started.session.id);
       await loadSessions();
       setStatus(`${name} started`);
     } catch (error) {
@@ -255,9 +269,52 @@ function App() {
   async function closeSession(sessionId: string) {
     setStatus("Closing session");
     try {
-      await hyperwikiApi.request(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      let response = await hyperwikiApi.request(`/api/terminal/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      if (!response.ok) {
+        response = await hyperwikiApi.request(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      }
+      if (!response.ok) throw new Error(response.text || `Request failed: ${response.status}`);
       await loadSessions();
       setStatus("Session closed");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function renameSession(sessionId: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setStatus("Renaming session");
+    try {
+      await hyperwikiApi.json(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+        method: "PATCH",
+        body: { name: trimmed },
+      });
+      await loadSessions();
+      setStatus("Session renamed");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function restartSession(session: SessionRecord) {
+    setStatus("Restarting session");
+    try {
+      const restarted = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+        method: "POST",
+        body: {
+          id: session.id,
+          name: session.name,
+          role: session.role,
+          command: session.command,
+          scope: session.scope || terminalScope.scope,
+          scope_kind: session.scopeKind || terminalScope.scopeKind,
+          plan_path: session.planPath || terminalScope.planPath,
+        },
+      });
+      setActiveSessionId(restarted.session.id);
+      await loadSessions();
+      setStatus("Session attached");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -299,9 +356,13 @@ function App() {
         />
         <TerminalPane
           isLoading={isSessionsLoading}
+          activeSessionId={activeSessionId}
           onCloseSession={closeSession}
+          onRenameSession={renameSession}
           onRefresh={loadSessions}
+          onRestartSession={restartSession}
           onStart={startTerminal}
+          onSelectSession={setActiveSessionId}
           scope={terminalScope}
           sessions={sessions}
         />
@@ -600,13 +661,18 @@ function SettingsView({ settings }: { settings: SettingsResponse | null }) {
 }
 
 function TerminalPane(props: {
+  activeSessionId: string | null;
   isLoading: boolean;
   onCloseSession: (sessionId: string) => void;
+  onRenameSession: (sessionId: string, name: string) => void;
   onRefresh: () => void;
+  onRestartSession: (session: SessionRecord) => void;
   onStart: (role: "agent" | "cli") => void;
+  onSelectSession: (sessionId: string) => void;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   sessions: SessionRecord[];
 }) {
+  const activeSession = props.sessions.find((session) => session.id === props.activeSessionId) || props.sessions[0] || null;
   return (
     <aside className="flex min-h-0 flex-col border-l bg-card max-xl:hidden">
       <div className="flex min-h-11 items-center justify-between border-b px-3">
@@ -632,30 +698,30 @@ function TerminalPane(props: {
       <div className="border-b px-3 py-2 text-xs text-muted-foreground">
         <span className="font-bold uppercase">{props.scope.scopeKind}</span> {props.scope.scope}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto p-3">
+      <div className="flex min-h-0 flex-1 flex-col">
         {props.sessions.length ? (
-          <div className="grid gap-2">
-            {props.sessions.map((session) => (
-              <article className="border bg-background p-3" key={session.id}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-bold">{session.name || session.role || session.kind || "Terminal"}</div>
-                    <div className="truncate text-xs text-muted-foreground">{session.cwd || session.command || session.shell || session.id}</div>
-                  </div>
-                  <Button size="icon" variant="ghost" onClick={() => props.onCloseSession(session.id)} title="Close session">
-                    <Square aria-hidden="true" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <span className="border px-2 py-1">{session.status || "unknown"}</span>
-                  <span className="border px-2 py-1">{session.role || session.kind || "session"}</span>
-                  {session.reconnectable ? <span className="border px-2 py-1">reconnectable</span> : null}
-                </div>
-              </article>
-            ))}
-          </div>
+          <>
+            <div className="flex max-h-40 shrink-0 flex-col gap-2 overflow-auto border-b p-2">
+              {props.sessions.map((session) => (
+                <TerminalSessionTab
+                  isActive={activeSession?.id === session.id}
+                  key={session.id}
+                  onClose={() => props.onCloseSession(session.id)}
+                  onRename={(name) => props.onRenameSession(session.id, name)}
+                  onRestart={() => props.onRestartSession(session)}
+                  onSelect={() => props.onSelectSession(session.id)}
+                  session={session}
+                />
+              ))}
+            </div>
+            <div className="min-h-0 flex-1">
+              {activeSession ? (
+                <XtermSession key={activeSession.id} scope={props.scope} session={activeSession} />
+              ) : null}
+            </div>
+          </>
         ) : (
-          <div className="grid min-h-48 place-items-center border bg-background p-4 text-center text-sm text-muted-foreground">
+          <div className="m-3 grid min-h-48 place-items-center border bg-background p-4 text-center text-sm text-muted-foreground">
             <div className="flex max-w-xs flex-col items-center gap-3">
               <TerminalSquare aria-hidden="true" className="size-8" />
               <span>No retained sessions for this scope.</span>
@@ -669,6 +735,189 @@ function TerminalPane(props: {
       </div>
     </aside>
   );
+}
+
+function TerminalSessionTab(props: {
+  isActive: boolean;
+  onClose: () => void;
+  onRename: (name: string) => void;
+  onRestart: () => void;
+  onSelect: () => void;
+  session: SessionRecord;
+}) {
+  const [draftName, setDraftName] = useState(props.session.name || props.session.role || "Terminal");
+
+  useEffect(() => {
+    setDraftName(props.session.name || props.session.role || "Terminal");
+  }, [props.session.name, props.session.role]);
+
+  return (
+    <article className={cn("border bg-background p-2", props.isActive && "border-primary")}>
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 text-left">
+          <input
+            aria-label="Session name"
+            className="w-full bg-transparent text-sm font-bold outline-none"
+            onBlur={() => props.onRename(draftName)}
+            onChange={(event) => setDraftName(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onFocus={props.onSelect}
+            value={draftName}
+          />
+          <span className="block truncate text-xs text-muted-foreground">{props.session.cwd || props.session.command || props.session.shell || props.session.id}</span>
+        </div>
+        <Button size="icon" variant="ghost" onClick={props.onSelect} title="Show session">
+          <Play aria-hidden="true" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={props.onRestart} title="Attach or restart session">
+          <RotateCcw aria-hidden="true" />
+        </Button>
+        <Button size="icon" variant="ghost" onClick={props.onClose} title="Close session">
+          <Square aria-hidden="true" />
+        </Button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <span className="border px-2 py-1">{props.session.status || "unknown"}</span>
+        <span className="border px-2 py-1">{props.session.role || props.session.kind || "session"}</span>
+        <span className="border px-2 py-1">{props.session.mode || "mode unknown"}</span>
+        {props.session.reconnectable ? <span className="border px-2 py-1">reconnectable</span> : null}
+      </div>
+    </article>
+  );
+}
+
+function XtermSession({
+  scope,
+  session,
+}: {
+  scope: { scope: string; scopeKind: string; planPath: string | null };
+  session: SessionRecord;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const fitRef = useRef<FitAddon | null>(null);
+  const seenLengthRef = useRef(0);
+  const pendingRef = useRef<string[]>([]);
+  const closedRef = useRef(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    closedRef.current = false;
+    seenLengthRef.current = 0;
+    pendingRef.current = [];
+
+    const terminal = new Terminal({
+      cursorBlink: true,
+      fontFamily: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontSize: 13,
+      lineHeight: 1.3,
+      scrollback: 10000,
+      theme: {
+        background: "#20231f",
+        foreground: "#f7f7f4",
+        cursor: "#f7f7f4",
+        selectionBackground: "#3b4138",
+      },
+    });
+    const fitAddon = new FitAddon();
+    terminalRef.current = terminal;
+    fitRef.current = fitAddon;
+    terminal.loadAddon(fitAddon);
+    terminal.loadAddon(new WebLinksAddon());
+    terminal.open(container);
+
+    const fit = () => {
+      if (closedRef.current || container.clientWidth <= 0 || container.clientHeight <= 0) return;
+      try {
+        fitAddon.fit();
+        void sendResize(session.id, terminal.cols, terminal.rows);
+      } catch {
+        // xterm fit can throw while the panel is resizing; the next observer tick retries.
+      }
+    };
+
+    const flush = async () => {
+      while (!closedRef.current && pendingRef.current.length) {
+        const input = pendingRef.current.shift() || "";
+        await sendInput(session.id, normalizeTerminalInput(input));
+      }
+    };
+
+    const dataDisposable = terminal.onData((data) => {
+      pendingRef.current.push(data);
+      void flush();
+    });
+    const resizeDisposable = terminal.onResize(({ cols, rows }) => {
+      void sendResize(session.id, cols, rows);
+    });
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+
+    async function attach() {
+      try {
+        const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+          method: "POST",
+          body: {
+            id: session.id,
+            name: session.name,
+            role: session.role,
+            command: session.command,
+            scope: session.scope || scope.scope,
+            scope_kind: session.scopeKind || scope.scopeKind,
+            plan_path: session.planPath || scope.planPath,
+          },
+        });
+        const replay = String(started.replay || "");
+        if (replay) {
+          seenLengthRef.current = replay.length;
+          terminal.write(stripTerminalDisplayControlSequences(replay));
+        }
+        fit();
+        void flush();
+      } catch (error) {
+        terminal.writeln("");
+        terminal.writeln(error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    const poll = async () => {
+      if (closedRef.current) return;
+      try {
+        const result = await hyperwikiApi.json<{ output?: string }>(`/api/terminal/${encodeURIComponent(session.id)}/output`);
+        const output = String(result.output || "");
+        if (output.length > seenLengthRef.current) {
+          const next = output.slice(seenLengthRef.current);
+          seenLengthRef.current = output.length;
+          terminal.write(stripTerminalDisplayControlSequences(next));
+        } else if (output.length < seenLengthRef.current) {
+          seenLengthRef.current = output.length;
+          terminal.clear();
+          terminal.write(stripTerminalDisplayControlSequences(output));
+        }
+      } catch {
+        // A closed session is reflected by the next session refresh.
+      }
+    };
+
+    void attach();
+    const pollTimer = window.setInterval(poll, 250);
+    const fitTimer = window.setTimeout(fit, 0);
+
+    return () => {
+      closedRef.current = true;
+      window.clearInterval(pollTimer);
+      window.clearTimeout(fitTimer);
+      observer.disconnect();
+      dataDisposable.dispose();
+      resizeDisposable.dispose();
+      terminal.dispose();
+      terminalRef.current = null;
+      fitRef.current = null;
+    };
+  }, [scope.planPath, scope.scope, scope.scopeKind, session]);
+
+  return <div className="h-full min-h-0 bg-foreground p-2" ref={containerRef} />;
 }
 
 function routeFromLocation(): ViewRoute {
@@ -734,6 +983,30 @@ function scopeForRoute(route: ViewRoute) {
     return { scope: route.path, scopeKind: "plan", planPath: route.path };
   }
   return { scope: route.path, scopeKind: "wiki", planPath: null };
+}
+
+async function sendInput(sessionId: string, input: string) {
+  await hyperwikiApi.json(`/api/terminal/${encodeURIComponent(sessionId)}/write`, {
+    method: "POST",
+    body: { input },
+  });
+}
+
+async function sendResize(sessionId: string, cols: number, rows: number) {
+  await hyperwikiApi.json(`/api/terminal/${encodeURIComponent(sessionId)}/resize`, {
+    method: "POST",
+    body: { cols, rows },
+  });
+}
+
+function normalizeTerminalInput(data: string) {
+  if (data === "\x1b\x1b[D") return "\x1bb";
+  if (data === "\x1b\x1b[C") return "\x1bf";
+  return data;
+}
+
+function stripTerminalDisplayControlSequences(data: string) {
+  return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
 }
 
 export default App;
