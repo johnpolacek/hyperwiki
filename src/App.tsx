@@ -309,11 +309,34 @@ function App() {
     window.history.pushState(null, "", urlForRoute(nextRoute, activeProject));
   }
 
-  function switchProject(project: ProjectRecord) {
+  async function switchProject(project: ProjectRecord) {
     setActiveProject(project);
     setIsProjectsOpen(false);
-    const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${currentWikiPath}`;
+    const nextRoute: ViewRoute = { kind: "wiki", path: defaultWikiPath };
+    setRoute(nextRoute);
+    const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${defaultWikiPath}`;
     window.history.pushState(null, "", nextPath);
+    await loadProjectData(project);
+  }
+
+  async function loadProjectData(project: ProjectRecord) {
+    setStatus("Loading workspace");
+    const [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult] = await Promise.allSettled([
+      hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
+      hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", project)),
+      hyperwikiApi.json<AppPreviewResponse>(withProjectQuery("/api/app-preview", project)),
+      hyperwikiApi.json<LayoutResponse>(withProjectQuery("/api/layout", project)),
+      hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", project)),
+    ]);
+
+    if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
+    if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
+    if (previewResult.status === "fulfilled") setPreview(previewResult.value);
+    if (layoutResult.status === "fulfilled") setLayout(layoutResult.value);
+    if (reviewResult.status === "fulfilled") setReviewWorkflows(reviewResult.value.workflows || []);
+
+    const rejected = [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult].find((result) => result.status === "rejected");
+    setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
   }
 
   async function startTerminal(role: "agent" | "cli") {
@@ -510,7 +533,7 @@ function App() {
     setStatus(`Project created: ${result.project.name}`);
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
     setProjects(projectsResult);
-    navigate({ kind: "projects" });
+    await switchProject(result.project);
   }
 
   async function removeProject(project: ProjectRecord, deleteFiles: boolean) {
