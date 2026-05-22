@@ -3627,7 +3627,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.new-plan-mode .new-plan-ui h2 {
-  font-family: var(--font);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 27px;
   line-height: 1.05;
   text-transform: none;
@@ -3639,7 +3639,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .workspace.new-plan-mode .new-plan-ui header p {
-  font-family: var(--font);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .workspace.new-plan-mode .new-plan-grid {
@@ -3822,14 +3822,14 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .new-plan-question strong {
   color: var(--text);
-  font-family: var(--font);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 20px;
   line-height: 1.38;
 }
 
 .new-plan-question em {
   color: var(--muted);
-  font-family: var(--font);
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 13px;
   font-style: normal;
   line-height: 1.45;
