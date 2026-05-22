@@ -588,41 +588,46 @@ function ProjectsPopover({
   onNavigate: (route: ViewRoute) => void;
   onSwitchProject: (project: ProjectRecord) => void;
 }) {
-  const checkouts = groups.flatMap((group) => group.checkouts);
+  const projects = groups
+    .map((group) => ({
+      group,
+      project: group.checkouts.find((checkout) => checkout.active) || group.checkouts.find((checkout) => checkout.worktreeSlug === "main") || group.checkouts[0],
+    }))
+    .filter((item): item is { group: ProjectGroup; project: ProjectRecord } => Boolean(item.project));
   return (
-    <div className="absolute right-0 top-12 z-20 max-h-[70vh] w-[36rem] overflow-auto rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
-      <div className="mb-6 flex flex-col gap-3">
+    <div className="absolute right-0 top-11 z-20 max-h-[70vh] w-[25rem] overflow-auto rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
+      <div className="mb-4 flex flex-col gap-2">
         <button
-          className="flex min-h-16 items-center justify-center gap-3 rounded-md border bg-foreground px-4 text-base font-bold text-background shadow-sm"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-md border bg-foreground px-3 text-sm font-bold text-background shadow-sm"
           onClick={() => onNavigate({ kind: "new-project" })}
           type="button"
         >
-          <Plus aria-hidden="true" className="size-5" />
+          <Plus aria-hidden="true" className="size-4" />
           New Project
         </button>
         <button
-          className="flex min-h-14 items-center justify-center gap-3 rounded-md border bg-background px-4 text-base font-bold"
+          className="flex min-h-10 items-center justify-center gap-2 rounded-md border bg-background px-3 text-sm font-bold"
           onClick={() => onNavigate({ kind: "projects" })}
           type="button"
         >
-          <span aria-hidden="true" className="text-xl leading-none">⇥</span>
+          <span aria-hidden="true" className="text-base leading-none">⇥</span>
           Manage Projects
         </button>
       </div>
-      {checkouts.length ? (
-        <div className="flex flex-col gap-3">
-          {checkouts.map((project) => (
+      {projects.length ? (
+        <div className="flex flex-col gap-2">
+          {projects.map(({ group, project }) => (
             <button
               className={cn(
-                "grid w-full gap-1 rounded-md border border-transparent px-3 py-3 text-left hover:bg-secondary",
-                project.active && "border-primary bg-primary/12",
+                "grid w-full gap-0.5 rounded-md border border-transparent px-3 py-2.5 text-left hover:bg-secondary",
+                group.checkouts.some((checkout) => checkout.active) && "border-primary bg-primary/12",
               )}
-              key={project.id}
+              key={group.projectSlug}
               onClick={() => onSwitchProject(project)}
               type="button"
             >
-              <span className="truncate text-lg font-bold">{project.name}</span>
-              <span className="truncate text-sm font-bold text-muted-foreground">{project.root}</span>
+              <span className="truncate text-base font-bold">{group.name || project.name}</span>
+              <span className="truncate text-xs font-bold text-muted-foreground">{project.root}</span>
             </button>
           ))}
         </div>
