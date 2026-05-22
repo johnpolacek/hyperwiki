@@ -3749,6 +3749,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-plan-question textarea {
+  margin-top: 6px;
   font-size: 14px;
   line-height: 1.45;
 }
