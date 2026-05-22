@@ -751,7 +751,7 @@ function WikiSidebar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <aside className="flex min-h-0 flex-col border-r bg-card">
+    <aside className="flex min-h-0 flex-col overflow-hidden border-r bg-card">
       <nav className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <h2 className="mb-2 px-1 text-xs font-bold uppercase text-muted-foreground">Plans</h2>
@@ -792,11 +792,11 @@ function PlanNode({ page, pages, currentPath, onNavigate, workspace, depth = 0 }
   }
   const open = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || isCurrentPlanPage(child, workspace));
   return (
-    <details className="grid gap-1" open={open}>
-      <summary className="cursor-pointer list-none">
+    <details className="grid min-w-0 gap-1 overflow-hidden" open={open}>
+      <summary className="min-w-0 cursor-pointer list-none overflow-hidden">
         <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />
       </summary>
-      <div className="grid gap-1">
+      <div className="grid min-w-0 gap-1 overflow-hidden">
         {children.map((child) => (
           <PlanNode currentPath={currentPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} workspace={workspace} />
         ))}
@@ -810,7 +810,7 @@ function SidebarPageButton({ page, currentPath, onNavigate, depth, current, sele
   return (
     <button
       className={cn(
-        "flex min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-secondary",
+        "flex w-full max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-left text-sm hover:bg-secondary",
         isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
       )}
       onClick={(event) => {
@@ -818,10 +818,10 @@ function SidebarPageButton({ page, currentPath, onNavigate, depth, current, sele
         event.stopPropagation();
         onNavigate(page.path);
       }}
-      style={{ paddingLeft: `${8 + depth * 18}px` }}
+      style={{ paddingLeft: `${8 + depth * 12}px` }}
       type="button"
     >
-      <span className={cn("size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-primary/70")} />
+      <span className={cn("size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
       <span className="min-w-0 flex-1 truncate font-bold">{cleanPageTitle(page)}</span>
     </button>
   );
@@ -1676,8 +1676,8 @@ function cleanPageTitle(page: WikiPage) {
   if (path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
   if (path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
   if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "Completed Plans";
-  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")} - `);
-  if (path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage $1 - ");
+  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")}: `);
+  if (path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, (_match, stage) => `Stage ${stage.padStart(2, "0")}: `);
   if (page.title.toLowerCase() === "prd") return "PRD";
   if (path.includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;
@@ -1742,7 +1742,7 @@ function pageStatus(page: WikiPage) {
 
 function isCurrentPlanPage(page: WikiPage, workspace: WorkspaceResponse | null) {
   const currentPath = workspace?.status?.currentPath;
-  if (currentPath) return displayWikiPath(page.path) === displayWikiPath(currentPath);
+  if (currentPath) return pathContainsSelectedPage(page.path, currentPath);
   return page.currentState === "current-unit" || page.currentState === "current-plan";
 }
 
