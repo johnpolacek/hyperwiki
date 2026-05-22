@@ -1107,19 +1107,24 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
       </header>
       <div className="flex justify-center px-8 py-7">
         <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" onSubmit={handleSubmit}>
-          <header className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6 max-md:grid-cols-1">
+          <header className="mb-5">
             <div>
               <h2 className="font-ui m-0 text-3xl font-normal leading-tight">Project Brief</h2>
               <p className="font-ui m-0 mt-2 max-w-[42rem] text-base text-muted-foreground">
                 Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.
               </p>
             </div>
-            <label className="mt-10 flex min-h-14 min-w-52 cursor-pointer flex-col items-center justify-center rounded-md border bg-background px-5 text-center text-muted-foreground hover:bg-secondary max-md:mt-0 max-md:w-full">
-              <span className="text-sm font-bold uppercase">Import Project File</span>
-              <small className="text-xs font-bold">Markdown or HTML</small>
-              <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
-            </label>
           </header>
+          <label className="mb-4 flex min-h-20 w-full cursor-pointer flex-col items-center justify-center rounded-md border bg-background text-center text-muted-foreground hover:bg-secondary">
+            <span className="text-base font-bold uppercase">Import Project File</span>
+            <small className="text-xs font-bold">Markdown or HTML</small>
+            <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+          </label>
+          <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
+            <span className="h-px bg-border" />
+            <span>OR</span>
+            <span className="h-px bg-border" />
+          </div>
           <label className="mb-4 grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
             <input className="min-h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" required value={title} onChange={(event) => setTitle(event.target.value)} />
