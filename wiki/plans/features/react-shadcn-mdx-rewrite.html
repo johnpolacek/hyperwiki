@@ -378,8 +378,8 @@
       <dl class="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>active</dd>
         <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
-        <dt>Current unit</dt><dd>Stage 00 Unit 01 - Create rewrite worktree and skill readiness plan</dd>
-        <dt>Next action</dt><dd>Create the feature worktree, install or verify agent skills, then start the frontend foundation.</dd>
+        <dt>Current unit</dt><dd>Stage 01 Unit 01 - Add Vite React TypeScript App</dd>
+        <dt>Next action</dt><dd>Begin the frontend foundation on the existing <code>frontend-rewrite</code> branch.</dd>
         <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
         <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
       </dl>
@@ -462,19 +462,19 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <header>
         <div>
           <h2>Stage 00 - Rewrite And Skill Readiness</h2>
-          <p>Prepare the branch, local agent skills, and durable guidance before implementation begins.</p>
+          <p>Complete. The current checkout is on <code>frontend-rewrite</code>, the required local agent skills are installed, and durable guidance has been updated.</p>
         </div>
         <span class="stage-number">Stage 00</span>
       </header>
       <ol class="units">
         <li class="unit">
           <h3>Unit 00.1 - Create Rewrite Worktree</h3>
-          <p>Create a dedicated branch/worktree such as <code>feature/react-shadcn-mdx-rewrite</code> using the repo worktree commands.</p>
+          <p>Create or confirm a dedicated rewrite branch/worktree. The user provided the existing <code>frontend-rewrite</code> branch, so no additional worktree was created.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Run <code>pnpm wt:create feature/react-shadcn-mdx-rewrite</code>.</li>
-            <li>Run <code>pnpm wt:list</code> and confirm the branch, path, and worktree slug.</li>
-            <li>Confirm the integration checkout remains untouched except for the planning commit.</li>
+            <li>Verified with <code>git status --short --branch</code>: current branch is <code>frontend-rewrite</code>.</li>
+            <li>Verified with <code>git worktree list</code>: current checkout is the active rewrite branch at the project root.</li>
+            <li>No additional feature worktree was created because the user had already checked out the rewrite branch.</li>
           </ul>
         </li>
         <li class="unit">
@@ -482,9 +482,9 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
           <p>Make the official/best-in-class shadcn and Tailwind skills available to local Codex and Claude agents before frontend work starts.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Run <code>npx skills add https://github.com/shadcn/ui --skill shadcn</code>.</li>
-            <li>Run <code>npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</code>.</li>
-            <li>Verify Codex and Claude sessions can discover both skills, or record the exact manual verification gap.</li>
+            <li>Ran <code>npx skills add https://github.com/shadcn/ui --skill shadcn</code>; installed to <code>.agents/skills/shadcn</code>.</li>
+            <li>Ran <code>npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</code>; installed to <code>.agents/skills/tailwind-design-system</code>.</li>
+            <li>Verified installed <code>SKILL.md</code> files and <code>skills-lock.json</code> entries for both skills. The skills CLI reported copy targets for Codex, Claude, and other local agents; a separate live Claude session was not launched during this batch.</li>
           </ul>
         </li>
         <li class="unit">
@@ -492,8 +492,8 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
           <p>Update durable agent guidance so future rewrite sessions know to use shadcn and Tailwind skills before touching frontend code.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Inspect <code>AGENTS.md</code>, <code>wiki/AGENTS.html</code>, and source briefs for the skill preflight guidance.</li>
-            <li>Confirm no package dependencies or runtime files were changed in this planning-only unit.</li>
+            <li>Updated <code>AGENTS.md</code>, <code>wiki/AGENTS.html</code>, the technical brief, and the design brief with skill preflight guidance.</li>
+            <li>Confirmed no package dependencies, Tauri config, or frontend runtime files were changed in Batch 0.</li>
           </ul>
         </li>
       </ol>
@@ -808,9 +808,9 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <h2>Copy Handoff</h2>
       <div class="copy-row">
         <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.html
-Current unit: Stage 00 Unit 01 - Create rewrite worktree and skill readiness plan
-Next action: create feature/react-shadcn-mdx-rewrite worktree, install or verify shadcn and tailwind-design-system skills for local Codex and Claude agents, then begin Stage 01 frontend foundation.
-Do not implement React/Tailwind/shadcn/MDX in the integration checkout. Use the rewrite worktree.
+Current unit: Stage 01 Unit 01 - Add Vite React TypeScript App
+Next action: begin the frontend foundation on the existing frontend-rewrite branch.
+Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
 Required skill commands:
 npx skills add https://github.com/shadcn/ui --skill shadcn
 npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>

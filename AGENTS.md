@@ -22,6 +22,8 @@ Use repo-local worktree commands when operating parallel feature work:
 
 Feature worktrees live under `../hyperwiki.worktrees/<branch-slug>`. The finish policy is merge, preserving feature branch history.
 
+For frontend rewrite work, use the repo-local `shadcn` and `tailwind-design-system` skills before changing React, Tailwind, shadcn/ui, or MDX plan code. They are installed under `.agents/skills/` and pinned by `skills-lock.json`.
+
 ## hyperwiki Agent Guide
 
 ### Project Wiki
@@ -31,6 +33,7 @@ Feature worktrees live under `../hyperwiki.worktrees/<branch-slug>`. The finish 
 - Use `wiki/sources.html` as the source index.
 - Preserve Hyperwiki scaffold conventions when applying external project-wiki skills: lowercase `wiki/sources.html`, app-visible `wiki/AGENTS.html`, app-served `/assets/wiki.css`, and Localhost Tooling runtime boundaries. See `wiki/scaffold-contract.html`.
 - Create or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
+- For the React, shadcn, Tailwind v4, and MDX rewrite, read `wiki/plans/features/react-shadcn-mdx-rewrite.html` first and execute only the current stage or batch named there.
 - Do not create plans for small, local, reversible fixes that do not change product behavior, architecture, schema, dependencies, build configuration, public APIs, security posture, or durable project direction.
 - Sync recent codebase changes back into `wiki/log.html`, relevant plans, roadmap, and source pages when work happened before planning or made the wiki stale.
 - Update `wiki/index.html` when adding or materially changing durable wiki pages.
