@@ -864,7 +864,7 @@ function ProjectsView({
 }) {
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <header className="flex min-h-40 items-center justify-between border-b px-10">
+      <header className="flex min-h-40 items-center justify-between px-10">
         <div>
           <h1 className="m-0 text-4xl font-bold leading-none">Projects</h1>
           <p className="m-0 mt-3 text-sm text-muted-foreground">Switch between registered local hyperwiki projects.</p>
