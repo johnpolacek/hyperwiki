@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root {
+  color-scheme: light dark;
+  --background: #f7f7f4;
+  --foreground: #20231f;
+  --card: #ffffff;
+  --card-foreground: #20231f;
+  --popover: #ffffff;
+  --popover-foreground: #20231f;
+  --primary: #276ef1;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e8e1;
+  --secondary-foreground: #20231f;
+  --muted: #ecebe5;
+  --muted-foreground: #62675f;
+  --accent: #276ef1;
+  --accent-foreground: #ffffff;
+  --destructive: #b42318;
+  --border: #d8d8d0;
+  --input: #d8d8d0;
+  --ring: #276ef1;
+  --radius: 0.5rem;
+}
+
+@font-face {
+  font-family: "Sometype Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Sometype Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/sometype-mono/SometypeMono-Bold.ttf") format("truetype");
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+}

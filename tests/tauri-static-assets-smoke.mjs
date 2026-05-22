@@ -1,19 +1,19 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const requiredAssets = [
-  "public/index.html",
-  "public/assets/app.css",
-  "public/assets/app.js",
-  "public/assets/app-api.js",
-  "public/assets/wiki.css",
-  "public/assets/theme.css",
-  "public/app.js",
-  "public/app-api.js",
-  "public/vendor/@xterm/xterm/lib/xterm.mjs",
-  "public/vendor/@xterm/xterm/css/xterm.css",
-  "public/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
-  "public/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
+  "dist/index.html",
+  "dist/assets/app.css",
+  "dist/assets/app.js",
+  "dist/assets/app-api.js",
+  "dist/assets/wiki.css",
+  "dist/assets/theme.css",
+  "dist/app.js",
+  "dist/app-api.js",
+  "dist/vendor/@xterm/xterm/lib/xterm.mjs",
+  "dist/vendor/@xterm/xterm/css/xterm.css",
+  "dist/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
+  "dist/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
 ];
 
 for (const asset of requiredAssets) {
@@ -21,10 +21,10 @@ for (const asset of requiredAssets) {
 }
 
 const mirroredAssets = [
-  ["public/app.css", "public/assets/app.css"],
-  ["public/app.js", "public/assets/app.js"],
-  ["public/app-api.js", "public/assets/app-api.js"],
-  ["public/wiki.css", "public/assets/wiki.css"]
+  ["public/app.css", "dist/assets/app.css"],
+  ["public/app.js", "dist/assets/app.js"],
+  ["public/app-api.js", "dist/assets/app-api.js"],
+  ["public/wiki.css", "dist/assets/wiki.css"]
 ];
 
 for (const [source, mirror] of mirroredAssets) {
@@ -37,12 +37,16 @@ for (const [source, mirror] of mirroredAssets) {
   }
 }
 
-const index = await readFile(path.resolve("public/index.html"), "utf8");
-if (!index.includes("/vendor/@xterm/xterm/lib/xterm.mjs")) {
-  throw new Error("Tauri static app no longer maps xterm to vendored browser assets.");
+const index = await readFile(path.resolve("dist/index.html"), "utf8");
+const distAssets = await readdir(path.resolve("dist/assets"));
+if (!distAssets.some((asset) => /^index-.*\.js$/.test(asset)) || !distAssets.some((asset) => /^index-.*\.css$/.test(asset))) {
+  throw new Error("Vite build must emit hashed app JS and CSS assets for the Tauri bundle.");
+}
+if (!index.includes("/assets/index-")) {
+  throw new Error("Tauri dist index must load Vite app assets.");
 }
 
-const app = await readFile(path.resolve("public/app.js"), "utf8");
+const app = await readFile(path.resolve("dist/assets/app.js"), "utf8");
 if (!app.includes("wiki\\/plans\\/features") || !app.includes(".test(path)) return true")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
