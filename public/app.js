@@ -410,6 +410,7 @@ newPlanButton.addEventListener("click", () => {
   const open = newPlanUi.hidden;
   newPlanUi.hidden = !open;
   newPlanButton.setAttribute("aria-expanded", String(open));
+  workspace.classList.toggle("new-plan-mode", open);
   if (open) {
     modifyPlanUi.hidden = true;
     modifyButton.setAttribute("aria-expanded", "false");
@@ -497,6 +498,7 @@ modifyPlanUi.addEventListener("submit", async (event) => {
 function closeNewPlanUi() {
   newPlanUi.hidden = true;
   newPlanButton.setAttribute("aria-expanded", "false");
+  workspace.classList.remove("new-plan-mode");
 }
 
 function handleNewPlanDraftInput() {

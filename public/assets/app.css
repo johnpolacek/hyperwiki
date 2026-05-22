@@ -3588,6 +3588,66 @@ html[data-initial-route="settings"] .wiki-pane {
   font: 12px/1.4 var(--sidebar-font);
 }
 
+.workspace.new-plan-mode {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workspace.new-plan-mode .sidebar,
+.workspace.new-plan-mode .terminal-pane,
+.workspace.new-plan-mode #wiki-frame,
+.workspace.new-plan-mode .plan-prompt,
+.workspace.new-plan-mode .modify-plan-ui {
+  display: none;
+}
+
+.workspace.new-plan-mode .wiki-pane {
+  grid-column: 1 / -1;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: auto;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 48%),
+    var(--bg);
+}
+
+.workspace.new-plan-mode .wiki-command-bar {
+  border-bottom-color: color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+
+.workspace.new-plan-mode .new-plan-ui {
+  align-self: start;
+  width: min(980px, calc(100% - 56px));
+  margin: 28px auto;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: 8px;
+  padding: 22px;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 36%),
+    var(--panel);
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    0 22px 58px color-mix(in srgb, var(--text) 12%, transparent);
+}
+
+.workspace.new-plan-mode .new-plan-ui h2 {
+  font-size: 18px;
+}
+
+.workspace.new-plan-mode .new-plan-ui p,
+.workspace.new-plan-mode .new-plan-status {
+  font-size: 14px;
+}
+
+.workspace.new-plan-mode .new-plan-grid {
+  gap: 14px;
+}
+
+.workspace.new-plan-mode .new-plan-grid input,
+.workspace.new-plan-mode .new-plan-grid select,
+.workspace.new-plan-mode .new-plan-grid textarea {
+  padding: 11px 12px;
+  font-size: 15px;
+}
+
 .new-plan-ui header,
 .new-plan-status-panel {
   display: flex;
