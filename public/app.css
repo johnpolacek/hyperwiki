@@ -3640,9 +3640,21 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .new-plan-ui #new-plan-clarify {
   margin-left: auto;
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 82%, var(--text));
   background: var(--accent);
   color: var(--accent-text);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 24%, transparent) inset,
+    0 8px 18px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.new-plan-ui #new-plan-clarify:hover,
+.new-plan-ui #new-plan-clarify:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 64%, var(--text));
+  background: color-mix(in srgb, var(--accent) 86%, var(--text));
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #ffffff 22%, transparent) inset,
+    0 10px 22px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .new-plan-ui button:disabled {
