@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileText,
   FolderGit2,
+  GitBranch,
   LayoutDashboard,
   Loader2,
   PanelRight,
@@ -33,6 +34,8 @@ type ViewRoute =
   | { kind: "projects" }
   | { kind: "new-project" }
   | { kind: "settings" };
+
+type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
 
 interface WikiPage {
   title: string;
@@ -99,6 +102,24 @@ interface SettingsResponse {
   [key: string]: unknown;
 }
 
+interface LayoutPanel {
+  name: string;
+  role: string;
+  command?: string | null;
+}
+
+interface LayoutResponse {
+  panels?: LayoutPanel[];
+  dev?: {
+    command?: string;
+    previewUrl?: string;
+  };
+  worktrees?: {
+    workflow?: string;
+    previewUrlPattern?: string;
+  };
+}
+
 interface SessionRecord {
   id: string;
   name?: string;
@@ -129,6 +150,28 @@ interface TerminalStartResponse {
   replay?: string;
 }
 
+interface ReviewWorkflow {
+  id: string;
+  label: string;
+  scope: string;
+  description: string;
+  requiresAgent: boolean;
+  resultBoundary: string;
+  evidenceType: string;
+}
+
+interface ReviewWorkflowResponse {
+  workflows?: ReviewWorkflow[];
+}
+
+interface PlanCreateResponse {
+  page?: {
+    path?: string;
+    title?: string;
+  };
+  path?: string;
+}
+
 const defaultWikiPath = "/wiki/index.html";
 
 function App() {
@@ -142,6 +185,8 @@ function App() {
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
+  const [layout, setLayout] = useState<LayoutResponse | null>(null);
+  const [reviewWorkflows, setReviewWorkflows] = useState<ReviewWorkflow[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
@@ -196,12 +241,14 @@ function App() {
 
   async function loadBaseData() {
     setStatus("Loading workspace");
-    const [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult] = await Promise.allSettled([
-      hyperwikiApi.json<WikiListResponse>("/api/wiki"),
-      hyperwikiApi.json<ProjectListResponse>("/api/projects"),
-      hyperwikiApi.json<WorkspaceResponse>("/api/workspace"),
-      hyperwikiApi.json<AppPreviewResponse>("/api/app-preview"),
+    const [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult] = await Promise.allSettled([
+      hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", activeProject)),
+      hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", activeProject)),
+      hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", activeProject)),
+      hyperwikiApi.json<AppPreviewResponse>(withProjectQuery("/api/app-preview", activeProject)),
       hyperwikiApi.json<SettingsResponse>("/api/settings"),
+      hyperwikiApi.json<LayoutResponse>(withProjectQuery("/api/layout", activeProject)),
+      hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", activeProject)),
     ]);
 
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
@@ -212,8 +259,10 @@ function App() {
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
     if (previewResult.status === "fulfilled") setPreview(previewResult.value);
     if (settingsResult.status === "fulfilled") setSettings(settingsResult.value);
+    if (layoutResult.status === "fulfilled") setLayout(layoutResult.value);
+    if (reviewResult.status === "fulfilled") setReviewWorkflows(reviewResult.value.workflows || []);
 
-    const rejected = [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult].find((result) => result.status === "rejected");
+    const rejected = [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
   }
 
@@ -253,6 +302,7 @@ function App() {
         body: {
           name,
           role,
+          command: role === "agent" ? agentLaunchCommand(layout) : null,
           scope: terminalScope.scope,
           scope_kind: terminalScope.scopeKind,
           plan_path: terminalScope.planPath,
@@ -261,6 +311,107 @@ function App() {
       setActiveSessionId(started.session.id);
       await loadSessions();
       setStatus(`${name} started`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function ensureAgentSession() {
+    const existing = sessions.find((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"));
+    if (existing?.command) {
+      setActiveSessionId(existing.id);
+      return existing;
+    }
+    const command = agentLaunchCommand(layout);
+    if (!command) {
+      throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
+    }
+    const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+      method: "POST",
+      body: {
+        name: "Agent",
+        role: "agent",
+        command,
+        scope: terminalScope.scope,
+        scope_kind: terminalScope.scopeKind,
+        plan_path: terminalScope.planPath,
+      },
+    });
+    setActiveSessionId(started.session.id);
+    await loadSessions();
+    return started.session;
+  }
+
+  async function sendAgentPrompt(prompt: string) {
+    await ensureAgentSession();
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      try {
+        await hyperwikiApi.json("/api/agent/prompt", {
+          method: "POST",
+          body: {
+            prompt,
+            currentPage: currentWikiPath,
+            scope: terminalScope.scope,
+          },
+        });
+        return;
+      } catch (error) {
+        lastError = error;
+        await delay(250);
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Agent unavailable.");
+  }
+
+  async function runCommandAction(action: CommandAction, payload?: Record<string, string>) {
+    setStatus(`Running ${action}`);
+    try {
+      if (action === "execute-main" || action === "modify") {
+        await sendAgentPrompt(workflowPrompt(action, workspace, currentWikiPath));
+        setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
+      }
+      if (action === "execute-worktree") {
+        const branch = payload?.branch || `feature/${slugify(workspace?.status?.current || titleForPath(currentWikiPath, wikiPages))}`;
+        const result = await hyperwikiApi.json<{ branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }>(withProjectQuery("/api/worktrees", activeProject), {
+          method: "POST",
+          body: { branch },
+        });
+        await loadBaseData();
+        await sendAgentPrompt(existingWorktreePrompt(workspace, currentWikiPath, result));
+        setStatus(`Worktree ready: ${result.branch || branch}`);
+      }
+      if (action === "review" && payload?.workflowId) {
+        await ensureAgentSession();
+        await hyperwikiApi.json(withProjectQuery("/api/review-workflows/run", activeProject), {
+          method: "POST",
+          body: {
+            workflowId: payload.workflowId,
+            currentPage: currentWikiPath,
+            scope: terminalScope.scope,
+          },
+        });
+        setStatus("Review prompt sent");
+      }
+      if (action === "new-plan") {
+        const title = payload?.title || "";
+        const intent = payload?.intent || "";
+        if (!title.trim() || !intent.trim()) throw new Error("New Plan needs a title and intent.");
+        const result = await hyperwikiApi.json<PlanCreateResponse>(withProjectQuery("/api/plans/create", activeProject), {
+          method: "POST",
+          body: {
+            title,
+            intent,
+            planType: payload?.planType || "feature",
+            answers: [],
+            allowDeferredUnknowns: true,
+          },
+        });
+        await loadBaseData();
+        const path = result.page?.path || result.path;
+        if (path) navigate({ kind: "wiki", path });
+        setStatus("Plan created");
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -346,7 +497,9 @@ function App() {
         <WorkspacePane
           isLoading={isWikiLoading}
           onNavigate={navigate}
+          onRunCommand={runCommandAction}
           projectGroups={projectGroups}
+          reviewWorkflows={reviewWorkflows}
           route={route}
           settings={settings}
           wikiError={wikiError}
@@ -531,7 +684,9 @@ function WikiSidebar(props: {
 function WorkspacePane(props: {
   isLoading: boolean;
   onNavigate: (route: ViewRoute) => void;
+  onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   projectGroups: ProjectGroup[];
+  reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
   settings: SettingsResponse | null;
   wikiError: string;
@@ -556,20 +711,7 @@ function WorkspacePane(props: {
           <span className="truncate font-bold">{titleForPath(props.wikiPath, props.wikiPages)}</span>
           <span className="truncate text-xs text-muted-foreground">{props.wikiPath}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline">
-            <Command aria-hidden="true" data-icon="inline-start" />
-            Execute
-          </Button>
-          <Button size="sm" variant="ghost">
-            <Search aria-hidden="true" data-icon="inline-start" />
-            Modify
-          </Button>
-          <Button size="sm" variant="ghost">
-            <Plus aria-hidden="true" data-icon="inline-start" />
-            New Plan
-          </Button>
-        </div>
+        <CommandBar onRunCommand={props.onRunCommand} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
       </div>
       <div className="relative min-h-0 flex-1">
         {props.isLoading ? (
@@ -585,6 +727,127 @@ function WorkspacePane(props: {
         )}
       </div>
     </section>
+  );
+}
+
+function CommandBar({
+  onRunCommand,
+  reviewWorkflows,
+  wikiPath,
+}: {
+  onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  reviewWorkflows: ReviewWorkflow[];
+  wikiPath: string;
+}) {
+  const [mode, setMode] = useState<"closed" | "worktree" | "new-plan" | "review">("closed");
+  const [branch, setBranch] = useState(`feature/${slugify(wikiPath)}`);
+  const [title, setTitle] = useState("");
+  const [intent, setIntent] = useState("");
+  const [planType, setPlanType] = useState("feature");
+
+  useEffect(() => {
+    setBranch(`feature/${slugify(wikiPath)}`);
+  }, [wikiPath]);
+
+  return (
+    <div className="relative flex items-center gap-2">
+      <Button size="sm" variant="outline" onClick={() => onRunCommand("execute-main")}>
+        <Command aria-hidden="true" data-icon="inline-start" />
+        Execute
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
+        <GitBranch aria-hidden="true" data-icon="inline-start" />
+        Worktree
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => onRunCommand("modify")}>
+        <Search aria-hidden="true" data-icon="inline-start" />
+        Modify
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "review" ? "closed" : "review")}>
+        <Bot aria-hidden="true" data-icon="inline-start" />
+        Review
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "new-plan" ? "closed" : "new-plan")}>
+        <Plus aria-hidden="true" data-icon="inline-start" />
+        New Plan
+      </Button>
+      {mode !== "closed" ? (
+        <div className="absolute right-0 top-10 z-20 w-[28rem] border bg-popover p-3 text-popover-foreground shadow-lg">
+          {mode === "worktree" ? (
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onRunCommand("execute-worktree", { branch });
+                setMode("closed");
+              }}
+            >
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-bold">Branch</span>
+                <input className="border bg-background px-2 py-2" onChange={(event) => setBranch(event.target.value)} value={branch} />
+              </label>
+              <Button type="submit">
+                <GitBranch aria-hidden="true" data-icon="inline-start" />
+                Create Worktree And Execute
+              </Button>
+            </form>
+          ) : null}
+          {mode === "review" ? (
+            <div className="flex flex-col gap-2">
+              {reviewWorkflows.length ? (
+                reviewWorkflows.map((workflow) => (
+                  <button
+                    className="grid gap-1 rounded-md border bg-background p-2 text-left text-sm hover:bg-secondary"
+                    key={workflow.id}
+                    onClick={() => {
+                      onRunCommand("review", { workflowId: workflow.id });
+                      setMode("closed");
+                    }}
+                    type="button"
+                  >
+                    <span className="font-bold">{workflow.label}</span>
+                    <span className="text-xs text-muted-foreground">{workflow.description}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="text-sm text-muted-foreground">No review workflows available.</div>
+              )}
+            </div>
+          ) : null}
+          {mode === "new-plan" ? (
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onRunCommand("new-plan", { title, intent, planType });
+                setMode("closed");
+              }}
+            >
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-bold">Title</span>
+                <input className="border bg-background px-2 py-2" onChange={(event) => setTitle(event.target.value)} value={title} />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-bold">Intent</span>
+                <textarea className="min-h-24 border bg-background px-2 py-2" onChange={(event) => setIntent(event.target.value)} value={intent} />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-bold">Type</span>
+                <select className="border bg-background px-2 py-2" onChange={(event) => setPlanType(event.target.value)} value={planType}>
+                  <option value="feature">feature</option>
+                  <option value="refactor">refactor</option>
+                  <option value="fix">fix</option>
+                </select>
+              </label>
+              <Button type="submit">
+                <Plus aria-hidden="true" data-icon="inline-start" />
+                Create Plan
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -975,6 +1238,78 @@ function titleForPath(path: string, pages: WikiPage[]) {
   return pages.find((page) => page.path === path)?.title || path.split("/").pop() || "Wiki";
 }
 
+function agentLaunchCommand(layout: LayoutResponse | null) {
+  return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "";
+}
+
+function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, visiblePath: string) {
+  const status = workspace?.status || {};
+  const unitTitle = status.current || "No current unit resolved";
+  const unitPath = status.currentPath || "";
+  if (action === "modify") {
+    return [
+      "Modify the currently visible Hyperwiki plan or wiki page.",
+      "",
+      `Visible page path: ${visiblePath}`,
+      `Current unit: ${unitTitle}`,
+      `Current unit path: ${unitPath || "none"}`,
+      "",
+      "Instructions:",
+      "- Inspect the page and repo state before editing.",
+      "- Keep the change scoped to the user's requested modification.",
+      "- Update durable wiki context only when the evidence supports it.",
+      "- Run relevant checks before summarizing the result.",
+    ].join("\n");
+  }
+  return [
+    "Execute exactly one hyperwiki unit on main.",
+    "",
+    `Execution unit: ${unitTitle}`,
+    `Execution unit path: ${unitPath || "none"}`,
+    `Visible page path: ${visiblePath}`,
+    "",
+    "Instructions:",
+    "- Work in the current main checkout.",
+    "- Keep changes grounded in the execution unit and repo state.",
+    "- Complete exactly this execution unit.",
+    "- Do not complete sibling units, later units, or the entire stage unless this unit explicitly requires only status reconciliation for already-finished work.",
+    "- If the unit reaches a manual review, approval, or human validation gate, prepare the evidence/checklist and stop before continuing.",
+    "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
+    "- Run relevant checks before summarizing the result.",
+  ].join("\n");
+}
+
+function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }) {
+  const status = workspace?.status || {};
+  return [
+    "Execute exactly one hyperwiki unit in the already-created worktree.",
+    "",
+    `Execution unit: ${status.current || "No current unit resolved"}`,
+    `Execution unit path: ${status.currentPath || "none"}`,
+    `Visible page path: ${visiblePath}`,
+    `Worktree branch: ${result.branch || "unknown"}`,
+    `Worktree path: ${result.path || result.project?.root || "unknown"}`,
+    `Worktree preview URL: ${result.previewUrl || "not configured"}`,
+    "",
+    "Instructions:",
+    "- Use this existing worktree checkout directly; do not create another worktree.",
+    "- Use the parallel-dev-worktrees skill before changing files.",
+    "- Keep changes grounded in this execution unit and repo state.",
+    "- If the implementation creates or changes a previewable app, ensure package.json has a runnable dev script, preferably backed by Portless.",
+    "- Include the Preview URL in your final handoff.",
+    "- Complete exactly this execution unit.",
+    "- Run relevant checks before summarizing the result.",
+  ].join("\n");
+}
+
+function slugify(value: string) {
+  return String(value || "work")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 72) || "work";
+}
+
 function scopeForRoute(route: ViewRoute) {
   if (route.kind !== "wiki") {
     return { scope: route.kind, scopeKind: "app", planPath: null };
@@ -1007,6 +1342,10 @@ function normalizeTerminalInput(data: string) {
 
 function stripTerminalDisplayControlSequences(data: string) {
   return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export default App;

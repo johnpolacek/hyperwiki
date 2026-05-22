@@ -378,8 +378,8 @@
       <dl class="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>active</dd>
         <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
-        <dt>Current unit</dt><dd>Stage 03 Unit 03 - Port Agent, Review, Preview, And Worktree Flows</dd>
-        <dt>Next action</dt><dd>Port Execute, Modify, New Plan, review workflow, worktree creation, preview lifecycle, and guardrail flows into the React shell.</dd>
+        <dt>Current unit</dt><dd>Stage 04 Unit 01 - Define Trusted MDX Renderer</dd>
+        <dt>Next action</dt><dd>Define the trusted MDX renderer, plan component registry, and sample MDX plan rendering path.</dd>
         <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
         <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
       </dl>
@@ -587,7 +587,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <header>
         <div>
           <h2>Stage 03 - React App Shell Parity</h2>
-          <p>In progress. Batch 2 ported the primary React workspace shell and Batch 3 ported the core xterm terminal lifecycle. Agent, review, preview, and worktree parity continue in the next unit.</p>
+          <p>Complete for the first React parity pass. Batch 2 ported the primary React workspace shell, Batch 3 ported the core xterm terminal lifecycle, and Batch 4 ported command-bar agent, review, worktree, preview, and new-plan workflows onto the existing Tauri APIs.</p>
         </div>
         <span class="stage-number">Stage 03</span>
       </header>
@@ -622,12 +622,18 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
         </li>
         <li class="unit">
           <h3>Unit 03.3 - Port Agent, Review, Preview, And Worktree Flows</h3>
-          <p>Preserve Execute, Modify, New Plan, review workflows, worktree creation, preview links, guardrails, and local-only boundary messaging.</p>
+          <p>Complete for the React command-bar pass. Batch 4 added Execute, Worktree, Modify, Review, and New Plan controls; agent terminal launch guardrails; prompt routing through <code>/api/agent/prompt</code>; review workflow routing; worktree creation; and plan creation against existing Tauri endpoints.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Run Execute and Modify against an active plan with an agent terminal.</li>
-            <li>Create a worktree and verify app preview detection.</li>
-            <li>Run review workflow dry-run and routed prompt checks.</li>
+            <li>Ran <code>pnpm run check</code>.</li>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run smoke:review-workflows</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml worktree</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml plan_creation</code>.</li>
+            <li>Manual desktop dogfood remains outstanding before merge; automated API coverage verifies the routed workflow endpoints.</li>
           </ul>
         </li>
       </ol>
@@ -816,12 +822,13 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <h2>Copy Handoff</h2>
       <div class="copy-row">
         <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.html
-Current unit: Stage 03 Unit 03 - Port Agent, Review, Preview, And Worktree Flows
-Next action: port Execute, Modify, New Plan, review workflow, worktree creation, preview lifecycle, and guardrail flows into the React shell.
+Current unit: Stage 04 Unit 01 - Define Trusted MDX Renderer
+Next action: define the trusted MDX renderer, plan component registry, and sample MDX plan rendering path.
 Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
 Batch 1 is complete: Vite, React, TypeScript, Tailwind v4, shadcn config, first Button primitive, Tauri dist build wiring, typed API adapter, and dist static smoke coverage are in place.
 Batch 2 shell pass is complete: React now owns the topbar, project switcher, wiki navigation/rendering shell, app route surfaces, and initial scoped terminal pane.
 Batch 3 terminal pass is complete: React now owns xterm attachment, replay, live output polling, keyboard input, resize, scoped session tabs, rename, close, and attach/restart controls.
+Batch 4 command workflow pass is complete: React now owns Execute, Worktree, Modify, Review, and New Plan controls over the existing Tauri endpoints.
 Required skill commands:
 npx skills add https://github.com/shadcn/ui --skill shadcn
 npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>

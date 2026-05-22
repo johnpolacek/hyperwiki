@@ -21,6 +21,15 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 4</h2>
+  <ul>
+    <li>Ported the first React command workflow pass: Execute, Worktree, Modify, Review, and New Plan controls now live in the React command bar.</li>
+    <li>Added agent launch guardrails, agent prompt routing through <code>/api/agent/prompt</code>, review workflow routing, worktree creation, and plan creation against existing Tauri endpoints.</li>
+    <li>Completed Stage 03's first React parity pass and advanced the rewrite plan to Stage 04 Unit 01 - Define Trusted MDX Renderer.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml worktree</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml plan_creation</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 3</h2>
   <ul>
     <li>Ported the core terminal lifecycle into the React shell with xterm-backed active terminals, attach/replay, output polling, keyboard input, resize forwarding, scoped session tabs, rename, close, and attach/restart controls.</li>
