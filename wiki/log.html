@@ -24,7 +24,8 @@
   <h2>2026-05-22 fix | restore projects management surface</h2>
   <ul>
     <li>Restored the React Projects route to the original manage-projects layout: large page header, right-aligned New Project action, two-column project cards, status badges, checkout/app/last-opened details, open action, and remove icon.</li>
-    <li>Made the Projects route a full-width utility view again by hiding the wiki sidebar and Modify Page pane while managing projects.</li>
+    <li>Made the Projects and New Project routes full-width utility views again by hiding the wiki sidebar and Modify Page pane while managing projects.</li>
+    <li>Replaced the React New Project placeholder with the original Project Brief form surface and wired submission to the existing project creation endpoint.</li>
     <li>Kept project switching wired through the existing project selection flow so Open Project changes the active project from the restored card surface.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
   </ul>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Activity,
   BookOpen,
@@ -85,6 +85,11 @@ interface WorkspaceResponse {
     completed?: string;
   };
   project?: ProjectRecord;
+}
+
+interface ProjectCreateResponse {
+  project: ProjectRecord;
+  workspaceUrl?: string;
 }
 
 interface AppPreviewResponse {
@@ -474,7 +479,26 @@ function App() {
     }
   }
 
-  const isProjectsRoute = route.kind === "projects";
+  async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
+    setStatus("Initializing project");
+    const result = await hyperwikiApi.json<ProjectCreateResponse>("/api/projects/create", {
+      method: "POST",
+      body: {
+        title: input.title,
+        summary: documentSummary(input.document),
+        document: input.document,
+        documentType: input.documentType,
+        initializeGit: input.initializeGit,
+      },
+    });
+    setActiveProject(result.project);
+    setStatus(`Project created: ${result.project.name}`);
+    const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
+    setProjects(projectsResult);
+    navigate({ kind: "projects" });
+  }
+
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project";
 
   return (
     <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
@@ -492,8 +516,8 @@ function App() {
         status={status}
         workspace={workspace}
       />
-      <section className={cn("grid min-h-0 flex-1 overflow-hidden", isProjectsRoute ? "grid-cols-1" : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]")}>
-        {isProjectsRoute ? null : (
+      <section className={cn("grid min-h-0 flex-1 overflow-hidden", isUtilityRoute ? "grid-cols-1" : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]")}>
+        {isUtilityRoute ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
             groups={groupedWikiPages}
@@ -504,6 +528,7 @@ function App() {
         <WorkspacePane
           isLoading={isWikiLoading}
           onNavigate={navigate}
+          onCreateProject={createProject}
           onRunCommand={runCommandAction}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
@@ -516,7 +541,7 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        {isProjectsRoute ? null : <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} onSetMode={setSidePanelMode} status={status} />}
+        {isUtilityRoute ? null : <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} onSetMode={setSidePanelMode} status={status} />}
       </section>
     </main>
   );
@@ -691,6 +716,7 @@ function WikiSidebar(props: {
 
 function WorkspacePane(props: {
   isLoading: boolean;
+  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
@@ -708,7 +734,7 @@ function WorkspacePane(props: {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView />;
+    return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView settings={props.settings} />;
@@ -939,17 +965,99 @@ function formatProjectDate(value?: string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function NewProjectView() {
+function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void> }) {
+  const [title, setTitle] = useState("");
+  const [document, setDocument] = useState("");
+  const [documentType, setDocumentType] = useState("markdown");
+  const [initializeGit, setInitializeGit] = useState(true);
+  const [status, setStatus] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    const text = await file.text();
+    setDocument(text);
+    setDocumentType(file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown");
+    if (!title) setTitle(file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!title.trim() || !document.trim()) {
+      setStatus("Add a project name and source brief before planning the MVP.");
+      return;
+    }
+    setIsSubmitting(true);
+    setStatus("Initializing project...");
+    try {
+      await onCreateProject({
+        title: title.trim(),
+        document: document.trim(),
+        documentType,
+        initializeGit,
+      });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not create the project.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <section className="min-h-0 overflow-auto bg-background p-4">
-      <div className="max-w-2xl border bg-card p-4">
-        <h1 className="m-0 mb-2 text-xl font-bold">New Project</h1>
-        <p className="m-0 text-sm text-muted-foreground">
-          Project creation remains backed by the existing Tauri API. Batch 2 preserves this route in the React shell so the form workflow can be rebuilt against the same endpoint.
-        </p>
+    <section className="min-h-0 overflow-auto bg-background">
+      <header className="flex min-h-40 items-center border-b px-10">
+        <div>
+          <h1 className="m-0 text-4xl font-bold leading-none">New Project</h1>
+          <p className="m-0 mt-3 text-sm text-muted-foreground">Initialize a fresh hyperwiki project from a brief and hand it to the agent.</p>
+        </div>
+      </header>
+      <div className="flex justify-center px-8 py-7">
+        <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" onSubmit={handleSubmit}>
+          <header className="mb-5">
+            <h2 className="m-0 text-3xl font-normal leading-tight">Project Brief</h2>
+            <p className="m-0 mt-2 max-w-[48rem] text-base text-muted-foreground">
+              Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.
+            </p>
+          </header>
+          <label className="mb-4 grid gap-2">
+            <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
+            <input className="min-h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" required value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <label className="mb-4 grid gap-2">
+            <span className="text-xs font-bold uppercase text-muted-foreground">Brief</span>
+            <textarea className="min-h-[14rem] rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" required value={document} onChange={(event) => setDocument(event.target.value)} />
+          </label>
+          <label className="mb-4 flex items-center gap-3 text-sm font-bold text-muted-foreground">
+            <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
+            <span>Initialize Git and create an initial commit</span>
+          </label>
+          <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
+            <span className="h-px bg-border" />
+            <span>OR</span>
+            <span className="h-px bg-border" />
+          </div>
+          <label className="mb-4 flex min-h-20 cursor-pointer flex-col items-center justify-center rounded-md border bg-background text-center text-muted-foreground hover:bg-secondary">
+            <span className="text-base font-bold uppercase">Choose File</span>
+            <small className="text-xs font-bold">Markdown or HTML</small>
+            <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+          </label>
+          <Button className="min-h-11 w-full" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Initializing Project..." : "Review Source And Plan MVP"}
+          </Button>
+          {status ? <p className="m-0 mt-4 text-sm text-muted-foreground" role="status">{status}</p> : null}
+        </form>
       </div>
     </section>
   );
+}
+
+function documentSummary(document: string) {
+  return document
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^#+\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" ");
 }
 
 function SettingsView({ settings }: { settings: SettingsResponse | null }) {
