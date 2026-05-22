@@ -478,8 +478,8 @@ function App() {
         activeProject={activeProject}
         isProjectsOpen={isProjectsOpen}
         isUpNextOpen={isUpNextOpen}
-        onNavigate={navigate}
         onRefresh={loadBaseData}
+        onNavigate={navigate}
         onSwitchProject={switchProject}
         preview={preview}
         projectGroups={projectGroups}
@@ -545,7 +545,7 @@ function TopBar(props: {
           <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
           Projects
         </Button>
-        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onSwitchProject={props.onSwitchProject} /> : null}
+        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} /> : null}
         <Button size="sm" variant="outline" onClick={() => props.onNavigate({ kind: "settings" })}>
           <Settings aria-hidden="true" data-icon="inline-start" />
           Settings
@@ -579,33 +579,55 @@ function UpNextPopover({ workspace }: { workspace: WorkspaceResponse | null }) {
   );
 }
 
-function ProjectsPopover({ groups, onSwitchProject }: { groups: ProjectGroup[]; onSwitchProject: (project: ProjectRecord) => void }) {
+function ProjectsPopover({
+  groups,
+  onNavigate,
+  onSwitchProject,
+}: {
+  groups: ProjectGroup[];
+  onNavigate: (route: ViewRoute) => void;
+  onSwitchProject: (project: ProjectRecord) => void;
+}) {
+  const checkouts = groups.flatMap((group) => group.checkouts);
   return (
-    <div className="absolute left-0 top-10 z-20 max-h-[70vh] w-[28rem] overflow-auto border bg-popover p-2 text-popover-foreground shadow-lg">
-      {groups.length ? (
+    <div className="absolute right-0 top-12 z-20 max-h-[70vh] w-[36rem] overflow-auto rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
+      <div className="mb-6 flex flex-col gap-3">
+        <button
+          className="flex min-h-16 items-center justify-center gap-3 rounded-md border bg-foreground px-4 text-base font-bold text-background shadow-sm"
+          onClick={() => onNavigate({ kind: "new-project" })}
+          type="button"
+        >
+          <Plus aria-hidden="true" className="size-5" />
+          New Project
+        </button>
+        <button
+          className="flex min-h-14 items-center justify-center gap-3 rounded-md border bg-background px-4 text-base font-bold"
+          onClick={() => onNavigate({ kind: "projects" })}
+          type="button"
+        >
+          <span aria-hidden="true" className="text-xl leading-none">⇥</span>
+          Manage Projects
+        </button>
+      </div>
+      {checkouts.length ? (
         <div className="flex flex-col gap-3">
-          {groups.map((group) => (
-            <div className="flex flex-col gap-1" key={group.projectSlug}>
-              <div className="px-2 text-xs font-bold uppercase text-muted-foreground">{group.name}</div>
-              {group.checkouts.map((project) => (
-                <button
-                  className="grid gap-1 rounded-md px-2 py-2 text-left text-sm hover:bg-secondary"
-                  key={project.id}
-                  onClick={() => onSwitchProject(project)}
-                  type="button"
-                >
-                  <span className="flex items-center gap-2 font-bold">
-                    <Circle aria-hidden="true" className={cn("size-2 fill-current", project.active ? "text-primary" : "text-muted-foreground")} />
-                    {project.worktreeSlug || project.name}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">{project.root}</span>
-                </button>
-              ))}
-            </div>
+          {checkouts.map((project) => (
+            <button
+              className={cn(
+                "grid w-full gap-1 rounded-md border border-transparent px-3 py-3 text-left hover:bg-secondary",
+                project.active && "border-primary bg-primary/12",
+              )}
+              key={project.id}
+              onClick={() => onSwitchProject(project)}
+              type="button"
+            >
+              <span className="truncate text-lg font-bold">{project.name}</span>
+              <span className="truncate text-sm font-bold text-muted-foreground">{project.root}</span>
+            </button>
           ))}
         </div>
       ) : (
-        <div className="p-2 text-sm text-muted-foreground">No projects available.</div>
+        <div className="rounded-md border border-dashed bg-background p-4 text-center text-sm text-muted-foreground">No projects available.</div>
       )}
     </div>
   );
