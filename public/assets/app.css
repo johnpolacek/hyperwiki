@@ -3605,8 +3605,8 @@ html[data-initial-route="settings"] .wiki-pane {
   grid-template-rows: auto minmax(0, 1fr);
   overflow: auto;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 48%),
-    var(--bg);
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 30%),
+    linear-gradient(110deg, color-mix(in srgb, var(--accent) 8%, var(--bg)), var(--bg) 45%, color-mix(in srgb, var(--panel) 78%, var(--bg)));
 }
 
 .workspace.new-plan-mode .wiki-command-bar {
@@ -3615,37 +3615,43 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .workspace.new-plan-mode .new-plan-ui {
   align-self: start;
-  width: min(980px, calc(100% - 56px));
-  margin: 28px auto;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: 8px;
-  padding: 22px;
-  background:
-    linear-gradient(115deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent 36%),
-    var(--panel);
+  width: min(1040px, calc(100% - 72px));
+  margin: 22px auto 36px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, #ffffff);
+  border-radius: 12px;
+  padding: 30px 34px;
+  background: color-mix(in srgb, var(--panel) 95%, #ffffff);
   box-shadow:
-    inset 3px 0 0 var(--accent),
-    0 22px 58px color-mix(in srgb, var(--text) 12%, transparent);
+    0 1px 0 color-mix(in srgb, #ffffff 86%, transparent) inset,
+    0 24px 70px color-mix(in srgb, var(--text) 14%, transparent);
 }
 
 .workspace.new-plan-mode .new-plan-ui h2 {
-  font-size: 18px;
+  font-size: 27px;
+  line-height: 1.05;
+  text-transform: none;
 }
 
 .workspace.new-plan-mode .new-plan-ui p,
 .workspace.new-plan-mode .new-plan-status {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .workspace.new-plan-mode .new-plan-grid {
-  gap: 14px;
+  gap: 22px 18px;
 }
 
 .workspace.new-plan-mode .new-plan-grid input,
 .workspace.new-plan-mode .new-plan-grid select,
 .workspace.new-plan-mode .new-plan-grid textarea {
-  padding: 11px 12px;
-  font-size: 15px;
+  border-radius: 8px;
+  padding: 14px 15px;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.workspace.new-plan-mode .new-plan-grid textarea {
+  min-height: 78px;
 }
 
 .new-plan-ui header,
@@ -3654,6 +3660,32 @@ html[data-initial-route="settings"] .wiki-pane {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.new-plan-ui header {
+  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.new-plan-orb {
+  display: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 34% 28%, #ffffff 0 8%, transparent 9%),
+    color-mix(in srgb, var(--accent) 52%, #ffffff);
+  color: var(--accent-text);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 20%, transparent);
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.workspace.new-plan-mode .new-plan-orb {
+  display: grid;
 }
 
 .new-plan-actions {
@@ -3683,6 +3715,17 @@ html[data-initial-route="settings"] .wiki-pane {
   background: var(--panel);
   color: var(--text);
   font: 12px/1.4 var(--sidebar-font);
+}
+
+#new-plan-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#new-plan-close span {
+  font-size: 20px;
+  line-height: 0.8;
 }
 
 .new-plan-ui button {
@@ -3784,16 +3827,16 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .new-plan-question {
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 14px;
+  border-radius: 8px;
+  padding: 24px 24px 22px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 58%),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
     color-mix(in srgb, var(--bg) 70%, var(--panel));
 }
 
 .new-plan-question strong {
   color: var(--text);
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.38;
 }
 
@@ -3809,8 +3852,10 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .new-plan-question textarea {
-  margin-top: 6px;
-  font-size: 14px;
+  margin-top: 14px;
+  min-height: 82px;
+  border-radius: 8px;
+  font-size: 18px;
   line-height: 1.45;
 }
 
