@@ -110,6 +110,7 @@
     border-radius: 999px;
     background: var(--muted-foreground);
     opacity: 0.34;
+    transform-origin: center;
     animation: brand-dot-pulse 3.6s ease-in-out infinite;
   }
 
@@ -156,7 +157,7 @@
   42% {
     background: var(--primary);
     opacity: 0.9;
-    transform: scale(1.45);
+    transform: scale(1.16);
   }
 
   68% {
