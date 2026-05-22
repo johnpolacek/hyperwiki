@@ -43,6 +43,7 @@ interface WikiPage {
   path: string;
   summary?: string[];
   status?: string;
+  currentState?: string;
   format?: "html" | "mdx";
   sourcePath?: string;
 }
@@ -210,7 +211,7 @@ function App() {
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
-  const groupedWikiPages = useMemo(() => groupWikiPages(wikiPages), [wikiPages]);
+  const sidebarModel = useMemo(() => buildSidebarModel(wikiPages), [wikiPages]);
   const projectGroups = useMemo(() => normalizeProjectGroups(projects), [projects]);
   const hasRegisteredProjects = projectGroups.length > 0;
 
@@ -573,9 +574,10 @@ function App() {
         {isUtilityRoute ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
-            groups={groupedWikiPages}
+            model={sidebarModel}
             onNavigate={(path) => navigate({ kind: "wiki", path })}
             route={route}
+            workspace={workspace}
           />
         )}
         <WorkspacePane
@@ -620,6 +622,12 @@ function TopBar(props: {
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
+        {props.activeProject?.name ? (
+          <>
+            <span className="text-xs font-bold text-muted-foreground/60">|</span>
+            <span className="font-ui truncate text-sm font-semibold text-foreground">{props.activeProject.name}</span>
+          </>
+        ) : null}
       </button>
       <div className="relative flex items-center gap-2">
         <Button size="sm" variant="outline" onClick={() => props.setIsProjectsOpen(!props.isProjectsOpen)}>
@@ -730,41 +738,92 @@ function ProjectsPopover({
   );
 }
 
+interface SidebarModel {
+  plans: WikiPage[];
+  projectPages: WikiPage[];
+}
+
 function WikiSidebar(props: {
   currentPath: string;
-  groups: Array<{ label: string; pages: WikiPage[] }>;
+  model: SidebarModel;
   onNavigate: (path: string) => void;
   route: ViewRoute;
+  workspace: WorkspaceResponse | null;
 }) {
   return (
     <aside className="flex min-h-0 flex-col border-r bg-card">
-      <nav className="min-h-0 flex-1 overflow-auto p-4">
-        {props.groups.map((group) => (
-          <section className="mb-5 flex flex-col gap-2" key={group.label}>
-            <h2 className="px-0 text-xs font-bold uppercase text-muted-foreground">{group.label}</h2>
-            {group.pages.map((page) => (
-              <button
-                className={cn(
-                  "grid w-full gap-1 rounded-md px-3 py-2 text-left text-sm transition-[background,color] hover:bg-secondary",
-                  props.currentPath === page.path && props.route.kind === "wiki" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
-                )}
-                key={page.path}
-                onClick={() => props.onNavigate(page.path)}
-                type="button"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className={cn("size-2 shrink-0 rounded-full", page.status === "completed" ? "bg-muted-foreground/30" : "bg-primary/70")} />
-                  <span className="truncate font-bold">{page.title}</span>
-                </span>
-                {page.status || page.format ? (
-                  <span className="truncate pl-6 text-xs text-muted-foreground">{[page.status, page.format].filter(Boolean).join(" / ")}</span>
-                ) : null}
-              </button>
+      <nav className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section className="min-h-0 flex-1 overflow-auto p-3">
+          <h2 className="mb-2 px-1 text-xs font-bold uppercase text-muted-foreground">Plans</h2>
+          <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
+        </section>
+        <details className="border-t bg-card p-3" open={false}>
+          <summary className="cursor-pointer list-none text-xs font-bold uppercase text-muted-foreground">Project</summary>
+          <div className="mt-2 grid gap-1">
+            {props.model.projectPages.map((page) => (
+              <SidebarPageButton currentPath={props.currentPath} depth={0} key={page.path} onNavigate={props.onNavigate} page={page} />
             ))}
-          </section>
-        ))}
+          </div>
+        </details>
       </nav>
     </aside>
+  );
+}
+
+function PlanTree({ pages, currentPath, onNavigate, workspace }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null }) {
+  const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
+  if (!roots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
+  return (
+    <div className="grid gap-1">
+      {roots.map((page) => (
+        <PlanNode currentPath={currentPath} key={page.path} onNavigate={onNavigate} page={page} pages={sorted} workspace={workspace} />
+      ))}
+    </div>
+  );
+}
+
+function PlanNode({ page, pages, currentPath, onNavigate, workspace, depth = 0 }: { page: WikiPage; pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null; depth?: number }) {
+  const children = childPlanPages(page, pages);
+  const isCurrent = isCurrentPlanPage(page, workspace);
+  const isSelected = currentPath === page.path;
+  if (!children.length) {
+    return <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />;
+  }
+  const open = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || isCurrentPlanPage(child, workspace));
+  return (
+    <details className="grid gap-1" open={open}>
+      <summary className="cursor-pointer list-none">
+        <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />
+      </summary>
+      <div className="grid gap-1">
+        {children.map((child) => (
+          <PlanNode currentPath={currentPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} workspace={workspace} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function SidebarPageButton({ page, currentPath, onNavigate, depth, current, selected }: { page: WikiPage; currentPath: string; onNavigate: (path: string) => void; depth: number; current?: boolean; selected?: boolean }) {
+  const isSelected = selected ?? currentPath === page.path;
+  return (
+    <button
+      className={cn(
+        "flex min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-secondary",
+        isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+      )}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onNavigate(page.path);
+      }}
+      style={{ paddingLeft: `${8 + depth * 18}px` }}
+      type="button"
+    >
+      <span className={cn("size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-primary/70")} />
+      <span className="min-w-0 flex-1 truncate font-bold">{cleanPageTitle(page)}</span>
+    </button>
   );
 }
 
@@ -1592,16 +1651,107 @@ function normalizeProjectGroups(response: ProjectListResponse) {
   return Array.from(groups.values());
 }
 
-function groupWikiPages(pages: WikiPage[]) {
-  const planPages = (pages.length ? pages : [{ title: "Home", path: defaultWikiPath }]).filter((page) => page.path.includes("/plans/"));
-  if (planPages.length) {
-    return [{ label: "Plans", pages: planPages }];
+function buildSidebarModel(pages: WikiPage[]): SidebarModel {
+  const all = pages.length ? pages : [{ title: "Home", path: defaultWikiPath }];
+  return {
+    plans: all.filter((page) => page.path.includes("/wiki/plans/")),
+    projectPages: all.filter((page) => isProjectWikiPage(page)),
+  };
+}
+
+function isProjectWikiPage(page: WikiPage) {
+  const path = displayWikiPath(page.path);
+  return [
+    "/wiki/index.html",
+    "/wiki/architecture.html",
+    "/wiki/dev.html",
+    "/wiki/roadmap.html",
+    "/wiki/sources.html",
+    "/wiki/log.html",
+  ].some((suffix) => path.endsWith(suffix)) || path.includes("/wiki/sources/");
+}
+
+function cleanPageTitle(page: WikiPage) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "Completed Plans";
+  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")} - `);
+  if (path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage $1 - ");
+  if (page.title.toLowerCase() === "prd") return "PRD";
+  if (path.includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
+  return page.title;
+}
+
+function displayWikiPath(path: string) {
+  return path.replace(/^\/projects\/[^/]+/, "");
+}
+
+function isTopLevelPlanPage(page: WikiPage) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return true;
+  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(path)) return true;
+  return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
+}
+
+function isCompletedTopLevelPlanPage(page: WikiPage) {
+  return isTopLevelPlanPage(page) && !displayWikiPath(page.path).endsWith("/wiki/plans/zzz_completed/index.html") && isCompletedPage(page);
+}
+
+function isUnitPage(page: WikiPage) {
+  return /\/unit-\d+-[^/]+\.html$/.test(displayWikiPath(page.path));
+}
+
+function childPlanPages(parent: WikiPage, pages: WikiPage[]) {
+  return pages.filter((candidate) => isImmediateChildPlanPage(parent, candidate));
+}
+
+function isImmediateChildPlanPage(parent: WikiPage, candidate: WikiPage) {
+  const parentPath = displayWikiPath(parent.path);
+  const candidatePath = displayWikiPath(candidate.path);
+  if (parentPath === candidatePath) return false;
+  if (parentPath.endsWith("/wiki/plans/mvp/index.html")) return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
+  if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
+    return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath) && !candidatePath.endsWith("/index.html")) || isCompletedTopLevelPlanPage(candidate);
   }
-  const groups = new Map<string, WikiPage[]>();
-  for (const page of pages.length ? pages : [{ title: "Home", path: defaultWikiPath }]) {
-    groups.set("Plans", [...(groups.get("Plans") || []), page]);
-  }
-  return Array.from(groups.entries()).map(([label, groupedPages]) => ({ label, pages: groupedPages }));
+  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(parentPath)) return false;
+  const parentBase = parentPath.replace(/\.html$/, "");
+  return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
+}
+
+function planSortKey(page: WikiPage) {
+  const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
+  if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "99";
+  if (path.startsWith("/wiki/plans/zzz_completed/")) return `99-${path}`;
+  return `02-${path}`;
+}
+
+function isCompletedPage(page: WikiPage) {
+  return pageStatus(page) === "complete";
+}
+
+function pageStatus(page: WikiPage) {
+  if (page.status) return String(page.status).replace("completed", "complete");
+  const summary = Array.isArray(page.summary) ? page.summary : [];
+  const statusItem = summary.find((item) => /^status:/i.test(item));
+  return statusItem ? statusItem.slice(statusItem.indexOf(":") + 1).trim().toLowerCase().replace("completed", "complete") : "";
+}
+
+function isCurrentPlanPage(page: WikiPage, workspace: WorkspaceResponse | null) {
+  const currentPath = workspace?.status?.currentPath;
+  if (currentPath) return displayWikiPath(page.path) === displayWikiPath(currentPath);
+  return page.currentState === "current-unit" || page.currentState === "current-plan";
+}
+
+function pathContainsSelectedPage(path: string, selectedPath: string) {
+  const normalizedPath = displayWikiPath(path);
+  const normalizedSelected = displayWikiPath(selectedPath);
+  if (normalizedSelected === normalizedPath) return true;
+  const basePath = normalizedPath.endsWith("/index.html") ? normalizedPath.slice(0, -"/index.html".length) : normalizedPath.replace(/\.html$/, "");
+  return normalizedSelected.startsWith(`${basePath}/`);
 }
 
 function titleForPath(path: string, pages: WikiPage[]) {
