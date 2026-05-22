@@ -193,6 +193,7 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
+  const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -368,7 +369,7 @@ function App() {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main" || action === "modify") {
-        await sendAgentPrompt(workflowPrompt(action, workspace, currentWikiPath));
+        await sendAgentPrompt(action === "modify" && payload?.prompt ? payload.prompt : workflowPrompt(action, workspace, currentWikiPath));
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
       if (action === "execute-worktree") {
@@ -487,7 +488,7 @@ function App() {
         status={status}
         workspace={workspace}
       />
-    <section className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(340px,0.78fr)] overflow-hidden max-xl:grid-cols-[250px_minmax(0,1fr)]">
+      <section className="grid min-h-0 flex-1 grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] overflow-hidden max-xl:grid-cols-[260px_minmax(0,1fr)]">
         <WikiSidebar
           currentPath={currentWikiPath}
           groups={groupedWikiPages}
@@ -498,6 +499,7 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onRunCommand={runCommandAction}
+          onSetSidePanelMode={setSidePanelMode}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
@@ -507,17 +509,11 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        <TerminalPane
-          isLoading={isSessionsLoading}
-          activeSessionId={activeSessionId}
-          onCloseSession={closeSession}
-          onRenameSession={renameSession}
-          onRefresh={loadSessions}
-          onRestartSession={restartSession}
-          onStart={startTerminal}
-          onSelectSession={setActiveSessionId}
-          scope={terminalScope}
-          sessions={sessions}
+        <RightActionPane
+          mode={sidePanelMode}
+          onRunCommand={runCommandAction}
+          onSetMode={setSidePanelMode}
+          status={status}
         />
       </section>
     </main>
@@ -539,44 +535,20 @@ function TopBar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <header className="grid min-h-13 grid-cols-[280px_minmax(0,1fr)_auto] items-center border-b bg-card/95 px-3 text-sm shadow-[0_1px_0_rgba(255,255,255,0.72)_inset] max-xl:grid-cols-[250px_minmax(0,1fr)_auto]">
+    <header className="flex min-h-12 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
         <BrandMark />
-        <span className="truncate">hyperwiki</span>
+        <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
       </button>
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="relative">
-          <Button size="sm" variant="outline" onClick={() => props.setIsUpNextOpen(!props.isUpNextOpen)}>
-            <Activity aria-hidden="true" data-icon="inline-start" />
-            Up Next
-            <ChevronDown aria-hidden="true" data-icon="inline-end" />
-          </Button>
-          {props.isUpNextOpen ? <UpNextPopover workspace={props.workspace} /> : null}
-        </div>
-        <div className="relative min-w-0">
-          <Button size="sm" variant="ghost" onClick={() => props.setIsProjectsOpen(!props.isProjectsOpen)}>
-            <FolderGit2 aria-hidden="true" data-icon="inline-start" />
-            <span className="max-w-64 truncate">{props.activeProject?.name || "Projects"}</span>
-            <ChevronDown aria-hidden="true" data-icon="inline-end" />
-          </Button>
-          {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onSwitchProject={props.onSwitchProject} /> : null}
-        </div>
-        <span className="truncate text-muted-foreground">{props.status}</span>
-      </div>
-      <div className="flex items-center gap-2">
-        {props.preview?.url ? (
-          <Button asChild size="sm" variant="outline">
-            <a href={props.preview.url} rel="noreferrer" target="_blank">
-              <ExternalLink aria-hidden="true" data-icon="inline-start" />
-              Preview
-            </a>
-          </Button>
-        ) : null}
-        <Button size="icon" variant="ghost" onClick={props.onRefresh} title="Refresh workspace">
-          <RefreshCw aria-hidden="true" />
+      <div className="relative flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => props.setIsProjectsOpen(!props.isProjectsOpen)}>
+          <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
+          Projects
         </Button>
-        <Button size="icon" variant="ghost" onClick={() => props.onNavigate({ kind: "settings" })} title="Settings">
-          <Settings aria-hidden="true" />
+        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onSwitchProject={props.onSwitchProject} /> : null}
+        <Button size="sm" variant="outline" onClick={() => props.onNavigate({ kind: "settings" })}>
+          <Settings aria-hidden="true" data-icon="inline-start" />
+          Settings
         </Button>
       </div>
     </header>
@@ -646,37 +618,23 @@ function WikiSidebar(props: {
   route: ViewRoute;
 }) {
   return (
-    <aside className="flex min-h-0 flex-col border-r bg-card/88 shadow-[1px_0_0_rgba(255,255,255,0.64)_inset]">
-      <div className="flex min-h-11 items-center gap-2 border-b px-3 text-xs font-bold uppercase text-muted-foreground">
-        <BookOpen aria-hidden="true" className="size-4" />
-        Wiki
-      </div>
-      <div className="flex gap-2 border-b p-2">
-        <Button className="flex-1 justify-start" size="sm" variant={props.route.kind === "projects" ? "secondary" : "ghost"} onClick={() => props.onNavigate("/projects")}>
-          <FolderGit2 aria-hidden="true" data-icon="inline-start" />
-          Projects
-        </Button>
-        <Button className="flex-1 justify-start" size="sm" variant={props.route.kind === "settings" ? "secondary" : "ghost"} onClick={() => props.onNavigate("/settings")}>
-          <Settings aria-hidden="true" data-icon="inline-start" />
-          Settings
-        </Button>
-      </div>
-      <nav className="min-h-0 flex-1 overflow-auto p-2">
+    <aside className="flex min-h-0 flex-col border-r bg-card">
+      <nav className="min-h-0 flex-1 overflow-auto p-4">
         {props.groups.map((group) => (
-          <section className="mb-4 flex flex-col gap-1" key={group.label}>
-            <h2 className="px-2 text-xs font-bold uppercase text-muted-foreground">{group.label}</h2>
+          <section className="mb-5 flex flex-col gap-2" key={group.label}>
+            <h2 className="px-0 text-xs font-bold uppercase text-muted-foreground">{group.label}</h2>
             {group.pages.map((page) => (
               <button
                 className={cn(
-                  "grid w-full gap-1 rounded-md px-2 py-2 text-left text-sm transition-[background,color,box-shadow] hover:bg-secondary",
-                  props.currentPath === page.path && props.route.kind === "wiki" ? "bg-secondary text-secondary-foreground shadow-[inset_3px_0_0_var(--primary)]" : "text-muted-foreground",
+                  "grid w-full gap-1 rounded-md px-3 py-2 text-left text-sm transition-[background,color] hover:bg-secondary",
+                  props.currentPath === page.path && props.route.kind === "wiki" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
                 )}
                 key={page.path}
                 onClick={() => props.onNavigate(page.path)}
                 type="button"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <FileText aria-hidden="true" className="size-4 shrink-0" />
+                  <span className={cn("size-2 shrink-0 rounded-full", page.status === "completed" ? "bg-muted-foreground/30" : "bg-primary/70")} />
                   <span className="truncate font-bold">{page.title}</span>
                 </span>
                 {page.status || page.format ? (
@@ -695,6 +653,7 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onNavigate: (route: ViewRoute) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
@@ -714,14 +673,12 @@ function WorkspacePane(props: {
     return <SettingsView settings={props.settings} />;
   }
   return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-background/70">
-      <div className="flex min-h-11 items-center justify-between border-b bg-card/88 px-3 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
+    <section className="flex min-h-0 min-w-0 flex-col bg-background">
+      <div className="flex min-h-12 items-center justify-between border-b bg-card px-3">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <FileText aria-hidden="true" className="size-4 text-muted-foreground" />
-          <span className="truncate font-bold">{titleForPath(props.wikiPath, props.wikiPages)}</span>
-          <span className="truncate text-xs text-muted-foreground">{props.wikiPath}</span>
+          <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
-        <CommandBar onRunCommand={props.onRunCommand} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+        <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
       </div>
       <div className="relative min-h-0 flex-1">
         {props.isLoading ? (
@@ -742,10 +699,12 @@ function WorkspacePane(props: {
 
 function CommandBar({
   onRunCommand,
+  onSetSidePanelMode,
   reviewWorkflows,
   wikiPath,
 }: {
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   reviewWorkflows: ReviewWorkflow[];
   wikiPath: string;
 }) {
@@ -761,25 +720,17 @@ function CommandBar({
 
   return (
     <div className="relative flex items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => onRunCommand("execute-main")}>
-        <Command aria-hidden="true" data-icon="inline-start" />
-        Execute
+      <Button size="sm" variant="outline" onClick={() => onSetSidePanelMode("new-plan")}>
+        + plan
       </Button>
-      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
-        <GitBranch aria-hidden="true" data-icon="inline-start" />
-        Worktree
+      <Button size="sm" variant="outline" onClick={() => onSetSidePanelMode("modify")}>
+        modify
       </Button>
-      <Button size="sm" variant="ghost" onClick={() => onRunCommand("modify")}>
-        <Search aria-hidden="true" data-icon="inline-start" />
-        Modify
+      <Button size="sm" onClick={() => onRunCommand("execute-main")}>
+        execute
       </Button>
-      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "review" ? "closed" : "review")}>
-        <Bot aria-hidden="true" data-icon="inline-start" />
-        Review
-      </Button>
-      <Button size="sm" variant="ghost" onClick={() => setMode(mode === "new-plan" ? "closed" : "new-plan")}>
-        <Plus aria-hidden="true" data-icon="inline-start" />
-        New Plan
+      <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
+        run dev
       </Button>
       {mode !== "closed" ? (
         <div className="absolute right-0 top-10 z-20 w-[28rem] border bg-popover p-3 text-popover-foreground shadow-lg">
@@ -930,6 +881,88 @@ function SettingsView({ settings }: { settings: SettingsResponse | null }) {
         )}
       </div>
     </section>
+  );
+}
+
+function RightActionPane({
+  mode,
+  onRunCommand,
+  onSetMode,
+  status,
+}: {
+  mode: "modify" | "new-plan";
+  onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  onSetMode: (mode: "modify" | "new-plan") => void;
+  status: string;
+}) {
+  const [modifyText, setModifyText] = useState("");
+  const [title, setTitle] = useState("");
+  const [intent, setIntent] = useState("");
+
+  return (
+    <aside className="min-h-0 overflow-auto border-l bg-background p-8 max-xl:hidden">
+      <section className="rounded-lg border bg-card p-8 shadow-[0_18px_44px_rgba(32,35,31,0.08)]">
+        <div className="mb-5 flex items-center gap-2">
+          <button
+            className={cn("rounded-md border px-3 py-1.5 text-sm font-bold", mode === "modify" ? "bg-foreground text-background" : "bg-background")}
+            onClick={() => onSetMode("modify")}
+            type="button"
+          >
+            Modify
+          </button>
+          <button
+            className={cn("rounded-md border px-3 py-1.5 text-sm font-bold", mode === "new-plan" ? "bg-foreground text-background" : "bg-background")}
+            onClick={() => onSetMode("new-plan")}
+            type="button"
+          >
+            New Plan
+          </button>
+        </div>
+        {mode === "modify" ? (
+          <form
+            className="flex flex-col gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onRunCommand("modify", { prompt: modifyText });
+            }}
+          >
+            <h1 className="m-0 text-3xl font-bold">Modify Page</h1>
+            <textarea
+              className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => setModifyText(event.target.value)}
+              placeholder="Describe how the agent should revise this page..."
+              value={modifyText}
+            />
+            <Button className="min-h-12 w-full" type="submit">
+              <Play aria-hidden="true" data-icon="inline-start" />
+              Send
+            </Button>
+          </form>
+        ) : (
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onRunCommand("new-plan", { title, intent, planType: "feature" });
+            }}
+          >
+            <h1 className="m-0 text-3xl font-bold">Create Plan</h1>
+            <label className="flex flex-col gap-1 text-sm font-bold">
+              Title
+              <input className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTitle(event.target.value)} value={title} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-bold">
+              Intent
+              <textarea className="min-h-48 rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setIntent(event.target.value)} value={intent} />
+            </label>
+            <Button className="min-h-12 w-full" type="submit">
+              + plan
+            </Button>
+          </form>
+        )}
+        <p className="mt-4 text-xs text-muted-foreground" role="status">{status}</p>
+      </section>
+    </aside>
   );
 }
 
@@ -1241,10 +1274,13 @@ function normalizeProjectGroups(response: ProjectListResponse) {
 }
 
 function groupWikiPages(pages: WikiPage[]) {
+  const planPages = (pages.length ? pages : [{ title: "Home", path: defaultWikiPath }]).filter((page) => page.path.includes("/plans/"));
+  if (planPages.length) {
+    return [{ label: "Plans", pages: planPages }];
+  }
   const groups = new Map<string, WikiPage[]>();
   for (const page of pages.length ? pages : [{ title: "Home", path: defaultWikiPath }]) {
-    const label = page.path.includes("/plans/") ? "Plans" : page.path.includes("/sources") ? "Sources" : "Wiki";
-    groups.set(label, [...(groups.get(label) || []), page]);
+    groups.set("Plans", [...(groups.get("Plans") || []), page]);
   }
   return Array.from(groups.entries()).map(([label, groupedPages]) => ({ label, pages: groupedPages }));
 }

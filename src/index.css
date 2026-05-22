@@ -89,11 +89,7 @@
 
 @layer components {
   .hyperwiki-shell {
-    background:
-      linear-gradient(90deg, color-mix(in srgb, var(--border) 36%, transparent) 1px, transparent 1px) 0 0 / 44px 44px,
-      linear-gradient(0deg, color-mix(in srgb, var(--border) 28%, transparent) 1px, transparent 1px) 0 0 / 44px 44px,
-      radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 30rem),
-      var(--background);
+    background: var(--background);
   }
 
   .brand-dots {

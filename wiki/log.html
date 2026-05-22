@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 fix | restore original React shell chrome</h2>
+  <ul>
+    <li>Corrected the React shell back toward the original Hyperwiki chrome: compact topbar with brand plus Projects and Settings, plan-focused sidebar, original wiki command bar actions, and right-side Modify Page workflow.</li>
+    <li>Removed the terminal-first visible pane and extra command-bar affordances from the default wiki view; terminal implementation remains available for later restoration behind the original controls.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 fix | react shell design and wiki loading</h2>
   <ul>
     <li>Restored the animated nine-dot Hyperwiki mark in the React topbar and tightened the rewrite shell chrome with subtle grid texture, pane depth, and active navigation treatment.</li>
