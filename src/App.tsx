@@ -21,6 +21,7 @@ import {
   Settings,
   Square,
   TerminalSquare,
+  Trash2,
 } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -59,6 +60,7 @@ interface ProjectRecord {
   available?: boolean;
   active?: boolean;
   branch?: string;
+  lastOpenedAt?: string | null;
 }
 
 interface ProjectGroup {
@@ -500,6 +502,7 @@ function App() {
           onNavigate={navigate}
           onRunCommand={runCommandAction}
           onSetSidePanelMode={setSidePanelMode}
+          onSwitchProject={switchProject}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
@@ -692,6 +695,7 @@ function WorkspacePane(props: {
   onNavigate: (route: ViewRoute) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
+  onSwitchProject: (project: ProjectRecord) => void;
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
@@ -702,7 +706,7 @@ function WorkspacePane(props: {
   wikiPages: WikiPage[];
 }) {
   if (props.route.kind === "projects") {
-    return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} />;
+    return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} />;
   }
   if (props.route.kind === "new-project") {
     return <NewProjectView />;
@@ -850,39 +854,90 @@ function CommandBar({
   );
 }
 
-function ProjectsView({ groups, onNewProject }: { groups: ProjectGroup[]; onNewProject: () => void }) {
+function ProjectsView({
+  groups,
+  onNewProject,
+  onOpenProject,
+}: {
+  groups: ProjectGroup[];
+  onNewProject: () => void;
+  onOpenProject: (project: ProjectRecord) => void;
+}) {
   return (
-    <section className="min-h-0 overflow-auto bg-background p-4">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="min-h-0 overflow-auto bg-background">
+      <header className="flex min-h-40 items-center justify-between border-b px-10">
         <div>
-          <h1 className="m-0 text-xl font-bold">Projects</h1>
-          <p className="m-0 text-sm text-muted-foreground">Registered workspaces and branch worktrees.</p>
+          <h1 className="m-0 text-4xl font-bold leading-none">Projects</h1>
+          <p className="m-0 mt-3 text-sm text-muted-foreground">Switch between registered local hyperwiki projects.</p>
         </div>
-        <Button onClick={onNewProject}>
+        <Button className="min-h-11 px-5" variant="outline" onClick={onNewProject}>
           <Plus aria-hidden="true" data-icon="inline-start" />
           New Project
         </Button>
-      </div>
-      <div className="grid gap-3">
+      </header>
+      <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
         {groups.map((group) => (
-          <article className="border bg-card p-3" key={group.projectSlug}>
-            <h2 className="m-0 mb-2 text-sm font-bold uppercase text-muted-foreground">{group.name}</h2>
-            <div className="grid gap-2">
-              {group.checkouts.map((project) => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border bg-background px-3 py-2" key={project.id}>
-                  <div className="min-w-0">
-                    <div className="truncate font-bold">{project.worktreeSlug || project.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">{project.root}</div>
-                  </div>
-                  <span className="text-xs font-bold uppercase text-muted-foreground">{project.available === false ? "missing" : project.active ? "active" : "ready"}</span>
-                </div>
-              ))}
-            </div>
-          </article>
+          <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} />
         ))}
       </div>
     </section>
   );
+}
+
+function ProjectCard({ group, onOpenProject }: { group: ProjectGroup; onOpenProject: (project: ProjectRecord) => void }) {
+  const selected = group.checkouts.find((checkout) => checkout.active) || group.checkouts.find((checkout) => checkout.worktreeSlug === "main") || group.checkouts[0];
+  const isActive = group.checkouts.some((checkout) => checkout.active);
+  const available = group.checkouts.some((checkout) => checkout.available !== false);
+  const appUrl = `https://${group.projectSlug}.localhost`;
+  return (
+    <article className={cn("flex min-h-[23rem] flex-col rounded-md border bg-card p-5", isActive && "border-primary/45 ring-1 ring-primary/25")}>
+      <div className="mb-7 flex items-start justify-between gap-4">
+        <h2 className="m-0 min-w-0 truncate text-lg font-bold">{group.name || selected?.name || group.projectSlug}</h2>
+        <span className={cn("rounded-full border px-2 py-1 text-xs font-bold uppercase", isActive ? "bg-primary/10 text-secondary-foreground" : "bg-secondary text-muted-foreground")}>
+          {isActive ? "Active" : available ? "Available" : "Missing"}
+        </span>
+      </div>
+      {group.checkouts.length > 1 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {group.checkouts.map((checkout) => (
+            <span className={cn("rounded-full border px-3 py-1 text-xs font-bold", checkout.active && "border-primary bg-primary/10")} key={checkout.id}>
+              {checkout.worktreeSlug || "main"} <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase text-muted-foreground">stopped</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <p className="mb-5 truncate text-sm font-bold text-muted-foreground">{selected?.root || ""}</p>
+      <div className="grid gap-2">
+        <ProjectDetail label="Checkout" value={selected?.worktreeSlug || "main"} />
+        <ProjectDetail label="App" value={appUrl} />
+        <ProjectDetail label="Last opened" value={formatProjectDate(selected?.lastOpenedAt)} />
+      </div>
+      <div className="mt-auto flex items-end justify-between pt-5">
+        <Button onClick={() => selected && onOpenProject(selected)} disabled={!selected}>
+          » Open Project
+        </Button>
+        <button className="rounded p-1 text-muted-foreground hover:text-foreground" type="button" aria-label={`Remove ${group.name}`}>
+          <Trash2 aria-hidden="true" className="size-4" />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function ProjectDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-background px-3 py-3">
+      <div className="text-[10px] font-bold uppercase text-muted-foreground">{label}</div>
+      <div className="truncate text-sm font-bold">{value}</div>
+    </div>
+  );
+}
+
+function formatProjectDate(value?: string | null) {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
 function NewProjectView() {
