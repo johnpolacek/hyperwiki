@@ -1099,7 +1099,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
 
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <header className="flex min-h-40 items-center border-b px-10">
+      <header className="flex min-h-40 items-center px-10">
         <div>
           <h1 className="font-ui m-0 text-4xl font-bold leading-none">New Project</h1>
           <p className="font-ui m-0 mt-3 text-sm text-muted-foreground">Initialize a fresh hyperwiki project from a brief and hand it to the agent.</p>
