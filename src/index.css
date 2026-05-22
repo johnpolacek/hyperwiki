@@ -86,3 +86,88 @@
     font-family: var(--font-sans);
   }
 }
+
+@layer components {
+  .hyperwiki-shell {
+    background:
+      linear-gradient(90deg, color-mix(in srgb, var(--border) 36%, transparent) 1px, transparent 1px) 0 0 / 44px 44px,
+      linear-gradient(0deg, color-mix(in srgb, var(--border) 28%, transparent) 1px, transparent 1px) 0 0 / 44px 44px,
+      radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 30rem),
+      var(--background);
+  }
+
+  .brand-dots {
+    display: grid;
+    grid-template-columns: repeat(3, 3px);
+    gap: 2px;
+    inline-size: 13px;
+    block-size: 13px;
+  }
+
+  .brand-dots span {
+    inline-size: 3px;
+    block-size: 3px;
+    border-radius: 999px;
+    background: var(--muted-foreground);
+    opacity: 0.34;
+    animation: brand-dot-pulse 3.6s ease-in-out infinite;
+  }
+
+  .brand-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .brand-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  .brand-dots span:nth-child(6) {
+    animation-delay: 0.6s;
+  }
+
+  .brand-dots span:nth-child(9) {
+    animation-delay: 0.8s;
+  }
+
+  .brand-dots span:nth-child(8) {
+    animation-delay: 1s;
+  }
+
+  .brand-dots span:nth-child(7) {
+    animation-delay: 1.2s;
+  }
+
+  .brand-dots span:nth-child(4) {
+    animation-delay: 1.4s;
+  }
+
+  .brand-dots span:nth-child(5) {
+    animation-delay: 1.6s;
+  }
+}
+
+@keyframes brand-dot-pulse {
+  0%,
+  100% {
+    background: var(--muted-foreground);
+    opacity: 0.28;
+  }
+
+  42% {
+    background: var(--primary);
+    opacity: 0.9;
+    transform: scale(1.45);
+  }
+
+  68% {
+    background: color-mix(in srgb, var(--primary) 42%, var(--muted-foreground));
+    opacity: 0.56;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-dots span {
+    animation: none;
+  }
+}

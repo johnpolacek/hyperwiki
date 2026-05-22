@@ -217,7 +217,7 @@ function App() {
     setIsWikiLoading(true);
     setWikiError("");
     hyperwikiApi
-      .text(withProjectQuery(route.path, activeProject))
+      .text(wikiRequestPath(route.path, activeProject))
       .then((html) => {
         if (!cancelled) setWikiHtml(html);
       })
@@ -269,7 +269,7 @@ function App() {
   async function loadSessions() {
     setIsSessionsLoading(true);
     try {
-      const response = await hyperwikiApi.json<SessionsResponse>(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`);
+      const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`, activeProject));
       const nextSessions = response.sessions || [];
       setSessions(nextSessions);
       setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
@@ -297,7 +297,7 @@ function App() {
     const name = role === "agent" ? "Agent" : "Terminal";
     setStatus(`Starting ${name.toLowerCase()}`);
     try {
-      const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+      const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
         method: "POST",
         body: {
           name,
@@ -326,7 +326,7 @@ function App() {
     if (!command) {
       throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
     }
-    const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+    const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
       method: "POST",
       body: {
         name: "Agent",
@@ -347,7 +347,7 @@ function App() {
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
-        await hyperwikiApi.json("/api/agent/prompt", {
+        await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
           method: "POST",
           body: {
             prompt,
@@ -422,7 +422,7 @@ function App() {
     try {
       let response = await hyperwikiApi.request(`/api/terminal/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
       if (!response.ok) {
-        response = await hyperwikiApi.request(`/api/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+        response = await hyperwikiApi.request(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, activeProject), { method: "DELETE" });
       }
       if (!response.ok) throw new Error(response.text || `Request failed: ${response.status}`);
       await loadSessions();
@@ -437,7 +437,7 @@ function App() {
     if (!trimmed) return;
     setStatus("Renaming session");
     try {
-      await hyperwikiApi.json(`/api/sessions/${encodeURIComponent(sessionId)}`, {
+      await hyperwikiApi.json(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, activeProject), {
         method: "PATCH",
         body: { name: trimmed },
       });
@@ -451,7 +451,7 @@ function App() {
   async function restartSession(session: SessionRecord) {
     setStatus("Restarting session");
     try {
-      const restarted = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+      const restarted = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
         method: "POST",
         body: {
           id: session.id,
@@ -472,7 +472,7 @@ function App() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col bg-background text-foreground">
+    <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
       <TopBar
         activeProject={activeProject}
         isProjectsOpen={isProjectsOpen}
@@ -487,7 +487,7 @@ function App() {
         status={status}
         workspace={workspace}
       />
-      <section className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(340px,0.78fr)] overflow-hidden max-xl:grid-cols-[250px_minmax(0,1fr)]">
+    <section className="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(340px,0.78fr)] overflow-hidden max-xl:grid-cols-[250px_minmax(0,1fr)]">
         <WikiSidebar
           currentPath={currentWikiPath}
           groups={groupedWikiPages}
@@ -539,9 +539,9 @@ function TopBar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <header className="grid min-h-12 grid-cols-[280px_minmax(0,1fr)_auto] items-center border-b bg-card px-3 text-sm max-xl:grid-cols-[250px_minmax(0,1fr)_auto]">
-      <button className="flex min-w-0 items-center gap-3 text-left font-bold" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
-        <LayoutDashboard aria-hidden="true" className="size-5 text-primary" />
+    <header className="grid min-h-13 grid-cols-[280px_minmax(0,1fr)_auto] items-center border-b bg-card/95 px-3 text-sm shadow-[0_1px_0_rgba(255,255,255,0.72)_inset] max-xl:grid-cols-[250px_minmax(0,1fr)_auto]">
+      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
+        <BrandMark />
         <span className="truncate">hyperwiki</span>
       </button>
       <div className="flex min-w-0 items-center gap-2">
@@ -580,6 +580,16 @@ function TopBar(props: {
         </Button>
       </div>
     </header>
+  );
+}
+
+function BrandMark() {
+  return (
+    <span className="brand-dots" aria-hidden="true">
+      {Array.from({ length: 9 }).map((_, index) => (
+        <span key={index} />
+      ))}
+    </span>
   );
 }
 
@@ -636,7 +646,7 @@ function WikiSidebar(props: {
   route: ViewRoute;
 }) {
   return (
-    <aside className="flex min-h-0 flex-col border-r bg-card">
+    <aside className="flex min-h-0 flex-col border-r bg-card/88 shadow-[1px_0_0_rgba(255,255,255,0.64)_inset]">
       <div className="flex min-h-11 items-center gap-2 border-b px-3 text-xs font-bold uppercase text-muted-foreground">
         <BookOpen aria-hidden="true" className="size-4" />
         Wiki
@@ -658,8 +668,8 @@ function WikiSidebar(props: {
             {group.pages.map((page) => (
               <button
                 className={cn(
-                  "grid w-full gap-1 rounded-md px-2 py-2 text-left text-sm hover:bg-secondary",
-                  props.currentPath === page.path && props.route.kind === "wiki" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+                  "grid w-full gap-1 rounded-md px-2 py-2 text-left text-sm transition-[background,color,box-shadow] hover:bg-secondary",
+                  props.currentPath === page.path && props.route.kind === "wiki" ? "bg-secondary text-secondary-foreground shadow-[inset_3px_0_0_var(--primary)]" : "text-muted-foreground",
                 )}
                 key={page.path}
                 onClick={() => props.onNavigate(page.path)}
@@ -704,8 +714,8 @@ function WorkspacePane(props: {
     return <SettingsView settings={props.settings} />;
   }
   return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-background">
-      <div className="flex min-h-11 items-center justify-between border-b bg-card px-3">
+    <section className="flex min-h-0 min-w-0 flex-col bg-background/70">
+      <div className="flex min-h-11 items-center justify-between border-b bg-card/88 px-3 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <FileText aria-hidden="true" className="size-4 text-muted-foreground" />
           <span className="truncate font-bold">{titleForPath(props.wikiPath, props.wikiPages)}</span>
@@ -721,7 +731,7 @@ function WorkspacePane(props: {
           </div>
         ) : null}
         {props.wikiError ? (
-          <div className="m-4 border bg-card p-4 text-sm text-destructive">{props.wikiError}</div>
+          <div className="m-4 border bg-card p-4 text-sm text-destructive shadow-sm">{props.wikiError}</div>
         ) : (
           <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={props.wikiHtml} title="Wiki page" />
         )}
@@ -937,8 +947,8 @@ function TerminalPane(props: {
 }) {
   const activeSession = props.sessions.find((session) => session.id === props.activeSessionId) || props.sessions[0] || null;
   return (
-    <aside className="flex min-h-0 flex-col border-l bg-card max-xl:hidden">
-      <div className="flex min-h-11 items-center justify-between border-b px-3">
+    <aside className="flex min-h-0 flex-col border-l bg-card/88 shadow-[-1px_0_0_rgba(255,255,255,0.64)_inset] max-xl:hidden">
+      <div className="flex min-h-11 items-center justify-between border-b px-3 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
         <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
           <PanelRight aria-hidden="true" className="size-4 text-muted-foreground" />
           Terminals
@@ -1204,7 +1214,12 @@ function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
 function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
   const joiner = path.includes("?") ? "&" : "?";
-  return `${path}${joiner}project=${encodeURIComponent(activeProject.projectSlug)}&worktree=${encodeURIComponent(activeProject.worktreeSlug)}`;
+  return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
+}
+
+function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {
+  if (!activeProject) return path;
+  return `/projects/${encodeURIComponent(activeProject.id)}${path}`;
 }
 
 function findActiveProject(response: ProjectListResponse) {

@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 fix | react shell design and wiki loading</h2>
+  <ul>
+    <li>Restored the animated nine-dot Hyperwiki mark in the React topbar and tightened the rewrite shell chrome with subtle grid texture, pane depth, and active navigation treatment.</li>
+    <li>Fixed project-scoped wiki page loading so React requests project wiki pages through the existing <code>/projects/:id/wiki/...</code> route instead of appending query parameters to wiki file paths.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 4</h2>
   <ul>
     <li>Ported the first React command workflow pass: Execute, Worktree, Modify, Review, and New Plan controls now live in the React command bar.</li>
