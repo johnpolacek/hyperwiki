@@ -732,9 +732,20 @@ function App() {
       },
     });
     setStatus(`Project created: ${result.project.name}`);
-    const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
-    setProjects(projectsResult);
+    setProjects((current) => withOptimisticProject(current, result.project));
     openImportedPlanningWorkspace(result.project);
+    void hyperwikiApi
+      .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`)
+      .then((projectsResult) => {
+        setProjects(projectsResult);
+        setActiveProject(findActiveProject(projectsResult, unavailableProjectIds, {
+          projectSlug: result.project.projectSlug,
+          worktreeSlug: result.project.worktreeSlug,
+        }) || result.project);
+      })
+      .catch((error) => {
+        console.error("Could not refresh projects after import", error);
+      });
     return result.project;
   }
 
@@ -1493,9 +1504,15 @@ function NewProjectView({
         setStatus("Project imported. Starting agent planning...");
         logImport(`Created project ${project.name} (${project.id})`);
         logImport("Loading imported workspace");
-        await onPlanImportedProject(project);
-        logImport("Agent planning prompt sent");
-        setStatus("Agent planning prompt sent. Watch the agent panel for questions or the generated MVP plan.");
+        void onPlanImportedProject(project)
+          .then(() => {
+            logImport("Agent planning prompt sent");
+            setStatus("Agent planning prompt sent. Watch the agent panel for questions or the generated MVP plan.");
+          })
+          .catch((error) => {
+            logImport("Hyperwiki import agent handoff failed.", error);
+            setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
+          });
       }
     } catch (error) {
       logImport("Hyperwiki import agent handoff failed.", error);
@@ -2589,6 +2606,28 @@ function workspaceSelectionFromLocation() {
   return {
     projectSlug: decodeURIComponent(match[1]),
     worktreeSlug: decodeURIComponent(match[2]),
+  };
+}
+
+function withOptimisticProject(response: ProjectListResponse, project: ProjectRecord): ProjectListResponse {
+  const projects = [project, ...(response.projects || []).filter((item) => item.id !== project.id)];
+  const checkouts = [project, ...(response.checkouts || []).filter((item) => item.id !== project.id)];
+  const groups = response.projectGroups?.length
+    ? [
+        {
+          name: project.name,
+          projectSlug: project.projectSlug,
+          checkouts: [project, ...response.projectGroups.flatMap((group) => group.checkouts).filter((item) => item.id !== project.id && item.projectSlug === project.projectSlug)],
+        },
+        ...response.projectGroups.filter((group) => group.projectSlug !== project.projectSlug),
+      ]
+    : response.projectGroups;
+  return {
+    ...response,
+    activeProjectId: project.id,
+    projects,
+    checkouts,
+    projectGroups: groups,
   };
 }
 

@@ -32,7 +32,9 @@
     <li>Moved post-create navigation ahead of workspace loading and prompt delivery so import cannot remain stuck on the New Project form after the agent prompt is sent.</li>
     <li>Added a New Project handoff state and direct route callback after import creation, preventing the import form from remaining interactive during agent planning startup.</li>
     <li>Added a Tauri WebDriver import-planning smoke script for supported platforms and route-aware project selection for workspace URLs.</li>
-    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
+    <li>Made the import flow register the created project optimistically and run the project-list refresh outside the critical path, so a successful backend create response immediately opens the planning workspace.</li>
+    <li>Changed New Project agent planning startup to run after route handoff instead of blocking the import form on workspace/session follow-up requests.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-harness</code>, <code>pnpm run smoke:tauri-webdriver</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>
 <article>
