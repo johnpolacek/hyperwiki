@@ -106,13 +106,41 @@ interface AppPreviewResponse {
 }
 
 interface SettingsResponse {
-  theme?: string;
+  theme?: {
+    activePreset?: string;
+    presets?: Record<string, ThemePreset>;
+    customTokens?: Record<string, Record<string, string>>;
+  };
+  soul?: {
+    principles?: string[];
+    interface?: string;
+    agent?: string;
+  };
+  memory?: {
+    entries?: MemoryEntry[];
+  };
   agentCommand?: string;
   codexCommand?: string;
   claudeCommand?: string;
   browserCommand?: string;
   mcpEnabled?: boolean;
   [key: string]: unknown;
+}
+
+interface ThemePreset {
+  label?: string;
+  mode?: string;
+  tokens?: {
+    ui?: Record<string, string>;
+    docs?: Record<string, string>;
+    terminal?: Record<string, string>;
+  };
+}
+
+interface MemoryEntry {
+  title?: string;
+  content?: string;
+  enabled?: boolean;
 }
 
 interface LayoutPanel {
@@ -884,11 +912,19 @@ function WorkspacePane(props: {
         {props.wikiError ? (
           <div className="m-4 border bg-card p-4 text-sm text-destructive shadow-sm">{props.wikiError}</div>
         ) : (
-          <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={props.wikiHtml} title="Wiki page" />
+          <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
         )}
       </div>
     </section>
   );
+}
+
+function embeddedWikiHtml(html: string) {
+  const style = "<style id=\"hyperwiki-embedded-style\">.wiki-header{display:none!important}.wiki-page{padding-top:32px!important}.wiki-page>h1+p:has(a[href*='/wiki/plans/mvp/stage-']){display:none!important}</style>";
+  if (!html.trim()) return html;
+  if (html.includes("hyperwiki-embedded-style")) return html;
+  if (html.includes("</head>")) return html.replace("</head>", `${style}</head>`);
+  return `${style}${html}`;
 }
 
 function CommandBar({
@@ -1252,24 +1288,150 @@ function documentSummary(document: string) {
 }
 
 function SettingsView({ settings }: { settings: SettingsResponse | null }) {
-  const entries = settings ? Object.entries(settings).filter(([, value]) => ["string", "number", "boolean"].includes(typeof value)) : [];
-  return (
-    <section className="min-h-0 overflow-auto bg-background p-4">
-      <div className="mb-4">
+  const [draft, setDraft] = useState<SettingsResponse | null>(settings);
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  const presets = draft?.theme?.presets || {};
+  const activePreset = draft?.theme?.activePreset || "paper";
+  const activeTheme = presets[activePreset] || Object.values(presets)[0];
+  const soul = draft?.soul || {};
+  const memory = draft?.memory?.entries || [];
+
+  async function save(next: SettingsResponse) {
+    setDraft(next);
+    setStatus("Saving...");
+    try {
+      const saved = await hyperwikiApi.json<SettingsResponse>("/api/settings", { method: "PUT", body: next });
+      setDraft(saved);
+      setStatus("Saved.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not save settings.");
+    }
+  }
+
+  function updateSoul(key: "interface" | "agent", value: string) {
+    if (!draft) return;
+    void save({ ...draft, soul: { ...(draft.soul || {}), [key]: value } });
+  }
+
+  function updatePrinciple(index: number, value: string) {
+    if (!draft) return;
+    const principles = [...(draft.soul?.principles || [])];
+    principles[index] = value;
+    void save({ ...draft, soul: { ...(draft.soul || {}), principles } });
+  }
+
+  function addMemory() {
+    if (!draft) return;
+    void save({ ...draft, memory: { entries: [...(draft.memory?.entries || []), { title: "Memory", content: "", enabled: true }] } });
+  }
+
+  function updateMemory(index: number, patch: Partial<MemoryEntry>) {
+    if (!draft) return;
+    const entries = [...(draft.memory?.entries || [])];
+    entries[index] = { ...entries[index], ...patch };
+    void save({ ...draft, memory: { entries } });
+  }
+
+  if (!draft) {
+    return (
+      <section className="min-h-0 overflow-auto bg-background p-4">
         <h1 className="m-0 text-xl font-bold">Settings</h1>
-        <p className="m-0 text-sm text-muted-foreground">Runtime settings surfaced through the existing desktop API.</p>
-      </div>
-      <div className="grid gap-2">
-        {entries.length ? (
-          entries.map(([key, value]) => (
-            <div className="grid grid-cols-[220px_minmax(0,1fr)] gap-3 border bg-card px-3 py-2 text-sm" key={key}>
-              <span className="font-bold">{key}</span>
-              <span className="truncate text-muted-foreground">{String(value)}</span>
+        <div className="mt-4 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="min-h-0 overflow-auto bg-background p-8">
+      <header className="mb-6">
+        <h1 className="font-ui m-0 text-4xl font-bold leading-none">Settings</h1>
+        <p className="font-ui m-0 mt-3 text-sm text-muted-foreground">Control global theme, Soul, Memory, and project AGENTS.md sync.</p>
+      </header>
+
+      <div className="grid max-w-6xl gap-5">
+        <section className="rounded-md border bg-card p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-ui m-0 text-2xl font-semibold">Theme</h2>
+              <p className="m-0 mt-1 text-sm text-muted-foreground">{activeTheme?.label || activePreset} · {activeTheme?.mode || "light"}</p>
             </div>
-          ))
-        ) : (
-          <div className="border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
-        )}
+            <Button variant="outline" onClick={() => void hyperwikiApi.json<SettingsResponse>("/api/settings/reset-theme", { method: "POST" }).then((saved) => { setDraft(saved); setStatus("Theme reset."); })}>
+              Reset Theme
+            </Button>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+            {Object.entries(presets).map(([key, preset]) => {
+              const ui = preset.tokens?.ui || {};
+              const docs = preset.tokens?.docs || {};
+              const terminal = preset.tokens?.terminal || {};
+              return (
+                <button
+                  className={cn("rounded-md border bg-background p-3 text-left hover:border-primary", key === activePreset && "border-primary ring-1 ring-primary/30")}
+                  key={key}
+                  onClick={() => void save({ ...draft, theme: { ...(draft.theme || {}), activePreset: key } })}
+                  type="button"
+                >
+                  <span className="mb-3 flex h-8 overflow-hidden rounded border">
+                    {[ui.bg, ui.accent, docs.bg, docs.link, terminal.bg].filter(Boolean).map((color) => <span className="flex-1" key={color} style={{ background: color }} />)}
+                  </span>
+                  <strong className="block truncate">{preset.label || key}</strong>
+                  <span className="text-xs text-muted-foreground">{preset.mode || "light"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-md border bg-card p-5">
+          <h2 className="font-ui m-0 text-2xl font-semibold">Soul</h2>
+          <div className="mt-4 grid gap-3">
+            {(soul.principles || []).map((principle, index) => (
+              <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground" key={index}>
+                Principle {index + 1}
+                <input className="rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={principle} onChange={(event) => updatePrinciple(index, event.target.value)} />
+              </label>
+            ))}
+            <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+              Interface Guidance
+              <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={soul.interface || ""} onChange={(event) => updateSoul("interface", event.target.value)} />
+            </label>
+            <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+              Agent Guidance
+              <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={soul.agent || ""} onChange={(event) => updateSoul("agent", event.target.value)} />
+            </label>
+          </div>
+        </section>
+
+        <section className="rounded-md border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-ui m-0 text-2xl font-semibold">Memory</h2>
+            <Button variant="outline" onClick={addMemory}>+ Memory</Button>
+          </div>
+          <div className="grid gap-3">
+            {memory.length ? memory.map((entry, index) => (
+              <div className="grid gap-2 rounded-md border bg-background p-3" key={index}>
+                <label className="flex items-center gap-2 text-sm font-bold">
+                  <input className="size-4 accent-primary" checked={entry.enabled !== false} type="checkbox" onChange={(event) => updateMemory(index, { enabled: event.target.checked })} />
+                  Enabled
+                </label>
+                <input className="rounded-md border bg-card px-3 py-2 text-sm" placeholder="Title" value={entry.title || ""} onChange={(event) => updateMemory(index, { title: event.target.value })} />
+                <textarea className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => updateMemory(index, { content: event.target.value })} />
+              </div>
+            )) : <div className="rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">No memory entries yet.</div>}
+          </div>
+        </section>
+
+        <section className="rounded-md border bg-card p-5">
+          <h2 className="font-ui m-0 text-2xl font-semibold">AGENTS.md</h2>
+          <p className="m-0 mt-2 text-sm text-muted-foreground">Global Soul and Memory are available for AGENTS.md sync through the existing settings API.</p>
+        </section>
+
+        {status ? <p className="text-sm text-muted-foreground" role="status">{status}</p> : null}
       </div>
     </section>
   );
