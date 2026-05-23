@@ -872,24 +872,25 @@ function WikiSidebar(props: {
 function PlanTree({ pages, currentPath, onNavigate, workspace }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null }) {
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
+  const currentPlanPath = currentPlanWorkPath(sorted, roots, workspace);
   if (!roots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
   return (
     <div className="grid gap-1">
       {roots.map((page) => (
-        <PlanNode currentPath={currentPath} key={page.path} onNavigate={onNavigate} page={page} pages={sorted} workspace={workspace} />
+        <PlanNode currentPath={currentPath} currentWorkPath={currentPlanPath} key={page.path} onNavigate={onNavigate} page={page} pages={sorted} />
       ))}
     </div>
   );
 }
 
-function PlanNode({ page, pages, currentPath, onNavigate, workspace, depth = 0 }: { page: WikiPage; pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null; depth?: number }) {
+function PlanNode({ page, pages, currentPath, currentWorkPath, onNavigate, depth = 0 }: { page: WikiPage; pages: WikiPage[]; currentPath: string; currentWorkPath: string; onNavigate: (path: string) => void; depth?: number }) {
   const children = childPlanPages(page, pages);
-  const isCurrent = isCurrentPlanPage(page, workspace) || pathContainsSelectedPage(page.path, currentPath);
+  const isCurrent = Boolean(currentWorkPath) && pathContainsSelectedPage(page.path, currentWorkPath);
   const isSelected = currentPath === page.path;
   if (!children.length) {
     return <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />;
   }
-  const open = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || isCurrentPlanPage(child, workspace));
+  const open = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || (Boolean(currentWorkPath) && pathContainsSelectedPage(child.path, currentWorkPath)));
   return (
     <details className="grid min-w-0 gap-1 overflow-hidden" open={open}>
       <summary className="min-w-0 cursor-pointer list-none overflow-hidden">
@@ -897,7 +898,7 @@ function PlanNode({ page, pages, currentPath, onNavigate, workspace, depth = 0 }
       </summary>
       <div className="grid min-w-0 gap-1 overflow-hidden">
         {children.map((child) => (
-          <PlanNode currentPath={currentPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} workspace={workspace} />
+          <PlanNode currentPath={currentPath} currentWorkPath={currentWorkPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} />
         ))}
       </div>
     </details>
@@ -2413,17 +2414,31 @@ function isCompletedPage(page: WikiPage) {
   return pageStatus(page) === "complete";
 }
 
+function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: WorkspaceResponse | null) {
+  const derived = firstIncompleteWorkPath(pages, roots);
+  if (derived) return derived;
+  const currentPath = workspace?.status?.currentPath;
+  if (currentPath) return currentPath;
+  return pages.find((page) => page.currentState === "current-unit")?.path || pages.find((page) => page.currentState === "current-plan")?.path || "";
+}
+
+function firstIncompleteWorkPath(pages: WikiPage[], roots: WikiPage[]) {
+  for (const root of roots) {
+    if (isCompletedPage(root)) continue;
+    const stages = childPlanPages(root, pages).filter((page) => !isCompletedPage(page));
+    if (!stages.length) return root.path;
+    const stage = stages[0];
+    const units = childPlanPages(stage, pages).filter((page) => !isCompletedPage(page));
+    return (units[0] || stage).path;
+  }
+  return "";
+}
+
 function pageStatus(page: WikiPage) {
   if (page.status) return String(page.status).replace("completed", "complete");
   const summary = Array.isArray(page.summary) ? page.summary : [];
   const statusItem = summary.find((item) => /^status:/i.test(item));
   return statusItem ? statusItem.slice(statusItem.indexOf(":") + 1).trim().toLowerCase().replace("completed", "complete") : "";
-}
-
-function isCurrentPlanPage(page: WikiPage, workspace: WorkspaceResponse | null) {
-  const currentPath = workspace?.status?.currentPath;
-  if (currentPath) return pathContainsSelectedPage(page.path, currentPath);
-  return page.currentState === "current-unit" || page.currentState === "current-plan";
 }
 
 function pathContainsSelectedPage(path: string, selectedPath: string) {
