@@ -80,6 +80,8 @@ pub struct ProjectCreateRequest {
     pub planning_answers: BTreeMap<String, PlanningAnswer>,
     #[serde(default)]
     pub initialize_git: Option<bool>,
+    #[serde(default)]
+    pub agent_launch_command: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -373,7 +375,7 @@ pub fn create_project_from_dashboard(
             source_document_type,
             source_facts,
             planning_answers: request.planning_answers,
-            agent_launch_command: String::new(),
+            agent_launch_command: request.agent_launch_command.unwrap_or_default(),
             dev_command: String::new(),
             package_scripts: Vec::new(),
             overwrite: false,
@@ -2001,6 +2003,7 @@ mod tests {
                 document_type: Some("markdown".to_string()),
                 planning_answers: BTreeMap::new(),
                 initialize_git: Some(true),
+                agent_launch_command: Some("codex --yolo".to_string()),
             },
         )
         .unwrap();
@@ -2038,6 +2041,9 @@ mod tests {
         assert!(plans.contains("Status: planning"));
         assert!(plans.contains("no generated MVP stage tree"));
         let agents = fs::read_to_string(created.project.root.join("AGENTS.md")).unwrap();
+        let config =
+            fs::read_to_string(created.project.root.join(".hyperwiki").join("config.json"))
+                .unwrap();
         let sources =
             fs::read_to_string(created.project.root.join("wiki").join("sources.html")).unwrap();
         let contract = fs::read_to_string(
@@ -2050,6 +2056,7 @@ mod tests {
         .unwrap();
         assert!(agents.contains("Do not add a duplicate `wiki/Sources.html`"));
         assert!(agents.contains("Portless-backed `dev` script"));
+        assert!(config.contains("\"launchCommand\": \"codex --yolo\""));
         assert!(sources.contains("lowercase <code>wiki/sources.html</code>"));
         assert!(contract.contains("wiki/AGENTS.html"));
         assert!(registry
@@ -2098,6 +2105,7 @@ mod tests {
                 document_type: Some("html".to_string()),
                 planning_answers,
                 initialize_git: Some(false),
+                agent_launch_command: None,
             },
         )
         .unwrap();

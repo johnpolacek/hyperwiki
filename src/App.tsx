@@ -416,7 +416,8 @@ function App() {
   async function switchProject(project: ProjectRecord) {
     setActiveProject(project);
     setIsProjectsOpen(false);
-    const loadedWorkspace = await loadProjectData(project);
+    const loaded = await loadProjectData(project);
+    const loadedWorkspace = loaded.workspace;
     const landingPath = loadedWorkspace?.status?.currentPath || defaultWikiPath;
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
@@ -444,7 +445,10 @@ function App() {
 
     const rejected = [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult, repoResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
-    return workspaceResult.status === "fulfilled" ? workspaceResult.value : null;
+    return {
+      workspace: workspaceResult.status === "fulfilled" ? workspaceResult.value : null,
+      layout: layoutResult.status === "fulfilled" ? layoutResult.value : null,
+    };
   }
 
   async function startTerminal(role: "agent" | "cli") {
@@ -471,42 +475,63 @@ function App() {
   }
 
   async function ensureAgentSession() {
-    const existing = sessions.find((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"));
+    const session = await ensureAgentSessionForProject(activeProject, layout, terminalScope, sessions);
+    return session;
+  }
+
+  async function loadSessionsForProject(project: ProjectRecord | null, scope = terminalScope) {
+    if (!project) return [];
+    const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(scope.scope)}`, project));
+    const nextSessions = response.sessions || [];
+    setSessions(nextSessions);
+    setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
+    return nextSessions;
+  }
+
+  async function ensureAgentSessionForProject(project: ProjectRecord | null, projectLayout: LayoutResponse | null, scope = terminalScope, knownSessions = sessions) {
+    if (!project) {
+      throw new Error("Project not found for agent planning.");
+    }
+    const existing = knownSessions.find((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"));
     if (existing?.command) {
       setActiveSessionId(existing.id);
       return existing;
     }
-    const command = agentLaunchCommand(layout);
+    const command = agentLaunchCommand(projectLayout);
     if (!command) {
       throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
     }
-    const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
+    const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", project), {
       method: "POST",
       body: {
         name: "Agent",
         role: "agent",
         command,
-        scope: terminalScope.scope,
-        scope_kind: terminalScope.scopeKind,
-        plan_path: terminalScope.planPath,
+        scope: scope.scope,
+        scope_kind: scope.scopeKind,
+        plan_path: scope.planPath,
       },
     });
     setActiveSessionId(started.session.id);
-    await loadSessions();
+    await loadSessionsForProject(project, scope);
     return started.session;
   }
 
   async function sendAgentPrompt(prompt: string) {
-    await ensureAgentSession();
+    await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
+  }
+
+  async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
+    await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
-        await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
+        await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", project), {
           method: "POST",
           body: {
             prompt,
-            currentPage: currentWikiPath,
-            scope: terminalScope.scope,
+            currentPage,
+            scope: scope.scope,
           },
         });
         return;
@@ -516,6 +541,19 @@ function App() {
       }
     }
     throw lastError instanceof Error ? lastError : new Error("Agent unavailable.");
+  }
+
+  async function planImportedProject(project: ProjectRecord) {
+    setActiveProject(project);
+    setIsProjectsOpen(false);
+    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.html" };
+    const projectScope = scopeForRoute(projectRoute);
+    const loaded = await loadProjectData(project);
+    setRoute(projectRoute);
+    window.history.pushState(null, "", `/workspace/${project.projectSlug}/${project.worktreeSlug}#/wiki/plans/index.html`);
+    const nextSessions = await loadSessionsForProject(project, projectScope);
+    await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.html", projectScope, loaded.layout, nextSessions);
+    setStatus("Imported project planning prompt sent");
   }
 
   async function runCommandAction(action: CommandAction, payload?: Record<string, string>) {
@@ -659,9 +697,12 @@ function App() {
         document: input.document,
         documentType: input.documentType,
         initializeGit: input.initializeGit,
+        agentLaunchCommand: agentLaunchCommand(layout),
       },
     });
     setStatus(`Project created: ${result.project.name}`);
+    const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
+    setProjects(projectsResult);
     return result.project;
   }
 
@@ -715,6 +756,7 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
+          onPlanImportedProject={planImportedProject}
           onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
           onSetSidePanelMode={setSidePanelMode}
@@ -982,6 +1024,7 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
+  onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
@@ -999,13 +1042,13 @@ function WorkspacePane(props: {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} onPlanImportedProject={props.onPlanImportedProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} onPlanImportedProject={props.onPlanImportedProject} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1330,7 +1373,13 @@ function formatProjectDate(value?: string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void> }) {
+function NewProjectView({
+  onCreateProject,
+  onPlanImportedProject,
+}: {
+  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
+}) {
   const [title, setTitle] = useState("");
   const [document, setDocument] = useState("");
   const [documentType, setDocumentType] = useState("markdown");
@@ -1338,10 +1387,6 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdProject, setCreatedProject] = useState<ProjectRecord | null>(null);
-  const [planning, setPlanning] = useState<ImportPlanningResponse | null>(null);
-  const [planningAnswers, setPlanningAnswers] = useState<ImportPlanningAnswer[]>([]);
-  const [currentAnswer, setCurrentAnswer] = useState("");
-  const [isPlanningBusy, setIsPlanningBusy] = useState(false);
   const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
 
   function logImport(message: string, error?: unknown) {
@@ -1403,78 +1448,29 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
       const project = await onCreateProject(input);
       if (project) {
         setCreatedProject(project);
-        setStatus("Project imported. Loading planning questions...");
+        setStatus("Project imported. Starting agent planning...");
         logImport(`Created project ${project.name} (${project.id})`);
-        await loadImportPlanning(project, []);
+        logImport("Loading imported workspace");
+        await onPlanImportedProject(project);
+        logImport("Agent planning prompt sent");
+        setStatus("Agent planning prompt sent. Watch the agent panel for questions or the generated MVP plan.");
       }
     } catch (error) {
-      logImport("Hyperwiki import failed before planning questions loaded.", error);
-      setStatus(error instanceof Error ? error.message : "Could not create the project.");
+      logImport("Hyperwiki import agent handoff failed.", error);
+      setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function loadImportPlanning(project: ProjectRecord, answers: ImportPlanningAnswer[]) {
-    setIsPlanningBusy(true);
-    setStatus("Loading planning questions...");
-    logImport(`Loading planning questions for ${project.id}`);
-    try {
-      const response = await hyperwikiApi.json<ImportPlanningResponse>(withProjectQuery("/api/import-planning/clarify", project), {
-        method: "POST",
-        body: { planTitle: `${project.name} MVP Implementation Plan`, answers },
-      });
-      logImport(`Planning response ready=${response.ready} questions=${response.questions?.length || 0} score=${response.score}`);
-      setPlanning(response);
-      setCurrentAnswer("");
-      setStatus(response.ready ? "Planning answers are complete. Create the implementation plan when ready." : "Answer the next planning question.");
-    } catch (error) {
-      logImport("Hyperwiki import planning failed.", error);
-      setStatus(error instanceof Error ? error.message : "Could not load planning questions.");
-    } finally {
-      setIsPlanningBusy(false);
-    }
-  }
-
-  async function submitPlanningAnswer(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const question = planning?.questions?.[0];
-    if (!createdProject || !question || !currentAnswer.trim()) return;
-    const nextAnswers = [
-      ...planningAnswers.filter((answer) => answer.id !== question.id),
-      { id: question.id, answer: currentAnswer.trim() },
-    ];
-    setPlanningAnswers(nextAnswers);
-    await loadImportPlanning(createdProject, nextAnswers);
-  }
-
-  async function createImportPlan() {
-    if (!createdProject || !planning?.ready) return;
-    setIsPlanningBusy(true);
-    setStatus("Creating detailed implementation plan...");
-    try {
-      const result = await hyperwikiApi.json<ImportPlanningCreateResponse>(withProjectQuery("/api/import-planning/create-plan", createdProject), {
-        method: "POST",
-        body: { planTitle: `${createdProject.name} MVP Implementation Plan`, answers: planningAnswers },
-      });
-      setStatus("Detailed implementation plan created.");
-      window.location.href = `/workspace/${createdProject.projectSlug}/${createdProject.worktreeSlug}#${result.displayPath || "/wiki/plans/mvp/index.html"}`;
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not create the implementation plan.");
-    } finally {
-      setIsPlanningBusy(false);
-    }
-  }
-
-  if (createdProject && planning) {
-    const question = planning.questions?.[0];
+  if (createdProject) {
     return (
       <section className="min-h-0 overflow-auto bg-background">
         <header className="flex min-h-40 items-center px-10">
           <div>
-            <h1 className="font-ui m-0 text-4xl font-bold leading-none">Planning Questions</h1>
+            <h1 className="font-ui m-0 text-4xl font-bold leading-none">Agent Planning Started</h1>
             <p className="font-ui m-0 mt-3 max-w-[48rem] text-sm text-muted-foreground">
-              Hyperwiki imported {createdProject.name}. Lock the decisions that matter, then it can write stages and units worth handing to an agent.
+              Hyperwiki imported {createdProject.name}, saved the source into the wiki, and sent the MVP planning brief to the agent.
             </p>
           </div>
         </header>
@@ -1482,51 +1478,13 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
           <section className="rounded-md border bg-card p-5">
             <div className="mb-4 grid gap-2 sm:grid-cols-3">
               <ProjectDetail label="Project" value={createdProject.name} />
-              <ProjectDetail label="Clarity" value={`${planning.score || 0}%`} />
-              <ProjectDetail label="Status" value={planning.ready ? "Ready" : "Needs answers"} />
+              <ProjectDetail label="Source" value="wiki/sources/import.html" />
+              <ProjectDetail label="Plan Target" value="wiki/plans/mvp/" />
             </div>
-            <p className="m-0 text-sm text-muted-foreground">{planning.sourceSummary}</p>
+            <p className="m-0 text-sm text-muted-foreground">
+              The agent prompt invokes <code>$project-html-wiki</code>, points at the imported source, and asks for stages, units, and verification steps. If the source is thin, the agent should ask focused questions before writing the final plan.
+            </p>
           </section>
-          {question ? (
-            <form className="rounded-md border bg-card p-5" onSubmit={submitPlanningAnswer}>
-              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">{question.impact} question</p>
-              <h2 className="font-ui m-0 mt-2 text-2xl font-semibold">{question.label}</h2>
-              <p className="mt-3 text-base">{question.prompt}</p>
-              <p className="text-sm text-muted-foreground">{question.rationale}</p>
-              <textarea
-                className="mt-4 min-h-32 w-full rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                value={currentAnswer}
-                onChange={(event) => setCurrentAnswer(event.target.value)}
-                placeholder="Give the future implementer the decision, the boundary, and any useful caveats..."
-              />
-              <Button className="mt-4 min-h-10" disabled={isPlanningBusy || !currentAnswer.trim()} type="submit">
-                Save Answer And Continue
-              </Button>
-            </form>
-          ) : (
-            <section className="rounded-md border bg-card p-5">
-              <h2 className="font-ui m-0 text-2xl font-semibold">Ready To Create The Plan</h2>
-              <p className="text-sm text-muted-foreground">
-                Hyperwiki has enough answers to write source-grounded stages and detailed units with verification steps.
-              </p>
-              <Button className="min-h-10" disabled={isPlanningBusy} onClick={createImportPlan}>
-                Create Detailed Implementation Plan
-              </Button>
-            </section>
-          )}
-          {planningAnswers.length ? (
-            <section className="rounded-md border bg-card p-5">
-              <h2 className="font-ui m-0 mb-3 text-xl font-semibold">Captured Answers</h2>
-              <dl className="grid gap-3">
-                {planningAnswers.map((answer) => (
-                  <div className="rounded-md border bg-background p-3" key={answer.id}>
-                    <dt className="text-xs font-bold uppercase text-muted-foreground">{answer.id}</dt>
-                    <dd className="m-0 mt-1 text-sm">{answer.answer}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ) : null}
           {status ? <p className="m-0 text-sm text-muted-foreground" role="status">{status}</p> : null}
           <ImportLog lines={importLog} />
         </div>
@@ -1548,7 +1506,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
             <div>
               <h2 className="font-ui m-0 text-3xl font-normal leading-tight">Project Brief</h2>
               <p className="font-ui m-0 mt-2 max-w-[42rem] text-base text-muted-foreground">
-                Start with a brief or source file. HyperWiki will extract the product evidence before asking planning questions.
+                Start with a brief or source file. HyperWiki will save it into the wiki, open an agent, and ask it to create the MVP plan.
               </p>
             </div>
           </header>
@@ -1575,7 +1533,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
             <span>Initialize Git and create an initial commit</span>
           </label>
           <Button className="min-h-11 w-full" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Initializing Project..." : "Review Source And Plan MVP"}
+            {isSubmitting ? "Starting Agent Planning..." : "Import And Start Agent Planning"}
           </Button>
           {status ? <p className="m-0 mt-4 text-sm text-muted-foreground" role="status">{status}</p> : null}
           <ImportLog lines={importLog} />
@@ -2740,6 +2698,37 @@ function titleForPath(path: string, pages: WikiPage[]) {
 
 function agentLaunchCommand(layout: LayoutResponse | null) {
   return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "";
+}
+
+function importedProjectPlanningPrompt(project: ProjectRecord) {
+  return [
+    "Use $project-html-wiki.",
+    "",
+    "You are working inside this newly imported Hyperwiki project.",
+    "",
+    "Goal:",
+    "Create a detailed MVP implementation plan for this imported project. The plan must be broken into thoughtful stages and units of work, and every unit must include concrete verification steps.",
+    "",
+    "Source context:",
+    "- Read wiki/index.html first.",
+    "- Read wiki/sources.html.",
+    "- Read wiki/sources/import.html as the canonical imported source.",
+    "- Read wiki/sources/prd.html, wiki/sources/technical-brief.html, and wiki/sources/design-brief.html if present.",
+    "",
+    "Planning requirements:",
+    "- Treat this as a greenfield/pre-launch MVP unless the source clearly says otherwise.",
+    "- Create or update wiki/plans/mvp/ with a decision-complete implementation plan.",
+    "- Use a small number of meaningful stages, with multiple related units per stage.",
+    "- Each unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
+    "- Do not create many single-unit stages.",
+    "- Name unknowns instead of inventing certainty.",
+    "- If source context is insufficient for a decision-complete MVP plan, ask the user focused questions in the agent terminal before writing the final plan.",
+    "- Update wiki/plans/index.html so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Keep all durable project knowledge under wiki/.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+  ].join("\n");
 }
 
 function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, visiblePath: string) {

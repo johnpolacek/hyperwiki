@@ -105,6 +105,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 document_type: None,
                 planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
+                agent_launch_command: None,
             });
         eprintln!(
             "[hyperwiki] import create start title={:?} document_bytes={} document_type={:?}",
