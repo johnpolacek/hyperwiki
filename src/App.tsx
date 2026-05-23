@@ -1536,41 +1536,33 @@ function NewProjectView({
 
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <header className="flex min-h-40 items-center px-10">
-        <div>
-          <h1 className="font-ui m-0 text-4xl font-bold leading-none">New Project</h1>
-          <p className="font-ui m-0 mt-3 text-sm text-muted-foreground">Initialize a fresh hyperwiki project from a brief and hand it to the agent.</p>
-        </div>
-      </header>
-      <div className="flex justify-center px-8 py-7">
-        <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" data-testid="new-project-form" onSubmit={handleSubmit}>
-          <header className="mb-5">
-            <div>
-              <h2 className="font-ui m-0 text-3xl font-normal leading-tight">Project Brief</h2>
-              <p className="font-ui m-0 mt-2 max-w-[42rem] text-base text-muted-foreground">
-                Start with a brief or source file. HyperWiki will save it into the wiki, open an agent, and ask it to create the MVP plan.
-              </p>
-            </div>
-          </header>
-          <label className="mb-4 flex min-h-20 w-full cursor-pointer flex-col items-center justify-center rounded-md border bg-background text-center text-muted-foreground hover:bg-secondary">
-            <span className="text-base font-bold uppercase">Import Project File</span>
-            <small className="text-xs font-bold">Markdown or HTML</small>
+      <div className="mx-auto grid w-full max-w-[48rem] gap-8 px-8 py-16">
+        <header>
+          <h1 className="font-ui m-0 text-4xl font-bold leading-none tracking-normal">New Project</h1>
+          <p className="font-ui m-0 mt-3 max-w-[34rem] text-base leading-7 text-muted-foreground">
+            Import a brief or source file. HyperWiki will save it, open an agent, and start the MVP plan.
+          </p>
+        </header>
+        <form className="grid gap-5" data-testid="new-project-form" onSubmit={handleSubmit}>
+          <label className="group flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-background text-center text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+            <span className="text-sm font-bold uppercase">Import project file</span>
+            <small className="mt-1 text-xs font-bold">Markdown or HTML</small>
             <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
           </label>
-          <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
             <span className="h-px bg-border" />
             <span>OR</span>
             <span className="h-px bg-border" />
           </div>
-          <label className="mb-4 grid gap-2">
+          <label className="grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
             <input className="min-h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" required value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
-          <label className="mb-4 grid gap-2">
+          <label className="grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Brief</span>
             <textarea className="min-h-[14rem] rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
-          <label className="mb-4 flex items-center gap-3 text-sm font-bold text-muted-foreground">
+          <label className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
             <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
             <span>Initialize Git and create an initial commit</span>
           </label>
