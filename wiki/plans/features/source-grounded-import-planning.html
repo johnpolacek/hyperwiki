@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Source-Grounded Import Planning - hyperwiki</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+  <style>
+    .import-plan { display: grid; gap: 1rem; }
+    .import-hero { border: 1px solid #cbd5d1; border-left: 6px solid #0f766e; padding: 1rem; background: #f8fbf9; }
+    .import-hero h1 { margin: 0.25rem 0; }
+    .status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+    .status-grid div, .flow, .checks { border: 1px solid #d7dedb; padding: 0.85rem; background: #ffffff; }
+    .status-grid dt { color: #52625d; font-size: 0.78rem; text-transform: uppercase; }
+    .status-grid dd { margin: 0.2rem 0 0; font-weight: 700; }
+    .flow ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin: 0; padding: 0; list-style: none; }
+    .flow li { border-top: 4px solid #0f766e; background: #eef7f4; padding: 0.75rem; }
+    @media (max-width: 760px) { .status-grid, .flow ol { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="wiki-header">
+    <a href="/wiki/index.html">hyperwiki</a>
+    <nav>
+      <a href="/wiki/architecture.html">Architecture</a>
+      <a href="/wiki/dev.html">Dev</a>
+      <a href="/wiki/plans/index.html">Plans</a>
+      <a href="/wiki/log.html">Log</a>
+      <a href="/wiki/sources.html">Sources</a>
+    </nav>
+  </header>
+  <main class="wiki-page import-plan">
+    <section class="import-hero">
+      <p><strong>Status:</strong> complete</p>
+      <h1>Source-Grounded Import Planning</h1>
+      <p>Imported projects now preserve source facts and enter a planning-intake state instead of receiving generic placeholder MVP stages and thin unit pages.</p>
+    </section>
+    <section class="status-grid" aria-label="Plan summary">
+      <div><dt>Shape</dt><dd>corrective feature plan</dd></div>
+      <div><dt>Current unit</dt><dd>complete</dd></div>
+      <div><dt>Validation</dt><dd><code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code></dd></div>
+    </section>
+    <section class="flow">
+      <h2>Implemented Flow</h2>
+      <ol>
+        <li>Import request accepts captured planning answers.</li>
+        <li>HTML or Markdown source is parsed into product facts.</li>
+        <li>Generated source briefs preserve evidence and unknowns.</li>
+        <li>Plan dashboard waits for detailed agent Q&amp;A before stages or units exist.</li>
+      </ol>
+    </section>
+    <section class="checks">
+      <h2>Completion Gate</h2>
+      <p>Complete when future imported projects avoid fake MVP unit trees, preserve RouteChat-like source content in briefs, and instruct the launched agent to ask detailed Q&amp;A before writing implementation stages and units.</p>
+    </section>
+  </main>
+</body>
+</html>

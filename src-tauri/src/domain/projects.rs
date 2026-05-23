@@ -77,7 +77,22 @@ pub struct ProjectCreateRequest {
     #[serde(default)]
     pub document_type: Option<String>,
     #[serde(default)]
+    pub planning_answers: BTreeMap<String, PlanningAnswer>,
+    #[serde(default)]
     pub initialize_git: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanningAnswer {
+    #[serde(default)]
+    pub value: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub detail: String,
+    #[serde(default)]
+    pub tradeoff: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -331,15 +346,20 @@ pub fn create_project_from_dashboard(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("Imported from Dashboard markdown.");
+    let source_document = request.document.unwrap_or_default();
+    let source_document_type = request.document_type.unwrap_or_default();
+    let source_facts = SourceFacts::from_document(&source_document, &source_document_type, summary);
     let project_root = unique_project_root(title).map_err(|error| (500, error))?;
     fs::create_dir_all(&project_root).map_err(|error| (500, error.to_string()))?;
     init_hyperwiki_project(
         &project_root,
         InitProjectOptions {
             project_name: title.to_string(),
-            summary: summary.to_string(),
-            source_document: request.document.unwrap_or_default(),
-            source_document_type: request.document_type.unwrap_or_default(),
+            summary: source_facts.summary.clone(),
+            source_document,
+            source_document_type,
+            source_facts,
+            planning_answers: request.planning_answers,
             agent_launch_command: String::new(),
             dev_command: String::new(),
             package_scripts: Vec::new(),
@@ -380,10 +400,23 @@ pub struct InitProjectOptions {
     pub summary: String,
     pub source_document: String,
     pub source_document_type: String,
+    pub source_facts: SourceFacts,
+    pub planning_answers: BTreeMap<String, PlanningAnswer>,
     pub agent_launch_command: String,
     pub dev_command: String,
     pub package_scripts: Vec<String>,
     pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SourceFacts {
+    pub summary: String,
+    pub problem: String,
+    pub idea: String,
+    pub shape: String,
+    pub mvp: Vec<String>,
+    pub promotion: Vec<String>,
+    pub features: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -719,6 +752,9 @@ fn unique_project_root(title: &str) -> Result<PathBuf, String> {
 }
 
 fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
+    if !options.source_document.trim().is_empty() {
+        return write_import_wiki(root, options);
+    }
     let pages = [
         ("wiki/index.html", index_page(options)),
         ("wiki/AGENTS.html", wiki_agent_page(options)),
@@ -902,6 +938,51 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
     Ok(())
 }
 
+fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
+    let pages = [
+        ("wiki/index.html", index_page(options)),
+        ("wiki/AGENTS.html", wiki_agent_page(options)),
+        ("wiki/log.html", log_page(options)),
+        ("wiki/sources.html", sources_page(options)),
+        (
+            "wiki/scaffold-contract.html",
+            scaffold_contract_page(options),
+        ),
+        ("wiki/roadmap.html", import_roadmap_page(options)),
+        (
+            "wiki/architecture.html",
+            simple_page(
+                options,
+                "Architecture",
+                "Architecture is intentionally unset until source-grounded Q&A confirms stack, data, integration, privacy, and runtime decisions.",
+            ),
+        ),
+        ("wiki/dev.html", dev_page(options)),
+        ("wiki/plans/index.html", plans_index_page(options)),
+        (
+            "wiki/sources/prd.html",
+            product_brief_page(options),
+        ),
+        (
+            "wiki/sources/technical-brief.html",
+            technical_brief_page(options),
+        ),
+        (
+            "wiki/sources/design-brief.html",
+            design_brief_page(options),
+        ),
+        (
+            "wiki/sources/planning-interview.html",
+            planning_interview_page(options),
+        ),
+        ("wiki/sources/import.html", import_page(options)),
+    ];
+    for (relative, content) in pages {
+        write_if_safe(&root.join(relative), &content, options.overwrite)?;
+    }
+    Ok(())
+}
+
 fn write_if_safe(path: &Path, content: &str, overwrite: bool) -> Result<(), String> {
     if path.exists() && !overwrite {
         return Ok(());
@@ -987,18 +1068,38 @@ fn layout(options: &InitProjectOptions, title: &str, body: &str) -> String {
 }
 
 fn index_page(options: &InitProjectOptions) -> String {
+    let plan_link = if options.source_document.trim().is_empty() {
+        "<li><a href=\"/wiki/plans/mvp/index.html\">MVP plan</a></li>"
+    } else {
+        "<li><a href=\"/wiki/plans/index.html\">Planning intake</a></li>"
+    };
     layout(
         options,
         "Home",
         &format!(
-            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul><li><a href=\"/wiki/plans/mvp/index.html\">MVP plan</a></li><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li></ul></section>",
+            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul>{}<li><a href=\"/wiki/sources/prd.html\">Product brief</a></li></ul></section>",
             escape_html(&options.project_name),
-            escape_html(&options.summary)
+            escape_html(&options.summary),
+            plan_link
         ),
     )
 }
 
 fn plans_index_page(options: &InitProjectOptions) -> String {
+    if !options.source_document.trim().is_empty() {
+        return layout(
+            options,
+            "Plans",
+            "<h1>Planning Dashboard</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul>\
+<li>Status: planning</li>\
+<li>Current stage: none; source-grounded Q&amp;A has not produced a real implementation stage yet.</li>\
+<li>Current unit: none; do not execute product code until the agent creates a detailed unit with verification.</li>\
+<li>Next action: run the agent-led planning interview from <code>wiki/sources/planning-interview.html</code>, then create a decision-complete plan.</li>\
+</ul></section>\
+<section><h2>Planning Rule</h2><p>This imported project intentionally has no generated MVP stage tree yet. Stages and units must be created only after the source has been reviewed and the user has answered detailed Q&amp;A for maximum clarity.</p></section>",
+        );
+    }
     layout(
         options,
         "Plans",
@@ -1044,6 +1145,98 @@ fn source_page(options: &InitProjectOptions, title: &str) -> String {
     )
 }
 
+fn product_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Product Brief",
+        &format!(
+            "<h1>Product Brief</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>{}</li></ul></section>\
+<section><h2>Problem</h2><p>{}</p></section>\
+<section><h2>Idea</h2><p>{}</p></section>\
+<section><h2>MVP</h2>{}</section>\
+<section><h2>Promotion Criteria</h2>{}</section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: medium until Q&amp;A confirms scope.</li></ul></section>",
+            escape_html(&facts.summary),
+            escape_html(or_unknown(&facts.problem)),
+            escape_html(or_unknown(&facts.idea)),
+            html_list_or_unknown(&facts.mvp),
+            html_list_or_unknown(&facts.promotion)
+        ),
+    )
+}
+
+fn technical_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Technical Brief",
+        &format!(
+            "<h1>Technical Brief</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>Technical decisions are not final until the planning interview confirms implementation constraints.</li></ul></section>\
+<section><h2>Known Implementation Signals</h2>{}</section>\
+<section><h2>Technical Unknowns For Q&amp;A</h2><ul>\
+<li>Target platform, app shell, storage model, and deployment path.</li>\
+<li>External APIs, model providers, location or device capabilities, and privacy boundaries.</li>\
+<li>Automated test strategy, manual acceptance flow, and preview/runtime commands.</li>\
+</ul></section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: low until Q&amp;A confirms stack and runtime decisions.</li></ul></section>",
+            html_list_or_unknown(&facts.features)
+        ),
+    )
+}
+
+fn design_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Design Brief",
+        &format!(
+            "<h1>Design Brief</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>{}</li></ul></section>\
+<section><h2>Interaction Signals</h2>{}</section>\
+<section><h2>Design Unknowns For Q&amp;A</h2><ul>\
+<li>Primary user flow, first-run experience, and core screen sequence.</li>\
+<li>Accessibility and safety requirements for the intended context of use.</li>\
+<li>Manual validation steps for key UX and responsive states.</li>\
+</ul></section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: medium for intent, low for concrete UI until Q&amp;A.</li></ul></section>",
+            escape_html(&facts.summary),
+            html_list_or_unknown(&facts.mvp)
+        ),
+    )
+}
+
+fn planning_interview_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Planning Interview",
+        &format!(
+            "<h1>Planning Interview</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>Status: Q&amp;A required before implementation planning.</li><li>Source summary: {}</li></ul></section>\
+<section><h2>Imported Planning Answers</h2>{}</section>\
+<section><h2>Required Q&amp;A Areas</h2><ul>\
+<li>Confirm target user, first use case, and non-goals.</li>\
+<li>Choose the first implementation slice and defer unsupported capabilities.</li>\
+<li>Decide architecture, data, provider, privacy, safety, and local preview constraints.</li>\
+<li>Define success criteria, verification commands, and manual acceptance checks.</li>\
+<li>Only then create detailed stages and units with Verification and Completion Gate sections.</li>\
+</ul></section>",
+            escape_html(&options.source_facts.summary),
+            planning_answers_html(&options.planning_answers)
+        ),
+    )
+}
+
+fn import_roadmap_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Roadmap",
+        "<h1>Roadmap</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: planning intake</li><li>Next action: complete detailed Q&amp;A before creating implementation stages or units.</li></ul></section><p>The imported source defines product intent, but implementation sequencing is intentionally deferred until the planning interview resolves key decisions.</p>",
+    )
+}
+
 fn import_page(options: &InitProjectOptions) -> String {
     let body = if options.source_document.is_empty() {
         "<h1>Source Import</h1><p>No source document was imported.</p>".to_string()
@@ -1055,6 +1248,382 @@ fn import_page(options: &InitProjectOptions) -> String {
         )
     };
     layout(options, "Source Import", &body)
+}
+
+impl SourceFacts {
+    fn from_document(document: &str, document_type: &str, fallback_summary: &str) -> Self {
+        let sections = if document_type.eq_ignore_ascii_case("html") {
+            html_sections(document)
+        } else {
+            markdown_sections(document)
+        };
+        let problem = section_text(&sections, &["problem"]);
+        let idea = section_text(&sections, &["idea", "overview"]);
+        let shape = section_text(&sections, &["shape", "product shape"]);
+        let mvp = section_items(&sections, &["mvp", "minimum viable product"]);
+        let promotion = section_items(
+            &sections,
+            &[
+                "promotion",
+                "promotion criteria",
+                "validation",
+                "success criteria",
+            ],
+        );
+        let features = section_items(&sections, &["idea", "shape", "core features", "features"]);
+        let meta_description = html_meta_description(document);
+        let lead = lead_text(document, document_type);
+        let summary = first_non_empty([
+            meta_description.as_str(),
+            lead.as_str(),
+            problem.as_str(),
+            fallback_summary,
+            "Imported project source.",
+        ]);
+        Self {
+            summary: truncate_summary(&summary),
+            problem,
+            idea,
+            shape,
+            mvp,
+            promotion,
+            features,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct SourceSection {
+    heading: String,
+    text: String,
+    items: Vec<String>,
+}
+
+fn html_sections(html: &str) -> Vec<SourceSection> {
+    let mut sections = Vec::new();
+    let mut rest = html;
+    while let Some(start) = find_ci(rest, "<section") {
+        rest = &rest[start..];
+        let Some(open_end) = rest.find('>') else {
+            break;
+        };
+        rest = &rest[open_end + 1..];
+        let Some(end) = find_ci(rest, "</section>") else {
+            break;
+        };
+        let raw = &rest[..end];
+        let heading = first_heading(raw);
+        if !heading.is_empty() {
+            sections.push(SourceSection {
+                heading: normalize_heading(&heading),
+                text: html_to_text(raw),
+                items: html_list_items(raw),
+            });
+        }
+        rest = &rest[end + "</section>".len()..];
+    }
+    if sections.is_empty() {
+        let text = html_to_text(html);
+        if !text.is_empty() {
+            sections.push(SourceSection {
+                heading: "source".to_string(),
+                text,
+                items: Vec::new(),
+            });
+        }
+    }
+    sections
+}
+
+fn markdown_sections(markdown: &str) -> Vec<SourceSection> {
+    let mut sections = Vec::new();
+    let mut current: Option<SourceSection> = None;
+    for line in markdown.lines() {
+        if let Some(title) = line.trim_start().strip_prefix('#') {
+            if line.trim_start().starts_with('#') {
+                if let Some(section) = current.take() {
+                    sections.push(section);
+                }
+                current = Some(SourceSection {
+                    heading: normalize_heading(title.trim_start_matches('#').trim()),
+                    text: String::new(),
+                    items: Vec::new(),
+                });
+                continue;
+            }
+        }
+        if let Some(section) = current.as_mut() {
+            let trimmed = line.trim();
+            if let Some(item) = trimmed
+                .strip_prefix("- ")
+                .or_else(|| trimmed.strip_prefix("* "))
+            {
+                section.items.push(item.trim().to_string());
+            }
+            if !trimmed.is_empty() {
+                if !section.text.is_empty() {
+                    section.text.push(' ');
+                }
+                section
+                    .text
+                    .push_str(trimmed.trim_start_matches("- ").trim_start_matches("* "));
+            }
+        }
+    }
+    if let Some(section) = current {
+        sections.push(section);
+    }
+    sections
+}
+
+fn first_heading(html: &str) -> String {
+    for tag in ["h1", "h2", "h3", "h4", "h5", "h6"] {
+        let open = format!("<{tag}");
+        let close = format!("</{tag}>");
+        if let Some(start) = find_ci(html, &open) {
+            let after = &html[start..];
+            let Some(open_end) = after.find('>') else {
+                continue;
+            };
+            let content = &after[open_end + 1..];
+            let Some(end) = find_ci(content, &close) else {
+                continue;
+            };
+            return html_to_text(&content[..end]);
+        }
+    }
+    String::new()
+}
+
+fn html_list_items(html: &str) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut rest = html;
+    while let Some(start) = find_ci(rest, "<li") {
+        rest = &rest[start..];
+        let Some(open_end) = rest.find('>') else {
+            break;
+        };
+        rest = &rest[open_end + 1..];
+        let Some(end) = find_ci(rest, "</li>") else {
+            break;
+        };
+        let item = html_to_text(&rest[..end]);
+        if !item.is_empty() {
+            items.push(item);
+        }
+        rest = &rest[end + "</li>".len()..];
+    }
+    items
+}
+
+fn html_to_text(html: &str) -> String {
+    let mut text = String::new();
+    let mut in_tag = false;
+    for ch in html.chars() {
+        match ch {
+            '<' => {
+                in_tag = true;
+                text.push(' ');
+            }
+            '>' => {
+                in_tag = false;
+                text.push(' ');
+            }
+            _ if !in_tag => text.push(ch),
+            _ => {}
+        }
+    }
+    decode_entities(&collapse_whitespace(&text))
+}
+
+fn html_meta_description(html: &str) -> String {
+    let Some(meta_start) = find_ci(html, "name=\"description\"") else {
+        return String::new();
+    };
+    let before = &html[..meta_start];
+    let tag_start = before.rfind('<').unwrap_or(meta_start);
+    let after = &html[meta_start..];
+    let tag_end = after
+        .find('>')
+        .map(|index| meta_start + index)
+        .unwrap_or(html.len());
+    let tag = &html[tag_start..tag_end];
+    for marker in ["content=\"", "content='"] {
+        if let Some(start) = find_ci(tag, marker) {
+            let quote = marker.chars().last().unwrap_or('"');
+            let value = &tag[start + marker.len()..];
+            if let Some(end) = value.find(quote) {
+                return decode_entities(&value[..end]);
+            }
+        }
+    }
+    String::new()
+}
+
+fn lead_text(document: &str, document_type: &str) -> String {
+    if document_type.eq_ignore_ascii_case("html") {
+        if let Some(start) = find_ci(document, "<p") {
+            let after = &document[start..];
+            if let Some(open_end) = after.find('>') {
+                let content = &after[open_end + 1..];
+                if let Some(end) = find_ci(content, "</p>") {
+                    return html_to_text(&content[..end]);
+                }
+            }
+        }
+        return html_to_text(document);
+    }
+    collapse_whitespace(
+        document
+            .lines()
+            .find(|line| !line.trim().is_empty())
+            .unwrap_or(""),
+    )
+}
+
+fn section_text(sections: &[SourceSection], headings: &[&str]) -> String {
+    let normalized = headings
+        .iter()
+        .map(|heading| normalize_heading(heading))
+        .collect::<Vec<_>>();
+    sections
+        .iter()
+        .find(|section| normalized.iter().any(|heading| heading == &section.heading))
+        .map(|section| remove_heading_prefix(&section.text, &section.heading))
+        .unwrap_or_default()
+}
+
+fn section_items(sections: &[SourceSection], headings: &[&str]) -> Vec<String> {
+    let normalized = headings
+        .iter()
+        .map(|heading| normalize_heading(heading))
+        .collect::<Vec<_>>();
+    sections
+        .iter()
+        .filter(|section| normalized.iter().any(|heading| heading == &section.heading))
+        .flat_map(|section| {
+            if section.items.is_empty() {
+                vec![remove_heading_prefix(&section.text, &section.heading)]
+            } else {
+                section.items.clone()
+            }
+        })
+        .filter(|item| !item.trim().is_empty())
+        .collect()
+}
+
+fn remove_heading_prefix(text: &str, heading: &str) -> String {
+    let text = collapse_whitespace(text);
+    let plain_heading = heading.replace(' ', "");
+    if normalize_heading(&text).starts_with(heading) && text.len() > heading.len() {
+        text[heading.len()..].trim().to_string()
+    } else if normalize_heading(&text)
+        .replace(' ', "")
+        .starts_with(&plain_heading)
+    {
+        text
+    } else {
+        text
+    }
+}
+
+fn normalize_heading(value: &str) -> String {
+    collapse_whitespace(
+        &value
+            .chars()
+            .map(|ch| {
+                if ch.is_ascii_alphanumeric() {
+                    ch.to_ascii_lowercase()
+                } else {
+                    ' '
+                }
+            })
+            .collect::<String>(),
+    )
+}
+
+fn find_ci(haystack: &str, needle: &str) -> Option<usize> {
+    haystack.to_lowercase().find(&needle.to_lowercase())
+}
+
+fn collapse_whitespace(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn decode_entities(value: &str) -> String {
+    value
+        .replace("&quot;", "\"")
+        .replace("&#34;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+}
+
+fn first_non_empty<const N: usize>(values: [&str; N]) -> String {
+    values
+        .iter()
+        .map(|value| value.trim())
+        .find(|value| !value.is_empty() && !value.starts_with("<!doctype"))
+        .unwrap_or("Imported project source.")
+        .to_string()
+}
+
+fn truncate_summary(value: &str) -> String {
+    let clean = collapse_whitespace(value);
+    if clean.len() > 220 {
+        format!("{}...", clean[..217].trim())
+    } else {
+        clean
+    }
+}
+
+fn or_unknown(value: &str) -> &str {
+    if value.trim().is_empty() {
+        "Unknown; resolve during the planning interview."
+    } else {
+        value
+    }
+}
+
+fn html_list_or_unknown(items: &[String]) -> String {
+    if items.is_empty() {
+        return "<p>Unknown; resolve during the planning interview.</p>".to_string();
+    }
+    format!(
+        "<ul>{}</ul>",
+        items
+            .iter()
+            .map(|item| format!("<li>{}</li>", escape_html(item)))
+            .collect::<Vec<_>>()
+            .join("")
+    )
+}
+
+fn planning_answers_html(answers: &BTreeMap<String, PlanningAnswer>) -> String {
+    if answers.is_empty() {
+        return "<p>No planning interview choices were captured during import.</p>".to_string();
+    }
+    format!(
+        "<dl>{}</dl>",
+        answers
+            .iter()
+            .map(|(key, answer)| {
+                let value = if answer.value.trim().is_empty() {
+                    &answer.label
+                } else {
+                    &answer.value
+                };
+                format!(
+                    "<dt>{}</dt><dd>{}</dd>",
+                    escape_html(key),
+                    escape_html(value)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("")
+    )
 }
 
 fn simple_page(options: &InitProjectOptions, title: &str, text: &str) -> String {
@@ -1355,6 +1924,7 @@ mod tests {
                 summary: Some("A Markdown pattern library.".to_string()),
                 document: Some("# Source\n".to_string()),
                 document_type: Some("markdown".to_string()),
+                planning_answers: BTreeMap::new(),
                 initialize_git: Some(true),
             },
         )
@@ -1374,23 +1944,24 @@ mod tests {
             .join("wiki")
             .join("index.html")
             .is_file());
-        assert!(created
+        assert!(!created
             .project
             .root
             .join("wiki")
             .join("plans")
             .join("mvp")
-            .join("stage-01-foundation.html")
-            .is_file());
-        assert!(created
-            .project
-            .root
-            .join("wiki")
-            .join("plans")
-            .join("mvp")
-            .join("stage-03-dogfood-hardening")
-            .join("unit-04-record-handoff-notes.html")
-            .is_file());
+            .exists());
+        let plans = fs::read_to_string(
+            created
+                .project
+                .root
+                .join("wiki")
+                .join("plans")
+                .join("index.html"),
+        )
+        .unwrap();
+        assert!(plans.contains("Status: planning"));
+        assert!(plans.contains("no generated MVP stage tree"));
         let agents = fs::read_to_string(created.project.root.join("AGENTS.md")).unwrap();
         let sources =
             fs::read_to_string(created.project.root.join("wiki").join("sources.html")).unwrap();
@@ -1411,6 +1982,77 @@ mod tests {
             .checkouts
             .iter()
             .any(|project| project.id == created.project.id));
+    }
+
+    #[test]
+    fn imported_html_project_keeps_source_context_and_defers_plan_units() {
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let projects_dir = temp_root("routechat-import-projects-dir");
+        let home = temp_root("routechat-import-home");
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let registry = ProjectRegistry::new(&home);
+        let mut planning_answers = BTreeMap::new();
+        planning_answers.insert(
+            "promise".to_string(),
+            PlanningAnswer {
+                value: "Generate live location narration first".to_string(),
+                label: "Live narration".to_string(),
+                detail: "Focus the first plan on the core route-aware audio loop.".to_string(),
+                tradeoff: "Safety and privacy need early decisions.".to_string(),
+            },
+        );
+
+        let created = create_project_from_dashboard(
+            &registry,
+            ProjectCreateRequest {
+                title: "RouteChat".to_string(),
+                summary: Some("<!doctype html> <html lang=\"en\"> <head>".to_string()),
+                document: Some(
+                    r#"<!doctype html>
+<html lang="en">
+<head><meta name="description" content="RouteChat is an app that gives you a spontaneous guided audio tour wherever you are."></head>
+<body>
+<section id="problem"><h2>Problem</h2><p>Most tours require planning, fixed routes, tickets, or a specific destination.</p></section>
+<section id="idea"><h2>Idea</h2><p>RouteChat is a location-aware voice companion for travelers and curious locals.</p><ul><li>The key interaction is just start talking to me about where I am.</li><li>Driving mode should be hands-free and non-distracting.</li></ul></section>
+<section id="mvp"><h2>MVP</h2><ul><li>Generates narration from current latitude, longitude, movement direction, speed, selected mode, and recent narration history.</li><li>Lets users choose a tone, ask follow-up questions, pause, replay, and switch modes by voice.</li></ul></section>
+<section id="promotion"><h2>Promotion Criteria</h2><ul><li>A working prototype that can generate interesting narration from live location data.</li><li>A strong hands-free voice interaction design.</li></ul></section>
+</body>
+</html>"#
+                        .to_string(),
+                ),
+                document_type: Some("html".to_string()),
+                planning_answers,
+                initialize_git: Some(false),
+            },
+        )
+        .unwrap();
+
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+
+        let root = created.project.root;
+        let index = fs::read_to_string(root.join("wiki").join("index.html")).unwrap();
+        let prd = fs::read_to_string(root.join("wiki").join("sources").join("prd.html")).unwrap();
+        let planning = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("planning-interview.html"),
+        )
+        .unwrap();
+        let plans = fs::read_to_string(root.join("wiki").join("plans").join("index.html")).unwrap();
+
+        assert!(index.contains("spontaneous guided audio tour"));
+        assert!(!index.contains("&lt;!doctype html&gt;"));
+        assert!(prd.contains("Most tours require planning"));
+        assert!(prd.contains("Generates narration from current latitude"));
+        assert!(prd.contains("hands-free voice interaction"));
+        assert!(planning.contains("Generate live location narration first"));
+        assert!(planning.contains("Q&amp;A required before implementation planning"));
+        assert!(plans.contains("Status: planning"));
+        assert!(plans.contains("no generated MVP stage tree"));
+        assert!(!root.join("wiki").join("plans").join("mvp").exists());
     }
 
     #[test]

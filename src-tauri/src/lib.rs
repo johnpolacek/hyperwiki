@@ -54,9 +54,14 @@ fn run_init_cli(args: &[String]) {
         &root,
         domain::projects::InitProjectOptions {
             project_name: project_name.clone(),
-            summary,
+            summary: summary.clone(),
             source_document: options.string("source_document").unwrap_or_default(),
             source_document_type: options.string("source_document_type").unwrap_or_default(),
+            source_facts: domain::projects::SourceFacts {
+                summary,
+                ..Default::default()
+            },
+            planning_answers: std::collections::BTreeMap::new(),
             agent_launch_command: options.string("agent_launch_command").unwrap_or_default(),
             dev_command: dev_command.unwrap_or_default(),
             package_scripts: package

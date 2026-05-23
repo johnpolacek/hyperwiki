@@ -103,6 +103,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 summary: None,
                 document: None,
                 document_type: None,
+                planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
             });
         return match crate::domain::projects::create_project_from_dashboard(&registry, body) {

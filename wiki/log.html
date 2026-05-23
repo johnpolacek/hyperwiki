@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 fix | source-grounded import planning</h2>
+  <ul>
+    <li>Changed project import so imported source documents are parsed into durable source facts before wiki pages are generated.</li>
+    <li>Captured project planning interview answers in the Rust project creation request instead of dropping the frontend payload.</li>
+    <li>Stopped imported projects from receiving generic placeholder MVP stages and units; new imports now enter a planning-intake state until detailed agent Q&amp;A creates a real implementation plan.</li>
+    <li>Strengthened the post-import agent handoff to require source review, detailed Q&amp;A, real phase gates, unit verification, and completion gates before implementation planning.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 fix | restore projects management surface</h2>
   <ul>
     <li>Restored the React Projects route to the original manage-projects layout: large page header, right-aligned New Project action, two-column project cards, status badges, checkout/app/last-opened details, open action, and remove icon.</li>
