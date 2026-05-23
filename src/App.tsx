@@ -684,7 +684,6 @@ function App() {
             activeProject={activeProject}
             isLoading={isSessionsLoading}
             onCloseSession={closeSession}
-            onRefresh={loadSessions}
             onCreateWorktree={createWorktreeFromTerminal}
             onInitializeGit={initializeGitFromTerminal}
             onRenameSession={renameSession}
@@ -1954,7 +1953,6 @@ function TerminalPane(props: {
   onCreateWorktree: (branch: string) => Promise<void>;
   onInitializeGit: () => Promise<void>;
   onRenameSession: (sessionId: string, name: string) => void;
-  onRefresh: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
@@ -2065,9 +2063,6 @@ function TerminalPane(props: {
           </Button>
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
             + cli
-          </Button>
-          <Button className="size-7 text-[#9da79f] hover:bg-transparent hover:text-[#9fd1ff]" size="icon" variant="ghost" onClick={props.onRefresh} title="Refresh terminals">
-            <RefreshCw aria-hidden="true" className="size-4" />
           </Button>
         </div>
       </div>
