@@ -580,7 +580,7 @@ function App() {
     setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
   }
 
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project";
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings";
 
   return (
     <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
