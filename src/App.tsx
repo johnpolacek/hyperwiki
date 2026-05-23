@@ -1004,7 +1004,7 @@ function WorkspacePane(props: {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <ProjectEmptyState onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />;
+    return <ProjectEmptyState onNewProject={() => props.onNavigate({ kind: "new-project" })} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1031,7 +1031,7 @@ function WorkspacePane(props: {
   );
 }
 
-function ProjectEmptyState({ onNewProject, onProjects }: { onNewProject: () => void; onProjects: () => void }) {
+function ProjectEmptyState({ onNewProject }: { onNewProject: () => void }) {
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
       <div className="flex min-h-12 items-center border-b bg-card px-3">
@@ -1048,7 +1048,6 @@ function ProjectEmptyState({ onNewProject, onProjects }: { onNewProject: () => v
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={onNewProject}>New Project</Button>
-            <Button variant="outline" onClick={onProjects}>Projects</Button>
           </div>
         </div>
       </div>
