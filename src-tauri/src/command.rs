@@ -106,9 +106,25 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
             });
+        eprintln!(
+            "[hyperwiki] import create start title={:?} document_bytes={} document_type={:?}",
+            body.title,
+            body.document.as_deref().map(str::len).unwrap_or(0),
+            body.document_type
+        );
         return match crate::domain::projects::create_project_from_dashboard(&registry, body) {
-            Ok(result) => json_response(200, &result),
-            Err((status, error)) => error_response(status, error),
+            Ok(result) => {
+                eprintln!(
+                    "[hyperwiki] import create ok project_id={} root={}",
+                    result.project.id,
+                    result.project.root.display()
+                );
+                json_response(200, &result)
+            }
+            Err((status, error)) => {
+                eprintln!("[hyperwiki] import create error status={status} error={error}");
+                error_response(status, error)
+            }
         };
     }
     if request.method == "DELETE" && request.path.starts_with("/api/projects/") {
@@ -245,6 +261,10 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
     if request.method == "POST" && request.path.starts_with("/api/import-planning/clarify") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
         else {
+            eprintln!(
+                "[hyperwiki] import planning clarify error status=404 path={}",
+                request.path
+            );
             return error_response(404, "Project not found for import planning.");
         };
         let parsed = request
@@ -258,6 +278,12 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 plan_title: String::new(),
                 answers: Vec::new(),
             });
+        eprintln!(
+            "[hyperwiki] import planning clarify start project_id={} root={} answers={}",
+            project.id,
+            project.root.display(),
+            parsed.answers.len()
+        );
         return json_response(
             200,
             &crate::domain::import_planning::clarify_import_plan(&project.root, parsed),
