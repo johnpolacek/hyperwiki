@@ -660,7 +660,6 @@ function App() {
     setStatus(`Project created: ${result.project.name}`);
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
     setProjects(projectsResult);
-    await loadProjectData(result.project);
     return result.project;
   }
 
@@ -1344,18 +1343,27 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
 
   async function handleFile(file: File | null) {
     if (!file) return;
-    const text = await file.text();
-    const nextType = file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown";
-    const nextTitle = title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-    setDocument(text);
-    setDocumentType(nextType);
-    setTitle(nextTitle);
-    await createProjectAndStartPlanning({
-      title: nextTitle.trim(),
-      document: text.trim(),
-      documentType: nextType,
-      initializeGit,
-    });
+    setIsSubmitting(true);
+    setStatus(`Reading ${file.name}...`);
+    try {
+      const text = await file.text();
+      const nextType = file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown";
+      const nextTitle = title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      setDocument(text);
+      setDocumentType(nextType);
+      setTitle(nextTitle);
+      await createProjectAndStartPlanning({
+        title: nextTitle.trim(),
+        document: text.trim(),
+        documentType: nextType,
+        initializeGit,
+      });
+    } catch (error) {
+      console.error("Hyperwiki import failed while reading the selected file.", error);
+      setStatus(error instanceof Error ? `Could not read import file: ${error.message}` : "Could not read the import file.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1379,9 +1387,11 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
       const project = await onCreateProject(input);
       if (project) {
         setCreatedProject(project);
+        setStatus("Project imported. Loading planning questions...");
         await loadImportPlanning(project, []);
       }
     } catch (error) {
+      console.error("Hyperwiki import failed before planning questions loaded.", error);
       setStatus(error instanceof Error ? error.message : "Could not create the project.");
     } finally {
       setIsSubmitting(false);
@@ -1400,6 +1410,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
       setCurrentAnswer("");
       setStatus(response.ready ? "Planning answers are complete. Create the implementation plan when ready." : "Answer the next planning question.");
     } catch (error) {
+      console.error("Hyperwiki import planning failed.", error);
       setStatus(error instanceof Error ? error.message : "Could not load planning questions.");
     } finally {
       setIsPlanningBusy(false);
