@@ -34,7 +34,9 @@ pub struct TerminalStartRequest {
     pub role: Option<String>,
     pub command: Option<String>,
     pub scope: Option<String>,
+    #[serde(alias = "scope_kind")]
     pub scope_kind: Option<String>,
+    #[serde(alias = "plan_path")]
     pub plan_path: Option<String>,
 }
 
@@ -596,6 +598,22 @@ mod tests {
         assert!(output.len() <= OUTPUT_BUFFER_LIMIT);
         assert!(output.is_char_boundary(0));
         assert!(output.starts_with('a'));
+    }
+
+    #[test]
+    fn terminal_start_request_accepts_camel_and_snake_scope_fields() {
+        let camel: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.html","scopeKind":"plan","planPath":"/wiki/plans/index.html"}"#,
+        )
+        .unwrap();
+        let snake: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.html","scope_kind":"plan","plan_path":"/wiki/plans/index.html"}"#,
+        )
+        .unwrap();
+        assert_eq!(camel.scope_kind.as_deref(), Some("plan"));
+        assert_eq!(camel.plan_path.as_deref(), Some("/wiki/plans/index.html"));
+        assert_eq!(snake.scope_kind.as_deref(), Some("plan"));
+        assert_eq!(snake.plan_path.as_deref(), Some("/wiki/plans/index.html"));
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {

@@ -297,6 +297,7 @@ function App() {
   const sidebarModel = useMemo(() => buildSidebarModel(wikiPages), [wikiPages]);
   const projectGroups = useMemo(() => normalizeProjectGroups(projects, unavailableProjectIds), [projects, unavailableProjectIds]);
   const hasRegisteredProjects = projectGroups.length > 0;
+  const isImportedPlanningIntake = useMemo(() => route.kind === "wiki" && route.path === "/wiki/plans/index.html" && hasImportedSource(wikiPages) && !hasGeneratedPlanPages(wikiPages), [route, wikiPages]);
 
   useEffect(() => {
     function onPopState() {
@@ -362,20 +363,24 @@ function App() {
   }, [terminalScope, activeProject, hasLoadedProjects]);
 
   useEffect(() => {
-    if (!activeProject || route.kind !== "wiki" || route.path !== "/wiki/plans/index.html") return;
-    if (isSessionsLoading || sessions.some((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"))) return;
-    if (!wikiHtml.includes("agent-led source review") && !wikiHtml.includes("source-grounded Q&amp;A")) return;
-    const key = `${activeProject.id}:${route.path}`;
+    if (!activeProject || !isImportedPlanningIntake) return;
+    if (isSessionsLoading) return;
+    const key = `${activeProject.id}:${currentWikiPath}`;
+    const existingAgent = sessions.find(isAgentSession);
+    if (existingAgent?.command) {
+      setActiveSessionId(existingAgent.id);
+      return;
+    }
     if (importPlanningAutoStartKey.current === key) return;
     importPlanningAutoStartKey.current = key;
     setStatus("Starting imported project planning agent");
-    void sendAgentPromptToProject(activeProject, importedProjectPlanningPrompt(activeProject), route.path, terminalScope, layout, sessions)
+    void sendAgentPromptToProject(activeProject, importedProjectPlanningPrompt(activeProject), currentWikiPath, terminalScope, layout, sessions)
       .then(() => setStatus("Imported project planning prompt sent"))
       .catch((error) => {
         importPlanningAutoStartKey.current = "";
         setStatus(error instanceof Error ? error.message : "Could not start imported project planning agent.");
       });
-  }, [activeProject, isSessionsLoading, layout, route, sessions, terminalScope, wikiHtml]);
+  }, [activeProject, currentWikiPath, isImportedPlanningIntake, isSessionsLoading, layout, sessions, terminalScope]);
 
   async function loadBaseData() {
     const requestId = baseDataRequestId.current + 1;
@@ -479,8 +484,8 @@ function App() {
           role,
           command: role === "agent" ? agentLaunchCommand(layout) : null,
           scope: terminalScope.scope,
-          scope_kind: terminalScope.scopeKind,
-          plan_path: terminalScope.planPath,
+          scopeKind: terminalScope.scopeKind,
+          planPath: terminalScope.planPath,
         },
       });
       setActiveSessionId(started.session.id);
@@ -509,7 +514,7 @@ function App() {
     if (!project) {
       throw new Error("Project not found for agent planning.");
     }
-    const existing = knownSessions.find((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"));
+    const existing = knownSessions.find(isAgentSession);
     if (existing?.command) {
       setActiveSessionId(existing.id);
       return existing;
@@ -525,8 +530,8 @@ function App() {
         role: "agent",
         command,
         scope: scope.scope,
-        scope_kind: scope.scopeKind,
-        plan_path: scope.planPath,
+        scopeKind: scope.scopeKind,
+        planPath: scope.planPath,
       },
     });
     setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
@@ -673,8 +678,8 @@ function App() {
           role: session.role,
           command: session.command,
           scope: session.scope || terminalScope.scope,
-          scope_kind: session.scopeKind || terminalScope.scopeKind,
-          plan_path: session.planPath || terminalScope.planPath,
+          scopeKind: session.scopeKind || terminalScope.scopeKind,
+          planPath: session.planPath || terminalScope.planPath,
         },
       });
       setActiveSessionId(restarted.session.id);
@@ -2319,7 +2324,7 @@ function TerminalPane(props: {
             </div>
             <div className="min-h-0 flex-1">
               {activeSession ? (
-                <XtermSession key={activeSession.id} scope={props.scope} session={activeSession} />
+                <XtermSession activeProject={props.activeProject} key={activeSession.id} scope={props.scope} session={activeSession} />
               ) : null}
             </div>
           </>
@@ -2383,9 +2388,11 @@ function TerminalSessionTab(props: {
 }
 
 function XtermSession({
+  activeProject,
   scope,
   session,
 }: {
+  activeProject: ProjectRecord | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   session: SessionRecord;
 }) {
@@ -2452,7 +2459,7 @@ function XtermSession({
 
     async function attach() {
       try {
-        const started = await hyperwikiApi.json<TerminalStartResponse>("/api/terminal/start", {
+        const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
           method: "POST",
           body: {
             id: session.id,
@@ -2460,8 +2467,8 @@ function XtermSession({
             role: session.role,
             command: session.command,
             scope: session.scope || scope.scope,
-            scope_kind: session.scopeKind || scope.scopeKind,
-            plan_path: session.planPath || scope.planPath,
+            scopeKind: session.scopeKind || scope.scopeKind,
+            planPath: session.planPath || scope.planPath,
           },
         });
         const replay = String(started.replay || "");
@@ -2511,7 +2518,7 @@ function XtermSession({
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [scope.planPath, scope.scope, scope.scopeKind, session]);
+  }, [activeProject, scope.planPath, scope.scope, scope.scopeKind, session]);
 
   return <div className="h-full min-h-0 bg-foreground p-2" ref={containerRef} />;
 }
@@ -2694,6 +2701,21 @@ function titleForPath(path: string, pages: WikiPage[]) {
   return pages.find((page) => page.path === path)?.title || path.split("/").pop() || "Wiki";
 }
 
+function isAgentSession(session: SessionRecord) {
+  return session.role === "agent" || session.name?.toLowerCase().startsWith("agent");
+}
+
+function hasImportedSource(pages: WikiPage[]) {
+  return pages.some((page) => displayWikiPath(page.path) === "/wiki/sources/import.html");
+}
+
+function hasGeneratedPlanPages(pages: WikiPage[]) {
+  return pages.some((page) => {
+    const path = displayWikiPath(page.path);
+    return path.startsWith("/wiki/plans/") && path !== "/wiki/plans/index.html";
+  });
+}
+
 function agentLaunchCommand(layout: LayoutResponse | null) {
   return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
@@ -2703,6 +2725,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "Use $project-html-wiki.",
     "",
     "You are working inside this newly imported Hyperwiki project.",
+    "Plan mode only: do not implement product code from this prompt.",
     "",
     "Goal:",
     "Create a detailed MVP implementation plan for this imported project. The plan must be broken into thoughtful stages and units of work, and every unit must include concrete verification steps.",
@@ -2720,7 +2743,8 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "- Each unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
     "- Do not create many single-unit stages.",
     "- Name unknowns instead of inventing certainty.",
-    "- If source context is insufficient for a decision-complete MVP plan, ask the user focused questions in the agent terminal before writing the final plan.",
+    "- Ask the user focused questions for maximum clarity before writing stages if decisions are missing.",
+    "- If the source is already decision-complete, create the detailed MVP plan directly.",
     "- Update wiki/plans/index.html so the current plan, current stage/unit, blockers, and next action are obvious.",
     "- Keep all durable project knowledge under wiki/.",
     "",
