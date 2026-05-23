@@ -215,7 +215,7 @@ interface PlanCreateResponse {
   path?: string;
 }
 
-const defaultWikiPath = "/wiki/index.html";
+const defaultWikiPath = "/wiki/plans/mvp/index.html";
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -343,11 +343,12 @@ function App() {
   async function switchProject(project: ProjectRecord) {
     setActiveProject(project);
     setIsProjectsOpen(false);
-    const nextRoute: ViewRoute = { kind: "wiki", path: defaultWikiPath };
+    const loadedWorkspace = await loadProjectData(project);
+    const landingPath = loadedWorkspace?.status?.currentPath || defaultWikiPath;
+    const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
-    const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${defaultWikiPath}`;
+    const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${landingPath}`;
     window.history.pushState(null, "", nextPath);
-    await loadProjectData(project);
   }
 
   async function loadProjectData(project: ProjectRecord) {
@@ -368,6 +369,7 @@ function App() {
 
     const rejected = [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
+    return workspaceResult.status === "fulfilled" ? workspaceResult.value : null;
   }
 
   async function startTerminal(role: "agent" | "cli") {
@@ -2208,7 +2210,6 @@ function buildSidebarModel(pages: WikiPage[]): SidebarModel {
 function isProjectWikiPage(page: WikiPage) {
   const path = displayWikiPath(page.path);
   return [
-    "/wiki/index.html",
     "/wiki/architecture.html",
     "/wiki/dev.html",
     "/wiki/roadmap.html",
