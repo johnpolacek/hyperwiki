@@ -72,6 +72,10 @@ body {
   font: 14px/1.45 var(--sidebar-font);
 }
 
+button {
+  cursor: pointer;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 300px minmax(360px, 1fr) minmax(380px, 0.95fr);
