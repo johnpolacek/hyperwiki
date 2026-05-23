@@ -236,6 +236,34 @@ interface PlanCreateResponse {
   path?: string;
 }
 
+interface ImportPlanningAnswer {
+  id: string;
+  answer: string;
+}
+
+interface ImportPlanningQuestion {
+  id: string;
+  label: string;
+  prompt: string;
+  impact: string;
+  rationale: string;
+}
+
+interface ImportPlanningResponse {
+  ready: boolean;
+  score: number;
+  sourceSummary: string;
+  recommendedPlanTitle: string;
+  questions?: ImportPlanningQuestion[];
+  unknowns?: string[];
+  summary?: string;
+}
+
+interface ImportPlanningCreateResponse {
+  displayPath?: string;
+  wrote?: string[];
+}
+
 const defaultWikiPath = "/wiki/plans/mvp/index.html";
 
 function App() {
@@ -633,6 +661,7 @@ function App() {
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
     setProjects(projectsResult);
     await switchProject(result.project);
+    return result.project;
   }
 
   async function removeProject(project: ProjectRecord, deleteFiles: boolean) {
@@ -950,7 +979,7 @@ function WorkspacePane(props: {
   activeProject: ProjectRecord | null;
   hasLoadedProjects: boolean;
   isLoading: boolean;
-  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void>;
+  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
@@ -1325,13 +1354,18 @@ function formatProjectDate(value?: string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void> }) {
+function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void> }) {
   const [title, setTitle] = useState("");
   const [document, setDocument] = useState("");
   const [documentType, setDocumentType] = useState("markdown");
   const [initializeGit, setInitializeGit] = useState(true);
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdProject, setCreatedProject] = useState<ProjectRecord | null>(null);
+  const [planning, setPlanning] = useState<ImportPlanningResponse | null>(null);
+  const [planningAnswers, setPlanningAnswers] = useState<ImportPlanningAnswer[]>([]);
+  const [currentAnswer, setCurrentAnswer] = useState("");
+  const [isPlanningBusy, setIsPlanningBusy] = useState(false);
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -1350,17 +1384,136 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
     setIsSubmitting(true);
     setStatus("Initializing project...");
     try {
-      await onCreateProject({
+      const project = await onCreateProject({
         title: title.trim(),
         document: document.trim(),
         documentType,
         initializeGit,
       });
+      if (project) {
+        setCreatedProject(project);
+        await loadImportPlanning(project, []);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not create the project.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function loadImportPlanning(project: ProjectRecord, answers: ImportPlanningAnswer[]) {
+    setIsPlanningBusy(true);
+    setStatus("Loading planning questions...");
+    try {
+      const response = await hyperwikiApi.json<ImportPlanningResponse>(withProjectQuery("/api/import-planning/clarify", project), {
+        method: "POST",
+        body: { planTitle: `${project.name} MVP Implementation Plan`, answers },
+      });
+      setPlanning(response);
+      setCurrentAnswer("");
+      setStatus(response.ready ? "Planning answers are complete. Create the implementation plan when ready." : "Answer the next planning question.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not load planning questions.");
+    } finally {
+      setIsPlanningBusy(false);
+    }
+  }
+
+  async function submitPlanningAnswer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const question = planning?.questions?.[0];
+    if (!createdProject || !question || !currentAnswer.trim()) return;
+    const nextAnswers = [
+      ...planningAnswers.filter((answer) => answer.id !== question.id),
+      { id: question.id, answer: currentAnswer.trim() },
+    ];
+    setPlanningAnswers(nextAnswers);
+    await loadImportPlanning(createdProject, nextAnswers);
+  }
+
+  async function createImportPlan() {
+    if (!createdProject || !planning?.ready) return;
+    setIsPlanningBusy(true);
+    setStatus("Creating detailed implementation plan...");
+    try {
+      const result = await hyperwikiApi.json<ImportPlanningCreateResponse>(withProjectQuery("/api/import-planning/create-plan", createdProject), {
+        method: "POST",
+        body: { planTitle: `${createdProject.name} MVP Implementation Plan`, answers: planningAnswers },
+      });
+      setStatus("Detailed implementation plan created.");
+      window.location.href = `/workspace/${createdProject.projectSlug}/${createdProject.worktreeSlug}#${result.displayPath || "/wiki/plans/mvp/index.html"}`;
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not create the implementation plan.");
+    } finally {
+      setIsPlanningBusy(false);
+    }
+  }
+
+  if (createdProject && planning) {
+    const question = planning.questions?.[0];
+    return (
+      <section className="min-h-0 overflow-auto bg-background">
+        <header className="flex min-h-40 items-center px-10">
+          <div>
+            <h1 className="font-ui m-0 text-4xl font-bold leading-none">Planning Questions</h1>
+            <p className="font-ui m-0 mt-3 max-w-[48rem] text-sm text-muted-foreground">
+              Hyperwiki imported {createdProject.name}. Answer the missing decisions before it writes stages and units.
+            </p>
+          </div>
+        </header>
+        <div className="mx-auto grid w-full max-w-[60rem] gap-5 px-8 py-7">
+          <section className="rounded-md border bg-card p-5">
+            <div className="mb-4 grid gap-2 sm:grid-cols-3">
+              <ProjectDetail label="Project" value={createdProject.name} />
+              <ProjectDetail label="Clarity" value={`${planning.score || 0}%`} />
+              <ProjectDetail label="Status" value={planning.ready ? "Ready" : "Needs answers"} />
+            </div>
+            <p className="m-0 text-sm text-muted-foreground">{planning.sourceSummary}</p>
+          </section>
+          {question ? (
+            <form className="rounded-md border bg-card p-5" onSubmit={submitPlanningAnswer}>
+              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">{question.impact} question</p>
+              <h2 className="font-ui m-0 mt-2 text-2xl font-semibold">{question.label}</h2>
+              <p className="mt-3 text-base">{question.prompt}</p>
+              <p className="text-sm text-muted-foreground">{question.rationale}</p>
+              <textarea
+                className="mt-4 min-h-32 w-full rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                value={currentAnswer}
+                onChange={(event) => setCurrentAnswer(event.target.value)}
+                placeholder="Answer with enough detail for a future implementation unit..."
+              />
+              <Button className="mt-4 min-h-10" disabled={isPlanningBusy || !currentAnswer.trim()} type="submit">
+                Save Answer And Continue
+              </Button>
+            </form>
+          ) : (
+            <section className="rounded-md border bg-card p-5">
+              <h2 className="font-ui m-0 text-2xl font-semibold">Ready To Create The Plan</h2>
+              <p className="text-sm text-muted-foreground">
+                Hyperwiki has enough answers to write source-grounded stages and detailed units with verification steps.
+              </p>
+              <Button className="min-h-10" disabled={isPlanningBusy} onClick={createImportPlan}>
+                Create Detailed Implementation Plan
+              </Button>
+            </section>
+          )}
+          {planningAnswers.length ? (
+            <section className="rounded-md border bg-card p-5">
+              <h2 className="font-ui m-0 mb-3 text-xl font-semibold">Captured Answers</h2>
+              <dl className="grid gap-3">
+                {planningAnswers.map((answer) => (
+                  <div className="rounded-md border bg-background p-3" key={answer.id}>
+                    <dt className="text-xs font-bold uppercase text-muted-foreground">{answer.id}</dt>
+                    <dd className="m-0 mt-1 text-sm">{answer.answer}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
+          {status ? <p className="m-0 text-sm text-muted-foreground" role="status">{status}</p> : null}
+        </div>
+      </section>
+    );
   }
 
   return (
@@ -1414,6 +1567,14 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
 }
 
 function documentSummary(document: string) {
+  if (/^\s*(<!doctype html|<html[\s>])/i.test(document)) {
+    const parsed = new DOMParser().parseFromString(document, "text/html");
+    const summary = parsed.querySelector("meta[name='description']")?.getAttribute("content")
+      || parsed.querySelector(".lede, p")?.textContent
+      || parsed.body?.textContent
+      || "";
+    return summary.trim().replace(/\s+/g, " ").slice(0, 240);
+  }
   return document
     .split(/\r?\n/)
     .map((line) => line.replace(/^#+\s*/, "").trim())

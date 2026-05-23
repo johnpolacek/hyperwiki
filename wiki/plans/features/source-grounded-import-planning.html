@@ -33,7 +33,7 @@
     <section class="import-hero">
       <p><strong>Status:</strong> complete</p>
       <h1>Source-Grounded Import Planning</h1>
-      <p>Imported projects now preserve source facts and enter a planning-intake state instead of receiving generic placeholder MVP stages and thin unit pages.</p>
+      <p>Imported projects now preserve source facts, then Hyperwiki asks source-aware questions inside the app before creating detailed stages and units.</p>
     </section>
     <section class="status-grid" aria-label="Plan summary">
       <div><dt>Shape</dt><dd>corrective feature plan</dd></div>
@@ -43,15 +43,15 @@
     <section class="flow">
       <h2>Implemented Flow</h2>
       <ol>
-        <li>Import request accepts captured planning answers.</li>
+        <li>Import creates and selects the project before planning questions begin.</li>
         <li>HTML or Markdown source is parsed into product facts.</li>
         <li>Generated source briefs preserve evidence and unknowns.</li>
-        <li>Plan dashboard waits for detailed agent Q&amp;A before stages or units exist.</li>
+        <li>Hyperwiki asks source-aware Q&amp;A in the app, then writes stages and units only after the clarity gate passes.</li>
       </ol>
     </section>
     <section class="checks">
       <h2>Completion Gate</h2>
-      <p>Complete when future imported projects avoid fake MVP unit trees, preserve RouteChat-like source content in briefs, and instruct the launched agent to ask detailed Q&amp;A before writing implementation stages and units.</p>
+      <p>Complete when future imported projects avoid fake MVP unit trees, preserve RouteChat-like source content in briefs, ask needed planning questions after import, and generate units with verification and completion gates only after those answers are captured.</p>
     </section>
   </main>
 </body>

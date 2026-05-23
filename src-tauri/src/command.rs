@@ -242,6 +242,48 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err((status, error)) => error_response(status, error),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/clarify") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::import_planning::ImportPlanningRequest>(body)
+                    .ok()
+            })
+            .unwrap_or(crate::domain::import_planning::ImportPlanningRequest {
+                plan_title: String::new(),
+                answers: Vec::new(),
+            });
+        return json_response(
+            200,
+            &crate::domain::import_planning::clarify_import_plan(&project.root, parsed),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/create-plan") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::import_planning::ImportPlanningRequest>(body)
+                    .ok()
+            })
+            .unwrap_or(crate::domain::import_planning::ImportPlanningRequest {
+                plan_title: String::new(),
+                answers: Vec::new(),
+            });
+        return match crate::domain::import_planning::create_import_plan(&project.root, parsed) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/repo") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -1185,6 +1227,59 @@ mod tests {
             .join("features")
             .join("import-csv.html")
             .exists());
+    }
+
+    #[test]
+    fn import_planning_endpoints_gate_and_create_detailed_mvp_units() {
+        let _guard = env_lock();
+        let root = temp_root("command-import-planning");
+        let home = temp_root("command-import-planning-home");
+        make_hyperwiki_project(&root, "RouteChat");
+        fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("prd.html"),
+            "<h1>Product Brief</h1><section class=\"summary\"><h2>Summary</h2><ul><li>RouteChat gives spontaneous guided audio tours.</li></ul></section><section><h2>Problem</h2><p>Most tours require planning.</p></section><section><h2>MVP</h2><ul><li>Generates narration from current location.</li></ul></section><section><h2>Promotion Criteria</h2><ul><li>A safety model for driving and transit use.</li></ul></section>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+        let project = crate::domain::projects::ProjectRegistry::from_environment()
+            .register(&root)
+            .unwrap();
+
+        let clarify = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/clarify?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[]}".to_string()),
+        });
+        assert!(clarify.ok);
+        assert!(clarify.text.contains("\"ready\":false"));
+        assert!(clarify.text.contains("first-mode"));
+
+        let blocked = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/create-plan?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[]}".to_string()),
+        });
+        assert_eq!(blocked.status, 409);
+
+        let create = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/create-plan?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
+        });
+        assert!(create.ok, "{}", create.text);
+        let unit = fs::read_to_string(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-prototype-foundation")
+                .join("unit-03-core-demo-loop.html"),
+        )
+        .unwrap();
+        assert!(unit.contains("Verification"));
+        assert!(unit.contains("Completion Gate"));
+        assert!(unit.contains("Text plus audio playback"));
     }
 
     #[test]

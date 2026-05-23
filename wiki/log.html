@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 fix | post-import planning questions</h2>
+  <ul>
+    <li>Added a Rust import-planning surface with source-aware clarify and create-plan endpoints for imported projects.</li>
+    <li>Changed the React New Project flow so import creates the project first, then Hyperwiki asks the missing implementation-planning questions in-app before writing stages or units.</li>
+    <li>Kept generated imported projects in planning intake until required answers are captured, then creates a source-grounded MVP plan with stage pages, unit pages, verification, and completion gates.</li>
+    <li>Adjusted the legacy static import flow to stop running the old generic pre-import MVP wizard.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 fix | stale project registry recovery</h2>
   <ul>
     <li>Changed the Rust project registry to prune unavailable project records before listing or resolving projects, so removed roots cannot remain selected as active workspaces.</li>

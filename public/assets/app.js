@@ -788,9 +788,7 @@ projectMarkdownInput.addEventListener("input", () => {
 projectMarkdownFile.addEventListener("change", () => {
   void importDocumentFile(projectMarkdownFile, projectMarkdownInput, projectTitleInput)
     .then((imported) => {
-      if (imported) {
-        startPlanningInterview();
-      }
+      if (imported) setNewProjectStatus("Source imported. Create the project to answer planning questions after import.");
       return null;
     })
     .catch((error) => setNewProjectStatus(error.message || "Could not import the document."));
@@ -798,7 +796,7 @@ projectMarkdownFile.addEventListener("change", () => {
 
 projectImportForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  startPlanningInterview();
+  await createProjectFromMarkdown();
 });
 
 planningOptionList?.addEventListener("click", (event) => {
@@ -2887,7 +2885,6 @@ async function createProjectFromMarkdown() {
         summary: documentSummary(markdown, documentType),
         document: markdown,
         documentType,
-        planningAnswers: selectedPlanningAnswers(),
         initializeGit: projectInitGit ? projectInitGit.checked : true
       })
     });
