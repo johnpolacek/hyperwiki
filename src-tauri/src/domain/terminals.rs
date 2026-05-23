@@ -447,9 +447,20 @@ fn append_output(output: &Arc<Mutex<String>>, chunk: &str) {
     let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
     value.push_str(chunk);
     if value.len() > OUTPUT_BUFFER_LIMIT {
-        let drain_to = value.len() - OUTPUT_BUFFER_LIMIT;
-        value.drain(..drain_to);
+        trim_output_buffer(&mut value);
     }
+}
+
+fn trim_output_buffer(value: &mut String) {
+    if value.len() <= OUTPUT_BUFFER_LIMIT {
+        return;
+    }
+    let minimum_start = value.len() - OUTPUT_BUFFER_LIMIT;
+    let drain_to = value
+        .char_indices()
+        .find_map(|(index, _)| (index >= minimum_start).then_some(index))
+        .unwrap_or(value.len());
+    value.drain(..drain_to);
 }
 
 fn shell_path() -> String {
@@ -576,6 +587,15 @@ mod tests {
             .unwrap();
         assert_eq!(resized.cols, Some(90));
         manager.close("preferred-one").unwrap();
+    }
+
+    #[test]
+    fn trims_terminal_output_on_utf8_boundaries() {
+        let mut output = format!("{}🚀", "a".repeat(OUTPUT_BUFFER_LIMIT));
+        trim_output_buffer(&mut output);
+        assert!(output.len() <= OUTPUT_BUFFER_LIMIT);
+        assert!(output.is_char_boundary(0));
+        assert!(output.starts_with('a'));
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {

@@ -1134,7 +1134,14 @@ function CommandBar({
 
   return (
     <div className="relative flex items-center gap-2">
-      <Button size="sm" variant="outline" onClick={() => onSetSidePanelMode("new-plan")}>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          setMode(mode === "new-plan" ? "closed" : "new-plan");
+          onSetSidePanelMode("new-plan");
+        }}
+      >
         + plan
       </Button>
       <Button size="sm" variant="outline" onClick={() => onSetSidePanelMode("modify")}>
