@@ -1107,13 +1107,13 @@ function WorkspacePane(props: {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView onCreateProject={props.onCreateProject} onNavigate={props.onNavigate} onPlanImportedProject={props.onPlanImportedProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView onCreateProject={props.onCreateProject} onNavigate={props.onNavigate} onPlanImportedProject={props.onPlanImportedProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1447,12 +1447,8 @@ function formatProjectDate(value?: string | null) {
 
 function NewProjectView({
   onCreateProject,
-  onNavigate,
-  onPlanImportedProject,
 }: {
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
-  onNavigate: (route: ViewRoute) => void;
-  onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [document, setDocument] = useState("");
@@ -1515,33 +1511,33 @@ function NewProjectView({
       setStatus("Add a project name and source brief before planning the MVP.");
       return;
     }
+    const pendingProject = pendingImportedProject(input.title);
+    let routed = false;
+    const routeToWorkspace = (project = pendingProject) => {
+      if (routed) return;
+      routed = true;
+      window.location.assign(`/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.html`);
+    };
     setIsSubmitting(true);
+    setHandoffProject(pendingProject);
     setStatus("Initializing project...");
     logImport("Creating imported project");
-    try {
-      const project = await onCreateProject(input);
-      if (project) {
+    const fallbackTimer = window.setTimeout(routeToWorkspace, 900);
+    void onCreateProject(input)
+      .then((project) => {
+        if (!project) return;
+        window.clearTimeout(fallbackTimer);
         setHandoffProject(project);
-        onNavigate({ kind: "wiki", path: "/wiki/plans/index.html" });
-        setStatus("Project imported. Starting agent planning...");
+        setStatus("Project imported. Opening planning workspace...");
         logImport(`Created project ${project.name} (${project.id})`);
-        logImport("Loading imported workspace");
-        void onPlanImportedProject(project)
-          .then(() => {
-            logImport("Agent planning prompt sent");
-            setStatus("Agent planning prompt sent. Watch the agent panel for questions or the generated MVP plan.");
-          })
-          .catch((error) => {
-            logImport("Hyperwiki import agent handoff failed.", error);
-            setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
-          });
-      }
-    } catch (error) {
-      logImport("Hyperwiki import agent handoff failed.", error);
-      setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
-    } finally {
-      setIsSubmitting(false);
-    }
+        routeToWorkspace(project);
+      })
+      .catch((error) => {
+        window.clearTimeout(fallbackTimer);
+        setHandoffProject(null);
+        logImport("Hyperwiki import agent handoff failed.", error);
+        setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
+      });
   }
 
   if (handoffProject) {
@@ -2663,6 +2659,18 @@ function allProjectRecords(response: ProjectListResponse) {
   const byId = new Map<string, ProjectRecord>();
   for (const record of records) byId.set(record.id, record);
   return Array.from(byId.values());
+}
+
+function pendingImportedProject(title: string): ProjectRecord {
+  const slug = slugify(title);
+  return {
+    id: `pending-${slug}`,
+    name: title,
+    root: "",
+    projectSlug: slug,
+    worktreeSlug: "main",
+    available: true,
+  };
 }
 
 function workspaceSelectionFromLocation() {
