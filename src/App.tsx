@@ -290,6 +290,7 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
   const baseDataRequestId = useRef(0);
+  const importPlanningAutoStartKey = useRef("");
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -359,6 +360,22 @@ function App() {
     }
     void loadSessions();
   }, [terminalScope, activeProject, hasLoadedProjects]);
+
+  useEffect(() => {
+    if (!activeProject || route.kind !== "wiki" || route.path !== "/wiki/plans/index.html") return;
+    if (isSessionsLoading || sessions.some((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"))) return;
+    if (!wikiHtml.includes("agent-led planning interview") && !wikiHtml.includes("source-grounded Q&amp;A")) return;
+    const key = `${activeProject.id}:${route.path}`;
+    if (importPlanningAutoStartKey.current === key) return;
+    importPlanningAutoStartKey.current = key;
+    setStatus("Starting imported project planning agent");
+    void sendAgentPromptToProject(activeProject, importedProjectPlanningPrompt(activeProject), route.path, terminalScope, layout, sessions)
+      .then(() => setStatus("Imported project planning prompt sent"))
+      .catch((error) => {
+        importPlanningAutoStartKey.current = "";
+        setStatus(error instanceof Error ? error.message : "Could not start imported project planning agent.");
+      });
+  }, [activeProject, isSessionsLoading, layout, route, sessions, terminalScope, wikiHtml]);
 
   async function loadBaseData() {
     const requestId = baseDataRequestId.current + 1;
@@ -512,6 +529,7 @@ function App() {
         plan_path: scope.planPath,
       },
     });
+    setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
     setActiveSessionId(started.session.id);
     await loadSessionsForProject(project, scope);
     return started.session;
@@ -522,7 +540,7 @@ function App() {
   }
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
-    await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
+    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
     await delay(1200);
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -535,7 +553,7 @@ function App() {
             scope: scope.scope,
           },
         });
-        return;
+        return session;
       } catch (error) {
         lastError = error;
         await delay(250);
@@ -553,7 +571,10 @@ function App() {
     setRoute(projectRoute);
     window.history.pushState(null, "", `/workspace/${project.projectSlug}/${project.worktreeSlug}#/wiki/plans/index.html`);
     const nextSessions = await loadSessionsForProject(project, projectScope);
-    await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.html", projectScope, loaded.layout, nextSessions);
+    const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.html", projectScope, loaded.layout, nextSessions);
+    setActiveSessionId(session.id);
+    await delay(250);
+    await loadSessionsForProject(project, projectScope);
     setStatus("Imported project planning prompt sent");
   }
 

@@ -25,6 +25,7 @@
   <ul>
     <li>Fixed terminal output trimming so long agent output is drained on UTF-8 character boundaries instead of panicking on multibyte text.</li>
     <li>Changed the workspace <code>+ plan</code> action to open the existing plan creation form directly while still notifying the side-panel mode.</li>
+    <li>Added an event-driven import-planning recovery so the planning dashboard starts the agent when the imported intake page is visible with no agent session.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>
