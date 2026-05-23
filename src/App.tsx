@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import {
   Activity,
   BookOpen,
-  Bot,
   ChevronDown,
   Circle,
   Command,
@@ -12,7 +11,6 @@ import {
   GitBranch,
   LayoutDashboard,
   Loader2,
-  PanelRight,
   Play,
   Plus,
   RotateCcw,
@@ -20,7 +18,6 @@ import {
   Search,
   Settings,
   Square,
-  TerminalSquare,
   Trash2,
 } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
@@ -633,6 +630,7 @@ function App() {
         {isUtilityRoute ? null : (
           <TerminalPane
             activeSessionId={activeSessionId}
+            activeProject={activeProject}
             isLoading={isSessionsLoading}
             onCloseSession={closeSession}
             onRefresh={loadSessions}
@@ -1894,6 +1892,7 @@ function RightActionPane({
 
 function TerminalPane(props: {
   activeSessionId: string | null;
+  activeProject: ProjectRecord | null;
   isLoading: boolean;
   onCloseSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, name: string) => void;
@@ -1905,35 +1904,43 @@ function TerminalPane(props: {
   sessions: SessionRecord[];
 }) {
   const activeSession = props.sessions.find((session) => session.id === props.activeSessionId) || props.sessions[0] || null;
+  const branchLabel = props.activeProject?.worktreeSlug || props.activeProject?.branch || "main";
   return (
-    <aside className="flex min-h-0 flex-col border-l bg-card/88 shadow-[-1px_0_0_rgba(255,255,255,0.64)_inset] max-xl:hidden">
-      <div className="flex min-h-11 items-center justify-between border-b px-3 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
-        <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
-          <PanelRight aria-hidden="true" className="size-4 text-muted-foreground" />
-          Terminals
-          {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-muted-foreground" /> : null}
+    <aside className="flex min-h-0 flex-col border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
+      <div className="flex min-h-11 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 font-mono text-xs">
+        <div className="relative flex min-w-0 flex-1 items-center gap-2">
+          <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
+          <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]">{branchLabel}</strong>
+          <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button">
+            + worktree
+          </Button>
+          {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-[#9da79f]" /> : null}
         </div>
-        <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" onClick={props.onRefresh} title="Refresh terminals">
-            <RefreshCw aria-hidden="true" />
+        <div className="flex shrink-0 items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[#9da79f]">
+            <span>thinking</span>
+            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" defaultValue="low" aria-label="Default thinking effort for new agent terminals">
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+              <option value="xhigh">xhigh</option>
+            </select>
+          </label>
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("agent")}>
+            + agent
           </Button>
-          <Button size="sm" variant="outline" onClick={() => props.onStart("agent")}>
-            <Bot aria-hidden="true" data-icon="inline-start" />
-            Agent
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
+            + cli
           </Button>
-          <Button size="sm" onClick={() => props.onStart("cli")}>
-            <TerminalSquare aria-hidden="true" data-icon="inline-start" />
-            CLI
+          <Button className="size-7 text-[#9da79f] hover:bg-transparent hover:text-[#9fd1ff]" size="icon" variant="ghost" onClick={props.onRefresh} title="Refresh terminals">
+            <RefreshCw aria-hidden="true" className="size-4" />
           </Button>
         </div>
-      </div>
-      <div className="border-b px-3 py-2 text-xs text-muted-foreground">
-        <span className="font-bold uppercase">{props.scope.scopeKind}</span> {props.scope.scope}
       </div>
       <div className="flex min-h-0 flex-1 flex-col">
         {props.sessions.length ? (
           <>
-            <div className="flex max-h-40 shrink-0 flex-col gap-2 overflow-auto border-b p-2">
+            <div className="flex max-h-40 shrink-0 flex-col gap-2 overflow-auto border-b border-[#2c302d] p-2">
               {props.sessions.map((session) => (
                 <TerminalSessionTab
                   isActive={activeSession?.id === session.id}
@@ -1953,15 +1960,8 @@ function TerminalPane(props: {
             </div>
           </>
         ) : (
-          <div className="m-3 grid min-h-48 place-items-center border bg-background p-4 text-center text-sm text-muted-foreground">
-            <div className="flex max-w-xs flex-col items-center gap-3">
-              <TerminalSquare aria-hidden="true" className="size-8" />
-              <span>No retained sessions for this scope.</span>
-              <Button size="sm" onClick={() => props.onStart("cli")}>
-                <Play aria-hidden="true" data-icon="inline-start" />
-                Start CLI
-              </Button>
-            </div>
+          <div className="px-5 py-4 font-mono text-xs text-[#abb5ad]">
+            No terminals running
           </div>
         )}
       </div>
