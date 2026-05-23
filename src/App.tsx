@@ -1544,7 +1544,7 @@ function NewProjectView({
           </p>
         </header>
         <form className="grid gap-5" data-testid="new-project-form" onSubmit={handleSubmit}>
-          <label className="group flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-background text-center text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+          <label className="group flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-card text-center text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
             <span className="text-sm font-bold uppercase">Import project file</span>
             <small className="mt-1 text-xs font-bold">Markdown or HTML</small>
             <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
@@ -1556,11 +1556,11 @@ function NewProjectView({
           </div>
           <label className="grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
-            <input className="min-h-10 rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" required value={title} onChange={(event) => setTitle(event.target.value)} />
+            <input className="min-h-10 rounded-md border bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" required value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
           <label className="grid gap-2">
             <span className="text-xs font-bold uppercase text-muted-foreground">Brief</span>
-            <textarea className="min-h-[14rem] rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" required value={document} onChange={(event) => setDocument(event.target.value)} />
+            <textarea className="min-h-[14rem] rounded-md border bg-card p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
           <label className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
             <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
