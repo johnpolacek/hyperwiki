@@ -7,6 +7,7 @@ import {
   Command,
   ExternalLink,
   FileText,
+  FolderOpen,
   FolderGit2,
   GitBranch,
   LayoutDashboard,
@@ -246,6 +247,7 @@ function App() {
   const [projects, setProjects] = useState<ProjectListResponse>({});
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [activeProject, setActiveProject] = useState<ProjectRecord | null>(null);
+  const [unavailableProjectIds, setUnavailableProjectIds] = useState<Set<string>>(() => new Set());
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
@@ -263,7 +265,7 @@ function App() {
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
   const sidebarModel = useMemo(() => buildSidebarModel(wikiPages), [wikiPages]);
-  const projectGroups = useMemo(() => normalizeProjectGroups(projects), [projects]);
+  const projectGroups = useMemo(() => normalizeProjectGroups(projects, unavailableProjectIds), [projects, unavailableProjectIds]);
   const hasRegisteredProjects = projectGroups.length > 0;
 
   useEffect(() => {
@@ -287,6 +289,7 @@ function App() {
   useEffect(() => {
     if (route.kind !== "wiki") return;
     if (hasLoadedProjects && !hasRegisteredProjects) return;
+    if (hasLoadedProjects && !activeProject) return;
     let cancelled = false;
     setIsWikiLoading(true);
     setWikiError("");
@@ -307,11 +310,26 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [route, activeProject]);
+  }, [route, activeProject, hasLoadedProjects, hasRegisteredProjects]);
 
   useEffect(() => {
+    if (!wikiError || !activeProject || !isMissingFileError(wikiError)) return;
+    setStatus("Active project is unavailable");
+    setUnavailableProjectIds((current) => new Set(current).add(activeProject.id));
+    setActiveProject(null);
+    setWikiError("");
+    setWikiHtml("");
+  }, [wikiError, activeProject]);
+
+  useEffect(() => {
+    if (hasLoadedProjects && !activeProject) {
+      setSessions([]);
+      setActiveSessionId(null);
+      setIsSessionsLoading(false);
+      return;
+    }
     void loadSessions();
-  }, [terminalScope]);
+  }, [terminalScope, activeProject, hasLoadedProjects]);
 
   async function loadBaseData() {
     setStatus("Loading workspace");
@@ -329,7 +347,7 @@ function App() {
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
-      setActiveProject(findActiveProject(projectsResult.value));
+      setActiveProject(findActiveProject(projectsResult.value, unavailableProjectIds));
       setHasLoadedProjects(true);
     }
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
@@ -628,11 +646,12 @@ function App() {
     });
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
     setProjects(projectsResult);
-    setActiveProject(findActiveProject(projectsResult));
+    setActiveProject(findActiveProject(projectsResult, unavailableProjectIds));
     setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
   }
 
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings";
+  const isProjectUnavailable = hasLoadedProjects && !activeProject;
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable;
 
   return (
     <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
@@ -662,6 +681,7 @@ function App() {
         )}
         <WorkspacePane
           activeProject={activeProject}
+          hasLoadedProjects={hasLoadedProjects}
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
@@ -928,6 +948,7 @@ function SidebarPageButton({ page, currentPath, onNavigate, depth, current, sele
 
 function WorkspacePane(props: {
   activeProject: ProjectRecord | null;
+  hasLoadedProjects: boolean;
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
@@ -953,6 +974,9 @@ function WorkspacePane(props: {
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
+  if (props.hasLoadedProjects && !props.activeProject) {
+    return <ProjectEmptyState onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />;
+  }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
       <div className="flex min-h-12 items-center justify-between border-b bg-card px-3">
@@ -969,12 +993,60 @@ function WorkspacePane(props: {
           </div>
         ) : null}
         {props.wikiError ? (
-          <div className="m-4 border bg-card p-4 text-sm text-destructive shadow-sm">{props.wikiError}</div>
+          <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
         ) : (
           <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
         )}
       </div>
     </section>
+  );
+}
+
+function ProjectEmptyState({ onNewProject, onProjects }: { onNewProject: () => void; onProjects: () => void }) {
+  return (
+    <section className="flex min-h-0 min-w-0 flex-col bg-background">
+      <div className="flex min-h-12 items-center border-b bg-card px-3">
+        <span className="truncate text-xs font-bold uppercase">No Active Project</span>
+      </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center p-8">
+        <div className="flex max-w-md flex-col items-center gap-4 text-center">
+          <div className="grid size-12 place-items-center rounded-md border bg-card">
+            <FolderOpen aria-hidden="true" className="size-5 text-muted-foreground" />
+          </div>
+          <div className="grid gap-2">
+            <h2 className="font-ui m-0 text-2xl font-bold">No project is available</h2>
+            <p className="m-0 text-sm text-muted-foreground">The previous project root is missing or was removed from Hyperwiki.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button onClick={onNewProject}>New Project</Button>
+            <Button variant="outline" onClick={onProjects}>Projects</Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WikiErrorState({ error, onNewProject, onProjects }: { error: string; onNewProject: () => void; onProjects: () => void }) {
+  const missing = isMissingFileError(error);
+  return (
+    <div className="flex min-h-full items-center justify-center p-8">
+      <div className="flex max-w-lg flex-col items-center gap-4 text-center">
+        <div className="grid size-12 place-items-center rounded-md border bg-card">
+          <FolderOpen aria-hidden="true" className="size-5 text-muted-foreground" />
+        </div>
+        <div className="grid gap-2">
+          <h2 className="font-ui m-0 text-2xl font-bold">{missing ? "Project files are unavailable" : "Wiki page unavailable"}</h2>
+          <p className="m-0 text-sm text-muted-foreground">
+            {missing ? "The selected project points to files that no longer exist. Pick another project or create a new one." : "Hyperwiki could not load this wiki page."}
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button onClick={onProjects}>Projects</Button>
+          <Button variant="outline" onClick={onNewProject}>New Project</Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -984,6 +1056,10 @@ function embeddedWikiHtml(html: string) {
   if (html.includes("hyperwiki-embedded-style")) return html;
   if (html.includes("</head>")) return html.replace("</head>", `${style}</head>`);
   return `${style}${html}`;
+}
+
+function isMissingFileError(error: string) {
+  return error.includes("No such file or directory") || error.includes("os error 2");
 }
 
 function CommandBar({
@@ -2310,14 +2386,21 @@ function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {
   return `/projects/${encodeURIComponent(activeProject.id)}${path}`;
 }
 
-function findActiveProject(response: ProjectListResponse) {
-  const all = [...(response.projects || []), ...(response.checkouts || []), ...normalizeProjectGroups(response).flatMap((group) => group.checkouts)];
+function findActiveProject(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set()) {
+  const all = [...(response.projects || []), ...(response.checkouts || []), ...normalizeProjectGroups(response, unavailableProjectIds).flatMap((group) => group.checkouts)].filter((project) => isAvailableProject(project, unavailableProjectIds));
   return all.find((project) => project.id === response.activeProjectId) || all.find((project) => project.active) || all[0] || null;
 }
 
-function normalizeProjectGroups(response: ProjectListResponse) {
-  if (response.projectGroups?.length) return response.projectGroups;
-  const all = [...(response.checkouts || []), ...(response.projects || [])];
+function normalizeProjectGroups(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set()) {
+  if (response.projectGroups?.length) {
+    return response.projectGroups
+      .map((group) => ({
+        ...group,
+        checkouts: group.checkouts.filter((project) => isAvailableProject(project, unavailableProjectIds)),
+      }))
+      .filter((group) => group.checkouts.length > 0);
+  }
+  const all = [...(response.checkouts || []), ...(response.projects || [])].filter((project) => isAvailableProject(project, unavailableProjectIds));
   const groups = new Map<string, ProjectGroup>();
   for (const project of all) {
     const key = project.projectSlug || project.name || project.id;
@@ -2326,6 +2409,10 @@ function normalizeProjectGroups(response: ProjectListResponse) {
     groups.set(key, existing);
   }
   return Array.from(groups.values());
+}
+
+function isAvailableProject(project: ProjectRecord, unavailableProjectIds: Set<string>) {
+  return project.available !== false && !unavailableProjectIds.has(project.id);
 }
 
 function buildSidebarModel(pages: WikiPage[]): SidebarModel {

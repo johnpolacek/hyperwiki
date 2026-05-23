@@ -191,7 +191,7 @@ impl ProjectRegistry {
     }
 
     pub fn list(&self, active_id: Option<&str>) -> ProjectList {
-        let records = with_unique_slugs(self.read_raw().projects);
+        let records = self.available_records();
         let projects_to_list = prune_missing_worktrees(records);
         let mut projects = Vec::new();
 
@@ -245,7 +245,7 @@ impl ProjectRegistry {
         project_slug: &str,
         worktree_slug: Option<&str>,
     ) -> Option<ProjectRecord> {
-        let projects = with_unique_slugs(self.read_raw().projects);
+        let projects = self.available_records();
         let record = projects
             .iter()
             .find(|item| {
@@ -262,7 +262,10 @@ impl ProjectRegistry {
     }
 
     pub fn resolve(&self, id: Option<&str>, fallback_root: Option<&Path>) -> Option<ProjectRecord> {
-        let registry = self.read_raw();
+        let registry = RegistryFile {
+            version: 1,
+            projects: self.available_records(),
+        };
         let fallback = fallback_root.and_then(|root| {
             registry
                 .projects
@@ -280,6 +283,16 @@ impl ProjectRegistry {
             available: true,
             ..record
         })
+    }
+
+    fn available_records(&self) -> Vec<ProjectRecord> {
+        let mut registry = self.read_raw();
+        let before = registry.projects.len();
+        registry.projects = prune_unavailable_records(with_unique_slugs(registry.projects));
+        if registry.projects.len() != before {
+            let _ = write_registry_file(&self.file_path, &registry);
+        }
+        registry.projects
     }
 
     pub fn remove(&self, id: &str, delete_files: bool) -> Result<Option<ProjectRecord>, String> {
@@ -619,6 +632,13 @@ fn prune_missing_worktrees(projects: Vec<ProjectRecord>) -> Vec<ProjectRecord> {
     projects
         .into_iter()
         .filter(|project| !missing_worktree(project))
+        .collect()
+}
+
+fn prune_unavailable_records(projects: Vec<ProjectRecord>) -> Vec<ProjectRecord> {
+    projects
+        .into_iter()
+        .filter(|project| project_from_root(&project.root).available)
         .collect()
 }
 
@@ -1830,6 +1850,61 @@ mod tests {
         let list = ProjectRegistry::new(&home).list(None);
         assert_eq!(list.checkouts.len(), 1);
         assert_eq!(list.checkouts[0].id, "main");
+    }
+
+    #[test]
+    fn prunes_unavailable_project_records_from_list_and_registry() {
+        let home = temp_root("prune-unavailable");
+        let missing = home.join("Routechat");
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![record(
+                    "routechat",
+                    &missing,
+                    "routechat",
+                    "routechat",
+                    "main",
+                )],
+            },
+        )
+        .unwrap();
+
+        let registry = ProjectRegistry::new(&home);
+        let list = registry.list(Some("routechat"));
+
+        assert!(list.projects.is_empty());
+        assert!(list.checkouts.is_empty());
+        assert!(list.project_groups.is_empty());
+        assert_eq!(list.active_project_id, None);
+        assert!(registry.read_raw().projects.is_empty());
+    }
+
+    #[test]
+    fn does_not_resolve_unavailable_project_by_id_or_slug() {
+        let home = temp_root("resolve-unavailable");
+        let missing = home.join("Routechat");
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![record(
+                    "routechat",
+                    &missing,
+                    "routechat",
+                    "routechat",
+                    "main",
+                )],
+            },
+        )
+        .unwrap();
+
+        let registry = ProjectRegistry::new(&home);
+
+        assert!(registry.resolve(Some("routechat"), None).is_none());
+        assert!(registry.resolve_by_slug("routechat", Some("main")).is_none());
+        assert!(registry.read_raw().projects.is_empty());
     }
 
     #[test]

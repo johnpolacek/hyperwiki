@@ -21,6 +21,16 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-22 fix | stale project registry recovery</h2>
+  <ul>
+    <li>Changed the Rust project registry to prune unavailable project records before listing or resolving projects, so removed roots cannot remain selected as active workspaces.</li>
+    <li>Added React-side filtering for unavailable projects as a defensive guard against stale project-list responses.</li>
+    <li>Added an in-app unavailable-project empty state and missing-file wiki recovery so stale sessions no longer render raw <code>os error 2</code> JSON.</li>
+    <li>Stopped the missing-file recovery path from repeatedly reselecting the same failed project by tracking locally unavailable project IDs and skipping wiki/session loads when no valid project is active.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm exec tsc --noEmit</code>, <code>pnpm run build:frontend</code>, <code>cargo test -q --manifest-path src-tauri/Cargo.toml unavailable</code>, and <code>cargo test -q --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 fix | source-grounded import planning</h2>
   <ul>
     <li>Changed project import so imported source documents are parsed into durable source facts before wiki pages are generated.</li>
