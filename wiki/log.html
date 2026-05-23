@@ -29,6 +29,7 @@
     <li>Removed the post-import success screen so a completed import lands in the imported project workspace with the agent panel visible.</li>
     <li>Stopped creating <code>wiki/sources/planning-interview.html</code>; imported projects now use <code>wiki/sources/import.html</code> plus terminal Q&amp;A as the planning source.</li>
     <li>Changed imported planning auto-start to key off imported source plus absence of real plan pages, and fixed imported-project terminal reattach scoping.</li>
+    <li>Moved post-create navigation ahead of workspace loading and prompt delivery so import cannot remain stuck on the New Project form after the agent prompt is sent.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>

@@ -568,19 +568,23 @@ function App() {
   }
 
   async function planImportedProject(project: ProjectRecord) {
-    setActiveProject(project);
-    setIsProjectsOpen(false);
     const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.html" };
+    openImportedPlanningWorkspace(project, projectRoute);
     const projectScope = scopeForRoute(projectRoute);
     const loaded = await loadProjectData(project);
-    setRoute(projectRoute);
-    window.history.pushState(null, "", `/workspace/${project.projectSlug}/${project.worktreeSlug}#/wiki/plans/index.html`);
     const nextSessions = await loadSessionsForProject(project, projectScope);
     const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.html", projectScope, loaded.layout, nextSessions);
     setActiveSessionId(session.id);
     await delay(250);
     await loadSessionsForProject(project, projectScope);
     setStatus("Imported project planning prompt sent");
+  }
+
+  function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.html" }) {
+    setActiveProject(project);
+    setIsProjectsOpen(false);
+    setRoute(route);
+    window.history.pushState(null, "", urlForRoute(route, project));
   }
 
   async function runCommandAction(action: CommandAction, payload?: Record<string, string>) {
@@ -730,6 +734,7 @@ function App() {
     setStatus(`Project created: ${result.project.name}`);
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
     setProjects(projectsResult);
+    openImportedPlanningWorkspace(result.project);
     return result.project;
   }
 
