@@ -4198,8 +4198,8 @@ function cleanPageTitle(page) {
   if (page.path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
   if (page.path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
   if (page.path.endsWith("/wiki/plans/zzz_completed/index.html")) return "Completed Plans";
-  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit-${unit.padStart(2, "0")} `);
-  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, "Stage-$1 ");
+  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")}: `);
+  if (page.path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, (_match, stage) => `Stage ${stage.padStart(2, "0")}: `);
   if (page.title.toLowerCase() === "prd") return "PRD";
   if (displayWikiPath(page.path).includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;

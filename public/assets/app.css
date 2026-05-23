@@ -2776,6 +2776,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .primary-nav a,
 .wiki-nav a {
   position: relative;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -2970,9 +2971,9 @@ html[data-initial-route="settings"] .wiki-pane {
   content: "›";
   box-sizing: border-box;
   position: relative;
-  left: 4px;
-  flex: 0 0 22px;
-  padding-left: 3px;
+  left: 2px;
+  flex: 0 0 18px;
+  padding-left: 2px;
   color: var(--muted);
   font-size: 22px;
   line-height: 1;
@@ -2986,8 +2987,10 @@ html[data-initial-route="settings"] .wiki-pane {
 
 .plan-subtree > summary a {
   flex: 1 1 0;
-  max-width: calc(100% - 22px);
+  max-width: calc(100% - 18px);
   min-width: 0;
+  padding-right: 7px;
+  padding-left: 7px;
   color: inherit;
 }
 
@@ -3007,7 +3010,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .wiki-nav a.completed-plan-link::before {
-  background: color-mix(in srgb, var(--muted) 24%, transparent);
+  background: transparent;
   box-shadow: none;
 }
 
@@ -3018,7 +3021,7 @@ html[data-initial-route="settings"] .wiki-pane {
 .plan-tree > .plan-subtree > summary a::before,
 .plan-tree > a::before,
 .plan-tree > .plan-subtree > a::before {
-  background: color-mix(in srgb, var(--muted) 24%, transparent);
+  background: transparent;
 }
 
 .plan-tree > .plan-subtree > summary a.current-plan::before,
@@ -3042,7 +3045,7 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .plan-tree .plan-subtree .plan-subtree > a.completed-plan-link::before {
-  background: color-mix(in srgb, var(--muted) 24%, transparent);
+  background: transparent;
   box-shadow: none;
 }
 
@@ -3060,12 +3063,12 @@ html[data-initial-route="settings"] .wiki-pane {
 .plan-tree > a,
 .plan-tree > .plan-subtree > a {
   margin-left: 0;
-  padding-left: 31px;
+  padding-left: 27px;
 }
 
 .plan-tree .plan-subtree .plan-subtree > a {
   margin-left: 0;
-  padding-left: 43px;
+  padding-left: 35px;
 }
 
 .plan-tree .plan-subtree .plan-subtree > a.active {
@@ -3101,9 +3104,9 @@ html[data-initial-route="settings"] .wiki-pane {
 }
 
 .plan-tree .plan-subtree .plan-subtree > .wiki-nav-group {
-  margin-left: 10px;
-  width: calc(100% - 10px);
-  max-width: calc(100% - 10px);
+  margin-left: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .wiki-nav a:hover,

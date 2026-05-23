@@ -1019,8 +1019,14 @@ fn unit_page(options: &InitProjectOptions, title: &str, summary: &str) -> String
         options,
         title,
         &format!(
-            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>",
+            "<h1>{}</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>\
+<section><h2>Intent</h2><p>{}</p></section>\
+<section><h2>Scope</h2><ul><li>Confirm the concrete work for this unit before editing product code.</li><li>Keep changes bounded to evidence from the source briefs, repository, and user decisions.</li></ul></section>\
+<section><h2>Implementation Notes</h2><ul><li>Read <code>wiki/index.html</code>, <code>wiki/sources.html</code>, and relevant source briefs before execution.</li><li>Update this unit if implementation discoveries change scope, blockers, or verification.</li></ul></section>\
+<section><h2>Verification</h2><ul><li>Record the command, manual check, or explicit deferral that proves this unit is complete.</li><li>Do not mark the unit complete until verification evidence is captured.</li></ul></section>",
             escape_html(title),
+            escape_html(summary),
             escape_html(summary)
         ),
     )

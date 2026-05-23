@@ -597,7 +597,20 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        {isUtilityRoute ? null : <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} onSetMode={setSidePanelMode} status={status} />}
+        {isUtilityRoute ? null : (
+          <TerminalPane
+            activeSessionId={activeSessionId}
+            isLoading={isSessionsLoading}
+            onCloseSession={closeSession}
+            onRefresh={loadSessions}
+            onRenameSession={renameSession}
+            onRestartSession={restartSession}
+            onSelectSession={setActiveSessionId}
+            onStart={startTerminal}
+            scope={terminalScope}
+            sessions={sessions}
+          />
+        )}
       </section>
     </main>
   );
@@ -785,7 +798,7 @@ function PlanTree({ pages, currentPath, onNavigate, workspace }: { pages: WikiPa
 
 function PlanNode({ page, pages, currentPath, onNavigate, workspace, depth = 0 }: { page: WikiPage; pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null; depth?: number }) {
   const children = childPlanPages(page, pages);
-  const isCurrent = isCurrentPlanPage(page, workspace);
+  const isCurrent = isCurrentPlanPage(page, workspace) || pathContainsSelectedPage(page.path, currentPath);
   const isSelected = currentPath === page.path;
   if (!children.length) {
     return <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />;
