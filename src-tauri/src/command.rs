@@ -1475,13 +1475,17 @@ mod tests {
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"terminal-command\",\"name\":\"cli\"}".to_string()),
+            body: Some(
+                "{\"id\":\"terminal-command\",\"name\":\"cli\",\"command\":\"printf tauri-terminal-launch\\\\n\"}"
+                    .to_string(),
+            ),
         });
         let write = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/terminal-command/write".to_string(),
             method: "POST".to_string(),
             body: Some("{\"input\":\"printf tauri-terminal-command\\\\n\\n\"}".to_string()),
         });
+        let launch_output = wait_for_terminal_output("terminal-command", "tauri-terminal-launch");
         let output = wait_for_terminal_output("terminal-command", "tauri-terminal-command");
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/terminal-command".to_string(),
@@ -1500,6 +1504,7 @@ mod tests {
                 || start.text.contains("\"mode\":\"pipe-fallback\"")
         );
         assert!(write.ok);
+        assert!(launch_output.contains("tauri-terminal-launch"));
         assert!(output.contains("tauri-terminal-command"));
         assert!(close.ok);
         assert!(close.text.contains("\"status\":\"closed\""));

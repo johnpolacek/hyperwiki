@@ -523,6 +523,7 @@ function App() {
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
     await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
+    await delay(1200);
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
@@ -2697,7 +2698,7 @@ function titleForPath(path: string, pages: WikiPage[]) {
 }
 
 function agentLaunchCommand(layout: LayoutResponse | null) {
-  return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "";
+  return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
 
 function importedProjectPlanningPrompt(project: ProjectRecord) {

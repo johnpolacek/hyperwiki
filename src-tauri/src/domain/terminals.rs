@@ -168,6 +168,7 @@ impl TerminalManager {
         request: TerminalStartRequest,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
+        let launch_command = request.command.clone();
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -193,8 +194,10 @@ impl TerminalManager {
             .master
             .take_writer()
             .map_err(|error| format!("Could not open PTY input: {error}"))?;
+        let mut writer = writer;
         let output = Arc::new(Mutex::new(String::new()));
         capture_output(reader, Arc::clone(&output));
+        launch_recorded_command(writer.as_mut(), launch_command.as_deref())?;
         let registry = SessionRegistry::new(root);
         let session = registry
             .upsert(
@@ -241,6 +244,7 @@ impl TerminalManager {
         warning: &str,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
+        let launch_command = request.command.clone();
         let mut child = Command::new(&shell)
             .current_dir(root)
             .env("TERM", "xterm-256color")
@@ -265,7 +269,10 @@ impl TerminalManager {
         if let Some(stderr) = child.stderr.take() {
             capture_output(stderr, Arc::clone(&output));
         }
-        let stdin = child.stdin.take();
+        let mut stdin = child.stdin.take();
+        if let Some(writer) = stdin.as_mut() {
+            launch_recorded_command(writer, launch_command.as_deref())?;
+        }
         let registry = SessionRegistry::new(root);
         let session = registry
             .upsert(
@@ -375,6 +382,16 @@ impl Default for TerminalManager {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn launch_recorded_command(writer: &mut dyn Write, command: Option<&str>) -> Result<(), String> {
+    let Some(command) = command.map(str::trim).filter(|command| !command.is_empty()) else {
+        return Ok(());
+    };
+    writer
+        .write_all(format!("{command}\n").as_bytes())
+        .and_then(|_| writer.flush())
+        .map_err(|error| format!("Could not launch terminal command: {error}"))
 }
 
 impl TerminalProcess {
