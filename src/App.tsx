@@ -720,33 +720,55 @@ function App() {
   async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
     baseDataRequestId.current += 1;
     setStatus("Initializing project");
-    const result = await hyperwikiApi.json<ProjectCreateResponse>("/api/projects/create", {
-      method: "POST",
-      body: {
-        title: input.title,
-        summary: documentSummary(input.document),
-        document: input.document,
-        documentType: input.documentType,
-        initializeGit: input.initializeGit,
-        agentLaunchCommand: agentLaunchCommand(layout),
-      },
-    });
-    setStatus(`Project created: ${result.project.name}`);
-    setProjects((current) => withOptimisticProject(current, result.project));
-    openImportedPlanningWorkspace(result.project);
+    const startedAt = Math.floor(Date.now() / 1000);
+    const createRequest = hyperwikiApi
+      .json<ProjectCreateResponse>("/api/projects/create", {
+        method: "POST",
+        body: {
+          title: input.title,
+          summary: documentSummary(input.document),
+          document: input.document,
+          documentType: input.documentType,
+          initializeGit: input.initializeGit,
+          agentLaunchCommand: agentLaunchCommand(layout),
+        },
+      })
+      .then((result) => result.project);
+    const project = await Promise.race([
+      createRequest,
+      recoverCreatedProject(input.title, startedAt),
+    ]);
+    setStatus(`Project created: ${project.name}`);
+    setProjects((current) => withOptimisticProject(current, project));
+    openImportedPlanningWorkspace(project);
     void hyperwikiApi
-      .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`)
+      .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(project.id)}`)
       .then((projectsResult) => {
         setProjects(projectsResult);
         setActiveProject(findActiveProject(projectsResult, unavailableProjectIds, {
-          projectSlug: result.project.projectSlug,
-          worktreeSlug: result.project.worktreeSlug,
-        }) || result.project);
+          projectSlug: project.projectSlug,
+          worktreeSlug: project.worktreeSlug,
+        }) || project);
       })
       .catch((error) => {
         console.error("Could not refresh projects after import", error);
       });
-    return result.project;
+    return project;
+  }
+
+  async function recoverCreatedProject(title: string, startedAt: number) {
+    await delay(800);
+    const titleSlug = slugify(title);
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
+      const candidates = allProjectRecords(projectsResult)
+        .filter((project) => project.name === title || project.projectSlug === titleSlug)
+        .sort((left, right) => Number(right.lastOpenedAt || 0) - Number(left.lastOpenedAt || 0));
+      const project = candidates.find((candidate) => Number(candidate.lastOpenedAt || 0) >= startedAt - 2) || candidates[0];
+      if (project) return project;
+      await delay(250);
+    }
+    throw new Error("Project was created, but Hyperwiki could not find it in the registry.");
   }
 
   async function removeProject(project: ProjectRecord, deleteFiles: boolean) {
@@ -1737,7 +1759,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
           fontFamily={editTheme.tokens.docs?.serifFont}
           title="Edit Theme"
         />
-        <div className="grid gap-4 p-8">
+        <div className="grid min-w-0 gap-4 p-8">
           <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
           <ThemePresetStrip activePreset={editableTheme.activePreset || ""} onSelect={(key) => setThemeDraft(selectThemePreset(editableTheme, key))} presets={presets} />
           <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
@@ -1943,12 +1965,12 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
   const entries = Object.entries(presets);
   if (!entries.length) return null;
   return (
-    <section className="rounded-md border bg-card p-3">
+    <section className="min-w-0 overflow-hidden rounded-md border bg-card p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
         <span className="truncate text-xs text-muted-foreground">Choosing a preset resets custom edits.</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1">
         {entries.map(([key, preset]) => {
           const theme = normalizePreset(preset);
           const selected = key === activePreset;
@@ -2628,12 +2650,19 @@ function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {
 }
 
 function findActiveProject(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set(), workspaceSelection = workspaceSelectionFromLocation()) {
-  const all = [...(response.projects || []), ...(response.checkouts || []), ...normalizeProjectGroups(response, unavailableProjectIds).flatMap((group) => group.checkouts)].filter((project) => isAvailableProject(project, unavailableProjectIds));
+  const all = allProjectRecords(response).filter((project) => isAvailableProject(project, unavailableProjectIds));
   if (workspaceSelection) {
     const selected = all.find((project) => project.projectSlug === workspaceSelection.projectSlug && project.worktreeSlug === workspaceSelection.worktreeSlug);
     if (selected) return selected;
   }
   return all.find((project) => project.id === response.activeProjectId) || all.find((project) => project.active) || all[0] || null;
+}
+
+function allProjectRecords(response: ProjectListResponse) {
+  const records = [...(response.projects || []), ...(response.checkouts || []), ...(response.projectGroups || []).flatMap((group) => group.checkouts)];
+  const byId = new Map<string, ProjectRecord>();
+  for (const record of records) byId.set(record.id, record);
+  return Array.from(byId.values());
 }
 
 function workspaceSelectionFromLocation() {

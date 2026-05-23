@@ -25,6 +25,7 @@
   <ul>
     <li>Added a compact preset picker strip to Settings theme editing so users can switch built-in presets without leaving the editor.</li>
     <li>Preset selection now resets custom theme token edits, keeping the selected preset exact and predictable before Save.</li>
+    <li>Contained the preset strip in a horizontal scroller so the preset cards do not widen the Settings layout.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
   </ul>
 </article>
@@ -42,6 +43,7 @@
     <li>Added a Tauri WebDriver import-planning smoke script for supported platforms and route-aware project selection for workspace URLs.</li>
     <li>Made the import flow register the created project optimistically and run the project-list refresh outside the critical path, so a successful backend create response immediately opens the planning workspace.</li>
     <li>Changed New Project agent planning startup to run after route handoff instead of blocking the import form on workspace/session follow-up requests.</li>
+    <li>Added registry recovery for imported project creation so the New Project view can route to the created workspace even if the Tauri create invoke stalls after Rust writes the project.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-harness</code>, <code>pnpm run smoke:tauri-webdriver</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>
