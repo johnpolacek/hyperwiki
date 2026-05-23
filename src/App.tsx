@@ -289,6 +289,7 @@ function App() {
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
+  const baseDataRequestId = useRef(0);
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -360,6 +361,8 @@ function App() {
   }, [terminalScope, activeProject, hasLoadedProjects]);
 
   async function loadBaseData() {
+    const requestId = baseDataRequestId.current + 1;
+    baseDataRequestId.current = requestId;
     setStatus("Loading workspace");
     const [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult, repoResult] = await Promise.allSettled([
       hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", activeProject)),
@@ -371,6 +374,7 @@ function App() {
       hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", activeProject)),
       hyperwikiApi.json<RepoContextResponse>(withProjectQuery("/api/repo", activeProject)),
     ]);
+    if (requestId !== baseDataRequestId.current) return;
 
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
     if (projectsResult.status === "fulfilled") {
@@ -645,6 +649,7 @@ function App() {
   }
 
   async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
+    baseDataRequestId.current += 1;
     setStatus("Initializing project");
     const result = await hyperwikiApi.json<ProjectCreateResponse>("/api/projects/create", {
       method: "POST",
