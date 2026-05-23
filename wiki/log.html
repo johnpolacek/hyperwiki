@@ -21,6 +21,14 @@
     <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-23 fix | theme preset picker in settings</h2>
+  <ul>
+    <li>Added a compact preset picker strip to Settings theme editing so users can switch built-in presets without leaving the editor.</li>
+    <li>Preset selection now resets custom theme token edits, keeping the selected preset exact and predictable before Save.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-23 fix | import agent terminal crash and plan action</h2>
   <ul>
     <li>Fixed terminal output trimming so long agent output is drained on UTF-8 character boundaries instead of panicking on multibyte text.</li>

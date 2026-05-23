@@ -1739,18 +1739,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         />
         <div className="grid gap-4 p-8">
           <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3">
-            {Object.entries(presets).map(([key, preset]) => (
-              <button
-                className={cn("rounded-md border bg-card p-3 text-left hover:border-primary", key === editableTheme.activePreset && "border-primary ring-1 ring-primary/40")}
-                key={key}
-                onClick={() => setThemeDraft({ ...editableTheme, activePreset: key })}
-                type="button"
-              >
-                <ThemePresetCard presetKey={key} theme={normalizePreset(preset)} />
-              </button>
-            ))}
-          </div>
+          <ThemePresetStrip activePreset={editableTheme.activePreset || ""} onSelect={(key) => setThemeDraft(selectThemePreset(editableTheme, key))} presets={presets} />
           <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
             <section className="rounded-md border bg-card p-4">
               <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
@@ -1950,6 +1939,53 @@ function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: strin
   );
 }
 
+function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: string; onSelect: (key: string) => void; presets: Record<string, ThemePreset> }) {
+  const entries = Object.entries(presets);
+  if (!entries.length) return null;
+  return (
+    <section className="rounded-md border bg-card p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
+        <span className="truncate text-xs text-muted-foreground">Choosing a preset resets custom edits.</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {entries.map(([key, preset]) => {
+          const theme = normalizePreset(preset);
+          const selected = key === activePreset;
+          return (
+            <button
+              aria-pressed={selected}
+              className={cn(
+                "grid w-52 shrink-0 gap-2 rounded-md border bg-background p-3 text-left hover:border-primary",
+                selected && "border-primary ring-1 ring-primary/40",
+              )}
+              key={key}
+              onClick={() => onSelect(key)}
+              type="button"
+            >
+              <span className="flex items-center gap-1">
+                {["bg", "panel", "accent"].map((token) => (
+                  <i
+                    aria-hidden="true"
+                    className="block size-4 rounded-full border"
+                    key={token}
+                    style={{ background: theme.tokens.ui?.[token] || theme.tokens.docs?.[token] || "transparent" }}
+                  />
+                ))}
+                <i aria-hidden="true" className="ml-auto block h-4 w-8 rounded-full border" style={{ background: theme.tokens.terminal?.bg || "transparent" }} />
+              </span>
+              <span className="min-w-0">
+                <strong className="block truncate text-sm">{theme.label || key}</strong>
+                <span className="block truncate text-xs text-muted-foreground">{key}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ThemePresetCard({ large = false, presetKey, theme }: { large?: boolean; presetKey: string; theme: NormalizedTheme }) {
   return (
     <div className={cn("grid min-w-0 grid-cols-[80px_minmax(0,1fr)] items-center gap-3", large && "grid-cols-[300px_minmax(0,1fr)] rounded-md border bg-card p-7")}>
@@ -2077,6 +2113,14 @@ function mergePreset(base: NormalizedTheme, patch: Partial<NormalizedTheme>): No
 
 function hasThemeOverrides(theme?: SettingsResponse["theme"]) {
   return Object.values(theme?.customTokens || {}).some((surface) => Object.keys(surface || {}).length > 0);
+}
+
+function selectThemePreset(theme: SettingsResponse["theme"], activePreset: string): SettingsResponse["theme"] {
+  return {
+    ...(theme || {}),
+    activePreset,
+    customTokens: {},
+  };
 }
 
 function updateThemeMode(theme: SettingsResponse["theme"], mode: string): SettingsResponse["theme"] {
