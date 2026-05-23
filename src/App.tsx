@@ -660,7 +660,7 @@ function App() {
     setStatus(`Project created: ${result.project.name}`);
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
     setProjects(projectsResult);
-    await switchProject(result.project);
+    await loadProjectData(result.project);
     return result.project;
   }
 
@@ -1369,26 +1369,38 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
   async function handleFile(file: File | null) {
     if (!file) return;
     const text = await file.text();
+    const nextType = file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown";
+    const nextTitle = title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
     setDocument(text);
-    setDocumentType(file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown");
-    if (!title) setTitle(file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "));
+    setDocumentType(nextType);
+    setTitle(nextTitle);
+    await createProjectAndStartPlanning({
+      title: nextTitle.trim(),
+      document: text.trim(),
+      documentType: nextType,
+      initializeGit,
+    });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!title.trim() || !document.trim()) {
+    await createProjectAndStartPlanning({
+      title: title.trim(),
+      document: document.trim(),
+      documentType,
+      initializeGit,
+    });
+  }
+
+  async function createProjectAndStartPlanning(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
+    if (!input.title.trim() || !input.document.trim()) {
       setStatus("Add a project name and source brief before planning the MVP.");
       return;
     }
     setIsSubmitting(true);
     setStatus("Initializing project...");
     try {
-      const project = await onCreateProject({
-        title: title.trim(),
-        document: document.trim(),
-        documentType,
-        initializeGit,
-      });
+      const project = await onCreateProject(input);
       if (project) {
         setCreatedProject(project);
         await loadImportPlanning(project, []);
