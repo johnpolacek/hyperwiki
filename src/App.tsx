@@ -1408,6 +1408,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setThemeDraft(draft.theme || null); setMode("overview"); }}>Cancel</Button><Button onClick={saveTheme}>Save Theme</Button></>}
           description="Adjust a draft theme and preview it here. The workspace updates after Save."
+          fontFamily={editTheme.tokens.docs?.serifFont}
           title="Edit Theme"
         />
         <div className="grid gap-4 p-8">
@@ -1476,6 +1477,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
           description="Saving updates global instructions and syncs the current project AGENTS.md."
+          fontFamily={theme.tokens.docs?.serifFont}
           title="Edit Agent Instructions"
         />
         <div className="grid gap-4 p-8">
@@ -1516,7 +1518,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
 
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
+      <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." fontFamily={theme.tokens.docs?.serifFont} />
       <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
         <section className="rounded-md border bg-card p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -1528,8 +1530,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
             <ThemeSwatches colors={[theme.tokens.ui?.bg, theme.tokens.ui?.panel, theme.tokens.ui?.accent, theme.tokens.docs?.bg, theme.tokens.docs?.link, theme.tokens.terminal?.bg, theme.tokens.terminal?.accent]} tall />
           </div>
           <div className="mt-4 grid gap-3">
-            <ThemeSurfaceSummary label="UI" description="Sidebar and workspace chrome" tokens={theme.tokens.ui} fontKeys={[["Sidebar Font", "sidebarFont"]]} />
-            <ThemeSurfaceSummary label="Docs" description="Planning and wiki pages" tokens={theme.tokens.docs} fontKeys={[["Serif Font", "serifFont"], ["Mono Font", "monoFont"]]} />
+            <ThemeSurfaceSummary label="UI" description="Sidebar and workspace chrome" tokens={theme.tokens.ui} fontKeys={[["UI Font", "sidebarFont"]]} />
+            <ThemeSurfaceSummary label="Docs" description="Planning and wiki pages" tokens={theme.tokens.docs} fontKeys={[["Primary Font", "serifFont"], ["Mono Font", "monoFont"]]} />
             <ThemeSurfaceSummary label="Terminal" description="Pane chrome and session frames" tokens={theme.tokens.terminal} fontKeys={[["Font", "font"]]} />
           </div>
         </section>
@@ -1550,12 +1552,12 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
   );
 }
 
-function SettingsPageHeader({ actions, description, title }: { actions?: ReactNode; description: string; title: string }) {
+function SettingsPageHeader({ actions, description, fontFamily, title }: { actions?: ReactNode; description: string; fontFamily?: string; title: string }) {
   return (
-    <header className="flex min-h-36 items-start justify-between gap-6 border-b bg-muted/20 px-8 py-10">
+    <header className="flex min-h-36 items-start justify-between gap-6 bg-muted/20 px-8 py-10">
       <div>
-        <h1 className="m-0 text-5xl font-bold leading-none tracking-normal">{title}</h1>
-        <p className="m-0 mt-3 font-ui text-base text-muted-foreground">{description}</p>
+        <h1 className="m-0 text-5xl font-bold leading-none tracking-normal" style={{ fontFamily }}>{title}</h1>
+        <p className="m-0 mt-3 text-base text-muted-foreground" style={{ fontFamily }}>{description}</p>
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2 pt-10">{actions}</div> : null}
     </header>
@@ -1719,12 +1721,17 @@ function effectiveTheme(theme?: SettingsResponse["theme"]): NormalizedTheme {
 }
 
 function normalizePreset(preset?: ThemePreset): NormalizedTheme {
+  const docs = { ...(preset?.tokens?.docs || {}) };
+  const ui = { ...(preset?.tokens?.ui || {}) };
+  if (preset?.label === "Signal" && docs.serifFont) {
+    ui.sidebarFont = docs.serifFont;
+  }
   return {
     label: preset?.label || "Custom",
     mode: preset?.mode || "light",
     tokens: {
-      ui: { ...(preset?.tokens?.ui || {}) },
-      docs: { ...(preset?.tokens?.docs || {}) },
+      ui,
+      docs,
       terminal: { ...(preset?.tokens?.terminal || {}) },
     },
   };

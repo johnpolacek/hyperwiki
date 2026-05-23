@@ -369,7 +369,7 @@ fn preset(
                 "text": ui_text,
                 "muted": ui_muted,
                 "accent": ui_accent,
-                "sidebarFont": mono_font
+                "sidebarFont": body_font
             },
             "docs": {
                 "bg": docs_bg,
