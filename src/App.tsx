@@ -661,10 +661,7 @@ function App() {
         initializeGit: input.initializeGit,
       },
     });
-    setActiveProject(result.project);
     setStatus(`Project created: ${result.project.name}`);
-    const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project.id)}`);
-    setProjects(projectsResult);
     return result.project;
   }
 
@@ -1345,13 +1342,26 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
   const [planningAnswers, setPlanningAnswers] = useState<ImportPlanningAnswer[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isPlanningBusy, setIsPlanningBusy] = useState(false);
+  const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
+
+  function logImport(message: string, error?: unknown) {
+    const line = `${new Date().toLocaleTimeString()} ${message}`;
+    setImportLog((current) => {
+      const next = [...current, line].slice(-8);
+      window.sessionStorage.setItem("hyperwiki.importLog", JSON.stringify(next));
+      return next;
+    });
+    if (error) console.error(message, error);
+  }
 
   async function handleFile(file: File | null) {
     if (!file) return;
     setIsSubmitting(true);
     setStatus(`Reading ${file.name}...`);
+    logImport(`Reading ${file.name}`);
     try {
       const text = await file.text();
+      logImport(`Read ${text.length} bytes from ${file.name}`);
       const nextType = file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown";
       const nextTitle = title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
       setDocument(text);
@@ -1364,7 +1374,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
         initializeGit,
       });
     } catch (error) {
-      console.error("Hyperwiki import failed while reading the selected file.", error);
+      logImport("Hyperwiki import failed while reading the selected file.", error);
       setStatus(error instanceof Error ? `Could not read import file: ${error.message}` : "Could not read the import file.");
     } finally {
       setIsSubmitting(false);
@@ -1388,15 +1398,17 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
     }
     setIsSubmitting(true);
     setStatus("Initializing project...");
+    logImport("Creating imported project");
     try {
       const project = await onCreateProject(input);
       if (project) {
         setCreatedProject(project);
         setStatus("Project imported. Loading planning questions...");
+        logImport(`Created project ${project.name} (${project.id})`);
         await loadImportPlanning(project, []);
       }
     } catch (error) {
-      console.error("Hyperwiki import failed before planning questions loaded.", error);
+      logImport("Hyperwiki import failed before planning questions loaded.", error);
       setStatus(error instanceof Error ? error.message : "Could not create the project.");
     } finally {
       setIsSubmitting(false);
@@ -1406,16 +1418,18 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
   async function loadImportPlanning(project: ProjectRecord, answers: ImportPlanningAnswer[]) {
     setIsPlanningBusy(true);
     setStatus("Loading planning questions...");
+    logImport(`Loading planning questions for ${project.id}`);
     try {
       const response = await hyperwikiApi.json<ImportPlanningResponse>(withProjectQuery("/api/import-planning/clarify", project), {
         method: "POST",
         body: { planTitle: `${project.name} MVP Implementation Plan`, answers },
       });
+      logImport(`Planning response ready=${response.ready} questions=${response.questions?.length || 0} score=${response.score}`);
       setPlanning(response);
       setCurrentAnswer("");
       setStatus(response.ready ? "Planning answers are complete. Create the implementation plan when ready." : "Answer the next planning question.");
     } catch (error) {
-      console.error("Hyperwiki import planning failed.", error);
+      logImport("Hyperwiki import planning failed.", error);
       setStatus(error instanceof Error ? error.message : "Could not load planning questions.");
     } finally {
       setIsPlanningBusy(false);
@@ -1514,6 +1528,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
             </section>
           ) : null}
           {status ? <p className="m-0 text-sm text-muted-foreground" role="status">{status}</p> : null}
+          <ImportLog lines={importLog} />
         </div>
       </section>
     );
@@ -1563,8 +1578,32 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
             {isSubmitting ? "Initializing Project..." : "Review Source And Plan MVP"}
           </Button>
           {status ? <p className="m-0 mt-4 text-sm text-muted-foreground" role="status">{status}</p> : null}
+          <ImportLog lines={importLog} />
         </form>
       </div>
+    </section>
+  );
+}
+
+function readImportLog() {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem("hyperwiki.importLog") || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(-8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function ImportLog({ lines }: { lines: string[] }) {
+  if (!lines.length) return null;
+  return (
+    <section className="mt-4 rounded-md border bg-background p-3">
+      <h3 className="m-0 text-xs font-bold uppercase text-muted-foreground">Import Log</h3>
+      <ol className="m-0 mt-2 grid gap-1 p-0 text-xs text-muted-foreground">
+        {lines.map((line, index) => (
+          <li className="list-none break-words" key={`${index}-${line}`}>{line}</li>
+        ))}
+      </ol>
     </section>
   );
 }
