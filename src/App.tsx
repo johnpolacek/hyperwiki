@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Activity,
   BookOpen,
@@ -138,9 +138,11 @@ interface ThemePreset {
 }
 
 interface MemoryEntry {
+  id?: string;
   title?: string;
   content?: string;
   enabled?: boolean;
+  updatedAt?: string;
 }
 
 interface LayoutPanel {
@@ -609,6 +611,7 @@ function App() {
           />
         )}
         <WorkspacePane
+          activeProject={activeProject}
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
@@ -869,6 +872,7 @@ function SidebarPageButton({ page, currentPath, onNavigate, depth, current, sele
 }
 
 function WorkspacePane(props: {
+  activeProject: ProjectRecord | null;
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
@@ -892,7 +896,7 @@ function WorkspacePane(props: {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
-    return <SettingsView settings={props.settings} />;
+    return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1287,154 +1291,514 @@ function documentSummary(document: string) {
     .join(" ");
 }
 
-function SettingsView({ settings }: { settings: SettingsResponse | null }) {
+function SettingsView({ activeProject, settings }: { activeProject: ProjectRecord | null; settings: SettingsResponse | null }) {
   const [draft, setDraft] = useState<SettingsResponse | null>(settings);
+  const [mode, setMode] = useState<"overview" | "theme" | "agent">("overview");
+  const [themeDraft, setThemeDraft] = useState<SettingsResponse["theme"] | null>(settings?.theme || null);
+  const [agentDraft, setAgentDraft] = useState<{ soul: SettingsResponse["soul"]; memory: SettingsResponse["memory"] } | null>(null);
+  const [agentsFile, setAgentsFile] = useState<{ path: string; content: string }>({ path: "", content: "" });
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     setDraft(settings);
+    setThemeDraft(settings?.theme || null);
   }, [settings]);
 
-  const presets = draft?.theme?.presets || {};
-  const activePreset = draft?.theme?.activePreset || "paper";
-  const activeTheme = presets[activePreset] || Object.values(presets)[0];
-  const soul = draft?.soul || {};
-  const memory = draft?.memory?.entries || [];
+  useEffect(() => {
+    if (mode !== "agent" || !activeProject) return;
+    let cancelled = false;
+    setAgentsFile({ path: "Loading", content: "" });
+    hyperwikiApi
+      .json<{ path?: string; content?: string }>(withProjectQuery("/api/settings/agents-file", activeProject))
+      .then((result) => {
+        if (cancelled) return;
+        const content = replaceManagedAgentsBlock(result.content || "", renderAgentsManagedBlock(agentDraft || { soul: draft?.soul, memory: draft?.memory }));
+        setAgentsFile({ path: result.path || "AGENTS.md", content });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setAgentsFile({ path: "Unavailable", content: error instanceof Error ? error.message : "Could not load AGENTS.md." });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject, draft?.memory, draft?.soul, mode]);
 
   async function save(next: SettingsResponse) {
-    setDraft(next);
     setStatus("Saving...");
     try {
       const saved = await hyperwikiApi.json<SettingsResponse>("/api/settings", { method: "PUT", body: next });
       setDraft(saved);
+      setThemeDraft(saved.theme || null);
       setStatus("Saved.");
+      return saved;
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not save settings.");
+      return null;
     }
   }
 
-  function updateSoul(key: "interface" | "agent", value: string) {
-    if (!draft) return;
-    void save({ ...draft, soul: { ...(draft.soul || {}), [key]: value } });
+  function openThemeEditor() {
+    setThemeDraft(structuredClone(draft?.theme || {}));
+    setMode("theme");
+    setStatus("");
   }
 
-  function updatePrinciple(index: number, value: string) {
-    if (!draft) return;
-    const principles = [...(draft.soul?.principles || [])];
-    principles[index] = value;
-    void save({ ...draft, soul: { ...(draft.soul || {}), principles } });
+  function openAgentEditor() {
+    setAgentDraft({ soul: structuredClone(draft?.soul || {}), memory: structuredClone(draft?.memory || { entries: [] }) });
+    setMode("agent");
+    setStatus("");
   }
 
-  function addMemory() {
-    if (!draft) return;
-    void save({ ...draft, memory: { entries: [...(draft.memory?.entries || []), { title: "Memory", content: "", enabled: true }] } });
+  async function saveTheme() {
+    if (!draft || !themeDraft) return;
+    const saved = await save({ ...draft, theme: themeDraft });
+    if (saved) setMode("overview");
   }
 
-  function updateMemory(index: number, patch: Partial<MemoryEntry>) {
-    if (!draft) return;
-    const entries = [...(draft.memory?.entries || [])];
-    entries[index] = { ...entries[index], ...patch };
-    void save({ ...draft, memory: { entries } });
+  async function saveAgentInstructions() {
+    if (!draft || !agentDraft) return;
+    const nextSoul = agentDraft.soul || {};
+    const nextMemory = {
+      entries: (agentDraft.memory?.entries || [])
+        .map((entry) => ({
+          id: entry.id || crypto.randomUUID(),
+          title: String(entry.title || "").trim(),
+          content: String(entry.content || "").trim(),
+          enabled: entry.enabled !== false,
+          updatedAt: new Date().toISOString(),
+        }))
+        .filter((entry) => entry.title || entry.content),
+    };
+    const saved = await save({ ...draft, soul: nextSoul, memory: nextMemory });
+    if (!saved) return;
+    if (activeProject) {
+      setStatus("Syncing AGENTS.md...");
+      const content = replaceManagedAgentsBlock(agentsFile.content, renderAgentsManagedBlock({ soul: nextSoul, memory: nextMemory }));
+      try {
+        await hyperwikiApi.json(withProjectQuery("/api/settings/sync-agents", activeProject), { method: "POST", body: { content } });
+        setStatus("Agent instructions saved.");
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Could not sync AGENTS.md.");
+        return;
+      }
+    }
+    setMode("overview");
   }
 
   if (!draft) {
     return (
-      <section className="min-h-0 overflow-auto bg-background p-4">
-        <h1 className="m-0 text-xl font-bold">Settings</h1>
-        <div className="mt-4 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
+      <section className="min-h-0 overflow-auto bg-background">
+        <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
+        <div className="m-8 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
+      </section>
+    );
+  }
+
+  const theme = effectiveTheme(draft.theme);
+  const overviewMemory = draft.memory?.entries || [];
+  const soul = draft.soul || {};
+
+  if (mode === "theme") {
+    const editableTheme = themeDraft || {};
+    const editTheme = effectiveTheme(editableTheme);
+    const presets = editableTheme.presets || {};
+    return (
+      <section className="min-h-0 overflow-auto bg-background">
+        <SettingsPageHeader
+          actions={<><Button variant="outline" onClick={() => { setThemeDraft(draft.theme || null); setMode("overview"); }}>Cancel</Button><Button onClick={saveTheme}>Save Theme</Button></>}
+          description="Adjust a draft theme and preview it here. The workspace updates after Save."
+          title="Edit Theme"
+        />
+        <div className="grid gap-4 p-8">
+          <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3">
+            {Object.entries(presets).map(([key, preset]) => (
+              <button
+                className={cn("rounded-md border bg-card p-3 text-left hover:border-primary", key === editableTheme.activePreset && "border-primary ring-1 ring-primary/40")}
+                key={key}
+                onClick={() => setThemeDraft({ ...editableTheme, activePreset: key })}
+                type="button"
+              >
+                <ThemePresetCard presetKey={key} theme={normalizePreset(preset)} />
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
+            <section className="rounded-md border bg-card p-4">
+              <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+                Mode
+                <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={editTheme.mode} onChange={(event) => setThemeDraft(updateThemeMode(editableTheme, event.target.value))}>
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </label>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <ColorField label="Primary" value={editTheme.tokens.ui?.accent || "#4361ee"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "accent", value))} />
+                <ColorField label="Terminal Accent" value={editTheme.tokens.terminal?.accent || editTheme.tokens.ui?.accent || "#4361ee"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "accent", value))} />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <SelectField label="Body Style" value={fontStyle(editTheme.tokens.docs?.serifFont)} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "docs", "serifFont", value === "sans" ? "Work Sans, sans-serif" : "Instrument Serif, serif"))} options={[["serif", "Serif"], ["sans", "Sans Serif"]]} />
+                <SelectField label="Sidebar" value={editTheme.tokens.ui?.sidebarFont === editTheme.tokens.docs?.serifFont ? "body" : "mono"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "sidebarFont", value === "body" ? editTheme.tokens.docs?.serifFont || "Work Sans, sans-serif" : editTheme.tokens.docs?.monoFont || "Space Mono, monospace"))} options={[["body", "Body copy font"], ["mono", "Mono font"]]} />
+                <SelectField label="Mono Font" value={editTheme.tokens.docs?.monoFont || "Space Mono, monospace"} onChange={(value) => setThemeDraft(updateThemeToken(updateThemeToken(editableTheme, "docs", "monoFont", value), "terminal", "font", value))} options={[["Space Mono, monospace", "Space Mono"], ["IBM Plex Mono, monospace", "IBM Plex Mono"], ["Fira Code, monospace", "Fira Code"], ["Roboto Mono, monospace", "Roboto Mono"]]} />
+                <SelectField label="Terminal Mode" value={editTheme.tokens.terminal?.mode || "dark"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "mode", value))} options={[["dark", "Dark"], ["light", "Light"], ["match", "Match UI"]]} />
+              </div>
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">Advanced JSON</summary>
+                <textarea className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
+              </details>
+            </section>
+            <section className="grid rounded-md border bg-card p-6">
+              <div className="grid grid-cols-[190px_1fr] gap-8">
+                <div className="border-r pr-6 font-ui">
+                  <p className="text-xs font-bold uppercase text-muted-foreground">Plans</p>
+                  <p className="mt-3 text-sm">Stage-08 Settings, Soul...</p>
+                  <p className="mt-3 text-sm">Unit 02 - Theme System</p>
+                </div>
+                <div style={{ fontFamily: editTheme.tokens.docs?.serifFont }}>
+                  <h2 className="text-4xl">Planning Preview</h2>
+                  <p className="mt-4 max-w-xl text-2xl text-muted-foreground">Docs keep their reading voice while the UI stays dense and scannable.</p>
+                  <code className="mt-5 inline-block bg-muted px-2 py-1 font-mono text-sm">wiki/plans/mvp/stage-08-settings-soul-memory.html</code>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <SettingsStatus status={status} />
+      </section>
+    );
+  }
+
+  if (mode === "agent") {
+    const editableAgent = agentDraft || { soul: draft.soul || {}, memory: draft.memory || { entries: [] } };
+    return (
+      <section className="min-h-0 overflow-auto bg-background">
+        <SettingsPageHeader
+          actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
+          description="Saving updates global instructions and syncs the current project AGENTS.md."
+          title="Edit Agent Instructions"
+        />
+        <div className="grid gap-4 p-8">
+          <div className="grid grid-cols-[minmax(360px,0.78fr)_minmax(320px,1fr)] gap-4 max-lg:grid-cols-1">
+            <section className="rounded-md border bg-card p-4">
+              <TextareaField label="Principles" value={(editableAgent.soul?.principles || []).join("\n")} rows={8} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), principles: value.split("\n").map((line) => line.trim()).filter(Boolean) } })} />
+              <TextareaField label="Interface Guidance" value={editableAgent.soul?.interface || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), interface: value } })} />
+              <TextareaField label="Agent Guidance" value={editableAgent.soul?.agent || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), agent: value } })} />
+            </section>
+            <section className="rounded-md border bg-card p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-sm font-bold uppercase">Memory</h2>
+                <Button variant="outline" onClick={() => setAgentDraft({ ...editableAgent, memory: { entries: [...(editableAgent.memory?.entries || []), { title: "", content: "", enabled: true }] } })}>+ Memory</Button>
+              </div>
+              <div className="grid gap-3">
+                {(editableAgent.memory?.entries || []).length ? (editableAgent.memory?.entries || []).map((entry, index) => (
+                  <MemoryEditor entry={entry} index={index} key={entry.id || index} onChange={(next) => {
+                    const entries = [...(editableAgent.memory?.entries || [])];
+                    entries[index] = next;
+                    setAgentDraft({ ...editableAgent, memory: { entries } });
+                  }} onRemove={() => setAgentDraft({ ...editableAgent, memory: { entries: (editableAgent.memory?.entries || []).filter((_, itemIndex) => itemIndex !== index) } })} />
+                )) : <p className="text-sm text-muted-foreground">No memory entries added yet...</p>}
+              </div>
+            </section>
+          </div>
+          <section className="rounded-md border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <h2 className="text-sm font-bold uppercase">AGENTS.md</h2>
+              <span className="truncate text-xs text-muted-foreground">{agentsFile.path || "AGENTS.md"}</span>
+            </div>
+            <textarea className="min-h-[360px] w-full rounded-md border bg-background p-4 font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
+          </section>
+        </div>
+        <SettingsStatus status={status} />
       </section>
     );
   }
 
   return (
-    <section className="min-h-0 overflow-auto bg-background p-8">
-      <header className="mb-6">
-        <h1 className="font-ui m-0 text-4xl font-bold leading-none">Settings</h1>
-        <p className="font-ui m-0 mt-3 text-sm text-muted-foreground">Control global theme, Soul, Memory, and project AGENTS.md sync.</p>
-      </header>
-
-      <div className="grid max-w-6xl gap-5">
-        <section className="rounded-md border bg-card p-5">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-ui m-0 text-2xl font-semibold">Theme</h2>
-              <p className="m-0 mt-1 text-sm text-muted-foreground">{activeTheme?.label || activePreset} · {activeTheme?.mode || "light"}</p>
-            </div>
-            <Button variant="outline" onClick={() => void hyperwikiApi.json<SettingsResponse>("/api/settings/reset-theme", { method: "POST" }).then((saved) => { setDraft(saved); setStatus("Theme reset."); })}>
-              Reset Theme
-            </Button>
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-            {Object.entries(presets).map(([key, preset]) => {
-              const ui = preset.tokens?.ui || {};
-              const docs = preset.tokens?.docs || {};
-              const terminal = preset.tokens?.terminal || {};
-              return (
-                <button
-                  className={cn("rounded-md border bg-background p-3 text-left hover:border-primary", key === activePreset && "border-primary ring-1 ring-primary/30")}
-                  key={key}
-                  onClick={() => void save({ ...draft, theme: { ...(draft.theme || {}), activePreset: key } })}
-                  type="button"
-                >
-                  <span className="mb-3 flex h-8 overflow-hidden rounded border">
-                    {[ui.bg, ui.accent, docs.bg, docs.link, terminal.bg].filter(Boolean).map((color) => <span className="flex-1" key={color} style={{ background: color }} />)}
-                  </span>
-                  <strong className="block truncate">{preset.label || key}</strong>
-                  <span className="text-xs text-muted-foreground">{preset.mode || "light"}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-md border bg-card p-5">
-          <h2 className="font-ui m-0 text-2xl font-semibold">Soul</h2>
-          <div className="mt-4 grid gap-3">
-            {(soul.principles || []).map((principle, index) => (
-              <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground" key={index}>
-                Principle {index + 1}
-                <input className="rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={principle} onChange={(event) => updatePrinciple(index, event.target.value)} />
-              </label>
-            ))}
-            <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
-              Interface Guidance
-              <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={soul.interface || ""} onChange={(event) => updateSoul("interface", event.target.value)} />
-            </label>
-            <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
-              Agent Guidance
-              <textarea className="min-h-20 rounded-md border bg-background px-3 py-2 text-sm font-normal text-foreground" value={soul.agent || ""} onChange={(event) => updateSoul("agent", event.target.value)} />
-            </label>
-          </div>
-        </section>
-
-        <section className="rounded-md border bg-card p-5">
+    <section className="min-h-0 overflow-auto bg-background">
+      <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
+      <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
+        <section className="rounded-md border bg-card p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="font-ui m-0 text-2xl font-semibold">Memory</h2>
-            <Button variant="outline" onClick={addMemory}>+ Memory</Button>
+            <h2 className="text-sm font-bold uppercase">Theme</h2>
+            <Button variant="outline" onClick={openThemeEditor}>Edit</Button>
+          </div>
+          <div className="grid min-h-48 grid-cols-[minmax(0,1fr)_auto] items-end gap-5 rounded-md border bg-background p-7">
+            <h3 className="m-0 text-7xl font-bold leading-none">{theme.label}</h3>
+            <ThemeSwatches colors={[theme.tokens.ui?.bg, theme.tokens.ui?.panel, theme.tokens.ui?.accent, theme.tokens.docs?.bg, theme.tokens.docs?.link, theme.tokens.terminal?.bg, theme.tokens.terminal?.accent]} tall />
+          </div>
+          <div className="mt-4 grid gap-3">
+            <ThemeSurfaceSummary label="UI" description="Sidebar and workspace chrome" tokens={theme.tokens.ui} fontKeys={[["Sidebar Font", "sidebarFont"]]} />
+            <ThemeSurfaceSummary label="Docs" description="Planning and wiki pages" tokens={theme.tokens.docs} fontKeys={[["Serif Font", "serifFont"], ["Mono Font", "monoFont"]]} />
+            <ThemeSurfaceSummary label="Terminal" description="Pane chrome and session frames" tokens={theme.tokens.terminal} fontKeys={[["Font", "font"]]} />
+          </div>
+        </section>
+        <section className="rounded-md border bg-card p-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
+            <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
           </div>
           <div className="grid gap-3">
-            {memory.length ? memory.map((entry, index) => (
-              <div className="grid gap-2 rounded-md border bg-background p-3" key={index}>
-                <label className="flex items-center gap-2 text-sm font-bold">
-                  <input className="size-4 accent-primary" checked={entry.enabled !== false} type="checkbox" onChange={(event) => updateMemory(index, { enabled: event.target.checked })} />
-                  Enabled
-                </label>
-                <input className="rounded-md border bg-card px-3 py-2 text-sm" placeholder="Title" value={entry.title || ""} onChange={(event) => updateMemory(index, { title: event.target.value })} />
-                <textarea className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => updateMemory(index, { content: event.target.value })} />
-              </div>
-            )) : <div className="rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">No memory entries yet.</div>}
+            <AgentSummaryCard title="Soul" meta={`${soul.principles?.length || 0} principles`} lines={(soul.principles || []).slice(0, 3)} />
+            <AgentSummaryCard title="Agent" meta="Guidance" lines={[soul.agent || "No agent guidance recorded."]} />
+            <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
           </div>
         </section>
-
-        <section className="rounded-md border bg-card p-5">
-          <h2 className="font-ui m-0 text-2xl font-semibold">AGENTS.md</h2>
-          <p className="m-0 mt-2 text-sm text-muted-foreground">Global Soul and Memory are available for AGENTS.md sync through the existing settings API.</p>
-        </section>
-
-        {status ? <p className="text-sm text-muted-foreground" role="status">{status}</p> : null}
       </div>
+      <SettingsStatus status={status} />
     </section>
   );
+}
+
+function SettingsPageHeader({ actions, description, title }: { actions?: ReactNode; description: string; title: string }) {
+  return (
+    <header className="flex min-h-36 items-start justify-between gap-6 border-b bg-muted/20 px-8 py-10">
+      <div>
+        <h1 className="m-0 text-5xl font-bold leading-none tracking-normal">{title}</h1>
+        <p className="m-0 mt-3 font-ui text-base text-muted-foreground">{description}</p>
+      </div>
+      {actions ? <div className="flex shrink-0 items-center gap-2 pt-10">{actions}</div> : null}
+    </header>
+  );
+}
+
+function SettingsStatus({ status }: { status: string }) {
+  if (!status) return null;
+  return <p className="px-8 pb-6 text-sm text-muted-foreground" role="status">{status}</p>;
+}
+
+function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { description: string; fontKeys: Array<[string, string]>; label: string; tokens?: Record<string, string> }) {
+  return (
+    <article className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background p-4">
+      <header>
+        <strong className="block text-sm">{label}</strong>
+        <span className="text-xs text-muted-foreground">{description}</span>
+      </header>
+      <div className="min-w-0">
+        <ThemeSwatches colors={["bg", "panel", "muted", "text", "border", "accent"].map((key) => tokens?.[key])} />
+        <dl className="mt-3 grid gap-2">
+          {fontKeys.map(([name, key]) => (
+            <div className="grid grid-cols-[160px_minmax(0,1fr)] items-baseline gap-3" key={key}>
+              <dt className="text-xs font-bold uppercase text-muted-foreground">{name}</dt>
+              <dd className="min-w-0">
+                <span className="block text-xs font-bold text-muted-foreground">{fontLabel(tokens?.[key])}</span>
+                <span className="block truncate text-2xl" style={{ fontFamily: tokens?.[key] }}>AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </article>
+  );
+}
+
+function ThemeSwatches({ colors, tall = false }: { colors: Array<string | undefined>; tall?: boolean }) {
+  return (
+    <span className={cn("flex justify-end gap-1", tall && "items-end gap-0")}>
+      {colors.filter(Boolean).map((color, index) => (
+        <span
+          className={cn("block rounded-sm border", tall ? "h-24 w-9 rounded-none first:rounded-l-md last:rounded-r-md" : "size-5")}
+          key={`${color}-${index}`}
+          style={{ background: color }}
+          title={color}
+        />
+      ))}
+    </span>
+  );
+}
+
+function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: string; title: string }) {
+  const values = lines.filter(Boolean);
+  return (
+    <article className="rounded-md border bg-background p-3">
+      <header className="mb-2 flex items-center justify-between gap-3">
+        <strong>{title}</strong>
+        <span className="text-xs text-muted-foreground">{meta}</span>
+      </header>
+      <ul className="m-0 grid gap-1 pl-5 text-sm text-muted-foreground">
+        {(values.length ? values : ["No entries added yet..."]).map((line, index) => <li key={index}>{line}</li>)}
+      </ul>
+    </article>
+  );
+}
+
+function ThemePresetCard({ large = false, presetKey, theme }: { large?: boolean; presetKey: string; theme: NormalizedTheme }) {
+  return (
+    <div className={cn("grid min-w-0 grid-cols-[80px_minmax(0,1fr)] items-center gap-3", large && "grid-cols-[300px_minmax(0,1fr)] rounded-md border bg-card p-7")}>
+      <span className={cn("relative block h-16 overflow-hidden rounded-md border bg-background", large && "h-52")}>
+        <i className="absolute left-8 top-10 size-6 bg-primary" style={{ background: theme.tokens.ui?.accent }} />
+        <b className="absolute left-24 top-12 h-2 w-28 bg-primary" style={{ background: theme.tokens.docs?.link || theme.tokens.ui?.accent }} />
+        <em className="absolute left-24 top-20 h-2 w-36 bg-primary/30" style={{ background: theme.tokens.ui?.muted || theme.tokens.ui?.panel }} />
+        <strong className="absolute bottom-0 right-0 h-16 w-56 bg-foreground" style={{ background: theme.tokens.terminal?.bg }} />
+      </span>
+      <span className="min-w-0">
+        <strong className={cn("block truncate", large && "text-2xl")}>{theme.label || presetKey}</strong>
+        {large ? (
+          <span className="mt-6 grid grid-cols-2 gap-8 border-t pt-5">
+            <span>
+              <small className="block text-xs font-bold uppercase text-muted-foreground">Text</small>
+              <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.serifFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
+              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog...</em>
+            </span>
+            <span>
+              <small className="block text-xs font-bold uppercase text-muted-foreground">Mono</small>
+              <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.monoFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
+              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog...</em>
+            </span>
+          </span>
+        ) : (
+          <>
+            <span className="block truncate text-sm text-muted-foreground" style={{ fontFamily: theme.tokens.docs?.serifFont }}>{fontLabel(theme.tokens.docs?.serifFont)}</span>
+            <span className="block truncate text-sm text-muted-foreground" style={{ fontFamily: theme.tokens.docs?.monoFont }}>{fontLabel(theme.tokens.docs?.monoFont)}</span>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function ColorField({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  return (
+    <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+      {label}
+      <input className="h-10 w-full rounded-md border bg-background px-1" type="color" value={normalizeColor(value)} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function SelectField({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: Array<[string, string]>; value: string }) {
+  return (
+    <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+      {label}
+      <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function TextareaField({ label, onChange, rows, value }: { label: string; onChange: (value: string) => void; rows: number; value: string }) {
+  return (
+    <label className="mb-4 grid gap-2 text-xs font-bold uppercase text-muted-foreground">
+      {label}
+      <textarea className="w-full rounded-md border bg-background p-3 font-mono text-sm font-normal normal-case text-foreground" rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function MemoryEditor({ entry, index, onChange, onRemove }: { entry: MemoryEntry; index: number; onChange: (entry: MemoryEntry) => void; onRemove: () => void }) {
+  return (
+    <article className="grid gap-2 rounded-md border bg-background p-3">
+      <input className="rounded-md border bg-card px-3 py-2 text-sm" placeholder={`Memory ${index + 1}`} value={entry.title || ""} onChange={(event) => onChange({ ...entry, title: event.target.value })} />
+      <textarea className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => onChange({ ...entry, content: event.target.value })} />
+      <div className="flex items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+          <input className="size-4 accent-primary" checked={entry.enabled !== false} type="checkbox" onChange={(event) => onChange({ ...entry, enabled: event.target.checked })} />
+          Enabled
+        </label>
+        <Button variant="outline" onClick={onRemove}>Remove</Button>
+      </div>
+    </article>
+  );
+}
+
+interface NormalizedTheme {
+  label: string;
+  mode: string;
+  tokens: {
+    ui?: Record<string, string>;
+    docs?: Record<string, string>;
+    terminal?: Record<string, string>;
+  };
+}
+
+function effectiveTheme(theme?: SettingsResponse["theme"]): NormalizedTheme {
+  const presets = theme?.presets || {};
+  const preset = presets[theme?.activePreset || ""] || Object.values(presets)[0] || {};
+  return mergePreset(normalizePreset(preset), { label: hasThemeOverrides(theme) ? "Custom" : preset.label || "Custom", tokens: theme?.customTokens || {} });
+}
+
+function normalizePreset(preset?: ThemePreset): NormalizedTheme {
+  return {
+    label: preset?.label || "Custom",
+    mode: preset?.mode || "light",
+    tokens: {
+      ui: { ...(preset?.tokens?.ui || {}) },
+      docs: { ...(preset?.tokens?.docs || {}) },
+      terminal: { ...(preset?.tokens?.terminal || {}) },
+    },
+  };
+}
+
+function mergePreset(base: NormalizedTheme, patch: Partial<NormalizedTheme>): NormalizedTheme {
+  return {
+    label: patch.label || base.label,
+    mode: patch.mode || base.mode,
+    tokens: {
+      ui: { ...(base.tokens.ui || {}), ...(patch.tokens?.ui || {}) },
+      docs: { ...(base.tokens.docs || {}), ...(patch.tokens?.docs || {}) },
+      terminal: { ...(base.tokens.terminal || {}), ...(patch.tokens?.terminal || {}) },
+    },
+  };
+}
+
+function hasThemeOverrides(theme?: SettingsResponse["theme"]) {
+  return Object.values(theme?.customTokens || {}).some((surface) => Object.keys(surface || {}).length > 0);
+}
+
+function updateThemeMode(theme: SettingsResponse["theme"], mode: string): SettingsResponse["theme"] {
+  return { ...(theme || {}), customTokens: { ...(theme?.customTokens || {}), ui: { ...(theme?.customTokens?.ui || {}) }, docs: { ...(theme?.customTokens?.docs || {}) }, terminal: { ...(theme?.customTokens?.terminal || {}), mode } } };
+}
+
+function updateThemeToken(theme: SettingsResponse["theme"], surface: "ui" | "docs" | "terminal", token: string, value: string): SettingsResponse["theme"] {
+  return { ...(theme || {}), customTokens: { ...(theme?.customTokens || {}), [surface]: { ...(theme?.customTokens?.[surface] || {}), [token]: value } } };
+}
+
+function fontStyle(value?: string) {
+  return value?.includes("sans-serif") ? "sans" : "serif";
+}
+
+function fontLabel(value?: string) {
+  if (!value) return "Default";
+  return value.split(",")[0].replaceAll("\"", "").trim();
+}
+
+function normalizeColor(value?: string) {
+  return /^#[0-9a-f]{6}$/i.test(value || "") ? value || "#4361ee" : "#4361ee";
+}
+
+function renderAgentsManagedBlock(settings: { soul?: SettingsResponse["soul"]; memory?: SettingsResponse["memory"] }) {
+  const soul = settings.soul || {};
+  const principles = (soul.principles || []).filter(Boolean);
+  const memories = (settings.memory?.entries || []).filter((entry) => entry.enabled !== false && String(entry.content || "").trim());
+  return `<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->
+## HyperWiki Global Context
+
+### Soul
+
+${principles.length ? principles.map((item) => `- ${item}`).join("\n") : "- No global soul principles recorded."}
+
+Interface guidance: ${soul.interface || "Use HyperWiki's default interface guidance."}
+
+Agent guidance: ${soul.agent || "Use HyperWiki's default agent guidance."}
+
+### Memory
+
+${memories.length ? memories.map((entry) => `- ${entry.title ? `${entry.title}: ` : ""}${entry.content}`).join("\n") : "- No approved global memory entries recorded."}
+<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->`;
+}
+
+function replaceManagedAgentsBlock(content: string, block: string) {
+  const start = "<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->";
+  const end = "<!-- HYPERWIKI-GLOBAL-CONTEXT:END -->";
+  if (content.includes(start) && content.includes(end)) {
+    return content.replace(new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}`), block);
+  }
+  return `${content.trimEnd()}${content.trim() ? "\n\n" : ""}${block}\n`;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function RightActionPane({
