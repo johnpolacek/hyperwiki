@@ -31,6 +31,7 @@
     <li>Changed imported planning auto-start to key off imported source plus absence of real plan pages, and fixed imported-project terminal reattach scoping.</li>
     <li>Moved post-create navigation ahead of workspace loading and prompt delivery so import cannot remain stuck on the New Project form after the agent prompt is sent.</li>
     <li>Added a New Project handoff state and direct route callback after import creation, preventing the import form from remaining interactive during agent planning startup.</li>
+    <li>Added a Tauri WebDriver import-planning smoke script for supported platforms and route-aware project selection for workspace URLs.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>

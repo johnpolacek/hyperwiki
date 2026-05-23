@@ -401,7 +401,7 @@ function App() {
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
-      setActiveProject(findActiveProject(projectsResult.value, unavailableProjectIds));
+      setActiveProject(findActiveProject(projectsResult.value, unavailableProjectIds, workspaceSelectionFromLocation()));
       setHasLoadedProjects(true);
     }
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
@@ -1526,7 +1526,7 @@ function NewProjectView({
         </div>
       </header>
       <div className="flex justify-center px-8 py-7">
-        <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" onSubmit={handleSubmit}>
+        <form className="w-full max-w-[56rem] rounded-md border bg-card p-5" data-testid="new-project-form" onSubmit={handleSubmit}>
           <header className="mb-5">
             <div>
               <h2 className="font-ui m-0 text-3xl font-normal leading-tight">Project Brief</h2>
@@ -1538,7 +1538,7 @@ function NewProjectView({
           <label className="mb-4 flex min-h-20 w-full cursor-pointer flex-col items-center justify-center rounded-md border bg-background text-center text-muted-foreground hover:bg-secondary">
             <span className="text-base font-bold uppercase">Import Project File</span>
             <small className="text-xs font-bold">Markdown or HTML</small>
-            <input className="sr-only" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
           </label>
           <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
             <span className="h-px bg-border" />
@@ -2574,9 +2574,22 @@ function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {
   return `/projects/${encodeURIComponent(activeProject.id)}${path}`;
 }
 
-function findActiveProject(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set()) {
+function findActiveProject(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set(), workspaceSelection = workspaceSelectionFromLocation()) {
   const all = [...(response.projects || []), ...(response.checkouts || []), ...normalizeProjectGroups(response, unavailableProjectIds).flatMap((group) => group.checkouts)].filter((project) => isAvailableProject(project, unavailableProjectIds));
+  if (workspaceSelection) {
+    const selected = all.find((project) => project.projectSlug === workspaceSelection.projectSlug && project.worktreeSlug === workspaceSelection.worktreeSlug);
+    if (selected) return selected;
+  }
   return all.find((project) => project.id === response.activeProjectId) || all.find((project) => project.active) || all[0] || null;
+}
+
+function workspaceSelectionFromLocation() {
+  const match = window.location.pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/);
+  if (!match) return null;
+  return {
+    projectSlug: decodeURIComponent(match[1]),
+    worktreeSlug: decodeURIComponent(match[2]),
+  };
 }
 
 function normalizeProjectGroups(response: ProjectListResponse, unavailableProjectIds: Set<string> = new Set()) {
