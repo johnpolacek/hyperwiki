@@ -1074,13 +1074,13 @@ function WorkspacePane(props: {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView onCreateProject={props.onCreateProject} onPlanImportedProject={props.onPlanImportedProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} onNavigate={props.onNavigate} onPlanImportedProject={props.onPlanImportedProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView onCreateProject={props.onCreateProject} onPlanImportedProject={props.onPlanImportedProject} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} onNavigate={props.onNavigate} onPlanImportedProject={props.onPlanImportedProject} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1414,9 +1414,11 @@ function formatProjectDate(value?: string | null) {
 
 function NewProjectView({
   onCreateProject,
+  onNavigate,
   onPlanImportedProject,
 }: {
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onNavigate: (route: ViewRoute) => void;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
@@ -1425,6 +1427,7 @@ function NewProjectView({
   const [initializeGit, setInitializeGit] = useState(true);
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [handoffProject, setHandoffProject] = useState<ProjectRecord | null>(null);
   const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
 
   function logImport(message: string, error?: unknown) {
@@ -1485,6 +1488,8 @@ function NewProjectView({
     try {
       const project = await onCreateProject(input);
       if (project) {
+        setHandoffProject(project);
+        onNavigate({ kind: "wiki", path: "/wiki/plans/index.html" });
         setStatus("Project imported. Starting agent planning...");
         logImport(`Created project ${project.name} (${project.id})`);
         logImport("Loading imported workspace");
@@ -1498,6 +1503,18 @@ function NewProjectView({
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (handoffProject) {
+    return (
+      <section className="flex min-h-0 items-center justify-center bg-background p-8">
+        <div className="grid max-w-md gap-3 text-center">
+          <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
+          <h1 className="font-ui m-0 text-2xl font-bold">Opening {handoffProject.name}</h1>
+          <p className="m-0 text-sm text-muted-foreground">Switching to the planning workspace and starting the agent.</p>
+        </div>
+      </section>
+    );
   }
 
   return (
