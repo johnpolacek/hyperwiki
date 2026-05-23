@@ -1415,7 +1415,6 @@ function NewProjectView({
   const [initializeGit, setInitializeGit] = useState(true);
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdProject, setCreatedProject] = useState<ProjectRecord | null>(null);
   const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
 
   function logImport(message: string, error?: unknown) {
@@ -1476,7 +1475,6 @@ function NewProjectView({
     try {
       const project = await onCreateProject(input);
       if (project) {
-        setCreatedProject(project);
         setStatus("Project imported. Starting agent planning...");
         logImport(`Created project ${project.name} (${project.id})`);
         logImport("Loading imported workspace");
@@ -1490,35 +1488,6 @@ function NewProjectView({
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (createdProject) {
-    return (
-      <section className="min-h-0 overflow-auto bg-background">
-        <header className="flex min-h-40 items-center px-10">
-          <div>
-            <h1 className="font-ui m-0 text-4xl font-bold leading-none">Agent Planning Started</h1>
-            <p className="font-ui m-0 mt-3 max-w-[48rem] text-sm text-muted-foreground">
-              Hyperwiki imported {createdProject.name}, saved the source into the wiki, and sent the MVP planning brief to the agent.
-            </p>
-          </div>
-        </header>
-        <div className="mx-auto grid w-full max-w-[60rem] gap-5 px-8 py-7">
-          <section className="rounded-md border bg-card p-5">
-            <div className="mb-4 grid gap-2 sm:grid-cols-3">
-              <ProjectDetail label="Project" value={createdProject.name} />
-              <ProjectDetail label="Source" value="wiki/sources/import.html" />
-              <ProjectDetail label="Plan Target" value="wiki/plans/mvp/" />
-            </div>
-            <p className="m-0 text-sm text-muted-foreground">
-              The agent prompt invokes <code>$project-html-wiki</code>, points at the imported source, and asks for stages, units, and verification steps. If the source is thin, the agent should ask focused questions before writing the final plan.
-            </p>
-          </section>
-          {status ? <p className="m-0 text-sm text-muted-foreground" role="status">{status}</p> : null}
-          <ImportLog lines={importLog} />
-        </div>
-      </section>
-    );
   }
 
   return (
