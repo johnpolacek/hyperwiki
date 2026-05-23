@@ -1004,7 +1004,7 @@ function WorkspacePane(props: {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <ProjectEmptyState onNewProject={() => props.onNavigate({ kind: "new-project" })} />;
+    return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1026,30 +1026,6 @@ function WorkspacePane(props: {
         ) : (
           <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
         )}
-      </div>
-    </section>
-  );
-}
-
-function ProjectEmptyState({ onNewProject }: { onNewProject: () => void }) {
-  return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-background">
-      <div className="flex min-h-12 items-center border-b bg-card px-3">
-        <span className="truncate text-xs font-bold uppercase">No Active Project</span>
-      </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center p-8">
-        <div className="flex max-w-md flex-col items-center gap-4 text-center">
-          <div className="grid size-12 place-items-center rounded-md border bg-card">
-            <FolderOpen aria-hidden="true" className="size-5 text-muted-foreground" />
-          </div>
-          <div className="grid gap-2">
-            <h2 className="font-ui m-0 text-2xl font-bold">No project is available</h2>
-            <p className="m-0 text-sm text-muted-foreground">The previous project root is missing or was removed from Hyperwiki.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button onClick={onNewProject}>New Project</Button>
-          </div>
-        </div>
       </div>
     </section>
   );
