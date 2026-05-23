@@ -320,7 +320,7 @@ fn import_question_sequence(source: &ImportedSource) -> Vec<ImportPlanningQuesti
             "first-mode",
             "First Mode",
             &format!(
-                "Which single mode or use case should the first prototype prove before anything else? Source MVP signals: {}",
+                "Pick the one lane this prototype has to prove first. Source MVP clues: {}",
                 if source.mvp.is_empty() {
                     "none captured".to_string()
                 } else {
@@ -328,59 +328,59 @@ fn import_question_sequence(source: &ImportedSource) -> Vec<ImportPlanningQuesti
                 }
             ),
             "blocking",
-            "The source may name several modes; implementation needs one starting point.",
+            "The source may be full of good ideas; the implementation still needs one starting line.",
         ),
         question(
             "platform",
             "Platform",
-            "What platform and app shape should the first implementation target?",
+            "Where should the first version live: web app, mobile app, desktop, CLI, or something else with a pulse?",
             "blocking",
-            "Platform choice controls stack, APIs, preview commands, and verification.",
+            "This choice sets the stack, APIs, preview command, and the tests we can actually trust.",
         ),
         question(
             "location-source",
             "Location Source",
-            "Should the first demo use live device/location data, simulated route data, or both?",
+            "For the first demo, are we using live data, simulated data, or both because we enjoy controlled chaos?",
             "blocking",
-            "Location realism changes risk, permissions, testability, and demo speed.",
+            "Real data buys realism; simulated data buys speed, repeatability, and fewer permission traps.",
         ),
         question(
             "narration-output",
             "Narration Output",
-            "Should the first working slice produce text only, audio playback, or both?",
+            "What should the first slice actually produce: text, audio playback, or both?",
             "blocking",
-            "Audio changes dependencies, UX, latency, and verification expectations.",
+            "Audio is valuable, but it drags in latency, dependencies, UX states, and extra verification.",
         ),
         question(
             "provider",
             "Provider",
-            "Which model/provider decision should the first plan assume?",
+            "Which model or provider should the plan assume first, so future agents are not provider-shopping mid-sprint?",
             "blocking",
-            "Provider assumptions affect API setup, attribution, cost, and fallback design.",
+            "Provider assumptions affect setup, attribution, cost, fallback behavior, and how honest the plan can be.",
         ),
         question(
             "safety-privacy",
             "Safety And Privacy",
             &format!(
-                "What safety, privacy, distraction, or attribution constraints must shape the first implementation? Source signal: {}",
+                "What safety, privacy, distraction, or attribution rules are non-negotiable from day one? Source signal: {}",
                 source.promotion.first().cloned().unwrap_or_else(|| source.problem.clone())
             ),
             "blocking",
-            "Movement-aware apps can create safety and privacy risk if this is left vague.",
+            "If this stays vague, the app can look clever while quietly creating risk. Bad trade.",
         ),
         question(
             "non-goals",
             "Non-Goals",
-            "What should the first implementation explicitly defer even if it appears in the imported source?",
+            "What are we absolutely not building yet, even if the source keeps waving it around?",
             "blocking",
-            "The plan needs a boundary so MVP bullets do not become one oversized unit.",
+            "A good MVP needs edges; otherwise every bullet tries to become the whole product.",
         ),
         question(
             "success-criteria",
             "Success Criteria",
-            "What exact demo or validation result should prove the prototype works?",
+            "What exact demo result tells us this thing works and is not just a nicely organized wish?",
             "blocking",
-            "Detailed units need verifiable acceptance criteria.",
+            "Detailed units need acceptance criteria a future agent can verify without reading minds.",
         ),
     ]
 }

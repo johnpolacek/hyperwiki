@@ -1474,7 +1474,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
           <div>
             <h1 className="font-ui m-0 text-4xl font-bold leading-none">Planning Questions</h1>
             <p className="font-ui m-0 mt-3 max-w-[48rem] text-sm text-muted-foreground">
-              Hyperwiki imported {createdProject.name}. Answer the missing decisions before it writes stages and units.
+              Hyperwiki imported {createdProject.name}. Lock the decisions that matter, then it can write stages and units worth handing to an agent.
             </p>
           </div>
         </header>
@@ -1497,7 +1497,7 @@ function NewProjectView({ onCreateProject }: { onCreateProject: (input: { title:
                 className="mt-4 min-h-32 w-full rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={currentAnswer}
                 onChange={(event) => setCurrentAnswer(event.target.value)}
-                placeholder="Answer with enough detail for a future implementation unit..."
+                placeholder="Give the future implementer the decision, the boundary, and any useful caveats..."
               />
               <Button className="mt-4 min-h-10" disabled={isPlanningBusy || !currentAnswer.trim()} type="submit">
                 Save Answer And Continue

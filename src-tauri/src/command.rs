@@ -1281,6 +1281,9 @@ mod tests {
         assert!(clarify.ok);
         assert!(clarify.text.contains("\"ready\":false"));
         assert!(clarify.text.contains("first-mode"));
+        assert!(clarify
+            .text
+            .contains("Pick the one lane this prototype has to prove first."));
 
         let blocked = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
