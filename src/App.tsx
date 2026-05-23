@@ -160,6 +160,29 @@ interface LayoutResponse {
   };
 }
 
+interface RepoContextResponse {
+  root?: string;
+  git?: {
+    root?: string | null;
+    branch?: string;
+    dirty?: boolean | null;
+    worktree?: string;
+  };
+}
+
+interface WorktreeCreateResponse {
+  branch?: string;
+  slug?: string;
+  path?: string;
+  previewUrl?: string;
+  workspaceUrl?: string;
+  project?: ProjectRecord;
+  install?: {
+    ok?: boolean;
+    message?: string;
+  };
+}
+
 interface SessionRecord {
   id: string;
   name?: string;
@@ -227,6 +250,7 @@ function App() {
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [layout, setLayout] = useState<LayoutResponse | null>(null);
+  const [repoContext, setRepoContext] = useState<RepoContextResponse | null>(null);
   const [reviewWorkflows, setReviewWorkflows] = useState<ReviewWorkflow[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -291,7 +315,7 @@ function App() {
 
   async function loadBaseData() {
     setStatus("Loading workspace");
-    const [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult] = await Promise.allSettled([
+    const [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult, repoResult] = await Promise.allSettled([
       hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", activeProject)),
       hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", activeProject)),
       hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", activeProject)),
@@ -299,6 +323,7 @@ function App() {
       hyperwikiApi.json<SettingsResponse>("/api/settings"),
       hyperwikiApi.json<LayoutResponse>(withProjectQuery("/api/layout", activeProject)),
       hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", activeProject)),
+      hyperwikiApi.json<RepoContextResponse>(withProjectQuery("/api/repo", activeProject)),
     ]);
 
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
@@ -312,8 +337,9 @@ function App() {
     if (settingsResult.status === "fulfilled") setSettings(settingsResult.value);
     if (layoutResult.status === "fulfilled") setLayout(layoutResult.value);
     if (reviewResult.status === "fulfilled") setReviewWorkflows(reviewResult.value.workflows || []);
+    if (repoResult.status === "fulfilled") setRepoContext(repoResult.value);
 
-    const rejected = [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult].find((result) => result.status === "rejected");
+    const rejected = [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult, repoResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
   }
 
@@ -350,12 +376,13 @@ function App() {
 
   async function loadProjectData(project: ProjectRecord) {
     setStatus("Loading workspace");
-    const [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult] = await Promise.allSettled([
+    const [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult, repoResult] = await Promise.allSettled([
       hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
       hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", project)),
       hyperwikiApi.json<AppPreviewResponse>(withProjectQuery("/api/app-preview", project)),
       hyperwikiApi.json<LayoutResponse>(withProjectQuery("/api/layout", project)),
       hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", project)),
+      hyperwikiApi.json<RepoContextResponse>(withProjectQuery("/api/repo", project)),
     ]);
 
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
@@ -363,8 +390,9 @@ function App() {
     if (previewResult.status === "fulfilled") setPreview(previewResult.value);
     if (layoutResult.status === "fulfilled") setLayout(layoutResult.value);
     if (reviewResult.status === "fulfilled") setReviewWorkflows(reviewResult.value.workflows || []);
+    if (repoResult.status === "fulfilled") setRepoContext(repoResult.value);
 
-    const rejected = [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult].find((result) => result.status === "rejected");
+    const rejected = [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult, repoResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
     return workspaceResult.status === "fulfilled" ? workspaceResult.value : null;
   }
@@ -547,6 +575,29 @@ function App() {
     }
   }
 
+  async function initializeGitFromTerminal() {
+    if (!activeProject) return;
+    setStatus("Initializing Git");
+    const result = await hyperwikiApi.json<{ repo?: RepoContextResponse; result?: { committed?: boolean; message?: string } }>(withProjectQuery("/api/git/init", activeProject), { method: "POST", body: {} });
+    if (result.repo) setRepoContext(result.repo);
+    setStatus(result.result?.committed ? "Git initialized. Worktrees are now available." : result.result?.message || "Git initialized. Worktrees are now available.");
+  }
+
+  async function createWorktreeFromTerminal(branch: string) {
+    if (!activeProject) return;
+    setStatus("Creating worktree");
+    const result = await hyperwikiApi.json<WorktreeCreateResponse>(withProjectQuery("/api/worktrees", activeProject), {
+      method: "POST",
+      body: { branch },
+    });
+    const projectsResult = await hyperwikiApi.json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(result.project?.id || activeProject.id)}`);
+    setProjects(projectsResult);
+    if (result.project) {
+      await switchProject(result.project);
+    }
+    setStatus(result.install?.ok === false ? result.install.message || "Worktree created; install failed." : "Worktree ready.");
+  }
+
   async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
     setStatus("Initializing project");
     const result = await hyperwikiApi.json<ProjectCreateResponse>("/api/projects/create", {
@@ -634,11 +685,15 @@ function App() {
             isLoading={isSessionsLoading}
             onCloseSession={closeSession}
             onRefresh={loadSessions}
+            onCreateWorktree={createWorktreeFromTerminal}
+            onInitializeGit={initializeGitFromTerminal}
             onRenameSession={renameSession}
             onRestartSession={restartSession}
             onSelectSession={setActiveSessionId}
             onStart={startTerminal}
+            repoContext={repoContext}
             scope={terminalScope}
+            workspace={workspace}
             sessions={sessions}
           />
         )}
@@ -1895,31 +1950,109 @@ function TerminalPane(props: {
   activeProject: ProjectRecord | null;
   isLoading: boolean;
   onCloseSession: (sessionId: string) => void;
+  onCreateWorktree: (branch: string) => Promise<void>;
+  onInitializeGit: () => Promise<void>;
   onRenameSession: (sessionId: string, name: string) => void;
   onRefresh: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
+  repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
+  workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
   const activeSession = props.sessions.find((session) => session.id === props.activeSessionId) || props.sessions[0] || null;
-  const branchLabel = props.activeProject?.worktreeSlug || props.activeProject?.branch || "main";
+  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
+  const [worktreeBranch, setWorktreeBranch] = useState("");
+  const [worktreeStatus, setWorktreeStatus] = useState("");
+  const [isCreatingWorktree, setIsCreatingWorktree] = useState(false);
+  const [thinkingEffort, setThinkingEffort] = useState(() => normalizedThinkingEffort(window.localStorage.getItem("hyperwiki.thinkingEffort")));
+  const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
+  const hasGit = Boolean(props.repoContext?.git?.root);
+  const canCreateWorktree = hasGit && ["main", "master"].includes(String(branchLabel || "").trim().toLowerCase());
+  const worktreeSlug = slugify(worktreeBranch.replace(/^refs\/heads\//, "") || "feature/worktree");
+  const gitRoot = props.repoContext?.git?.root || props.repoContext?.root || "";
+  const worktreePreview = worktreePreviewForSlug(gitRoot, worktreeSlug);
+  const previewUrl = props.activeProject?.projectSlug ? `https://${worktreeSlug}.${props.activeProject.projectSlug}.localhost` : `https://${worktreeSlug}.localhost`;
+
+  useEffect(() => {
+    window.localStorage.setItem("hyperwiki.thinkingEffort", thinkingEffort);
+  }, [thinkingEffort]);
+
+  function openWorktreePopover() {
+    if (!hasGit) {
+      setWorktreeStatus("Initialize Git before creating a worktree.");
+      setIsWorktreeOpen(true);
+      return;
+    }
+    const title = props.workspace?.status?.current || titleForPath(props.scope.planPath || "worktree", []);
+    setWorktreeBranch(`feature/${slugify(title || "worktree")}`);
+    setWorktreeStatus(props.repoContext?.git?.dirty ? "Main has uncommitted changes. Commit them first if the worktree should include them." : "");
+    setIsWorktreeOpen(true);
+  }
+
+  async function submitWorktree(event: FormEvent) {
+    event.preventDefault();
+    setIsCreatingWorktree(true);
+    try {
+      if (!hasGit) {
+        setWorktreeStatus("Initializing Git...");
+        await props.onInitializeGit();
+        setWorktreeStatus("Git initialized. Create a worktree when ready.");
+        return;
+      }
+      setWorktreeStatus("Creating worktree...");
+      await props.onCreateWorktree(worktreeBranch.trim());
+      setIsWorktreeOpen(false);
+      setWorktreeStatus("");
+    } catch (error) {
+      setWorktreeStatus(error instanceof Error ? error.message : "Could not create worktree.");
+    } finally {
+      setIsCreatingWorktree(false);
+    }
+  }
+
   return (
     <aside className="flex min-h-0 flex-col border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
       <div className="flex min-h-11 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 font-mono text-xs">
         <div className="relative flex min-w-0 flex-1 items-center gap-2">
           <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
           <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]">{branchLabel}</strong>
-          <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button">
-            + worktree
-          </Button>
+          {canCreateWorktree || !hasGit ? (
+            <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={openWorktreePopover}>
+              {hasGit ? "+ worktree" : "init git"}
+            </Button>
+          ) : null}
+          {isWorktreeOpen ? (
+            <form className="absolute left-0 top-[calc(100%+8px)] z-50 grid w-[min(420px,calc(100vw-32px))] gap-3 rounded-lg border border-[#465063] bg-[#111513] p-3.5 text-[#eef2ec] shadow-[0_18px_52px_rgba(0,0,0,0.42)]" onSubmit={submitWorktree}>
+              <header className="flex items-center justify-between gap-3">
+                <strong className="text-sm">New worktree</strong>
+                <button className="grid size-7 place-items-center text-xl leading-none text-[#aeb8b0] hover:text-[#eef2ec]" type="button" onClick={() => setIsWorktreeOpen(false)} aria-label="Close worktree creator">&times;</button>
+              </header>
+              <label className="grid gap-1.5">
+                <span className="text-[11px] font-bold uppercase text-[#9da79f]">Branch</span>
+                <input className="w-full rounded-md border border-[#3a403b] bg-[#0c0f0d] px-2.5 py-2 text-xs text-[#eef2ec] outline-none focus:border-[#8ea0ff]" disabled={!hasGit} value={worktreeBranch} onChange={(event) => setWorktreeBranch(event.target.value)} />
+              </label>
+              <dl className="grid gap-1.5 rounded-md border border-[#2c302d] bg-[#151917] p-2.5">
+                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Slug</dt><dd className="truncate text-right">{worktreeSlug}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Path</dt><dd className="truncate text-right">{worktreePreview}</dd></div>
+                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Preview</dt><dd className="truncate text-right">{previewUrl}</dd></div>
+              </dl>
+              {worktreeStatus ? <p className="m-0 text-[11px] leading-snug text-[#f4d88c]">{worktreeStatus}</p> : null}
+              <footer className="flex items-center justify-end gap-3">
+                <Button className="h-8 border-[#eef2ec] bg-[#eef2ec] px-3 text-xs font-extrabold text-[#111513] hover:bg-white" disabled={isCreatingWorktree} type="submit">
+                  {hasGit ? "Create Worktree" : "init git"}
+                </Button>
+              </footer>
+            </form>
+          ) : null}
           {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-[#9da79f]" /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <label className="flex items-center gap-1.5 text-[#9da79f]">
             <span>thinking</span>
-            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" defaultValue="low" aria-label="Default thinking effort for new agent terminals">
+            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={thinkingEffort} onChange={(event) => setThinkingEffort(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
               <option value="low">low</option>
               <option value="medium">medium</option>
               <option value="high">high</option>
@@ -2375,6 +2508,20 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 72) || "work";
+}
+
+function normalizedThinkingEffort(value: string | null | undefined) {
+  const normalized = String(value || "low").trim().toLowerCase();
+  return ["low", "medium", "high", "xhigh"].includes(normalized) ? normalized : "low";
+}
+
+function worktreePreviewForSlug(root: string, slug: string) {
+  const normalized = root.replace(/\/+$/g, "");
+  if (!normalized) return `../worktrees/${slug}`;
+  const parts = normalized.split("/");
+  const base = parts.pop() || "project";
+  const parent = parts.join("/") || "/";
+  return `${parent}/${base}.worktrees/${slug}`;
 }
 
 function scopeForRoute(route: ViewRoute) {
