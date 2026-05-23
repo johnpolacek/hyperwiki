@@ -1540,7 +1540,7 @@ function NewProjectView({
         <header>
           <h1 className="font-ui m-0 text-4xl font-bold leading-none tracking-normal">New Project</h1>
           <p className="font-ui m-0 mt-3 max-w-[34rem] text-base leading-7 text-muted-foreground">
-            Import a brief or source file. HyperWiki will save it, open an agent, and start the MVP plan.
+            Import a brief or source file. HyperWiki will do the rest.
           </p>
         </header>
         <form className="grid gap-5" data-testid="new-project-form" onSubmit={handleSubmit}>
