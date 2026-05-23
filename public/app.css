@@ -4711,6 +4711,95 @@ html[data-initial-route="settings"] .wiki-pane {
   color: var(--terminal-muted);
 }
 
+/* React rewrite fallback: keep the legacy static terminal pane visually aligned
+   with the restored HyperWiki terminal chrome. */
+.terminal-pane {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+}
+
+.terminal-toolbar {
+  min-height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--sidebar-font);
+}
+
+.terminal-branch {
+  gap: 8px;
+  max-width: none;
+}
+
+.terminal-branch::before {
+  content: "Terminals";
+  color: var(--text);
+  font: 700 14px/1.2 var(--sidebar-font);
+}
+
+.terminal-branch svg,
+.terminal-branch strong,
+.terminal-effort-picker,
+.terminal-worktree-button {
+  display: none !important;
+}
+
+.terminal-actions {
+  gap: 8px;
+}
+
+.terminal-outline-button {
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 11px;
+  background: var(--panel);
+  color: var(--text);
+  font: 700 12px/1.2 var(--sidebar-font);
+}
+
+.terminal-outline-button:hover,
+.terminal-outline-button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  color: var(--text);
+}
+
+#new-cli-terminal {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.terminal-tabs {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.terminals {
+  grid-row: 3;
+  margin: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.workspace:not(.terminal-active) .terminals {
+  display: grid;
+  min-height: 228px;
+  place-items: center;
+  background: var(--bg);
+}
+
+.terminal-empty {
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font: 13px/1.4 var(--sidebar-font);
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .settings-layout {
     grid-template-columns: 1fr;
