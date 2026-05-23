@@ -127,7 +127,6 @@ pub fn create_import_plan(
                 .to_string(),
         ));
     }
-    let source = ImportedSource::read(root);
     let answers = AnswerSet::new(&request.answers);
     let title = if request.plan_title.trim().is_empty() {
         "MVP Implementation Plan"
@@ -135,12 +134,6 @@ pub fn create_import_plan(
         request.plan_title.trim()
     };
     let mut wrote = Vec::new();
-    write_file(
-        root,
-        "wiki/sources/planning-interview.html",
-        &planning_interview_html(&source, &request.answers),
-        &mut wrote,
-    )?;
     write_file(
         root,
         "wiki/plans/mvp/index.html",
@@ -487,28 +480,6 @@ fn unit_html(title: &str, goal: &str, scope: &str, verification: &str, gate: &st
             escape_html(scope),
             escape_html(verification),
             escape_html(gate)
-        ),
-    )
-}
-
-fn planning_interview_html(source: &ImportedSource, answers: &[ImportPlanningAnswer]) -> String {
-    let rows = answers
-        .iter()
-        .map(|answer| {
-            format!(
-                "<tr><td>{}</td><td>{}</td></tr>",
-                escape_html(&answer.id),
-                escape_html(answer.answer.trim())
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("");
-    page(
-        "Planning Interview",
-        &format!(
-            "<h1>Planning Interview</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: complete</li><li>Source summary: {}</li></ul></section><section><h2>Answers</h2><table><thead><tr><th>Question</th><th>Answer</th></tr></thead><tbody>{}</tbody></table></section>",
-            escape_html(&source.summary),
-            rows
         ),
     )
 }

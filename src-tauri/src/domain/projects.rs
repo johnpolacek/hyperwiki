@@ -948,10 +948,6 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             "wiki/sources/design-brief.html",
             source_page(options, "Design Brief"),
         ),
-        (
-            "wiki/sources/planning-interview.html",
-            source_page(options, "Planning Interview"),
-        ),
         ("wiki/sources/import.html", import_page(options)),
     ];
     for (relative, content) in pages {
@@ -992,10 +988,6 @@ fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), St
         (
             "wiki/sources/design-brief.html",
             design_brief_page(options),
-        ),
-        (
-            "wiki/sources/planning-interview.html",
-            planning_interview_page(options),
         ),
         ("wiki/sources/import.html", import_page(options)),
     ];
@@ -1117,7 +1109,7 @@ fn plans_index_page(options: &InitProjectOptions) -> String {
 <li>Status: planning</li>\
 <li>Current stage: none; source-grounded Q&amp;A has not produced a real implementation stage yet.</li>\
 <li>Current unit: none; do not execute product code until the agent creates a detailed unit with verification.</li>\
-<li>Next action: run the agent-led planning interview from <code>wiki/sources/planning-interview.html</code>, then create a decision-complete plan.</li>\
+	<li>Next action: run the agent-led source review from <code>wiki/sources/import.html</code>, ask focused questions in the agent terminal if needed, then create a decision-complete plan.</li>\
 </ul></section>\
 <section><h2>Planning Rule</h2><p>This imported project intentionally has no generated MVP stage tree yet. Stages and units must be created only after the source has been reviewed and the user has answered detailed Q&amp;A for maximum clarity.</p></section>",
         );
@@ -1196,7 +1188,7 @@ fn technical_brief_page(options: &InitProjectOptions) -> String {
         "Technical Brief",
         &format!(
             "<h1>Technical Brief</h1>\
-<section class=\"summary\"><h2>Summary</h2><ul><li>Technical decisions are not final until the planning interview confirms implementation constraints.</li></ul></section>\
+	<section class=\"summary\"><h2>Summary</h2><ul><li>Technical decisions are not final until source review and focused Q&amp;A confirm implementation constraints.</li></ul></section>\
 <section><h2>Known Implementation Signals</h2>{}</section>\
 <section><h2>Technical Unknowns For Q&amp;A</h2><ul>\
 <li>Target platform, app shell, storage model, and deployment path.</li>\
@@ -1230,32 +1222,11 @@ fn design_brief_page(options: &InitProjectOptions) -> String {
     )
 }
 
-fn planning_interview_page(options: &InitProjectOptions) -> String {
-    layout(
-        options,
-        "Planning Interview",
-        &format!(
-            "<h1>Planning Interview</h1>\
-<section class=\"summary\"><h2>Summary</h2><ul><li>Status: Q&amp;A required before implementation planning.</li><li>Source summary: {}</li></ul></section>\
-<section><h2>Imported Planning Answers</h2>{}</section>\
-<section><h2>Required Q&amp;A Areas</h2><ul>\
-<li>Confirm target user, first use case, and non-goals.</li>\
-<li>Choose the first implementation slice and defer unsupported capabilities.</li>\
-<li>Decide architecture, data, provider, privacy, safety, and local preview constraints.</li>\
-<li>Define success criteria, verification commands, and manual acceptance checks.</li>\
-<li>Only then create detailed stages and units with Verification and Completion Gate sections.</li>\
-</ul></section>",
-            escape_html(&options.source_facts.summary),
-            planning_answers_html(&options.planning_answers)
-        ),
-    )
-}
-
 fn import_roadmap_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Roadmap",
-        "<h1>Roadmap</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: planning intake</li><li>Next action: complete detailed Q&amp;A before creating implementation stages or units.</li></ul></section><p>The imported source defines product intent, but implementation sequencing is intentionally deferred until the planning interview resolves key decisions.</p>",
+        "<h1>Roadmap</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: planning intake</li><li>Next action: complete detailed Q&amp;A before creating implementation stages or units.</li></ul></section><p>The imported source defines product intent, but implementation sequencing is intentionally deferred until focused agent Q&amp;A resolves key decisions.</p>",
     )
 }
 
@@ -1603,7 +1574,7 @@ fn truncate_summary(value: &str) -> String {
 
 fn or_unknown(value: &str) -> &str {
     if value.trim().is_empty() {
-        "Unknown; resolve during the planning interview."
+        "Unknown; resolve through source review and focused agent Q&amp;A."
     } else {
         value
     }
@@ -1611,38 +1582,13 @@ fn or_unknown(value: &str) -> &str {
 
 fn html_list_or_unknown(items: &[String]) -> String {
     if items.is_empty() {
-        return "<p>Unknown; resolve during the planning interview.</p>".to_string();
+        return "<p>Unknown; resolve through source review and focused agent Q&amp;A.</p>".to_string();
     }
     format!(
         "<ul>{}</ul>",
         items
             .iter()
             .map(|item| format!("<li>{}</li>", escape_html(item)))
-            .collect::<Vec<_>>()
-            .join("")
-    )
-}
-
-fn planning_answers_html(answers: &BTreeMap<String, PlanningAnswer>) -> String {
-    if answers.is_empty() {
-        return "<p>No planning interview choices were captured during import.</p>".to_string();
-    }
-    format!(
-        "<dl>{}</dl>",
-        answers
-            .iter()
-            .map(|(key, answer)| {
-                let value = if answer.value.trim().is_empty() {
-                    &answer.label
-                } else {
-                    &answer.value
-                };
-                format!(
-                    "<dt>{}</dt><dd>{}</dd>",
-                    escape_html(key),
-                    escape_html(value)
-                )
-            })
             .collect::<Vec<_>>()
             .join("")
     )
@@ -1702,7 +1648,7 @@ fn sources_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Sources",
-        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.html</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li><li><a href=\"/wiki/sources/planning-interview.html\">Planning interview</a></li><li><a href=\"/wiki/sources/import.html\">Imported source</a></li></ul>",
+        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.html</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li><li><a href=\"/wiki/sources/import.html\">Imported source</a></li></ul>",
     )
 }
 
@@ -2118,12 +2064,6 @@ mod tests {
         let root = created.project.root;
         let index = fs::read_to_string(root.join("wiki").join("index.html")).unwrap();
         let prd = fs::read_to_string(root.join("wiki").join("sources").join("prd.html")).unwrap();
-        let planning = fs::read_to_string(
-            root.join("wiki")
-                .join("sources")
-                .join("planning-interview.html"),
-        )
-        .unwrap();
         let plans = fs::read_to_string(root.join("wiki").join("plans").join("index.html")).unwrap();
 
         assert!(index.contains("spontaneous guided audio tour"));
@@ -2131,10 +2071,13 @@ mod tests {
         assert!(prd.contains("Most tours require planning"));
         assert!(prd.contains("Generates narration from current latitude"));
         assert!(prd.contains("hands-free voice interaction"));
-        assert!(planning.contains("Generate live location narration first"));
-        assert!(planning.contains("Q&amp;A required before implementation planning"));
         assert!(plans.contains("Status: planning"));
         assert!(plans.contains("no generated MVP stage tree"));
+        assert!(!root
+            .join("wiki")
+            .join("sources")
+            .join("planning-interview.html")
+            .exists());
         assert!(!root.join("wiki").join("plans").join("mvp").exists());
     }
 

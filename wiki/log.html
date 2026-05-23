@@ -27,6 +27,7 @@
     <li>Changed the workspace <code>+ plan</code> action to open the existing plan creation form directly while still notifying the side-panel mode.</li>
     <li>Added an event-driven import-planning recovery so the planning dashboard starts the agent when the imported intake page is visible with no agent session.</li>
     <li>Removed the post-import success screen so a completed import lands in the imported project workspace with the agent panel visible.</li>
+    <li>Stopped creating <code>wiki/sources/planning-interview.html</code>; imported projects now use <code>wiki/sources/import.html</code> plus terminal Q&amp;A as the planning source.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>

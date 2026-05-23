@@ -364,7 +364,7 @@ function App() {
   useEffect(() => {
     if (!activeProject || route.kind !== "wiki" || route.path !== "/wiki/plans/index.html") return;
     if (isSessionsLoading || sessions.some((session) => session.role === "agent" || session.name?.toLowerCase().startsWith("agent"))) return;
-    if (!wikiHtml.includes("agent-led planning interview") && !wikiHtml.includes("source-grounded Q&amp;A")) return;
+    if (!wikiHtml.includes("agent-led source review") && !wikiHtml.includes("source-grounded Q&amp;A")) return;
     const key = `${activeProject.id}:${route.path}`;
     if (importPlanningAutoStartKey.current === key) return;
     importPlanningAutoStartKey.current = key;
