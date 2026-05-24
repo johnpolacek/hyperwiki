@@ -581,8 +581,10 @@ function App() {
 
   async function loadSessionsForProject(project: ProjectRecord | null, scope = terminalScope) {
     if (!project) return [];
+    appendImportLog(`Loading sessions project=${project.id} scope=${scope.scope}`);
     const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(scope.scope)}`, project));
     const nextSessions = response.sessions || [];
+    appendImportLog(`Loaded sessions project=${project.id} scope=${scope.scope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
     setSessions(nextSessions);
     setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
     return nextSessions;
@@ -594,6 +596,7 @@ function App() {
     }
     const existing = knownSessions.find(isAgentSession);
     if (existing?.command) {
+      appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length}`);
       setActiveSessionId(existing.id);
       return existing;
     }
@@ -612,6 +615,7 @@ function App() {
         planPath: scope.planPath,
       },
     });
+    appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""}`);
     setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
     setActiveSessionId(started.session.id);
     return started.session;
@@ -912,6 +916,11 @@ function App() {
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
+
+  useEffect(() => {
+    if (!isUtilityRoute && route.kind !== "plan-create") return;
+    appendImportLog(`Terminal pane hidden utility=${isUtilityRoute} route=${route.kind} activeProject=${activeProject?.id || "none"}`);
+  }, [activeProject?.id, isUtilityRoute, route.kind]);
 
   return (
     <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
@@ -2620,6 +2629,10 @@ function TerminalPane(props: {
   useEffect(() => {
     window.localStorage.setItem("hyperwiki.thinkingEffort", thinkingEffort);
   }, [thinkingEffort]);
+
+  useEffect(() => {
+    appendImportLog(`Terminal pane render project=${props.activeProject?.id || "none"} scope=${props.scope.scope} sessions=${props.sessions.length} active=${props.activeSessionId || "none"} ids=${props.sessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
+  }, [props.activeProject?.id, props.activeSessionId, props.scope.scope, props.sessions]);
 
   function openWorktreePopover() {
     if (!hasGit) {
