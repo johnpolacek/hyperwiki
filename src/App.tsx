@@ -286,7 +286,7 @@ function App() {
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
-  const importedPlanningStartKeys = useRef(new Set<string>());
+  const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -646,25 +646,34 @@ function App() {
 
   async function planImportedProject(project: ProjectRecord) {
     const key = `${project.id}:import-qna`;
-    if (importedPlanningStartKeys.current.has(key)) {
-      const existingAgent = sessions.find(isAgentSession);
-      if (existingAgent?.command) {
-        appendImportLog(`Imported Q&A duplicate recovered existing agent project=${project.id} session=${existingAgent.id}`);
-        setActiveSessionId(existingAgent.id);
+    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+    const projectScope = scopeForRoute(projectRoute);
+    const inFlight = importedPlanningRuns.current.get(key);
+    if (inFlight) {
+      appendImportLog(`Imported Q&A start joined in-flight run project=${project.id}`);
+      await inFlight;
+      return;
+    }
+    const existingSessions = await loadSessionsForProject(project, projectScope);
+    const existingAgent = existingSessions.find(isAgentSession);
+    if (existingAgent?.command) {
+      appendImportLog(`Imported Q&A recovered existing agent project=${project.id} session=${existingAgent.id}`);
+      setActiveSessionId(existingAgent.id);
+      setStatus("Imported project Q&A is already running");
+      return;
+    }
+    const run = (async () => {
+      appendImportLog(`Imported Q&A start requested project=${project.id}`);
+      openImportedPlanningWorkspace(project, projectRoute);
+      const loaded = await loadProjectData(project);
+      const nextSessions = await loadSessionsForProject(project, projectScope);
+      const refreshedAgent = nextSessions.find(isAgentSession);
+      if (refreshedAgent?.command) {
+        appendImportLog(`Imported Q&A found agent after refresh project=${project.id} session=${refreshedAgent.id}`);
+        setActiveSessionId(refreshedAgent.id);
         setStatus("Imported project Q&A is already running");
         return;
       }
-      appendImportLog(`Imported Q&A duplicate had no agent session; retrying project=${project.id}`);
-      importedPlanningStartKeys.current.delete(key);
-    }
-    importedPlanningStartKeys.current.add(key);
-    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
-    appendImportLog(`Imported Q&A start requested project=${project.id}`);
-    try {
-      openImportedPlanningWorkspace(project, projectRoute);
-      const projectScope = scopeForRoute(projectRoute);
-      const loaded = await loadProjectData(project);
-      const nextSessions = await loadSessionsForProject(project, projectScope);
       appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
       const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
       appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
@@ -672,10 +681,15 @@ function App() {
       await delay(250);
       await loadSessionsForProject(project, projectScope);
       setStatus("Imported project Q&A started");
+    })();
+    importedPlanningRuns.current.set(key, run);
+    try {
+      await run;
     } catch (error) {
-      importedPlanningStartKeys.current.delete(key);
       appendImportLog(`Imported Q&A start failed project=${project.id}`, error);
       throw error;
+    } finally {
+      importedPlanningRuns.current.delete(key);
     }
   }
 
