@@ -319,19 +319,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!hasLoadedProjects || hasRegisteredProjects || route.kind !== "wiki") return;
+    if (!hasLoadedProjects || hasRegisteredProjects || activeProject || route.kind !== "wiki") return;
     if (isPendingImportRoute) {
       appendImportLog("Holding workspace route for pending import; not redirecting to New Project");
       return;
     }
-    appendImportLog(`Redirecting to New Project: hasLoadedProjects=${hasLoadedProjects} hasRegisteredProjects=${hasRegisteredProjects} activeProject=${activeProject?.id || "none"} route=${window.location.pathname}${window.location.hash || ""}`);
+    appendImportLog(`Redirecting to New Project: hasLoadedProjects=${hasLoadedProjects} hasRegisteredProjects=${hasRegisteredProjects} activeProject=none route=${window.location.pathname}${window.location.hash || ""}`);
     setRoute({ kind: "new-project" });
     window.history.replaceState(null, "", "/projects/new");
   }, [activeProject?.id, hasLoadedProjects, hasRegisteredProjects, isPendingImportRoute, route.kind]);
 
   useEffect(() => {
     if (route.kind !== "wiki") return;
-    if (hasLoadedProjects && !hasRegisteredProjects) return;
+    if (hasLoadedProjects && !hasRegisteredProjects && !activeProject) return;
     if (hasLoadedProjects && !activeProject) return;
     let cancelled = false;
     setIsWikiLoading(true);
