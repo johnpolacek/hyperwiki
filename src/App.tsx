@@ -287,6 +287,7 @@ function App() {
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
+  const importedPlanningCompletedKeys = useRef(new Set<string>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -648,6 +649,11 @@ function App() {
     const key = `${project.id}:import-qna`;
     const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
     const projectScope = scopeForRoute(projectRoute);
+    if (importedPlanningCompletedKeys.current.has(key)) {
+      appendImportLog(`Imported Q&A start ignored because prompt was already sent project=${project.id}`);
+      setStatus("Imported project Q&A is already running");
+      return;
+    }
     const inFlight = importedPlanningRuns.current.get(key);
     if (inFlight) {
       appendImportLog(`Imported Q&A start joined in-flight run project=${project.id}`);
@@ -677,6 +683,7 @@ function App() {
       appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
       const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
       appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
+      importedPlanningCompletedKeys.current.add(key);
       setActiveSessionId(session.id);
       await delay(250);
       await loadSessionsForProject(project, projectScope);
@@ -1518,13 +1525,16 @@ function PlanCreationView({
 
 function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: ProjectRecord | null; onStart: () => Promise<void> }) {
   const [isStarting, setIsStarting] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const hasStartedRef = useRef("");
 
   async function start() {
+    if (hasStarted) return;
     appendImportLog(`Imported Q&A view start clicked project=${activeProject?.id || "none"}`);
     setIsStarting(true);
     try {
       await onStart();
+      setHasStarted(true);
     } finally {
       setIsStarting(false);
     }
@@ -1545,13 +1555,15 @@ function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: Pro
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">
-            Hyperwiki found the imported source for {activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.
+            {hasStarted
+              ? "The Q&A prompt has been sent. Continue the interview in the agent terminal, then Hyperwiki will create the first MVP plan with stages, units, and verification."
+              : `Hyperwiki found the imported source for ${activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.`}
           </p>
         </div>
         <div className="flex justify-end">
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject} onClick={start} type="button">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-            {isStarting ? "Starting Q&A" : "Start Q&A"}
+            {isStarting ? "Starting Q&A" : hasStarted ? "Q&A Started" : "Start Q&A"}
           </Button>
         </div>
       </section>
