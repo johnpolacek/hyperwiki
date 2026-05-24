@@ -286,6 +286,7 @@ function App() {
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
+  const importedPlanningStartKeys = useRef(new Set<string>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -409,8 +410,7 @@ function App() {
         setPendingImportProject(null);
         setActiveProject(project);
         setStatus("Imported project ready");
-        void loadProjectData(project);
-        void loadSessionsForProject(project, scopeForRoute({ kind: "wiki", path: "/wiki/plans/index.mdx" }));
+        void planImportedProject(project);
       } catch (error) {
         console.warn("[hyperwiki] import ui pending poll failed", error);
       }
@@ -641,19 +641,31 @@ function App() {
   }
 
   async function planImportedProject(project: ProjectRecord) {
+    const key = `${project.id}:import-qna`;
+    if (importedPlanningStartKeys.current.has(key)) {
+      appendImportLog(`Imported Q&A start skipped duplicate project=${project.id}`);
+      return;
+    }
+    importedPlanningStartKeys.current.add(key);
     const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
     appendImportLog(`Imported Q&A start requested project=${project.id}`);
-    openImportedPlanningWorkspace(project, projectRoute);
-    const projectScope = scopeForRoute(projectRoute);
-    const loaded = await loadProjectData(project);
-    const nextSessions = await loadSessionsForProject(project, projectScope);
-    appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
-    const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
-    appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
-    setActiveSessionId(session.id);
-    await delay(250);
-    await loadSessionsForProject(project, projectScope);
-    setStatus("Imported project planning prompt sent");
+    try {
+      openImportedPlanningWorkspace(project, projectRoute);
+      const projectScope = scopeForRoute(projectRoute);
+      const loaded = await loadProjectData(project);
+      const nextSessions = await loadSessionsForProject(project, projectScope);
+      appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
+      const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
+      appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
+      setActiveSessionId(session.id);
+      await delay(250);
+      await loadSessionsForProject(project, projectScope);
+      setStatus("Imported project Q&A started");
+    } catch (error) {
+      importedPlanningStartKeys.current.delete(key);
+      appendImportLog(`Imported Q&A start failed project=${project.id}`, error);
+      throw error;
+    }
   }
 
   function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" }) {
@@ -822,6 +834,7 @@ function App() {
     setStatus(`Project created: ${project.name}`);
     setProjects((current) => withOptimisticProject(current, project));
     openImportedPlanningWorkspace(project);
+    void planImportedProject(project);
     void hyperwikiApi
       .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(project.id)}`)
       .then((projectsResult) => {
