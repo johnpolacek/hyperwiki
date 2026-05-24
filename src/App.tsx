@@ -614,7 +614,6 @@ function App() {
     });
     setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
     setActiveSessionId(started.session.id);
-    await loadSessionsForProject(project, scope);
     return started.session;
   }
 
@@ -684,9 +683,8 @@ function App() {
       const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
       appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
       importedPlanningCompletedKeys.current.add(key);
+      setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
       setActiveSessionId(session.id);
-      await delay(250);
-      await loadSessionsForProject(project, projectScope);
       setStatus("Imported project Q&A started");
     })();
     importedPlanningRuns.current.set(key, run);
