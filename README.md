@@ -65,10 +65,14 @@ hyperwiki wt doctor
 
 ```text
 wiki/
+.agents/skills/
+skills-lock.json
 .hyperwiki/config.json
 .hyperwiki/state/
 .hyperwiki/sessions/
 ```
+
+Repo-local agent skills are installed by default from Hyperwiki's vendored bundle. Use `hyperwiki init --no-skills` to create a minimal wiki/config scaffold without `.agents/skills/` or `skills-lock.json`.
 
 The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwiki/state/` and `.hyperwiki/sessions/` should stay ignored unless intentionally exported.
 Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` so the workspace can switch between initialized projects without modifying their manifests.

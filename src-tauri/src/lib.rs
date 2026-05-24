@@ -69,6 +69,7 @@ fn run_init_cli(args: &[String]) {
                 .iter()
                 .map(|script| format!("{} run {script}", package.manager))
                 .collect(),
+            install_agent_skills: !options.flag("no_skills"),
             overwrite: options.flag("overwrite"),
         },
     );
@@ -358,7 +359,7 @@ pub fn run() {
 
 fn print_help() {
     println!(
-        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an HTML-first repo-local wiki and hyperwiki config.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
+        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite] [--no-skills]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an HTML-first repo-local wiki, hyperwiki config, and default repo-local agent skills.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
     );
 }
 

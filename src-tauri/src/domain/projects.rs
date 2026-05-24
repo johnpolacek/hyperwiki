@@ -81,6 +81,8 @@ pub struct ProjectCreateRequest {
     #[serde(default)]
     pub initialize_git: Option<bool>,
     #[serde(default)]
+    pub install_agent_skills: Option<bool>,
+    #[serde(default)]
     pub agent_launch_command: Option<String>,
 }
 
@@ -378,6 +380,7 @@ pub fn create_project_from_dashboard(
             agent_launch_command: request.agent_launch_command.unwrap_or_default(),
             dev_command: String::new(),
             package_scripts: Vec::new(),
+            install_agent_skills: request.install_agent_skills.unwrap_or(true),
             overwrite: false,
         },
     )
@@ -420,8 +423,25 @@ pub struct InitProjectOptions {
     pub agent_launch_command: String,
     pub dev_command: String,
     pub package_scripts: Vec<String>,
+    pub install_agent_skills: bool,
     pub overwrite: bool,
 }
+
+struct BundledAgentSkillFile {
+    relative_path: &'static str,
+    bytes: &'static [u8],
+}
+
+struct BundledAgentSkill {
+    name: &'static str,
+    source: &'static str,
+    source_type: &'static str,
+    skill_path: &'static str,
+    computed_hash: &'static str,
+    files: &'static [BundledAgentSkillFile],
+}
+
+include!(concat!(env!("OUT_DIR"), "/bundled_agent_skills.rs"));
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SourceFacts {
@@ -485,6 +505,9 @@ pub fn init_hyperwiki_project(
         &agents_markdown(&options),
         options.overwrite,
     )?;
+    if options.install_agent_skills {
+        install_agent_skills(root, options.overwrite)?;
+    }
     write_basic_wiki(root, &options)?;
     Ok(())
 }
@@ -1005,6 +1028,75 @@ fn write_if_safe(path: &Path, content: &str, overwrite: bool) -> Result<(), Stri
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn write_bytes_if_safe(path: &Path, content: &[u8], overwrite: bool) -> Result<(), String> {
+    if path.exists() && !overwrite {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn install_agent_skills(root: &Path, overwrite: bool) -> Result<(), String> {
+    for skill in BUNDLED_AGENT_SKILLS {
+        for file in skill.files {
+            write_bytes_if_safe(
+                &root
+                    .join(".agents")
+                    .join("skills")
+                    .join(skill.name)
+                    .join(file.relative_path),
+                file.bytes,
+                overwrite,
+            )?;
+        }
+    }
+    merge_skills_lock(root, overwrite)
+}
+
+fn merge_skills_lock(root: &Path, overwrite: bool) -> Result<(), String> {
+    let lock_path = root.join("skills-lock.json");
+    let mut lock = fs::read_to_string(&lock_path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .filter(|value| value.is_object())
+        .unwrap_or_else(|| serde_json::json!({ "version": 1, "skills": {} }));
+
+    if !lock["version"].is_number() {
+        lock["version"] = serde_json::json!(1);
+    }
+    if !lock["skills"].is_object() {
+        lock["skills"] = serde_json::json!({});
+    }
+
+    let skills = lock["skills"]
+        .as_object_mut()
+        .ok_or_else(|| "Could not merge skills-lock.json.".to_string())?;
+    for skill in BUNDLED_AGENT_SKILLS {
+        if overwrite || !skills.contains_key(skill.name) {
+            skills.insert(
+                skill.name.to_string(),
+                serde_json::json!({
+                    "source": skill.source,
+                    "sourceType": skill.source_type,
+                    "skillPath": skill.skill_path,
+                    "computedHash": skill.computed_hash
+                }),
+            );
+        }
+    }
+
+    write_if_safe(
+        &lock_path,
+        &format!(
+            "{}\n",
+            serde_json::to_string_pretty(&lock).map_err(|error| error.to_string())?
+        ),
+        true,
+    )
 }
 
 fn layout_panels(options: &InitProjectOptions) -> Result<Vec<serde_json::Value>, String> {
@@ -1656,13 +1748,13 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Wiki Agent Guide",
-        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.html before project-specific work and use wiki/sources.html as the source index.</p>",
+        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.html before project-specific work and use wiki/sources.html as the source index.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>project-html-wiki</code> for wiki maintenance, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> for substantial UI work, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
     )
 }
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nDo not add a duplicate `wiki/Sources.html`; Hyperwiki uses lowercase `wiki/sources.html`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nDo not add a duplicate `wiki/Sources.html`; Hyperwiki uses lowercase `wiki/sources.html`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `project-html-wiki` for wiki maintenance, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` for substantial UI work, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -1949,6 +2041,7 @@ mod tests {
                 document_type: Some("markdown".to_string()),
                 planning_answers: BTreeMap::new(),
                 initialize_git: Some(true),
+                install_agent_skills: None,
                 agent_launch_command: Some("codex --yolo".to_string()),
             },
         )
@@ -2005,6 +2098,7 @@ mod tests {
         assert!(config.contains("\"launchCommand\": \"codex --yolo\""));
         assert!(sources.contains("lowercase <code>wiki/sources.html</code>"));
         assert!(contract.contains("wiki/AGENTS.html"));
+        assert_default_skills_installed(&created.project.root);
         assert!(registry
             .list(Some(&created.project.id))
             .checkouts
@@ -2051,6 +2145,7 @@ mod tests {
                 document_type: Some("html".to_string()),
                 planning_answers,
                 initialize_git: Some(false),
+                install_agent_skills: None,
                 agent_launch_command: None,
             },
         )
@@ -2079,6 +2174,73 @@ mod tests {
             .join("planning-interview.html")
             .exists());
         assert!(!root.join("wiki").join("plans").join("mvp").exists());
+    }
+
+    #[test]
+    fn init_installs_default_agent_skills_and_lockfile() {
+        let root = temp_root("init-agent-skills");
+
+        init_hyperwiki_project(&root, init_options("Skill Project")).unwrap();
+
+        assert_default_skills_installed(&root);
+        let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+        assert!(agents.contains("Repo-local agent skills are installed"));
+        let wiki_agents = fs::read_to_string(root.join("wiki").join("AGENTS.html")).unwrap();
+        assert!(wiki_agents.contains(".agents/skills/"));
+    }
+
+    #[test]
+    fn init_can_skip_agent_skills() {
+        let root = temp_root("init-no-agent-skills");
+        let mut options = init_options("No Skills Project");
+        options.install_agent_skills = false;
+
+        init_hyperwiki_project(&root, options).unwrap();
+
+        assert!(!root.join(".agents").join("skills").exists());
+        assert!(!root.join("skills-lock.json").exists());
+    }
+
+    #[test]
+    fn init_preserves_existing_agent_skills_and_lock_entries_without_overwrite() {
+        let root = temp_root("init-preserve-agent-skills");
+        let custom_skill = root.join(".agents").join("skills").join("shadcn");
+        fs::create_dir_all(&custom_skill).unwrap();
+        fs::write(custom_skill.join("SKILL.md"), "custom shadcn").unwrap();
+        fs::write(
+            root.join("skills-lock.json"),
+            serde_json::to_string_pretty(&serde_json::json!({
+                "version": 1,
+                "skills": {
+                    "shadcn": {
+                        "source": "custom/source",
+                        "sourceType": "local",
+                        "skillPath": "SKILL.md",
+                        "computedHash": "custom"
+                    },
+                    "custom-skill": {
+                        "source": "custom/other",
+                        "sourceType": "local",
+                        "skillPath": "SKILL.md",
+                        "computedHash": "other"
+                    }
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        init_hyperwiki_project(&root, init_options("Preserve Skills")).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join(".agents").join("skills").join("shadcn").join("SKILL.md"))
+                .unwrap(),
+            "custom shadcn"
+        );
+        let lock = skills_lock(&root);
+        assert_eq!(lock["skills"]["shadcn"]["source"], "custom/source");
+        assert_eq!(lock["skills"]["custom-skill"]["source"], "custom/other");
+        assert!(lock["skills"]["project-html-wiki"].is_object());
     }
 
     #[test]
@@ -2210,6 +2372,49 @@ mod tests {
             serde_json::json!({ "projectName": name }).to_string(),
         )
         .unwrap();
+    }
+
+    fn init_options(project_name: &str) -> InitProjectOptions {
+        InitProjectOptions {
+            project_name: project_name.to_string(),
+            summary: "Test project summary.".to_string(),
+            source_document: String::new(),
+            source_document_type: String::new(),
+            source_facts: SourceFacts {
+                summary: "Test project summary.".to_string(),
+                ..Default::default()
+            },
+            planning_answers: BTreeMap::new(),
+            agent_launch_command: String::new(),
+            dev_command: String::new(),
+            package_scripts: Vec::new(),
+            install_agent_skills: true,
+            overwrite: false,
+        }
+    }
+
+    fn assert_default_skills_installed(root: &Path) {
+        let lock = skills_lock(root);
+        for skill in BUNDLED_AGENT_SKILLS {
+            assert!(
+                root.join(".agents")
+                    .join("skills")
+                    .join(skill.name)
+                    .join("SKILL.md")
+                    .is_file(),
+                "{} should have SKILL.md",
+                skill.name
+            );
+            assert!(
+                lock["skills"][skill.name].is_object(),
+                "{} should be in skills-lock.json",
+                skill.name
+            );
+        }
+    }
+
+    fn skills_lock(root: &Path) -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(root.join("skills-lock.json")).unwrap()).unwrap()
     }
 
     fn temp_root(label: &str) -> PathBuf {

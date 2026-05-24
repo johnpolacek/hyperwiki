@@ -111,6 +111,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 document_type: None,
                 planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
+                install_agent_skills: None,
                 agent_launch_command: None,
             });
         eprintln!(
