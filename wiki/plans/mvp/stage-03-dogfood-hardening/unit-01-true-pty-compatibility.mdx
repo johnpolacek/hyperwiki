@@ -1,0 +1,17 @@
+---
+title: "Unit 01 - True PTY Compatibility"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 01 - True PTY Compatibility</h1>
+<p><a href="/wiki/plans/mvp/stage-03-dogfood-hardening.mdx">Stage 03 - wterm Dogfood and Hardening</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Investigate and fix <code>node-pty</code> spawning on the local development runtime, or choose a replacement PTY backend if the failure is structural.</li>
+    <li>Keep the existing pipe fallback as an explicit degraded mode, not the primary terminal path.</li>
+    <li>Verification: <code>npm run smoke:pty</code>, live dev server WebSocket smoke, browser smoke.</li>
+  </ul>
+</section>

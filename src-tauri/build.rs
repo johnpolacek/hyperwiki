@@ -10,9 +10,9 @@ struct SkillMetadata {
 
 const BUNDLED_SKILLS: &[SkillMetadata] = &[
     SkillMetadata {
-        name: "project-html-wiki",
-        source: "johnpolacek/project-html-wiki-skill",
-        source_type: "github",
+        name: "hyperwiki",
+        source: "local/hyperwiki",
+        source_type: "local",
         skill_path: "SKILL.md",
     },
     SkillMetadata {

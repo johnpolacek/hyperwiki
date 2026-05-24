@@ -32,6 +32,7 @@ type ViewRoute =
   | { kind: "wiki"; path: string }
   | { kind: "projects" }
   | { kind: "new-project" }
+  | { kind: "plan-create" }
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
@@ -228,14 +229,6 @@ interface ReviewWorkflowResponse {
   workflows?: ReviewWorkflow[];
 }
 
-interface PlanCreateResponse {
-  page?: {
-    path?: string;
-    title?: string;
-  };
-  path?: string;
-}
-
 interface ImportPlanningAnswer {
   id: string;
   answer: string;
@@ -264,7 +257,7 @@ interface ImportPlanningCreateResponse {
   wrote?: string[];
 }
 
-const defaultWikiPath = "/wiki/plans/mvp/index.html";
+const defaultWikiPath = "/wiki/plans/mvp/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 
 function App() {
@@ -301,7 +294,7 @@ function App() {
   const hasRegisteredProjects = projectGroups.length > 0;
   const workspaceSelection = workspaceSelectionFromLocation();
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
-  const isImportedPlanningIntake = useMemo(() => route.kind === "wiki" && route.path === "/wiki/plans/index.html" && hasImportedSource(wikiPages) && !hasGeneratedPlanPages(wikiPages), [route, wikiPages]);
+  const isImportedPlanningIntake = useMemo(() => route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && hasImportedSource(wikiPages) && !hasGeneratedPlanPages(wikiPages), [route, wikiPages]);
 
   useEffect(() => {
     function onPopState() {
@@ -402,7 +395,7 @@ function App() {
         setActiveProject(project);
         setStatus("Imported project ready");
         void loadProjectData(project);
-        void loadSessionsForProject(project, scopeForRoute({ kind: "wiki", path: "/wiki/plans/index.html" }));
+        void loadSessionsForProject(project, scopeForRoute({ kind: "wiki", path: "/wiki/plans/index.mdx" }));
       } catch (error) {
         console.warn("[hyperwiki] import ui pending poll failed", error);
       }
@@ -643,19 +636,19 @@ function App() {
   }
 
   async function planImportedProject(project: ProjectRecord) {
-    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.html" };
+    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
     openImportedPlanningWorkspace(project, projectRoute);
     const projectScope = scopeForRoute(projectRoute);
     const loaded = await loadProjectData(project);
     const nextSessions = await loadSessionsForProject(project, projectScope);
-    const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.html", projectScope, loaded.layout, nextSessions);
+    const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
     setActiveSessionId(session.id);
     await delay(250);
     await loadSessionsForProject(project, projectScope);
     setStatus("Imported project planning prompt sent");
   }
 
-  function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.html" }) {
+  function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" }) {
     setActiveProject(project);
     setIsProjectsOpen(false);
     setRoute(route);
@@ -692,24 +685,27 @@ function App() {
         setStatus("Review prompt sent");
       }
       if (action === "new-plan") {
-        const title = payload?.title || "";
-        const intent = payload?.intent || "";
-        if (!title.trim() || !intent.trim()) throw new Error("New Plan needs a title and intent.");
-        const result = await hyperwikiApi.json<PlanCreateResponse>(withProjectQuery("/api/plans/create", activeProject), {
-          method: "POST",
-          body: {
-            title,
-            intent,
-            planType: payload?.planType || "feature",
-            answers: [],
-            allowDeferredUnknowns: true,
-          },
-        });
-        await loadBaseData();
-        const path = result.page?.path || result.path;
-        if (path) navigate({ kind: "wiki", path });
-        setStatus("Plan created");
+        navigate({ kind: "plan-create" });
+        setStatus("Plan creation opened");
       }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function startPlanCreation(intent: string) {
+    const trimmed = intent.trim();
+    if (!trimmed) {
+      setStatus("Describe what this plan should accomplish.");
+      return;
+    }
+    setStatus("Starting plan interview");
+    try {
+      const projectScope = scopeForRoute({ kind: "plan-create" });
+      const session = await sendAgentPromptToProject(activeProject, planCreationPrompt(activeProject, trimmed), "/wiki/plans/index.mdx", projectScope, layout, sessions);
+      setActiveSessionId(session.id);
+      await loadSessionsForProject(activeProject, projectScope);
+      setStatus("Plan interview started");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -882,8 +878,8 @@ function App() {
         status={status}
         workspace={workspace}
       />
-      <section className={cn("grid min-h-0 flex-1 overflow-hidden", isUtilityRoute ? "grid-cols-1" : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]")}>
-        {isUtilityRoute ? null : (
+      <section className={cn("grid min-h-0 flex-1 overflow-hidden", isUtilityRoute || route.kind === "plan-create" ? "grid-cols-1" : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]")}>
+        {isUtilityRoute || route.kind === "plan-create" ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
             model={sidebarModel}
@@ -901,6 +897,7 @@ function App() {
           onPlanImportedProject={planImportedProject}
           onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
+          onStartPlanCreation={startPlanCreation}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
@@ -913,7 +910,7 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        {isUtilityRoute ? null : (
+        {isUtilityRoute || route.kind === "plan-create" ? null : (
           <TerminalPane
             activeSessionId={activeSessionId}
             activeProject={activeProject}
@@ -1171,6 +1168,7 @@ function WorkspacePane(props: {
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
+  onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
   pendingImportProject: ProjectRecord | null;
   projectGroups: ProjectGroup[];
@@ -1190,6 +1188,9 @@ function WorkspacePane(props: {
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
+  }
+  if (props.route.kind === "plan-create") {
+    return <PlanCreationView activeProject={props.activeProject} onCancel={() => props.onNavigate({ kind: "wiki", path: "/wiki/plans/index.mdx" })} onStart={props.onStartPlanCreation} />;
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
@@ -1301,10 +1302,7 @@ function CommandBar({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => {
-          setMode(mode === "new-plan" ? "closed" : "new-plan");
-          onSetSidePanelMode("new-plan");
-        }}
+        onClick={() => onRunCommand("new-plan")}
       >
         + plan
       </Button>
@@ -1394,6 +1392,70 @@ function CommandBar({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function PlanCreationView({
+  activeProject,
+  onCancel,
+  onStart,
+}: {
+  activeProject: ProjectRecord | null;
+  onCancel: () => void;
+  onStart: (intent: string) => Promise<void>;
+}) {
+  const [intent, setIntent] = useState("");
+  const [isStarting, setIsStarting] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setIsStarting(true);
+    try {
+      await onStart(intent);
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
+  return (
+    <main className="grid min-h-0 bg-background">
+      <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-col gap-6 px-8 py-8">
+        <header className="flex items-start justify-between gap-4 border-b pb-5">
+          <div className="grid gap-2">
+            <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Plan creation</p>
+            <h1 className="m-0 text-3xl font-bold">Create an MDX plan</h1>
+            <p className="m-0 max-w-2xl text-sm text-muted-foreground">
+              Start with the rough intent. Hyperwiki will launch an agent interview that uses the repo, wiki, and grill-with-docs-style questions before writing staged MDX plan docs with verification.
+            </p>
+          </div>
+          <Button variant="outline" onClick={onCancel} type="button">
+            Cancel
+          </Button>
+        </header>
+        <form className="grid gap-4" onSubmit={submit}>
+          <label className="grid gap-2">
+            <span className="text-sm font-bold">What are we planning?</span>
+            <textarea
+              className="min-h-[260px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(event) => setIntent(event.target.value)}
+              placeholder="Describe the feature, workflow, refactor, research track, or product change..."
+              value={intent}
+            />
+          </label>
+          <div className="grid gap-2 rounded-md border bg-card p-4 text-sm text-muted-foreground">
+            <div><strong className="text-foreground">Project:</strong> {activeProject?.name || "No active project"}</div>
+            <div><strong className="text-foreground">Output:</strong> MDX wiki plan pages under <code>wiki/plans/</code></div>
+            <div><strong className="text-foreground">Required:</strong> plan, stages or compact unit structure, and verification for every executable unit</div>
+          </div>
+          <div className="flex justify-end">
+            <Button disabled={isStarting || !activeProject} type="submit">
+              {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
+              Start Interview
+            </Button>
+          </div>
+        </form>
+      </section>
+    </main>
   );
 }
 
@@ -1627,7 +1689,7 @@ function NewProjectView({
       routed = true;
       logImport(`Writing pending import marker ${project.projectSlug}/${project.worktreeSlug}`);
       writePendingImportProject(project);
-      const target = `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.html`;
+      const target = `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.mdx`;
       logImport(`Forcing workspace route ${target}`);
       window.location.assign(target);
     };
@@ -1678,8 +1740,8 @@ function NewProjectView({
         <form className="grid gap-5" data-testid="new-project-form" onSubmit={handleSubmit}>
           <label className="group flex min-h-28 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed bg-card text-center text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
             <span className="text-sm font-bold uppercase">Import project file</span>
-            <small className="mt-1 text-xs font-bold">Markdown or HTML</small>
-            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+            <small className="mt-1 text-xs font-bold">Markdown, MDX, or HTML</small>
+            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
           </label>
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase text-muted-foreground" aria-hidden="true">
             <span className="h-px bg-border" />
@@ -1929,7 +1991,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                 <div style={{ fontFamily: editTheme.tokens.docs?.serifFont }}>
                   <h2 className="text-4xl">Planning Preview</h2>
                   <p className="mt-4 max-w-xl text-2xl text-muted-foreground">Docs keep their reading voice while the UI stays dense and scannable.</p>
-                  <code className="mt-5 inline-block bg-muted px-2 py-1 font-mono text-sm">wiki/plans/mvp/stage-08-settings-soul-memory.html</code>
+                  <code className="mt-5 inline-block bg-muted px-2 py-1 font-mono text-sm">wiki/plans/mvp/stage-08-settings-soul-memory.mdx</code>
                 </div>
               </div>
             </section>
@@ -2758,6 +2820,7 @@ function routeFromLocation(): ViewRoute {
   if (hashPath) return { kind: "wiki", path: hashPath };
   if (window.location.pathname === "/projects") return { kind: "projects" };
   if (window.location.pathname === "/projects/new") return { kind: "new-project" };
+  if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "plan-create" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: window.location.pathname };
   return { kind: "wiki", path: defaultWikiPath };
@@ -2766,6 +2829,10 @@ function routeFromLocation(): ViewRoute {
 function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "projects") return "/projects";
   if (route.kind === "new-project") return "/projects/new";
+  if (route.kind === "plan-create") {
+    const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
+    return `${projectPrefix}/plans/new`;
+  }
   if (route.kind === "settings") return "/settings";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;
@@ -2908,19 +2975,19 @@ function buildSidebarModel(pages: WikiPage[]): SidebarModel {
 function isProjectWikiPage(page: WikiPage) {
   const path = displayWikiPath(page.path);
   return [
-    "/wiki/architecture.html",
-    "/wiki/dev.html",
-    "/wiki/roadmap.html",
-    "/wiki/sources.html",
-    "/wiki/log.html",
+    "/wiki/architecture.mdx",
+    "/wiki/dev.mdx",
+    "/wiki/roadmap.mdx",
+    "/wiki/sources.mdx",
+    "/wiki/log.mdx",
   ].some((suffix) => path.endsWith(suffix)) || path.includes("/wiki/sources/");
 }
 
 function cleanPageTitle(page: WikiPage) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/index.html")) return "Planning Dashboard";
-  if (path.endsWith("/wiki/plans/mvp/index.html")) return "MVP Plan";
-  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "Completed Plans";
+  if (path.endsWith("/wiki/plans/index.mdx")) return "Planning Dashboard";
+  if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "MVP Plan";
+  if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "Completed Plans";
   if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")}: `);
   if (path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, (_match, stage) => `Stage ${stage.padStart(2, "0")}: `);
   if (page.title.toLowerCase() === "prd") return "PRD";
@@ -2934,18 +3001,18 @@ function displayWikiPath(path: string) {
 
 function isTopLevelPlanPage(page: WikiPage) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/mvp/index.html")) return true;
-  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return true;
-  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(path)) return true;
-  return /^\/wiki\/plans\/[^/]+\.html$/.test(path) && !path.endsWith("/index.html");
+  if (path.endsWith("/wiki/plans/mvp/index.mdx")) return true;
+  if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return true;
+  if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(path)) return true;
+  return /^\/wiki\/plans\/[^/]+\.mdx$/.test(path) && !path.endsWith("/index.mdx");
 }
 
 function isCompletedTopLevelPlanPage(page: WikiPage) {
-  return isTopLevelPlanPage(page) && !displayWikiPath(page.path).endsWith("/wiki/plans/zzz_completed/index.html") && isCompletedPage(page);
+  return isTopLevelPlanPage(page) && !displayWikiPath(page.path).endsWith("/wiki/plans/zzz_completed/index.mdx") && isCompletedPage(page);
 }
 
 function isUnitPage(page: WikiPage) {
-  return /\/unit-\d+-[^/]+\.html$/.test(displayWikiPath(page.path));
+  return /\/unit-\d+-[^/]+\.mdx$/.test(displayWikiPath(page.path));
 }
 
 function childPlanPages(parent: WikiPage, pages: WikiPage[]) {
@@ -2956,20 +3023,20 @@ function isImmediateChildPlanPage(parent: WikiPage, candidate: WikiPage) {
   const parentPath = displayWikiPath(parent.path);
   const candidatePath = displayWikiPath(candidate.path);
   if (parentPath === candidatePath) return false;
-  if (parentPath.endsWith("/wiki/plans/mvp/index.html")) return /^\/wiki\/plans\/mvp\/stage-[^/]+\.html$/.test(candidatePath);
-  if (parentPath.endsWith("/wiki/plans/zzz_completed/index.html")) {
-    return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.html$/.test(candidatePath) && !candidatePath.endsWith("/index.html")) || isCompletedTopLevelPlanPage(candidate);
+  if (parentPath.endsWith("/wiki/plans/mvp/index.mdx")) return /^\/wiki\/plans\/mvp\/stage-[^/]+\.mdx$/.test(candidatePath);
+  if (parentPath.endsWith("/wiki/plans/zzz_completed/index.mdx")) {
+    return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.mdx$/.test(candidatePath) && !candidatePath.endsWith("/index.mdx")) || isCompletedTopLevelPlanPage(candidate);
   }
-  if (/^\/wiki\/plans\/features\/[^/]+\.html$/.test(parentPath)) return false;
-  const parentBase = parentPath.replace(/\.html$/, "");
+  if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(parentPath)) return false;
+  const parentBase = parentPath.replace(/\.mdx$/, "");
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
 }
 
 function planSortKey(page: WikiPage) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/mvp/index.html")) return "01";
+  if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "01";
   if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
-  if (path.endsWith("/wiki/plans/zzz_completed/index.html")) return "99";
+  if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "99";
   if (path.startsWith("/wiki/plans/zzz_completed/")) return `99-${path}`;
   return `02-${path}`;
 }
@@ -3009,7 +3076,7 @@ function pathContainsSelectedPage(path: string, selectedPath: string) {
   const normalizedPath = displayWikiPath(path);
   const normalizedSelected = displayWikiPath(selectedPath);
   if (normalizedSelected === normalizedPath) return true;
-  const basePath = normalizedPath.endsWith("/index.html") ? normalizedPath.slice(0, -"/index.html".length) : normalizedPath.replace(/\.html$/, "");
+  const basePath = normalizedPath.endsWith("/index.mdx") ? normalizedPath.slice(0, -"/index.mdx".length) : normalizedPath.replace(/\.mdx$/, "");
   return normalizedSelected.startsWith(`${basePath}/`);
 }
 
@@ -3022,13 +3089,13 @@ function isAgentSession(session: SessionRecord) {
 }
 
 function hasImportedSource(pages: WikiPage[]) {
-  return pages.some((page) => displayWikiPath(page.path) === "/wiki/sources/import.html");
+  return pages.some((page) => displayWikiPath(page.path) === "/wiki/sources/import.mdx");
 }
 
 function hasGeneratedPlanPages(pages: WikiPage[]) {
   return pages.some((page) => {
     const path = displayWikiPath(page.path);
-    return path.startsWith("/wiki/plans/") && path !== "/wiki/plans/index.html";
+    return path.startsWith("/wiki/plans/") && path !== "/wiki/plans/index.mdx";
   });
 }
 
@@ -3038,7 +3105,7 @@ function agentLaunchCommand(layout: LayoutResponse | null) {
 
 function importedProjectPlanningPrompt(project: ProjectRecord) {
   return [
-    "Use $project-html-wiki.",
+    "Use $hyperwiki.",
     "",
     "You are working inside this newly imported Hyperwiki project.",
     "Plan mode only: do not implement product code from this prompt.",
@@ -3047,10 +3114,10 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "Create a detailed MVP implementation plan for this imported project. The plan must be broken into thoughtful stages and units of work, and every unit must include concrete verification steps.",
     "",
     "Source context:",
-    "- Read wiki/index.html first.",
-    "- Read wiki/sources.html.",
-    "- Read wiki/sources/import.html as the canonical imported source.",
-    "- Read wiki/sources/prd.html, wiki/sources/technical-brief.html, and wiki/sources/design-brief.html if present.",
+    "- Read wiki/index.mdx first.",
+    "- Read wiki/sources.mdx.",
+    "- Read wiki/sources/import.mdx as the canonical imported source.",
+    "- Read wiki/sources/prd.mdx, wiki/sources/technical-brief.mdx, and wiki/sources/design-brief.mdx if present.",
     "",
     "Planning requirements:",
     "- Treat this as a greenfield/pre-launch MVP unless the source clearly says otherwise.",
@@ -3061,11 +3128,39 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "- Name unknowns instead of inventing certainty.",
     "- Ask the user focused questions for maximum clarity before writing stages if decisions are missing.",
     "- If the source is already decision-complete, create the detailed MVP plan directly.",
-    "- Update wiki/plans/index.html so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
     "- Keep all durable project knowledge under wiki/.",
     "",
     `Imported project: ${project.name}`,
     `Project root: ${project.root}`,
+  ].join("\n");
+}
+
+function planCreationPrompt(project: ProjectRecord | null, intent: string) {
+  return [
+    "Use $hyperwiki and $grill-with-docs.",
+    "",
+    "Plan mode only: do not implement product code from this prompt.",
+    "",
+    "Goal:",
+    "Run a one-question-at-a-time grilling interview for the requested work, then automatically create or update MDX wiki plan docs when no blocking unknowns remain.",
+    "",
+    "Hyperwiki requirements:",
+    "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
+    "- Inspect repo evidence before asking questions the repo can answer.",
+    "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
+    "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
+    "- Preserve a flexible plan > stages > units structure; compact plans may use one implicit stage.",
+    "- Every executable unit must include a Verification section or component.",
+    "- Write MDX files under wiki/plans/ and update wiki/plans/index.mdx and wiki/log.mdx.",
+    "- Keep full transcript out of durable wiki files unless explicitly requested; write summarized evidence and decisions.",
+    "- Commit generated docs when safe. Do not push.",
+    "",
+    `Project: ${project?.name || "Unknown"}`,
+    `Project root: ${project?.root || "Unknown"}`,
+    "",
+    "Initial user intent:",
+    intent,
   ].join("\n");
 }
 
@@ -3152,6 +3247,9 @@ function worktreePreviewForSlug(root: string, slug: string) {
 }
 
 function scopeForRoute(route: ViewRoute) {
+  if (route.kind === "plan-create") {
+    return { scope: "plan-create", scopeKind: "plan-create", planPath: "/wiki/plans/index.mdx" };
+  }
   if (route.kind !== "wiki") {
     return { scope: route.kind, scopeKind: "app", planPath: null };
   }

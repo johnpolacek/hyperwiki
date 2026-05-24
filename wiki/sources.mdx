@@ -1,0 +1,45 @@
+---
+title: "Sources"
+description: "Hyperwiki page page."
+wikiKind: "page"
+---
+
+<h1>Sources</h1>
+<section className="summary">
+  <h2>Scaffold Contract</h2>
+  <ul>
+    <li>This lowercase <code>wiki/sources.mdx</code> file is the canonical Hyperwiki source index.</li>
+    <li>Use <a href="/wiki/scaffold-contract.mdx">Scaffold Contract</a> before applying external wiki-skill templates that expect different filenames.</li>
+  </ul>
+</section>
+<h2>Source Material</h2>
+<ul>
+  <li>User product definition for hyperwiki, including CLI, local dev app, wterm direction, guardrails, and promotion criteria.</li>
+  <li>User direction from 2026-05-14: hyperwiki should fully claim and identify as Localhost Tooling, meaning a local app that uses the developer's own machine, files, credentials, and environment variables as the trust boundary.</li>
+  <li>User direction from 2026-05-15: remove ideas entirely; imported briefs should create projects directly and the default workspace surface should be Projects.</li>
+  <li>User direction from 2026-05-20: plan a fully complete Tauri rewrite with feature compatibility as the release target, full compatibility with existing Hyperwiki data and workflows, optional Tailwind or shadcn only if it helps, and acceptance that the rewrite branch may go dark until parity is restored.</li>
+  <li>User direction from 2026-05-22: plan a full frontend rewrite, not just a plan-page refactor, named <code>react-shadcn-mdx-rewrite</code>; use React because shadcn/ui and MDX component rendering are best supported there; keep Tauri/Rust as runtime owner; include shadcn and Tailwind design-system skill installation for local Codex and Claude agents before implementation.</li>
+  <li>User direction from 2026-05-20: support Claude in addition to Codex, keep Codex as the default provider, and allow mixed Codex and Claude agent sessions.</li>
+  <li>Project decision from 2026-05-15: preserve Hyperwiki scaffold conventions when applying the installed <code>hyperwiki</code> skill: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
+  <li>Project decision from 2026-05-22: new rewrite planning should treat new plan pages as trusted local MDX with Markdown-first derivatives for agents, while non-plan wiki pages remain HTML until a separate decision changes that contract.</li>
+  <li>Code investigation from 2026-05-13: Stage 07 workspace-framing and execution affordances are implemented.</li>
+  <li>Implementation evidence from 2026-05-14: Stage 07 Unit 01 added a versioned verification-loop model and local <code>/api/verification</code> endpoint.</li>
+  <li>Implementation evidence from 2026-05-14: Stage 07 Unit 02 added a versioned machine-readable <code>/api/project-contract</code> endpoint.</li>
+  <li>Implementation evidence from 2026-05-14: Stage 07 Unit 03 added named review-workflow discovery and controlled review prompt handoff through <code>/api/review-workflows</code> and <code>/api/review-workflows/run</code>.</li>
+  <li>Implementation evidence from 2026-05-14: Stage 07 Unit 04 added a versioned MCP surface contract through <code>/api/mcp-surface</code>.</li>
+  <li>Implementation evidence from 2026-05-14: Stage 07 Unit 05 added a local stdio MCP server transport through <code>hyperwiki mcp</code> for read-only project context resources and tools.</li>
+  <li>Project-wiki skill contract for planning discipline, source indexing, roadmap state, and log policy.</li>
+  <li>Official Tauri v2 documentation reviewed on 2026-05-20 for desktop testing constraints and shell/sidecar capability boundaries.</li>
+</ul>
+<h2>Generated Source Briefs</h2>
+<ul>
+  <li><a href="/wiki/sources/prd.mdx">Product brief</a></li>
+  <li><a href="/wiki/sources/technical-brief.mdx">Technical brief</a></li>
+  <li><a href="/wiki/sources/design-brief.mdx">Design brief</a></li>
+</ul>
+<h2>Unknowns</h2>
+<ul>
+  <li>Exact permission model for action-oriented MCP tools after the read-only transport.</li>
+  <li>Retention defaults and write workflow for verification loop runtime evidence under <code>.hyperwiki/state/verification.json</code>.</li>
+  <li>Retention defaults for exported PTY logs beyond local ignored session state.</li>
+</ul>

@@ -507,14 +507,14 @@ mod tests {
                     name: Some("pipe".to_string()),
                     role: Some("shell".to_string()),
                     command: None,
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     scope_kind: Some("plan".to_string()),
-                    plan_path: Some("/wiki/plans/index.html".to_string()),
+                    plan_path: Some("/wiki/plans/index.mdx".to_string()),
                 },
             )
             .unwrap();
         assert_eq!(started.session.mode, "pipe-fallback");
-        assert_eq!(started.session.scope, "plan:/wiki/plans/index.html");
+        assert_eq!(started.session.scope, "plan:/wiki/plans/index.mdx");
 
         manager
             .write("pipe-one", "printf hyperwiki-terminal-ready\\n\n")
@@ -603,17 +603,17 @@ mod tests {
     #[test]
     fn terminal_start_request_accepts_camel_and_snake_scope_fields() {
         let camel: TerminalStartRequest = serde_json::from_str(
-            r#"{"scope":"plan:/wiki/plans/index.html","scopeKind":"plan","planPath":"/wiki/plans/index.html"}"#,
+            r#"{"scope":"plan:/wiki/plans/index.mdx","scopeKind":"plan","planPath":"/wiki/plans/index.mdx"}"#,
         )
         .unwrap();
         let snake: TerminalStartRequest = serde_json::from_str(
-            r#"{"scope":"plan:/wiki/plans/index.html","scope_kind":"plan","plan_path":"/wiki/plans/index.html"}"#,
+            r#"{"scope":"plan:/wiki/plans/index.mdx","scope_kind":"plan","plan_path":"/wiki/plans/index.mdx"}"#,
         )
         .unwrap();
         assert_eq!(camel.scope_kind.as_deref(), Some("plan"));
-        assert_eq!(camel.plan_path.as_deref(), Some("/wiki/plans/index.html"));
+        assert_eq!(camel.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
         assert_eq!(snake.scope_kind.as_deref(), Some("plan"));
-        assert_eq!(snake.plan_path.as_deref(), Some("/wiki/plans/index.html"));
+        assert_eq!(snake.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {

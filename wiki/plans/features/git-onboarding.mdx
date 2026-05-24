@@ -1,0 +1,31 @@
+---
+title: "Git Onboarding"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Git Onboarding</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact product safety correction</li>
+        <li>Current unit: complete</li>
+        <li>Validation: <code>pnpm run check</code>, init smoke, project links smoke, app preview smoke, project removal smoke, launch smoke, browser smoke</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Hyperwiki should not hand newly created projects to agents without Git-backed review history unless the user explicitly chooses that path. Missing Git should be recoverable at Execute time for older projects.</p>
+    </section>
+    <section>
+      <h2>Unit 01 - Initialize Git During Onboarding</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Ask to initialize Git when a project root is missing Git, defaulting to yes in non-interactive and in-app onboarding.</li>
+        <li>Create an initial scaffold commit after Hyperwiki generation when Git initialization is accepted.</li>
+        <li>Warn and offer Git initialization before Execute when an older project is missing Git.</li>
+      </ul>
+      <h3>Verification</h3>
+      <p>Completed on 2026-05-19 with syntax, onboarding, project creation, launch, and browser smoke coverage.</p>
+    </section>

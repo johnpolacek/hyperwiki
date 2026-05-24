@@ -221,51 +221,6 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
-    if request.method == "POST" && request.path.starts_with("/api/plans/clarify") {
-        let project = resolve_request_project(&request.path).or_else(current_project_record);
-        let parsed = request
-            .body
-            .as_deref()
-            .and_then(|body| {
-                serde_json::from_str::<crate::domain::plan_creation::PlanClarifyRequest>(body).ok()
-            })
-            .unwrap_or(crate::domain::plan_creation::PlanClarifyRequest {
-                title: String::new(),
-                intent: String::new(),
-                plan_type: String::new(),
-                answers: Vec::new(),
-            });
-        return json_response(
-            200,
-            &crate::domain::plan_creation::clarify_plan_for_root(
-                project.as_ref().map(|project| project.root.as_path()),
-                parsed,
-            ),
-        );
-    }
-    if request.method == "POST" && request.path.starts_with("/api/plans/create") {
-        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
-        else {
-            return error_response(404, "Project not found for plan creation.");
-        };
-        let parsed = request
-            .body
-            .as_deref()
-            .and_then(|body| {
-                serde_json::from_str::<crate::domain::plan_creation::PlanCreateRequest>(body).ok()
-            })
-            .unwrap_or(crate::domain::plan_creation::PlanCreateRequest {
-                title: String::new(),
-                intent: String::new(),
-                plan_type: String::new(),
-                answers: Vec::new(),
-                allow_deferred_unknowns: false,
-            });
-        return match crate::domain::plan_creation::create_plan(&project.root, parsed) {
-            Ok(result) => json_response(200, &result),
-            Err((status, error)) => error_response(status, error),
-        };
-    }
     if request.method == "POST" && request.path.starts_with("/api/import-planning/clarify") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
         else {
@@ -626,7 +581,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         }
         let prompt_body = serde_json::json!({
             "prompt": prepared.prompt.clone().unwrap_or_default(),
-            "currentPage": current_page.unwrap_or("/wiki/plans/index.html"),
+            "currentPage": current_page.unwrap_or("/wiki/plans/index.mdx"),
             "scope": body["scope"].as_str().unwrap_or_default()
         });
         return match send_agent_prompt(&project, &prompt_body) {
@@ -796,7 +751,7 @@ fn send_agent_prompt(
     };
     let current_page = body["currentPage"]
         .as_str()
-        .unwrap_or("/wiki/plans/index.html");
+        .unwrap_or("/wiki/plans/index.mdx");
     let message = [
         "",
         "Please handle this hyperwiki workspace request.",
@@ -805,7 +760,7 @@ fn send_agent_prompt(
         &format!("Repo root: {}", project.root.display()),
         &format!("Current wiki page: {current_page}"),
         "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
-        "Keep durable project knowledge in wiki/ HTML pages and Git-visible files. Run relevant checks before finishing.",
+        "Keep durable project knowledge in wiki/ MDX pages and Git-visible files. Run relevant checks before finishing.",
         "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
         "",
         prompt,
@@ -1138,12 +1093,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("log.html"),
+            root.join("wiki").join("log.mdx"),
             "<h1>Log</h1><h2>Entry</h2>",
         )
         .unwrap();
@@ -1204,7 +1159,7 @@ mod tests {
         let home = temp_root("command-wiki-home");
         fs::create_dir_all(root.join("wiki")).unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Command Wiki</h1>",
         )
         .unwrap();
@@ -1225,42 +1180,7 @@ mod tests {
         assert!(response.ok);
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
-        assert!(response.text.contains("/wiki/index.html"));
-    }
-
-    #[test]
-    fn plan_creation_endpoints_clarify_and_create_project_plan() {
-        let _guard = env_lock();
-        let root = temp_root("command-plan-create");
-        let home = temp_root("command-plan-create-home");
-        make_hyperwiki_project(&root, "Plan Create Command");
-        std::env::set_var("HYPERWIKI_HOME", &home);
-        std::env::set_current_dir(&root).unwrap();
-        let project = crate::domain::projects::ProjectRegistry::from_environment()
-            .register(&root)
-            .unwrap();
-
-        let clarify = hyperwiki_request(HyperwikiRequest {
-            path: format!("/api/plans/clarify?project={}", project.id),
-            method: "POST".to_string(),
-            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[]}".to_string()),
-        });
-        assert!(clarify.ok);
-        assert!(clarify.text.contains("\"ready\":false"));
-        assert!(clarify.text.contains("\"questions\""));
-
-        let create = hyperwiki_request(HyperwikiRequest {
-            path: format!("/api/plans/create?project={}", project.id),
-            method: "POST".to_string(),
-            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[{\"id\":\"desired-outcome\",\"answer\":\"Visible import workflow.\"},{\"id\":\"success-example\",\"answer\":\"Open import, choose file, preview, commit.\"},{\"id\":\"scope-boundary\",\"answer\":\"CSV import only; no scheduled sync.\"},{\"id\":\"affected-surfaces\",\"answer\":\"Planning page and import route.\"},{\"id\":\"acceptance-checks\",\"answer\":\"Rust and UI smoke tests.\"},{\"id\":\"clarity-risks\",\"answer\":\"Malformed rows and duplicate customers.\"}]}".to_string()),
-        });
-        assert!(create.ok, "{}", create.text);
-        assert!(root
-            .join("wiki")
-            .join("plans")
-            .join("features")
-            .join("import-csv.html")
-            .exists());
+        assert!(response.text.contains("/wiki/index.mdx"));
     }
 
     #[test]
@@ -1271,7 +1191,7 @@ mod tests {
         make_hyperwiki_project(&root, "RouteChat");
         fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
         fs::write(
-            root.join("wiki").join("sources").join("prd.html"),
+            root.join("wiki").join("sources").join("prd.mdx"),
             "<h1>Product Brief</h1><section class=\"summary\"><h2>Summary</h2><ul><li>RouteChat gives spontaneous guided audio tours.</li></ul></section><section><h2>Problem</h2><p>Most tours require planning.</p></section><section><h2>MVP</h2><ul><li>Generates narration from current location.</li></ul></section><section><h2>Promotion Criteria</h2><ul><li>A safety model for driving and transit use.</li></ul></section>",
         )
         .unwrap();
@@ -1311,7 +1231,7 @@ mod tests {
                 .join("plans")
                 .join("mvp")
                 .join("stage-01-prototype-foundation")
-                .join("unit-03-core-demo-loop.html"),
+                .join("unit-03-core-demo-loop.mdx"),
         )
         .unwrap();
         assert!(unit.contains("Verification"));
@@ -1335,7 +1255,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Command Wiki Page</h1>",
         )
         .unwrap();
@@ -1345,7 +1265,7 @@ mod tests {
         std::env::set_current_dir(&unrelated).unwrap();
 
         let response = hyperwiki_request(HyperwikiRequest {
-            path: format!("/projects/{}/wiki/index.html", project.id),
+            path: format!("/projects/{}/wiki/index.mdx", project.id),
             method: "GET".to_string(),
             body: None,
         });
@@ -1427,7 +1347,7 @@ mod tests {
         let root = temp_root("command-sessions");
         let home = temp_root("command-sessions-home");
         fs::create_dir_all(root.join("wiki")).unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Sessions</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Sessions</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
         let registry = crate::domain::sessions::SessionRegistry::new(&root);
@@ -1436,14 +1356,14 @@ mod tests {
                 "agent-one",
                 crate::domain::sessions::SessionUpdates {
                     name: Some("agent".to_string()),
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     ..crate::domain::sessions::SessionUpdates::default()
                 },
             )
             .unwrap();
 
         let list = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions?scope=plan:/wiki/plans/index.html".to_string(),
+            path: "/api/sessions?scope=plan:/wiki/plans/index.mdx".to_string(),
             method: "GET".to_string(),
             body: None,
         });
@@ -1532,7 +1452,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Agent Prompt</h1>",
         )
         .unwrap();
@@ -1547,12 +1467,12 @@ mod tests {
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"agent-command\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"id\":\"agent-command\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let routed = hyperwiki_request(HyperwikiRequest {
             path: "/api/agent/prompt".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/agent-command".to_string(),
@@ -1592,22 +1512,22 @@ mod tests {
         let prepared = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"dryRun\":true}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"dryRun\":true}".to_string()),
         });
         let unrouted = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"review-agent\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"id\":\"review-agent\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let routed = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/review-agent".to_string(),
@@ -1664,9 +1584,9 @@ mod tests {
             format!("{{\"projectName\":\"{name}\"}}"),
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();

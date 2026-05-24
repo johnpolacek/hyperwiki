@@ -1,0 +1,18 @@
+---
+title: "Unit 04 - Guardrails And Auditability"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 04 - Guardrails And Auditability</h1>
+<p><a href="/wiki/plans/mvp/stage-03-dogfood-hardening.mdx">Stage 03 - wterm Dogfood and Hardening</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Make local-only mode, runtime state, agent controls, command history boundaries, and export actions visible in the UI.</li>
+    <li>Document which state is canonical repo truth and which state is ignored local runtime data.</li>
+    <li>Implemented a guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, active session metadata, command history boundaries, and terminal lifecycle/export actions.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>HYPERWIKI_SMOKE_URL=http://127.0.0.1:4189/workspace/ pnpm run smoke:browser</code>.</li>
+  </ul>
+</section>

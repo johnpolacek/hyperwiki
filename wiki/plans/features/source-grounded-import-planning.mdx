@@ -1,0 +1,29 @@
+---
+title: "Source-Grounded Import Planning"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<section className="import-hero">
+      <p><strong>Status:</strong> complete</p>
+      <h1>Source-Grounded Import Planning</h1>
+      <p>Imported projects now preserve source facts, then Hyperwiki asks source-aware questions inside the app before creating detailed stages and units.</p>
+    </section>
+    <section className="status-grid" aria-label="Plan summary">
+      <div><dt>Shape</dt><dd>corrective feature plan</dd></div>
+      <div><dt>Current unit</dt><dd>complete</dd></div>
+      <div><dt>Validation</dt><dd><code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code></dd></div>
+    </section>
+    <section className="flow">
+      <h2>Implemented Flow</h2>
+      <ol>
+        <li>Import creates and selects the project before planning questions begin.</li>
+        <li>HTML or Markdown source is parsed into product facts.</li>
+        <li>Generated source briefs preserve evidence and unknowns.</li>
+        <li>Hyperwiki asks source-aware Q&amp;A in the app, then writes stages and units only after the clarity gate passes.</li>
+      </ol>
+    </section>
+    <section className="checks">
+      <h2>Completion Gate</h2>
+      <p>Complete when future imported projects avoid fake MVP unit trees, preserve RouteChat-like source content in briefs, ask needed planning questions after import, and generate units with verification and completion gates only after those answers are captured.</p>
+    </section>

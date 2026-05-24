@@ -1,0 +1,41 @@
+---
+title: "Portless Worktree Runtime"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Portless Worktree Runtime</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: completed</li>
+        <li>Goal: make local previews use Portless by default and add repo-local commands for parallel worktree development.</li>
+        <li>Preview pattern: <code>https://hyperwiki.localhost</code> on main and <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code> in feature worktrees.</li>
+        <li>Finish policy: merge feature branches into the integration branch to preserve history.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Implementation</h2>
+      <ul>
+        <li>Move the real app dev command behind a Portless-backed <code>pnpm dev</code>.</li>
+        <li>Make the hyperwiki dev server honor Portless-assigned app ports while keeping localhost-only binding.</li>
+        <li>Add worktree commands for doctor, create, list, resume, open, finish, and prune flows.</li>
+        <li>Document Portless and worktree usage in repo guidance and durable wiki pages.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Follow-Up</h2>
+      <ul>
+        <li>Make <code>pnpm dev</code> open the active Portless preview URL automatically while preserving a non-opening direct server command for scripts and tests.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Validation</h2>
+      <ul>
+        <li><code>pnpm run check</code> passed.</li>
+        <li><code>pnpm wt:doctor</code>, <code>pnpm wt:list</code>, and dry-run <code>pnpm wt:open main</code> passed.</li>
+        <li><code>pnpm run smoke:init</code> and <code>pnpm run smoke:launch</code> passed.</li>
+        <li><code>pnpm dev</code> registered <code>https://hyperwiki.localhost:1355</code> with the current fallback proxy and the workspace returned HTTP 200 through Portless.</li>
+        <li>Auto-open follow-up verified with <code>HYPERWIKI_OPEN_DRY_RUN=1</code> under a temporary Portless route and an HTTP 200 workspace response.</li>
+      </ul>
+    </section>

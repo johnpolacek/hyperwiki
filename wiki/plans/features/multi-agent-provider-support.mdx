@@ -1,0 +1,80 @@
+---
+title: "Multi-Agent Provider Support"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Multi-Agent Provider Support</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact feature plan</li>
+        <li>Current unit: Unit 01 - Provider-Aware Agent Terminals complete</li>
+        <li>Next action: none; this plan is closed out.</li>
+        <li>Validation: provider-aware terminal support has been accepted as complete for planning purposes.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Support Claude alongside Codex without weakening Hyperwiki's visible terminal handoff model. Codex remains the default provider for Execute and new handoffs, while users can start Claude sessions and run Codex and Claude side by side in the same workspace.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Add provider-aware agent configuration with Codex as the default provider and Claude as an additional local CLI provider.</li>
+        <li>Preserve legacy <code>agent.launchCommand</code> by treating it as the Codex provider command when newer provider configuration is absent.</li>
+        <li>Allow multiple visible agent terminals with provider identity in session metadata and terminal chrome.</li>
+        <li>Route Execute, dashboard, plan, review, and MCP prompt handoffs to the default Codex provider unless a specific provider or session is selected.</li>
+        <li>Keep provider-specific behavior isolated behind adapters: Codex keeps its readiness detection and thinking-effort flag handling; Claude uses the interactive <code>claude</code> CLI path and never receives Codex-specific flags.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Non-Goals</h2>
+      <ul>
+        <li>Do not remove Codex defaults or require users to choose a provider before Execute.</li>
+        <li>Do not add hosted Claude, Anthropic SDK, or headless <code>claude -p</code> workflows in the first pass.</li>
+        <li>Do not install Claude, create credentials, or manage external provider authentication.</li>
+        <li>Do not change the Localhost Tooling boundary: provider CLIs run as local visible terminal processes.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Unit 01 - Provider-Aware Agent Terminals</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Normalize agent config to expose <code>defaultProvider</code> plus provider command entries for Codex and Claude.</li>
+        <li>Infer provider metadata for existing terminal layout panels so older projects keep working.</li>
+        <li>Update terminal creation and prompt submission to target the default provider, an explicit provider, or an explicit active session.</li>
+        <li>Replace Codex-only prompt readiness and paste handling with provider adapters.</li>
+        <li>Update the terminal toolbar to create Codex or Claude agent terminals and show provider labels clearly when mixed sessions are active.</li>
+        <li>Update project contract and MCP surface metadata so downstream agents can see the default provider and available provider commands.</li>
+      </ul>
+      <h3>Verification</h3>
+      <ul>
+        <li>Closeout: complete per project direction on 2026-05-21.</li>
+        <li><code>pnpm run check</code> passes.</li>
+        <li>Legacy <code>agent.launchCommand: "codex --yolo"</code> still creates a Codex default provider and launches existing agent flows.</li>
+        <li>Fresh provider config defaults Execute and handoffs to Codex while exposing Claude as an available provider.</li>
+        <li>Creating Codex and Claude terminals results in separate visible agent sessions with clear provider labels.</li>
+        <li>Prompt submission can target Claude without waiting for the Codex banner readiness condition.</li>
+        <li>Codex thinking-effort overrides are appended only to Codex commands and never to Claude commands.</li>
+        <li>Browser verification covers the provider creation controls, mixed terminal labels, Execute handoff, and plan prompt handoff.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Post-Closeout Fix - Agent Terminal Control Sequences</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Fixed terminal display normalization so split Codex synchronized-output control sequences do not leak visible tail text into xterm.</li>
+        <li>Keep prompt handoff behavior and visible agent terminals unchanged.</li>
+        <li>Verified with <code>pnpm run check</code> and a targeted split-output normalizer check.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Assumptions</h2>
+      <ul>
+        <li>Default to Codex means the default provider for new handoffs and Execute actions, not automatic startup of Codex terminals on workspace load.</li>
+        <li>Allow a mix means simultaneous visible Codex and Claude terminal sessions in one workspace.</li>
+        <li>Claude support starts with the local interactive <code>claude</code> CLI command. Official Claude Code docs identify <code>claude</code> as interactive mode and <code>claude -p</code> as print mode.</li>
+      </ul>
+    </section>

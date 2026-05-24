@@ -1,0 +1,161 @@
+---
+title: "Theme-Aware Generated Plans"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<section className="hero" aria-labelledby="title">
+      <div>
+        <div className="badge-row">
+          <span className="badge">Active</span>
+          <span className="badge">Planning/exploration</span>
+          <span className="badge">Theme token drafting table</span>
+        </div>
+        <h1 id="title">Theme-Aware Generated Plans</h1>
+        <p>Make newly generated HTML wiki plans keep their rich per-plan layouts while inheriting Hyperwiki's current wiki theme through shared CSS variables and app-served theme tokens.</p>
+      </div>
+      <dl className="summary" aria-labelledby="summary-title">
+        <dt id="summary-title">Status</dt><dd>active</dd>
+        <dt>Shape</dt><dd>compact feature plan with three units</dd>
+        <dt>Current unit</dt><dd>Unit 01 - Theme contract audit</dd>
+        <dt>Next action</dt><dd>Trace how settings theme tokens reach wiki iframes and generated plan HTML.</dd>
+        <dt>Blockers</dt><dd>None; one design decision remains around skill-template scope.</dd>
+        <dt>Validation</dt><dd><code>pnpm run check</code>, static asset smoke, and visual theme toggle QA.</dd>
+      </dl>
+    </section>
+
+    <section className="reader-goal" aria-labelledby="reader-goal">
+      <h2 id="reader-goal">Reader Goal</h2>
+      <p>After 2 minutes, the reader can start implementation by auditing the theme token path, then updating generated plan templates so new plan pages are visually rich but theme-responsive.</p>
+    </section>
+
+    <section className="grid" aria-label="Planning decisions">
+      <article className="decision">
+        <strong>Decision</strong>
+        <p>Preserve rich per-plan layouts. Require local plan CSS to alias color, font, border, code, and surface roles to shared <code>--docs-*</code> variables instead of hardcoded palettes.</p>
+      </article>
+      <article className="decision">
+        <strong>Migration Boundary</strong>
+        <p>Leave existing plan files as they are. This feature governs newly generated plans and the generation contracts that future agents or in-app workflows use.</p>
+      </article>
+      <article className="decision">
+        <strong>Reliability Preference</strong>
+        <p>Prefer app-served <code>/assets/wiki.css</code> and runtime CSS variable propagation. Use embedded fallback variables only as defensive defaults, not as a second theme system.</p>
+      </article>
+    </section>
+
+    <section className="panel" aria-labelledby="intent">
+      <h2 id="intent">Intent</h2>
+      <p>Hyperwiki's generated plan pages should feel purpose-built, not flattened into a generic document, while still adapting when the user changes Hyperwiki's theme in Settings. The implementation should align the app runtime, wiki CSS, in-app plan generation, and hyperwiki guidance around one contract: rich artifacts may define page-local layout primitives, but semantic colors and fonts must flow from the wiki theme variables.</p>
+    </section>
+
+    <section className="flow" aria-labelledby="flow">
+      <h2 id="flow">Theme Propagation Flow</h2>
+      <svg viewBox="0 0 880 210" role="img" aria-label="Theme propagation from settings to generated plan HTML">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="var(--plan-accent)"></path>
+          </marker>
+        </defs>
+        <rect className="node" x="24" y="64" width="140" height="74" rx="8"></rect>
+        <text x="94" y="94" text-anchor="middle">Settings</text>
+        <text x="94" y="118" text-anchor="middle">theme tokens</text>
+        <path className="arrow" d="M164 101 H238" marker-end="url(#arrow)"></path>
+        <rect className="node" x="238" y="52" width="152" height="98" rx="8"></rect>
+        <text x="314" y="86" text-anchor="middle">Runtime CSS</text>
+        <text x="314" y="110" text-anchor="middle">docs vars</text>
+        <path className="arrow" d="M390 101 H464" marker-end="url(#arrow)"></path>
+        <rect className="node" x="464" y="52" width="160" height="98" rx="8"></rect>
+        <text x="544" y="82" text-anchor="middle">/assets/wiki.css</text>
+        <text x="544" y="108" text-anchor="middle">shared contract</text>
+        <path className="arrow" d="M624 101 H700" marker-end="url(#arrow)"></path>
+        <rect className="node" x="700" y="50" width="156" height="102" rx="8"></rect>
+        <text x="778" y="80" text-anchor="middle">Generated plan</text>
+        <text x="778" y="106" text-anchor="middle">rich local layout</text>
+        <text x="778" y="132" text-anchor="middle">theme roles only</text>
+      </svg>
+    </section>
+
+    <section className="panel" aria-labelledby="scope">
+      <h2 id="scope">Scope And Non-Goals</h2>
+      <table className="matrix">
+        <thead>
+          <tr><th>Area</th><th>In Scope</th><th>Out Of Scope</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Generated plans</td>
+            <td>New plan pages produced by Hyperwiki workflows or agent guidance should use shared theme roles for colors and fonts.</td>
+            <td>Bulk rewriting existing plan pages or forcing all plans into one template.</td>
+          </tr>
+          <tr>
+            <td>Theme runtime</td>
+            <td>Ensure wiki iframe pages can receive current Settings theme values reliably through app-served CSS variables.</td>
+            <td>Adding a separate per-project theme editor or a second theme persistence model.</td>
+          </tr>
+          <tr>
+            <td>Guidance</td>
+            <td>Review whether app prompts, local templates, and hyperwiki guidance need explicit generated-plan theme rules.</td>
+            <td>Changing the external skill without review if the app already owns the generation contract.</td>
+          </tr>
+          <tr>
+            <td>Sidebar</td>
+            <td>This plan appears through the standard active feature plan path and dashboard link.</td>
+            <td>A new sidebar section or custom navigation model for generated plans.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section className="panel" aria-labelledby="units">
+      <h2 id="units">Execution Units</h2>
+      <ol className="units">
+        <li className="unit current">
+          <strong>Unit 01 - Theme contract audit</strong>
+          <p>Trace the current Settings theme model, <code>applyTheme</code>, wiki iframe styling, <code>/assets/wiki.css</code>, and any generated plan templates or prompts. Document the exact CSS variable contract generated plans should consume.</p>
+          <p><strong>Verification:</strong> Static inspection plus targeted checks proving current wiki pages receive theme variables when Settings changes.</p>
+        </li>
+        <li className="unit">
+          <strong>Unit 02 - Generation contract update</strong>
+          <p>Update the in-app plan generation prompts/templates and, if needed after review, repo-local or hyperwiki guidance so future rich plan artifacts alias local style tokens to shared <code>--docs-*</code> variables.</p>
+          <p><strong>Verification:</strong> Generate or fixture-test a sample plan and assert it avoids hardcoded foreground/background palettes for semantic roles.</p>
+        </li>
+        <li className="unit">
+          <strong>Unit 03 - Visual and sidebar validation</strong>
+          <p>Validate a newly generated rich plan under at least two Settings themes, confirm readable contrast and layout integrity, and confirm the normal plan sidebar discovers the new feature plan path.</p>
+          <p><strong>Verification:</strong> <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and app/browser visual QA for theme switching.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section className="panel" aria-labelledby="risks">
+      <h2 id="risks">Risks And Open Decisions</h2>
+      <table className="matrix">
+        <thead>
+          <tr><th>Topic</th><th>Risk</th><th>Plan Response</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Iframe theme propagation</td>
+            <td>App theme variables may be applied to the shell but not consistently to wiki iframe documents.</td>
+            <td>Audit and test the runtime path before changing generation rules.</td>
+          </tr>
+          <tr>
+            <td>Rich layout contrast</td>
+            <td>Color-mixed local accents may become low contrast under unusual custom themes.</td>
+            <td>Define safe token roles and add visual QA across light/dark or custom presets.</td>
+          </tr>
+          <tr>
+            <td>Skill scope</td>
+            <td>Theme rules may belong in Hyperwiki's app prompts, the external hyperwiki skill, or both.</td>
+            <td>Review actual generation ownership in Unit 01 before editing any skill guidance.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section className="panel copy-row" aria-labelledby="handoff">
+      <h2 id="handoff">Next Agent Handoff</h2>
+      <textarea id="handoffText" readonly>Use $hyperwiki to continue wiki/plans/features/theme-aware-generated-plans.mdx. Start with Unit 01 - Theme contract audit. Trace Settings theme tokens, /assets/wiki.css, wiki iframe styling, and generated plan template or prompt ownership. Define the shared CSS variable contract that rich generated plans must use before changing generation behavior.</textarea>
+      <button type="button" id="copyHandoff">Copy Handoff</button>
+    </section>

@@ -1,0 +1,53 @@
+---
+title: "Automatic Agent Skills On Init"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Automatic Agent Skills On Init</h1>
+    <section className="summary" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <dl>
+        <dt>Status</dt><dd>complete</dd>
+        <dt>Shape</dt><dd>compact feature plan</dd>
+        <dt>Current unit</dt><dd>None; implementation complete.</dd>
+        <dt>Next action</dt><dd>Use the generated project skills during follow-on wiki, worktree, Portless, frontend, shadcn, and Tailwind work.</dd>
+        <dt>Blockers</dt><dd>None.</dd>
+        <dt>Validation</dt><dd><code>pnpm run check:all</code> passed; temp-dir init smoke passed for default and <code>--no-skills</code>.</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Reader Goal</h2>
+      <p>After 2 minutes, a maintainer can implement deterministic repo-local skill installation for every new Hyperwiki project without adding network-dependent init behavior.</p>
+    </section>
+    <section>
+      <h2>Decision</h2>
+      <ul>
+        <li>Install agent skills by default for <code>hyperwiki init</code> and dashboard-created projects.</li>
+        <li>Use a vendored, pinned bundle compiled into the Rust binary so init works offline and in packaged builds.</li>
+        <li>Expose <code>hyperwiki init --no-skills</code> for users who want a minimal scaffold.</li>
+        <li>Install these skills initially: <code>hyperwiki</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>.</li>
+        <li>Follow-up expansion: add <code>grill-with-docs</code> for plan/domain-language stress tests and <code>make-interfaces-feel-better</code> for UI polish guidance.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Implementation</h2>
+      <ol>
+        <li><strong>Bundle source.</strong> Add curated skill snapshots under a repo-owned source directory, excluding temp files, screenshots, caches, and system artifacts.</li>
+        <li><strong>Build embed.</strong> Extend <code>src-tauri/build.rs</code> to generate Rust constants from the vendored skill files and include those bytes in the binary.</li>
+        <li><strong>Installer.</strong> Add Rust project-domain helpers that write <code>.agents/skills/&lt;skill&gt;/...</code> and merge <code>skills-lock.json</code> without overwriting unrelated user entries.</li>
+        <li><strong>Init surface.</strong> Add <code>install_agent_skills</code> to init options, default it on for CLI and dashboard paths, and wire <code>--no-skills</code> into the CLI.</li>
+        <li><strong>Guidance.</strong> Update generated <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, README, and source docs to describe the default repo-local skills.</li>
+      </ol>
+    </section>
+    <section>
+      <h2>Verification</h2>
+      <ul>
+        <li>Rust unit tests assert default init creates all six <code>SKILL.md</code> files and lock entries.</li>
+        <li>Rust unit tests assert opt-out init creates no skill bundle or lock file.</li>
+        <li>Rust unit tests assert unrelated lock entries survive and existing skill files are preserved unless overwrite is true.</li>
+        <li>Dashboard project creation tests assert imported projects receive the bundle by default.</li>
+        <li><code>pnpm run check:all</code> passed.</li>
+        <li>Temp-dir CLI smoke checks passed for default init and <code>--no-skills</code>.</li>
+      </ul>
+    </section>

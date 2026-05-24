@@ -262,9 +262,9 @@ struct RunRecord {
 
 pub fn workspace_summary(root: impl AsRef<Path>) -> WorkspaceSummary {
     let root = root.as_ref();
-    let plan_dashboard = html_summary(root, "wiki/plans/index.html");
+    let plan_dashboard = html_summary(root, "wiki/plans/index.mdx");
     let wiki_pages = crate::domain::wiki::list_wiki_pages(root, None).pages;
-    let log_entries = html_headings(root, "wiki/log.html", "h2", 5);
+    let log_entries = html_headings(root, "wiki/log.mdx", "h2", 5);
     let source_briefs = source_brief_summary(root);
     let status = workspace_status(&plan_dashboard.summary, &log_entries, &wiki_pages);
     WorkspaceSummary {
@@ -274,16 +274,16 @@ pub fn workspace_summary(root: impl AsRef<Path>) -> WorkspaceSummary {
             } else {
                 plan_dashboard.title
             },
-            path: "/wiki/plans/index.html".to_string(),
+            path: "/wiki/plans/index.mdx".to_string(),
             summary: plan_dashboard.summary,
         },
         status,
         log: WorkspaceLog {
-            path: "/wiki/log.html".to_string(),
+            path: "/wiki/log.mdx".to_string(),
             entries: log_entries,
         },
         sources: WorkspaceSources {
-            path: "/wiki/sources.html".to_string(),
+            path: "/wiki/sources.mdx".to_string(),
             briefs: source_briefs,
         },
         verification: verification_loops(root),
@@ -309,7 +309,7 @@ pub fn guardrail_summary(root: impl AsRef<Path>) -> GuardrailSummary {
             value: "Dev server binds to localhost addresses and keeps the developer's machine, repo files, Git state, terminal sessions, credentials, and environment variables inside the local trust boundary.".to_string(),
         },
         canonical: vec![
-            guardrail_path("Wiki truth", "wiki/", "Repo-visible HTML docs, plans, source briefs, and project log."),
+            guardrail_path("Wiki truth", "wiki/", "Repo-visible MDX docs, plans, source briefs, and project log."),
             guardrail_path("Git truth", ".git", "Durable implementation history and reviewable changes."),
         ],
         runtime: vec![
@@ -384,14 +384,14 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         repo: crate::domain::git::repo_context(root),
         plan,
         sources: ContractSources {
-            index_path: "/wiki/sources.html".to_string(),
+            index_path: "/wiki/sources.mdx".to_string(),
             briefs: workspace.sources.briefs.clone(),
         },
         verification,
         guardrails: guardrail_summary(root),
         layout: workspace.layout,
         wiki: ContractWiki {
-            index_path: "/wiki/index.html".to_string(),
+            index_path: "/wiki/index.mdx".to_string(),
             pages: crate::domain::wiki::list_wiki_pages(root, None).pages,
         },
         agent,
@@ -685,7 +685,7 @@ fn source_brief_summary(root: &Path) -> Vec<SourceBrief> {
     let mut briefs = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("html") {
+        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("mdx") {
             continue;
         }
         let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
@@ -856,7 +856,7 @@ fn display_wiki_path(path: &str) -> String {
 }
 
 fn title_from_path(path: &str) -> String {
-    path.trim_end_matches(".html")
+    path.trim_end_matches(".mdx")
         .split('-')
         .map(|part| {
             let mut chars = part.chars();
@@ -1064,7 +1064,7 @@ mod tests {
             .verification
             .iter()
             .any(|loop_item| loop_item.id == "manual-dogfood"));
-        assert_eq!(workspace.plan.path, "/wiki/plans/index.html");
+        assert_eq!(workspace.plan.path, "/wiki/plans/index.mdx");
     }
 
     #[test]
@@ -1097,7 +1097,7 @@ mod tests {
             root.join(".hyperwiki").join("config.json"),
             serde_json::json!({
                 "projectName": "Contract Smoke",
-                "canonicalWiki": "html",
+                "canonicalWiki": "mdx",
                 "agent": { "launchCommand": "codex --yolo" }
             })
             .to_string(),
@@ -1113,12 +1113,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Home</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("sources").join("prd.html"),
+            root.join("wiki").join("sources").join("prd.mdx"),
             "<h1>PRD</h1><section class=\"summary\"><ul><li>Source brief</li></ul></section>",
         )
         .unwrap();
@@ -1129,14 +1129,14 @@ mod tests {
         assert_eq!(contract.kind, "hyperwiki.project-contract");
         assert_eq!(contract.boundary, "localhost-tooling");
         assert_eq!(contract.project.name, "Contract Smoke");
-        assert_eq!(contract.project.canonical_wiki, "html");
-        assert_eq!(contract.plan.dashboard.path, "/wiki/plans/index.html");
-        assert_eq!(contract.sources.index_path, "/wiki/sources.html");
+        assert_eq!(contract.project.canonical_wiki, "mdx");
+        assert_eq!(contract.plan.dashboard.path, "/wiki/plans/index.mdx");
+        assert_eq!(contract.sources.index_path, "/wiki/sources.mdx");
         assert!(contract
             .sources
             .briefs
             .iter()
-            .any(|brief| brief.path == "/wiki/sources/prd.html"));
+            .any(|brief| brief.path == "/wiki/sources/prd.mdx"));
         assert!(contract
             .verification
             .loops
@@ -1151,7 +1151,7 @@ mod tests {
             .wiki
             .pages
             .iter()
-            .any(|page| page.path == "/wiki/index.html"));
+            .any(|page| page.path == "/wiki/index.mdx"));
         assert_eq!(contract.agent.launch_command, "codex --yolo");
         assert!(contract.agent_context.contains("Project: Contract Smoke"));
         assert!(contract.agent_context.contains("Verification loops:"));
@@ -1166,12 +1166,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li><li>Added baseline.</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("log.html"),
+            root.join("wiki").join("log.mdx"),
             "<h1>Log</h1><h2>Latest entry</h2>",
         )
         .unwrap();

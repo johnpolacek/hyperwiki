@@ -644,7 +644,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Git Worktree</h1>",
         )
         .unwrap();

@@ -348,7 +348,7 @@ mod tests {
                 SessionUpdates {
                     name: Some("agent".to_string()),
                     mode: Some("pty".to_string()),
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     ..SessionUpdates::default()
                 },
             )
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(exported.boundary, "runtime-only");
         assert_eq!(exported.session.exported_at, Some(exported.exported_at));
 
-        let scoped = registry.list(Some("plan:/wiki/plans/index.html"), true);
+        let scoped = registry.list(Some("plan:/wiki/plans/index.mdx"), true);
         assert_eq!(scoped.sessions.len(), 1);
 
         let closed = registry.close("agent/one").unwrap();

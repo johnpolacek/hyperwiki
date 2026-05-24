@@ -329,7 +329,7 @@ fn mcp_resources() -> Vec<McpResource> {
         resource("hyperwiki://verification-loops", "Verification Loops", "Configured or inferred verification loops plus latest local runtime evidence.", "runtime-evidence", "/api/verification", "$"),
         resource("hyperwiki://guardrails", "Guardrails", "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.", "localhost-tooling", "/api/guardrails", "$"),
         resource("hyperwiki://review-workflows", "Review Workflows", "Named agent review workflows for diff, architecture consistency, security, and test-gap review.", "runtime-only-until-recorded", "/api/review-workflows", "$"),
-        resource("hyperwiki://wiki-pages", "Wiki Pages", "Repo-visible HTML wiki page index for canonical project knowledge.", "canonical-wiki", "/api/wiki", "$.wiki"),
+        resource("hyperwiki://wiki-pages", "Wiki Pages", "Repo-visible MDX wiki page index for canonical project knowledge.", "canonical-wiki", "/api/wiki", "$.wiki"),
     ]
 }
 
@@ -365,7 +365,7 @@ fn mcp_tools(contract: &crate::domain::verification::ProjectContract) -> Vec<Mcp
             },
             "scope": {
                 "type": "string",
-                "description": "Optional terminal scope to target, such as plan:/wiki/plans/index.html."
+                "description": "Optional terminal scope to target, such as plan:/wiki/plans/index.mdx."
             }
         }), vec!["prompt"]), contract),
     ]
@@ -608,9 +608,9 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current unit: Unit 01</li></ul></section>",
         )
         .unwrap();

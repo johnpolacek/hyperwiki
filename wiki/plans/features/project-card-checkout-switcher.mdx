@@ -1,0 +1,30 @@
+---
+title: "Project Card Checkout Switcher"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Project Card Checkout Switcher</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact UI correction</li>
+        <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, browser smoke after plan closeout</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Manage Projects should show one card per project and let users switch the selected checkout inside that card, instead of rendering registered worktrees as apparent duplicate projects.</p>
+    </section>
+    <section>
+      <h2>Unit 01 - Group Checkouts Inside Project Cards</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Render Manage Projects from project groups.</li>
+        <li>Keep checkout-specific workspace and app preview actions.</li>
+        <li>Make removal apply to the selected checkout.</li>
+      </ul>
+      <h3>Verification</h3>
+      <p>Completed on 2026-05-17 with syntax, app preview, project removal, and browser smoke validation.</p>
+    </section>

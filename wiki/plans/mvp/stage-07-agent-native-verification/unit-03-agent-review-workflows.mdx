@@ -1,0 +1,21 @@
+---
+title: "Unit 03 - Agent Review Workflows"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 03 - Agent Review Workflows</h1>
+<p><a href="/wiki/plans/mvp/stage-07-agent-native-verification.mdx">Stage 07 - Agent-native Verification</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Add named review workflows for diff review, architecture consistency, security review, and test-gap review.</li>
+    <li>Route review prompts into the visible agent terminal with project contract and current plan context.</li>
+    <li>Represent review results as runtime evidence until intentionally recorded in the wiki or Git.</li>
+    <li>Implemented: <code>/api/review-workflows</code> exposes named diff, architecture consistency, security, and test-gap review workflows.</li>
+    <li>Implemented: <code>/api/review-workflows/run</code> builds project-contract-aware review prompts and can route them into the visible agent terminal; dry-run mode exposes prompt construction for smoke coverage.</li>
+    <li>Review results are represented as runtime evidence until intentionally recorded in the wiki or Git.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:review-workflows</code>.</li>
+  </ul>
+</section>

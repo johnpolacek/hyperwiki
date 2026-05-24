@@ -2,7 +2,6 @@ pub mod app_shell;
 pub mod git;
 pub mod import_planning;
 pub mod mcp;
-pub mod plan_creation;
 pub mod previews;
 pub mod projects;
 pub mod reviews;
@@ -31,7 +30,6 @@ pub fn surfaces() -> Vec<DomainSurface> {
         settings::surface(),
         git::surface(),
         import_planning::surface(),
-        plan_creation::surface(),
         sessions::surface(),
         terminals::surface(),
         previews::surface(),
@@ -61,7 +59,6 @@ mod tests {
                 "settings",
                 "git",
                 "import-planning",
-                "plan-creation",
                 "sessions",
                 "terminals",
                 "previews",
@@ -75,7 +72,7 @@ mod tests {
     #[test]
     fn surface_contract_is_serializable() {
         let value = serde_json::to_value(surfaces()).expect("surfaces should serialize");
-        assert_eq!(value.as_array().expect("array").len(), 13);
+        assert_eq!(value.as_array().expect("array").len(), 12);
         assert_eq!(value[0]["id"], "app-shell");
         assert_eq!(value[0]["runtimeOwner"], "rust-tauri");
     }

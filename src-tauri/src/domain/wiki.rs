@@ -8,7 +8,7 @@ pub fn surface() -> DomainSurface {
         id: "wiki",
         runtime_owner: "rust-tauri",
         responsibilities: &[
-            "repo-visible HTML wiki file reads",
+            "repo-visible MDX wiki file reads",
             "wiki page listing and title extraction",
             "project-scoped wiki links",
             "plan summary and status parsing",
@@ -55,10 +55,11 @@ pub fn read_wiki_page(root: impl AsRef<Path>, request_path: &str) -> Result<Stri
         return Err("Invalid wiki page path.".to_string());
     }
     let page_path = root.as_ref().join("wiki").join(relative);
-    if page_path.extension().and_then(|value| value.to_str()) != Some("html") {
-        return Err("Only HTML wiki pages can be served.".to_string());
+    if page_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
+        return Err("Only MDX wiki pages can be served.".to_string());
     }
-    fs::read_to_string(page_path).map_err(|error| error.to_string())
+    let mdx = fs::read_to_string(page_path).map_err(|error| error.to_string())?;
+    Ok(render_mdx_page(&mdx))
 }
 
 fn wiki_relative_path(path: &str) -> Option<&str> {
@@ -86,16 +87,16 @@ fn walk_wiki(
             walk_wiki(base_root, &full_path, project_id, pages);
             continue;
         }
-        if full_path.extension().and_then(|value| value.to_str()) != Some("html") {
+        if full_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
             continue;
         }
         let Ok(relative_path) = full_path.strip_prefix(base_root) else {
             continue;
         };
         let relative_path = slash_path(relative_path);
-        let html = fs::read_to_string(&full_path).unwrap_or_default();
-        let title = first_heading(&html).unwrap_or_else(|| title_from_wiki_path(&relative_path));
-        let summary = list_items_from_first_summary(&html);
+        let mdx = fs::read_to_string(&full_path).unwrap_or_default();
+        let title = first_heading(&mdx).unwrap_or_else(|| title_from_wiki_path(&relative_path));
+        let summary = list_items_from_first_summary(&mdx);
         let path = project_id
             .map(|id| format!("/projects/{id}/wiki/{relative_path}"))
             .unwrap_or_else(|| format!("/wiki/{relative_path}"));
@@ -109,8 +110,19 @@ fn walk_wiki(
     }
 }
 
-fn first_heading(html: &str) -> Option<String> {
-    first_between_case_insensitive(html, "<h1", "</h1>").map(|value| {
+fn first_heading(mdx: &str) -> Option<String> {
+    if let Some(title) = frontmatter_value(mdx, "title") {
+        return Some(title);
+    }
+    if let Some(markdown_heading) = mdx.lines().find_map(|line| {
+        line.trim()
+            .strip_prefix("# ")
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    }) {
+        return Some(strip_html(markdown_heading));
+    }
+    first_between_case_insensitive(mdx, "<h1", "</h1>").map(|value| {
         let content = value
             .split_once('>')
             .map(|(_, content)| content)
@@ -121,6 +133,10 @@ fn first_heading(html: &str) -> Option<String> {
 
 fn list_items_from_first_summary(html: &str) -> Vec<String> {
     let mut items = Vec::new();
+    if let Some(table_items) = markdown_summary_table_items(html).filter(|items| !items.is_empty())
+    {
+        return table_items;
+    }
     if let Some(section) = first_summary_section(html) {
         let mut rest = section.as_str();
         while let Some(item) = first_between_case_insensitive(rest, "<li", "</li>") {
@@ -145,6 +161,60 @@ fn list_items_from_first_summary(html: &str) -> Vec<String> {
         }
     }
     items
+}
+
+fn frontmatter_value(mdx: &str, key: &str) -> Option<String> {
+    let mut lines = mdx.lines();
+    if lines.next()?.trim() != "---" {
+        return None;
+    }
+    let prefix = format!("{key}:");
+    for line in lines {
+        let line = line.trim();
+        if line == "---" {
+            break;
+        }
+        if let Some(value) = line.strip_prefix(&prefix) {
+            return Some(
+                value
+                    .trim()
+                    .trim_matches('"')
+                    .trim_matches('\'')
+                    .to_string(),
+            );
+        }
+    }
+    None
+}
+
+fn markdown_summary_table_items(mdx: &str) -> Option<Vec<String>> {
+    let mut in_summary = false;
+    let mut items = Vec::new();
+    for line in mdx.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("## ") {
+            in_summary = trimmed.trim_start_matches('#').trim() == "Summary";
+            continue;
+        }
+        if !in_summary {
+            continue;
+        }
+        if trimmed.starts_with("## ") || trimmed.starts_with("# ") {
+            break;
+        }
+        if !trimmed.starts_with('|') || trimmed.contains("---") {
+            continue;
+        }
+        let cells = trimmed
+            .trim_matches('|')
+            .split('|')
+            .map(str::trim)
+            .collect::<Vec<_>>();
+        if cells.len() >= 2 && !cells[0].eq_ignore_ascii_case("field") {
+            items.push(format!("{}: {}", cells[0], strip_html(cells[1])));
+        }
+    }
+    Some(items)
 }
 
 fn first_summary_section(html: &str) -> Option<String> {
@@ -210,7 +280,7 @@ fn definition_value_after_term(html: &str, term: &str) -> Option<String> {
 
 fn page_status(summary: &[String], path: &str) -> Option<String> {
     if path.contains("/wiki/plans/zzz_completed/")
-        && !path.ends_with("/wiki/plans/zzz_completed/index.html")
+        && !path.ends_with("/wiki/plans/zzz_completed/index.mdx")
     {
         return Some("complete".to_string());
     }
@@ -258,8 +328,151 @@ fn strip_html(value: &str) -> String {
         .join(" ")
 }
 
+fn render_mdx_page(mdx: &str) -> String {
+    let title = first_heading(mdx).unwrap_or_else(|| "Wiki".to_string());
+    let body = render_mdx_body(strip_frontmatter(mdx));
+    format!(
+        r#"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{}</title>
+  <link rel="stylesheet" href="/assets/wiki.css">
+</head>
+<body>
+  <main class="wiki-page wiki-mdx">
+{}
+  </main>
+</body>
+</html>
+"#,
+        escape_html_text(&title),
+        body
+    )
+}
+
+fn strip_frontmatter(mdx: &str) -> &str {
+    let Some(rest) = mdx.strip_prefix("---") else {
+        return mdx;
+    };
+    let Some(end) = rest.find("\n---") else {
+        return mdx;
+    };
+    &rest[end + "\n---".len()..]
+}
+
+fn render_mdx_body(mdx: &str) -> String {
+    let mut html = String::new();
+    let mut in_list = false;
+    let mut in_code = false;
+    let mut code = String::new();
+    for line in mdx.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("```") {
+            if in_code {
+                html.push_str("<pre><code>");
+                html.push_str(&escape_html_text(&code));
+                html.push_str("</code></pre>\n");
+                code.clear();
+                in_code = false;
+            } else {
+                close_list(&mut html, &mut in_list);
+                in_code = true;
+            }
+            continue;
+        }
+        if in_code {
+            code.push_str(line);
+            code.push('\n');
+            continue;
+        }
+        if trimmed.is_empty() {
+            close_list(&mut html, &mut in_list);
+            continue;
+        }
+        if trimmed.starts_with('<') {
+            close_list(&mut html, &mut in_list);
+            html.push_str(line);
+            html.push('\n');
+            continue;
+        }
+        if let Some((level, text)) = markdown_heading(trimmed) {
+            close_list(&mut html, &mut in_list);
+            html.push_str(&format!(
+                "<h{level}>{}</h{level}>\n",
+                inline_markdown(text)
+            ));
+            continue;
+        }
+        if let Some(item) = trimmed.strip_prefix("- ") {
+            if !in_list {
+                html.push_str("<ul>\n");
+                in_list = true;
+            }
+            html.push_str("<li>");
+            html.push_str(&inline_markdown(item));
+            html.push_str("</li>\n");
+            continue;
+        }
+        close_list(&mut html, &mut in_list);
+        html.push_str("<p>");
+        html.push_str(&inline_markdown(trimmed));
+        html.push_str("</p>\n");
+    }
+    close_list(&mut html, &mut in_list);
+    html
+}
+
+fn markdown_heading(line: &str) -> Option<(usize, &str)> {
+    let hashes = line.chars().take_while(|ch| *ch == '#').count();
+    if hashes == 0 || hashes > 6 {
+        return None;
+    }
+    line.get(hashes..)
+        .and_then(|rest| rest.strip_prefix(' '))
+        .map(|text| (hashes, text.trim()))
+}
+
+fn close_list(html: &mut String, in_list: &mut bool) {
+    if *in_list {
+        html.push_str("</ul>\n");
+        *in_list = false;
+    }
+}
+
+fn inline_markdown(value: &str) -> String {
+    let escaped = escape_html_text(value);
+    let mut output = String::new();
+    let mut rest = escaped.as_str();
+    while let Some(start) = rest.find('`') {
+        output.push_str(&rest[..start]);
+        let after = &rest[start + 1..];
+        if let Some(end) = after.find('`') {
+            output.push_str("<code>");
+            output.push_str(&after[..end]);
+            output.push_str("</code>");
+            rest = &after[end + 1..];
+        } else {
+            output.push('`');
+            output.push_str(after);
+            rest = "";
+        }
+    }
+    output.push_str(rest);
+    output
+}
+
+fn escape_html_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 fn title_from_wiki_path(relative_path: &str) -> String {
-    let without_extension = relative_path.trim_end_matches(".html");
+    let without_extension = relative_path.trim_end_matches(".mdx");
     let segments = without_extension.split('/').collect::<Vec<_>>();
     let leaf = if segments.last() == Some(&"index") && segments.len() > 1 {
         segments[segments.len() - 2]
@@ -297,15 +510,15 @@ mod tests {
         let plan_dir = root.join("wiki").join("plans");
         fs::create_dir_all(&plan_dir).unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Home</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();
-        fs::write(plan_dir.join("feature-plan.html"), "<h1>Feature Plan</h1>").unwrap();
+        fs::write(plan_dir.join("feature-plan.mdx"), "<h1>Feature Plan</h1>").unwrap();
 
         let pages = list_wiki_pages(&root, None).pages;
         assert_eq!(pages.len(), 2);
-        assert_eq!(pages[0].path, "/wiki/index.html");
+        assert_eq!(pages[0].path, "/wiki/index.mdx");
         assert_eq!(pages[0].title, "Home");
         assert_eq!(pages[0].status.as_deref(), Some("active"));
         assert_eq!(pages[1].title, "Feature Plan");
@@ -317,13 +530,13 @@ mod tests {
         let plan_dir = root.join("wiki").join("plans");
         fs::create_dir_all(&plan_dir).unwrap();
         fs::write(
-            plan_dir.join("tauri-rewrite.html"),
+            plan_dir.join("tauri-rewrite.mdx"),
             "<h1>Tauri Rewrite</h1><dl><div><dt>Status</dt><dd><span>complete</span></dd></div></dl>",
         )
         .unwrap();
 
         let pages = list_wiki_pages(&root, None).pages;
-        assert_eq!(pages[0].path, "/wiki/plans/tauri-rewrite.html");
+        assert_eq!(pages[0].path, "/wiki/plans/tauri-rewrite.mdx");
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
     }
@@ -334,13 +547,13 @@ mod tests {
         let plan_dir = root.join("wiki").join("plans").join("features");
         fs::create_dir_all(&plan_dir).unwrap();
         fs::write(
-            plan_dir.join("remove-legacy-node-runtime.html"),
+            plan_dir.join("remove-legacy-node-runtime.mdx"),
             "<h1>Remove Legacy Node Runtime</h1><section><h2>Summary</h2><ul><li>Status: complete</li></ul></section>",
         )
         .unwrap();
 
         let pages = list_wiki_pages(&root, None).pages;
-        assert_eq!(pages[0].path, "/wiki/plans/features/remove-legacy-node-runtime.html");
+        assert_eq!(pages[0].path, "/wiki/plans/features/remove-legacy-node-runtime.mdx");
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
     }
@@ -349,10 +562,10 @@ mod tests {
     fn can_emit_project_scoped_wiki_paths() {
         let root = temp_root("wiki-project");
         fs::create_dir_all(root.join("wiki")).unwrap();
-        fs::write(root.join("wiki").join("source-index.html"), "").unwrap();
+        fs::write(root.join("wiki").join("source-index.mdx"), "").unwrap();
 
         let pages = list_wiki_pages(&root, Some("project-1")).pages;
-        assert_eq!(pages[0].path, "/projects/project-1/wiki/source-index.html");
+        assert_eq!(pages[0].path, "/projects/project-1/wiki/source-index.mdx");
         assert_eq!(pages[0].title, "Source Index");
     }
 

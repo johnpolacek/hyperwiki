@@ -1,0 +1,21 @@
+---
+title: "Unit 01 - Verification Loop Model"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 01 - Verification Loop Model</h1>
+<p><a href="/wiki/plans/mvp/stage-07-agent-native-verification.mdx">Stage 07 - Agent-native Verification</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Define the repo-local shape for verification loops: command, scope, trigger, status, last run, evidence, and whether the result is automated or manual.</li>
+    <li>Expose verification loops through a local API that can be consumed by the browser workspace and future MCP tools.</li>
+    <li>Keep recorded verification state separate from canonical claims unless a human or agent intentionally records the outcome into the wiki.</li>
+    <li>Implemented: <code>/api/verification</code> returns versioned verification loops with <code>id</code>, <code>label</code>, <code>command</code>, <code>scope</code>, <code>trigger</code>, <code>status</code>, <code>lastRun</code>, <code>evidence</code>, <code>kind</code>, <code>source</code>, <code>recorded</code>, and <code>boundary</code>.</li>
+    <li>Implemented: <code>/api/workspace</code> now exposes the same loop model instead of static label/command pairs.</li>
+    <li>Runtime evidence is read from ignored <code>.hyperwiki/state/verification.json</code> and remains separate from canonical wiki/Git truth until intentionally recorded.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:verification</code> passed on 2026-05-14.</li>
+  </ul>
+</section>

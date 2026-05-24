@@ -1,0 +1,44 @@
+---
+title: "Dev Preview Lifecycle"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Dev Preview Lifecycle</h1>
+    <section className="summary" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <dl>
+        <dt>Status</dt><dd>complete</dd>
+        <dt>Shape</dt><dd>compact feature plan</dd>
+        <dt>Current unit</dt><dd>none</dd>
+        <dt>Next action</dt><dd>none; implementation and verification are complete.</dd>
+        <dt>Blockers</dt><dd>none</dd>
+        <dt>Validation</dt><dd><code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, and browser smoke coverage.</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Make the App control describe dev server lifecycle state instead of collapsing missing dev commands into the misleading App Not Configured label, and recover when a project gains a package dev script after Hyperwiki onboarding.</p>
+    </section>
+    <section>
+      <h2>Implementation</h2>
+      <ul>
+        <li>Keep App Not Configured only for projects without a preview URL.</li>
+        <li>Show Dev Not Available when a preview URL exists but no dev command is configured.</li>
+        <li>Show Run Dev when Hyperwiki can start the configured dev command.</li>
+        <li>Derive the dev command from <code>package.json</code> when <code>.hyperwiki/config.json</code> still has an empty command.</li>
+        <li>Add a derived dev panel before the CLI panel when the layout lacks one but the package dev script exists.</li>
+        <li>Show Stop Dev only for a running preview backed by the current Hyperwiki-managed dev terminal.</li>
+        <li>Show Dev Running for externally started Portless routes that Hyperwiki should not stop.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification</h2>
+      <ul>
+        <li>Add smoke coverage for preview URL plus empty dev command.</li>
+        <li>Update browser smoke expectations for the lifecycle label.</li>
+        <li><code>pnpm run check</code> passed.</li>
+        <li><code>pnpm run smoke:app-preview</code> passed with coverage for blank config command falling back to <code>package.json</code>.</li>
+        <li>Browser smoke was rerun after the plan dashboard returned to no active unit.</li>
+      </ul>
+    </section>

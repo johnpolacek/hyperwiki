@@ -1,0 +1,26 @@
+---
+title: "Scaffold Contract"
+description: "Hyperwiki page page."
+wikiKind: "page"
+---
+
+<h1>Scaffold Contract</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: active product convention</li>
+        <li>Source index: <code>wiki/sources.mdx</code></li>
+        <li>Wiki agent guide: <code>wiki/AGENTS.mdx</code></li>
+        <li>Default styling: app-served <code>/assets/wiki.css</code></li>
+        <li>Runtime boundary: Localhost Tooling</li>
+      </ul>
+    </section>
+    <h2>Decisions</h2>
+    <ul>
+      <li><code>wiki/sources.mdx</code> is canonical for generated Hyperwiki projects. Do not create <code>wiki/Sources.mdx</code> unless a compatibility migration explicitly asks for it.</li>
+      <li><code>wiki/AGENTS.mdx</code> is the visible wiki guide. Root <code>AGENTS.md</code> remains the agent entrypoint for CLI and editor tools.</li>
+      <li>Generated pages use Hyperwiki's shared wiki stylesheet through <code>/assets/wiki.css</code>. Standalone embedded-CSS HTML belongs to custom artifacts or future export flows.</li>
+      <li>Hyperwiki projects are local-first: repo files, Git state, terminal sessions, credentials, and environment variables stay inside the developer's local trust boundary.</li>
+    </ul>
+    <h2>Skill Compatibility</h2>
+    <p>When an agent uses an external project wiki skill, apply the planning, source, log, and audit workflow while preserving these Hyperwiki scaffold names and app-serving conventions.</p>

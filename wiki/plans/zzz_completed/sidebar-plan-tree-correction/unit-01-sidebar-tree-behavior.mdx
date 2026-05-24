@@ -1,0 +1,25 @@
+---
+title: "Unit 01 - Sidebar Tree Behavior"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 01 - Sidebar Tree Behavior</h1>
+<p><a href="/wiki/plans/zzz_completed/sidebar-plan-tree-correction.mdx">Sidebar Plan Tree Correction</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Intent: keep plan and stage navigation structurally ordered, expandable where child pages exist, and readable when labels are long.</li>
+    <li>Validation: <code>pnpm run check</code> and targeted browser inspection.</li>
+  </ul>
+</section>
+<h2>Notes</h2>
+<ul>
+  <li>Removed the current-stage sort promotion so Stage 07 no longer appears before Stage 01.</li>
+  <li>Preserved details-based branches for plans and stages with child pages.</li>
+  <li>Added a dedicated label span inside nav links so CSS ellipses apply consistently.</li>
+  <li>Removed the Planning Dashboard row from the sidebar plan tree and aligned active dots with transparent inactive dot placeholders.</li>
+  <li>Changed stage branches to expand only when that stage or one of its unit pages is selected, with unit rows indented under the selected stage.</li>
+  <li>Restyled the sidebar toward a document-page navigation model: white surface, compact uppercase section label, flat selected rows, dark active rail, and disclosure chevrons.</li>
+</ul>

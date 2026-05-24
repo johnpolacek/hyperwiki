@@ -1,0 +1,24 @@
+---
+title: "Sidebar Plan Tree Correction"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Sidebar Plan Tree Correction</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused correction</li>
+    <li>Decision: plan navigation order should follow the durable plan structure, not promote the current stage ahead of earlier stages.</li>
+    <li>Decision: nav item labels should truncate with text overflow ellipses inside their available row width.</li>
+    <li>Post-closeout update: completed top-level plan pages render inside the Completed Plans group even when their files remain in their original wiki paths.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run smoke:browser</code>.</li>
+  </ul>
+</section>
+<h2>Intent</h2>
+<p>Correct the workspace sidebar so MVP stages remain in chronological order, expandable plan branches stay usable, and long plan or unit labels do not spill outside the navigation column.</p>
+<h2>Execution Units</h2>
+<ol>
+  <li><a href="/wiki/plans/zzz_completed/sidebar-plan-tree-correction/unit-01-sidebar-tree-behavior.mdx">Unit 01 - Sidebar Tree Behavior</a> - complete</li>
+</ol>

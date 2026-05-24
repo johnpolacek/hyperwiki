@@ -28,15 +28,15 @@ For frontend rewrite work, use the repo-local `shadcn` and `tailwind-design-syst
 
 ### Project Wiki
 
-- Read `wiki/index.html` before answering project-specific questions or making structural changes.
-- hyperwiki intentionally adapts the project-wiki workflow to an HTML-first wiki. Durable project knowledge, plans, decisions, and project-context history live under `wiki/` as HTML.
-- Use `wiki/sources.html` as the source index.
-- Preserve Hyperwiki scaffold conventions when applying external project-wiki skills: lowercase `wiki/sources.html`, app-visible `wiki/AGENTS.html`, app-served `/assets/wiki.css`, and Localhost Tooling runtime boundaries. See `wiki/scaffold-contract.html`.
+- Read `wiki/index.mdx` before answering project-specific questions or making structural changes.
+- hyperwiki now uses an MDX-first wiki. Durable project knowledge, plans, decisions, and project-context history live under `wiki/` as MDX.
+- Use `wiki/sources.mdx` as the source index.
+- Preserve Hyperwiki scaffold conventions when applying external project-wiki skills: lowercase `wiki/sources.mdx`, app-visible `wiki/AGENTS.mdx`, MDX plan components, and Localhost Tooling runtime boundaries. See `wiki/scaffold-contract.mdx`.
 - Create or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
-- For the React, shadcn, Tailwind v4, and MDX rewrite, read `wiki/plans/features/react-shadcn-mdx-rewrite.html` first and execute only the current stage or batch named there.
+- For the React, shadcn, Tailwind v4, and MDX rewrite, read `wiki/plans/features/react-shadcn-mdx-rewrite.mdx` first and execute only the current stage or batch named there.
 - Do not create plans for small, local, reversible fixes that do not change product behavior, architecture, schema, dependencies, build configuration, public APIs, security posture, or durable project direction.
-- Sync recent codebase changes back into `wiki/log.html`, relevant plans, roadmap, and source pages when work happened before planning or made the wiki stale.
-- Update `wiki/index.html` when adding or materially changing durable wiki pages.
+- Sync recent codebase changes back into `wiki/log.mdx`, relevant plans, roadmap, and source pages when work happened before planning or made the wiki stale.
+- Update `wiki/index.mdx` when adding or materially changing durable wiki pages.
 
 ### Working Rules
 

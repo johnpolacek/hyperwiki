@@ -123,7 +123,7 @@ pub fn prepare_review_workflow(
     let contract = crate::domain::verification::project_contract(root.as_ref());
     let current_page = current_page.unwrap_or_else(|| {
         if contract.plan.current_path.is_empty() {
-            "/wiki/plans/index.html"
+            "/wiki/plans/index.mdx"
         } else {
             contract.plan.current_path.as_str()
         }
@@ -285,7 +285,7 @@ mod tests {
             let prepared = prepare_review_workflow(
                 &root,
                 workflow_id,
-                Some("/wiki/plans/index.html"),
+                Some("/wiki/plans/index.mdx"),
                 true,
             )
             .unwrap();
@@ -313,9 +313,9 @@ mod tests {
             "{\"projectName\":\"Review Test\"}",
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();

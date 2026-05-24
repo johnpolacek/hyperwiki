@@ -1,0 +1,20 @@
+---
+title: "Unit 05 - Agent Plan Prompt"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 05 - Agent Plan Prompt</h1>
+<p><a href="/wiki/plans/mvp/stage-06-agent-launch-layout.mdx">Stage 06 - Agent-first Launch Layout</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Add a sidebar prompt when an agent session is configured and active.</li>
+    <li>Submit prompts into the visible agent terminal instead of creating a hidden chat transcript.</li>
+    <li>Include project, repo root, and current wiki page context in the submitted instruction.</li>
+    <li>Corrected after dogfooding: the prompt input grows and shrinks between one and five text lines so multi-line instructions remain visible without taking over the wiki pane.</li>
+    <li>Corrected after dogfooding: the textarea line-height is more readable, and the send button stays a stable one-line height aligned to the top of the expanding textarea.</li>
+    <li>Corrected after dogfooding: new plan prompts tell agents not to append redundant "Plan" wording to page titles, and the sidebar trims trailing "Plan" from plan labels.</li>
+  </ul>
+</section>

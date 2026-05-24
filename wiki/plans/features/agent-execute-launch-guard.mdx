@@ -1,0 +1,31 @@
+---
+title: "Agent Execute Launch Guard"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Agent Execute Launch Guard</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact safety correction</li>
+        <li>Current unit: complete</li>
+        <li>Validation: <code>pnpm run check</code>, browser smoke</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Execute should only send generated work prompts into a real configured agent process. If a project has no agent launch command, Hyperwiki should stop with visible status instead of pasting the prompt into a plain shell.</p>
+    </section>
+    <section>
+      <h2>Unit 01 - Require Configured Agent Command</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Detect missing agent launch commands before creating or reusing an agent terminal for handoff prompts.</li>
+        <li>Show an actionable error that tells the user to configure <code>agent.launchCommand</code>.</li>
+        <li>Add smoke coverage for the missing-command guard.</li>
+      </ul>
+      <h3>Verification</h3>
+      <p>Completed on 2026-05-17 with syntax and browser smoke coverage.</p>
+    </section>

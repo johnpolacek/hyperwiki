@@ -1,0 +1,47 @@
+---
+title: "Manual Desktop Dogfood Checklist"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Manual Desktop Dogfood Checklist</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete checklist</li>
+        <li>Plan: <a href="/wiki/plans/tauri-rewrite.mdx">Complete Tauri Rewrite</a></li>
+        <li>Target: macOS first, then cross-platform parity when packaging reaches Stage 05.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Launch And App Shell</h2>
+      <ul>
+        <li>Start with <code>pnpm run tauri:dev</code> and confirm the dedicated desktop window opens without browser chrome.</li>
+        <li>Confirm app-shell navigation opens Projects, Settings, Planning Dashboard, and wiki pages without losing the active workspace route.</li>
+        <li>Confirm external preview links open outside the app window and local-only guardrails remain visible.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Project And Wiki Data</h2>
+      <ul>
+        <li>Open an existing registered project and verify projects, wiki, settings, and Git state match the Node reference app.</li>
+        <li>Create a project from a brief and verify generated wiki files, source briefs, roadmap, and plan dashboard are repo-visible.</li>
+        <li>Remove a project checkout and verify stale registry entries are handled without deleting files unless explicitly requested.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Terminal, Sessions, And Previews</h2>
+      <ul>
+        <li>Start agent and CLI terminals, then verify terminals, sessions, and plan-scoped reattach behavior.</li>
+        <li>Run a Portless dev preview, verify previews use exact checkout hostnames, and confirm Run Dev captures runtime URLs.</li>
+        <li>Create a worktree and verify Git branch state, preview URL, terminal scope, and reload persistence.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification, Reviews, And MCP</h2>
+      <ul>
+        <li>Complete: verification and project-contract data are covered by the Rust project-contract smoke and full <code>pnpm run check:all</code> parity gate.</li>
+        <li>Complete: architecture, security, diff, and test-gap review prompts are prepared by smoke coverage, and routed review execution returns <code>409</code> unless an active agent session exists.</li>
+        <li>Complete: <code>pnpm run smoke:mcp-transport</code> exercises the stdio MCP server, confirms resources stay local, and verifies action tools remain hidden/rejected.</li>
+      </ul>
+    </section>

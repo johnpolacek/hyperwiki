@@ -1,0 +1,43 @@
+---
+title: "Plan-scoped Terminals"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Plan-scoped Terminals</h1>
+    <section className="summary" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <dl>
+        <dt>Status</dt><dd>complete</dd>
+        <dt>Shape</dt><dd>compact feature plan</dd>
+        <dt>Current unit</dt><dd>none</dd>
+        <dt>Next action</dt><dd>none; implementation and targeted verification are complete.</dd>
+        <dt>Blockers</dt><dd>none</dd>
+        <dt>Validation</dt><dd><code>pnpm run check</code>, <code>pnpm run smoke:pty</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:launch</code> passed. <code>pnpm run smoke:browser</code> is blocked by an existing completed-stage dot color assertion unrelated to terminal scoping.</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Tie the visible terminal workspace to the active plan root so each plan opens with its own right side, while terminal processes for other plans, projects, and worktrees keep running locally until explicitly closed.</p>
+    </section>
+    <section>
+      <h2>Implementation</h2>
+      <ul>
+        <li>Resolve terminal scope from the active route: feature plans use their plan page, MVP units use their parent stage, and overview or non-plan routes use their own runtime scopes.</li>
+        <li>Detach terminal UI on scope changes without deleting or killing server sessions.</li>
+        <li>Keep PTY and pipe fallback processes alive after WebSocket disconnects, with bounded replay for reattached browser panels.</li>
+        <li>Route agent prompts and review workflow submissions to the current scope's active agent session.</li>
+        <li>Keep session metadata under ignored <code>.hyperwiki/sessions/</code> and preserve the runtime-only export boundary.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification</h2>
+      <ul>
+        <li>Different plans show independent terminal sets.</li>
+        <li>Returning to a plan reattaches the original terminal process.</li>
+        <li>Explicit close still terminates a terminal and removes it from future restores.</li>
+        <li>Project and worktree switches preserve isolation by project root.</li>
+        <li>Verified passing checks: <code>pnpm run check</code>, <code>pnpm run smoke:pty</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:launch</code>.</li>
+        <li>Known unrelated blocker: <code>pnpm run smoke:browser</code> currently fails on a completed-stage dot color expectation before terminal-scope assertions complete.</li>
+      </ul>
+    </section>

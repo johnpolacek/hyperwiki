@@ -1,0 +1,44 @@
+---
+title: "New Project Page"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>New Project Page</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Goal: move New Project out of the Manage Projects view into its own app-shell page.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Acceptance</h2>
+      <ul>
+        <li>The topbar Projects dropdown links to both Manage Projects and New Project.</li>
+        <li><code>/projects</code> shows project management without the project creation form.</li>
+        <li><code>/projects/new</code> shows the project creation form as the primary page.</li>
+        <li>Direct refresh on <code>/projects/new</code> opens the New Project page.</li>
+        <li>Successful project creation returns to Manage Projects and starts the agent handoff.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Result</h2>
+      <ul>
+        <li>Added <code>/projects/new</code> as a dedicated app-shell page for project creation.</li>
+        <li>Moved the project brief form out of Manage Projects.</li>
+        <li>Added New Project and Manage Projects actions to the Projects dropdown.</li>
+        <li>Removed wiki command bar and terminal chrome from project-management app pages so the New Project form fills the workspace cleanly.</li>
+        <li>Redesigned the MVP planning interview into a lighter decision console with a compact evidence rail, visible right-side step count, calmer option cards, accent-backed selection, mobile-first decision ordering, wider header-aligned layout, reduced mono overuse, and a unified footer.</li>
+        <li>Verified direct refresh and browser workflow coverage for <code>/projects/new</code>.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Follow-up: Generated Plan Quality</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Problem: imported source evidence and planning interview choices must survive project generation as concrete source briefs, MVP stages, acceptance criteria, and durable decision records.</li>
+        <li>Acceptance: generated projects with a rich source brief produce source-specific product, technical, and design briefs; name the first MVP slice; preserve static-first tradeoffs; and expose planning decisions outside runtime terminal session metadata.</li>
+        <li>Additional acceptance: generated projects include a decision-complete MVP implementation spec with content paths, frontmatter contract, taxonomy facets, first seed categories, routes, search/filter behavior, copy/compare behavior, validation plan, and deferred scope.</li>
+      </ul>
+    </section>

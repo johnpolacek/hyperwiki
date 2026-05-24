@@ -476,7 +476,7 @@ pub fn init_hyperwiki_project(
             "{}\n",
             serde_json::to_string_pretty(&serde_json::json!({
                 "projectName": options.project_name,
-                "canonicalWiki": "html",
+                "canonicalWiki": "mdx",
                 "dev": {
                     "host": "127.0.0.1",
                     "port": 4177,
@@ -801,16 +801,16 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
         return write_import_wiki(root, options);
     }
     let pages = [
-        ("wiki/index.html", index_page(options)),
-        ("wiki/AGENTS.html", wiki_agent_page(options)),
-        ("wiki/log.html", log_page(options)),
-        ("wiki/sources.html", sources_page(options)),
+        ("wiki/index.mdx", index_page(options)),
+        ("wiki/AGENTS.mdx", wiki_agent_page(options)),
+        ("wiki/log.mdx", log_page(options)),
+        ("wiki/sources.mdx", sources_page(options)),
         (
-            "wiki/scaffold-contract.html",
+            "wiki/scaffold-contract.mdx",
             scaffold_contract_page(options),
         ),
         (
-            "wiki/roadmap.html",
+            "wiki/roadmap.mdx",
             simple_page(
                 options,
                 "Roadmap",
@@ -818,17 +818,17 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/architecture.html",
+            "wiki/architecture.mdx",
             simple_page(
                 options,
                 "Architecture",
                 "Document the project architecture as implementation evidence grows.",
             ),
         ),
-        ("wiki/dev.html", dev_page(options)),
-        ("wiki/plans/index.html", plans_index_page(options)),
+        ("wiki/dev.mdx", dev_page(options)),
+        ("wiki/plans/index.mdx", plans_index_page(options)),
         (
-            "wiki/plans/mvp/index.html",
+            "wiki/plans/mvp/index.mdx",
             simple_page(
                 options,
                 "MVP Plan",
@@ -836,7 +836,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/implementation-spec.html",
+            "wiki/plans/mvp/implementation-spec.mdx",
             simple_page(
                 options,
                 "Implementation Spec",
@@ -844,11 +844,11 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation.html",
+            "wiki/plans/mvp/stage-01-foundation.mdx",
             stage_page(options),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.mdx",
             unit_page(
                 options,
                 "Unit 01 - Confirm Project Direction",
@@ -856,7 +856,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.mdx",
             unit_page(
                 options,
                 "Unit 02 - Review Repository Setup",
@@ -864,7 +864,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.mdx",
             unit_page(
                 options,
                 "Unit 03 - Update Source Briefs",
@@ -872,7 +872,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.mdx",
             unit_page(
                 options,
                 "Unit 04 - Define First Implementation Unit",
@@ -880,7 +880,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace.html",
+            "wiki/plans/mvp/stage-02-dev-workspace.mdx",
             simple_page(
                 options,
                 "Stage 02 - First Implementation Track",
@@ -888,7 +888,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.mdx",
             unit_page(
                 options,
                 "Unit 01 - Implement First Slice",
@@ -896,7 +896,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.mdx",
             unit_page(
                 options,
                 "Unit 02 - Sync Plan Status",
@@ -904,7 +904,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.mdx",
             unit_page(
                 options,
                 "Unit 03 - Record Validation",
@@ -912,7 +912,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.mdx",
             unit_page(
                 options,
                 "Unit 04 - Preserve Canonical Truth",
@@ -920,7 +920,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening.mdx",
             simple_page(
                 options,
                 "Stage 03 - Hardening And Release Readiness",
@@ -928,7 +928,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.mdx",
             unit_page(
                 options,
                 "Unit 01 - Close Verification Gaps",
@@ -936,7 +936,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.mdx",
             unit_page(
                 options,
                 "Unit 02 - Harden Workflows",
@@ -944,7 +944,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.mdx",
             unit_page(
                 options,
                 "Unit 03 - Update Durable Docs",
@@ -952,7 +952,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.mdx",
             unit_page(
                 options,
                 "Unit 04 - Record Handoff Notes",
@@ -960,18 +960,18 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/sources/prd.html",
+            "wiki/sources/prd.mdx",
             source_page(options, "Product Brief"),
         ),
         (
-            "wiki/sources/technical-brief.html",
+            "wiki/sources/technical-brief.mdx",
             source_page(options, "Technical Brief"),
         ),
         (
-            "wiki/sources/design-brief.html",
+            "wiki/sources/design-brief.mdx",
             source_page(options, "Design Brief"),
         ),
-        ("wiki/sources/import.html", import_page(options)),
+        ("wiki/sources/import.mdx", import_page(options)),
     ];
     for (relative, content) in pages {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
@@ -981,38 +981,38 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
 
 fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
     let pages = [
-        ("wiki/index.html", index_page(options)),
-        ("wiki/AGENTS.html", wiki_agent_page(options)),
-        ("wiki/log.html", log_page(options)),
-        ("wiki/sources.html", sources_page(options)),
+        ("wiki/index.mdx", index_page(options)),
+        ("wiki/AGENTS.mdx", wiki_agent_page(options)),
+        ("wiki/log.mdx", log_page(options)),
+        ("wiki/sources.mdx", sources_page(options)),
         (
-            "wiki/scaffold-contract.html",
+            "wiki/scaffold-contract.mdx",
             scaffold_contract_page(options),
         ),
-        ("wiki/roadmap.html", import_roadmap_page(options)),
+        ("wiki/roadmap.mdx", import_roadmap_page(options)),
         (
-            "wiki/architecture.html",
+            "wiki/architecture.mdx",
             simple_page(
                 options,
                 "Architecture",
                 "Architecture is intentionally unset until source-grounded Q&A confirms stack, data, integration, privacy, and runtime decisions.",
             ),
         ),
-        ("wiki/dev.html", dev_page(options)),
-        ("wiki/plans/index.html", plans_index_page(options)),
+        ("wiki/dev.mdx", dev_page(options)),
+        ("wiki/plans/index.mdx", plans_index_page(options)),
         (
-            "wiki/sources/prd.html",
+            "wiki/sources/prd.mdx",
             product_brief_page(options),
         ),
         (
-            "wiki/sources/technical-brief.html",
+            "wiki/sources/technical-brief.mdx",
             technical_brief_page(options),
         ),
         (
-            "wiki/sources/design-brief.html",
+            "wiki/sources/design-brief.mdx",
             design_brief_page(options),
         ),
-        ("wiki/sources/import.html", import_page(options)),
+        ("wiki/sources/import.mdx", import_page(options)),
     ];
     for (relative, content) in pages {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
@@ -1140,50 +1140,32 @@ fn remove_directory_contents(directory: &Path) -> Result<(), String> {
 }
 
 fn layout(options: &InitProjectOptions, title: &str, body: &str) -> String {
+    let body = body.replace(" class=", " className=");
     format!(
-        r#"<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{} - {}</title>
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="stylesheet" href="/assets/wiki.css">
-</head>
-<body>
-  <header class="wiki-header">
-    <a href="/wiki/index.html">{}</a>
-    <nav>
-      <a href="/wiki/architecture.html">Architecture</a>
-      <a href="/wiki/dev.html">Dev</a>
-      <a href="/wiki/plans/index.html">Plans</a>
-      <a href="/wiki/log.html">Log</a>
-      <a href="/wiki/sources.html">Sources</a>
-    </nav>
-  </header>
-  <main class="wiki-page">
-    {body}
-  </main>
-</body>
-</html>
+        r#"---
+title: "{}"
+description: "{}"
+wikiKind: "page"
+---
+
+{body}
 "#,
         escape_html(title),
-        escape_html(&options.project_name),
-        escape_html(&options.project_name),
+        escape_html(&format!("{title} for {}", options.project_name)),
     )
 }
 
 fn index_page(options: &InitProjectOptions) -> String {
     let plan_link = if options.source_document.trim().is_empty() {
-        "<li><a href=\"/wiki/plans/mvp/index.html\">MVP plan</a></li>"
+        "<li><a href=\"/wiki/plans/mvp/index.mdx\">MVP plan</a></li>"
     } else {
-        "<li><a href=\"/wiki/plans/index.html\">Planning intake</a></li>"
+        "<li><a href=\"/wiki/plans/index.mdx\">Planning intake</a></li>"
     };
     layout(
         options,
         "Home",
         &format!(
-            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul>{}<li><a href=\"/wiki/sources/prd.html\">Product brief</a></li></ul></section>",
+            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul>{}<li><a href=\"/wiki/sources/prd.mdx\">Product brief</a></li></ul></section>",
             escape_html(&options.project_name),
             escape_html(&options.summary),
             plan_link
@@ -1201,7 +1183,7 @@ fn plans_index_page(options: &InitProjectOptions) -> String {
 <li>Status: planning</li>\
 <li>Current stage: none; source-grounded Q&amp;A has not produced a real implementation stage yet.</li>\
 <li>Current unit: none; do not execute product code until the agent creates a detailed unit with verification.</li>\
-	<li>Next action: run the agent-led source review from <code>wiki/sources/import.html</code>, ask focused questions in the agent terminal if needed, then create a decision-complete plan.</li>\
+	<li>Next action: run the agent-led source review from <code>wiki/sources/import.mdx</code>, ask focused questions in the agent terminal if needed, then create a decision-complete plan.</li>\
 </ul></section>\
 <section><h2>Planning Rule</h2><p>This imported project intentionally has no generated MVP stage tree yet. Stages and units must be created only after the source has been reviewed and the user has answered detailed Q&amp;A for maximum clarity.</p></section>",
         );
@@ -1209,7 +1191,7 @@ fn plans_index_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Plans",
-        "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.html\">Stage 01 - Project Direction And Setup</a></li></ul>",
+        "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.mdx\">Stage 01 - Project Direction And Setup</a></li></ul>",
     )
 }
 
@@ -1217,7 +1199,7 @@ fn stage_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Stage 01 - Project Direction And Setup",
-        "<h1>Stage 01 - Project Direction And Setup</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html\">Unit 01 - Confirm Project Direction</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html\">Unit 02 - Review Repository Setup</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html\">Unit 03 - Update Source Briefs</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html\">Unit 04 - Define First Implementation Unit</a></li></ul>",
+        "<h1>Stage 01 - Project Direction And Setup</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.mdx\">Unit 01 - Confirm Project Direction</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.mdx\">Unit 02 - Review Repository Setup</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.mdx\">Unit 03 - Update Source Briefs</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.mdx\">Unit 04 - Define First Implementation Unit</a></li></ul>",
     )
 }
 
@@ -1230,7 +1212,7 @@ fn unit_page(options: &InitProjectOptions, title: &str, summary: &str) -> String
 <section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>\
 <section><h2>Intent</h2><p>{}</p></section>\
 <section><h2>Scope</h2><ul><li>Confirm the concrete work for this unit before editing product code.</li><li>Keep changes bounded to evidence from the source briefs, repository, and user decisions.</li></ul></section>\
-<section><h2>Implementation Notes</h2><ul><li>Read <code>wiki/index.html</code>, <code>wiki/sources.html</code>, and relevant source briefs before execution.</li><li>Update this unit if implementation discoveries change scope, blockers, or verification.</li></ul></section>\
+<section><h2>Implementation Notes</h2><ul><li>Read <code>wiki/index.mdx</code>, <code>wiki/sources.mdx</code>, and relevant source briefs before execution.</li><li>Update this unit if implementation discoveries change scope, blockers, or verification.</li></ul></section>\
 <section><h2>Verification</h2><ul><li>Record the command, manual check, or explicit deferral that proves this unit is complete.</li><li>Do not mark the unit complete until verification evidence is captured.</li></ul></section>",
             escape_html(title),
             escape_html(summary),
@@ -1702,7 +1684,7 @@ fn scaffold_contract_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Scaffold Contract",
-        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for HTML-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.html</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.html</code> for wiki agent guidance.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
+        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for MDX-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.mdx</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.mdx</code> for wiki agent guidance.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
     )
 }
 
@@ -1732,7 +1714,7 @@ fn log_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Log",
-        "<h1>Project Log</h1><article><h2>bootstrap | initialize HTML-first project wiki</h2><ul><li>Mode: bootstrap_new.</li><li>Canonical wiki format: HTML.</li></ul></article>",
+        "<h1>Project Log</h1><article><h2>bootstrap | initialize MDX-first project wiki</h2><ul><li>Mode: bootstrap_new.</li><li>Canonical wiki format: MDX.</li></ul></article>",
     )
 }
 
@@ -1740,7 +1722,7 @@ fn sources_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Sources",
-        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.html</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li><li><a href=\"/wiki/sources/import.html\">Imported source</a></li></ul>",
+        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.mdx</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.mdx\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.mdx\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.mdx\">Design brief</a></li><li><a href=\"/wiki/sources/import.mdx\">Imported source</a></li></ul>",
     )
 }
 
@@ -1748,13 +1730,13 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Wiki Agent Guide",
-        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.html before project-specific work and use wiki/sources.html as the source index.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>project-html-wiki</code> for wiki maintenance, <code>grill-with-docs</code> for plan and domain-language stress tests, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> and <code>make-interfaces-feel-better</code> for substantial UI work and polish, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
+        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.mdx before project-specific work and use wiki/sources.mdx as the source index.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>hyperwiki</code> for wiki maintenance, <code>grill-with-docs</code> for plan and domain-language stress tests, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> and <code>make-interfaces-feel-better</code> for substantial UI work and polish, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
     )
 }
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nDo not add a duplicate `wiki/Sources.html`; Hyperwiki uses lowercase `wiki/sources.html`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `project-html-wiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; Hyperwiki uses lowercase `wiki/sources.mdx`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -2059,7 +2041,7 @@ mod tests {
             .project
             .root
             .join("wiki")
-            .join("index.html")
+            .join("index.mdx")
             .is_file());
         assert!(!created
             .project
@@ -2074,7 +2056,7 @@ mod tests {
                 .root
                 .join("wiki")
                 .join("plans")
-                .join("index.html"),
+                .join("index.mdx"),
         )
         .unwrap();
         assert!(plans.contains("Status: planning"));
@@ -2084,20 +2066,20 @@ mod tests {
             fs::read_to_string(created.project.root.join(".hyperwiki").join("config.json"))
                 .unwrap();
         let sources =
-            fs::read_to_string(created.project.root.join("wiki").join("sources.html")).unwrap();
+            fs::read_to_string(created.project.root.join("wiki").join("sources.mdx")).unwrap();
         let contract = fs::read_to_string(
             created
                 .project
                 .root
                 .join("wiki")
-                .join("scaffold-contract.html"),
+                .join("scaffold-contract.mdx"),
         )
         .unwrap();
-        assert!(agents.contains("Do not add a duplicate `wiki/Sources.html`"));
+        assert!(agents.contains("Do not add a duplicate `wiki/Sources.mdx`"));
         assert!(agents.contains("Portless-backed `dev` script"));
         assert!(config.contains("\"launchCommand\": \"codex --yolo\""));
-        assert!(sources.contains("lowercase <code>wiki/sources.html</code>"));
-        assert!(contract.contains("wiki/AGENTS.html"));
+        assert!(sources.contains("lowercase <code>wiki/sources.mdx</code>"));
+        assert!(contract.contains("wiki/AGENTS.mdx"));
         assert_default_skills_installed(&created.project.root);
         assert!(registry
             .list(Some(&created.project.id))
@@ -2157,9 +2139,9 @@ mod tests {
         }
 
         let root = created.project.root;
-        let index = fs::read_to_string(root.join("wiki").join("index.html")).unwrap();
-        let prd = fs::read_to_string(root.join("wiki").join("sources").join("prd.html")).unwrap();
-        let plans = fs::read_to_string(root.join("wiki").join("plans").join("index.html")).unwrap();
+        let index = fs::read_to_string(root.join("wiki").join("index.mdx")).unwrap();
+        let prd = fs::read_to_string(root.join("wiki").join("sources").join("prd.mdx")).unwrap();
+        let plans = fs::read_to_string(root.join("wiki").join("plans").join("index.mdx")).unwrap();
 
         assert!(index.contains("spontaneous guided audio tour"));
         assert!(!index.contains("&lt;!doctype html&gt;"));
@@ -2171,7 +2153,7 @@ mod tests {
         assert!(!root
             .join("wiki")
             .join("sources")
-            .join("planning-interview.html")
+            .join("planning-interview.mdx")
             .exists());
         assert!(!root.join("wiki").join("plans").join("mvp").exists());
     }
@@ -2185,7 +2167,7 @@ mod tests {
         assert_default_skills_installed(&root);
         let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
         assert!(agents.contains("Repo-local agent skills are installed"));
-        let wiki_agents = fs::read_to_string(root.join("wiki").join("AGENTS.html")).unwrap();
+        let wiki_agents = fs::read_to_string(root.join("wiki").join("AGENTS.mdx")).unwrap();
         assert!(wiki_agents.contains(".agents/skills/"));
     }
 
@@ -2240,7 +2222,7 @@ mod tests {
         let lock = skills_lock(&root);
         assert_eq!(lock["skills"]["shadcn"]["source"], "custom/source");
         assert_eq!(lock["skills"]["custom-skill"]["source"], "custom/other");
-        assert!(lock["skills"]["project-html-wiki"].is_object());
+        assert!(lock["skills"]["hyperwiki"].is_object());
     }
 
     #[test]

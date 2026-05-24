@@ -1,0 +1,37 @@
+---
+title: "Stage 04 - One-command Local Launch"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Stage 04 - One-command Local Launch</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Current unit: none</li>
+    <li>Next action: none; this stage is complete.</li>
+    <li>Blockers: none</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</section>
+<h2>Intent</h2>
+<p>Make hyperwiki obvious to start. From a fresh dogfood session, one command should bring up the local wiki/ADE workspace without requiring the user to remember separate server, browser, and terminal steps.</p>
+<h2>Dogfood Finding</h2>
+<p>The first-use friction is launch ambiguity: hyperwiki is essentially a local LLM wiki site and ADE in one, but the current workflow does not clearly answer how to launch the whole environment.</p>
+<section>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><a href="/wiki/plans/mvp/stage-04-one-command-launch/unit-01-launch-command-contract.mdx">Unit 01 - Launch Command Contract</a> - active</li>
+    <li><a href="/wiki/plans/mvp/stage-04-one-command-launch/unit-02-launch-reliability-and-ergonomics.mdx">Unit 02 - Launch Reliability And Ergonomics</a> - complete</li>
+    <li><a href="/wiki/plans/mvp/stage-04-one-command-launch/unit-03-smoke-coverage.mdx">Unit 03 - Smoke Coverage</a> - complete</li>
+  </ol>
+</section>
+<h2>Non-goals</h2>
+<ul>
+  <li>Do not start structured MCP integration in this stage.</li>
+  <li>Do not introduce remote hosting, auth, or multi-user behavior.</li>
+  <li>Do not make runtime terminal transcripts canonical project knowledge by default.</li>
+</ul>
+<h2>Verification</h2>
+<p>Launch validation is recorded in <a href="/wiki/log.mdx">log.mdx</a>.</p>
