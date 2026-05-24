@@ -46,6 +46,8 @@
     <li>Added registry recovery for imported project creation so the New Project view can route to the created workspace even if the Tauri create invoke stalls after Rust writes the project.</li>
     <li>Changed New Project import to force the workspace URL from the expected project slug after starting creation, so the form exits even when the Tauri command bridge does not resolve the create promise.</li>
     <li>Added pending-import route state and a holding view so workspace startup no longer redirects back to New Project while the local project registry catches up after import.</li>
+    <li>Added visible import diagnostics for frontend handoff state, pending marker writes, forced workspace routes, app boot route state, project-list counts, redirect decisions, and pending import polling.</li>
+    <li>Added Rust <code>/api/projects</code> registry-list logging with project, checkout, group, and active-project counts to correlate frontend recovery with backend registry state.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-harness</code>, <code>pnpm run smoke:tauri-webdriver</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>

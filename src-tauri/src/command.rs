@@ -84,11 +84,17 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
     }
     if request.method == "GET" && request.path.starts_with("/api/projects") {
         let active_id = query_param(&request.path, "project");
-        return json_response(
-            200,
-            &crate::domain::projects::ProjectRegistry::from_environment()
-                .list(active_id.as_deref()),
+        let list = crate::domain::projects::ProjectRegistry::from_environment()
+            .list(active_id.as_deref());
+        eprintln!(
+            "[hyperwiki] projects list active_id={:?} projects={} checkouts={} groups={} active={:?}",
+            active_id,
+            list.projects.len(),
+            list.checkouts.len(),
+            list.project_groups.len(),
+            list.active_project_id
         );
+        return json_response(200, &list);
     }
     if request.method == "POST" && request.path.starts_with("/api/projects/create") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();

@@ -265,6 +265,7 @@ interface ImportPlanningCreateResponse {
 }
 
 const defaultWikiPath = "/wiki/plans/mvp/index.html";
+const importLogStorageKey = "hyperwiki.importLog";
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -311,15 +312,22 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (pendingImportProject || window.location.pathname.startsWith("/workspace/") || readImportLog().length) {
+      appendImportLog(`App boot route=${window.location.pathname}${window.location.hash || ""} pending=${pendingImportProject ? `${pendingImportProject.projectSlug}/${pendingImportProject.worktreeSlug}` : "none"}`);
+    }
     void loadBaseData();
   }, []);
 
   useEffect(() => {
     if (!hasLoadedProjects || hasRegisteredProjects || route.kind !== "wiki") return;
-    if (isPendingImportRoute) return;
+    if (isPendingImportRoute) {
+      appendImportLog("Holding workspace route for pending import; not redirecting to New Project");
+      return;
+    }
+    appendImportLog(`Redirecting to New Project: hasLoadedProjects=${hasLoadedProjects} hasRegisteredProjects=${hasRegisteredProjects} activeProject=${activeProject?.id || "none"} route=${window.location.pathname}${window.location.hash || ""}`);
     setRoute({ kind: "new-project" });
     window.history.replaceState(null, "", "/projects/new");
-  }, [hasLoadedProjects, hasRegisteredProjects, isPendingImportRoute, route.kind]);
+  }, [activeProject?.id, hasLoadedProjects, hasRegisteredProjects, isPendingImportRoute, route.kind]);
 
   useEffect(() => {
     if (route.kind !== "wiki") return;
@@ -359,25 +367,32 @@ function App() {
   useEffect(() => {
     if (!pendingImportProject || activeProject || route.kind !== "wiki") return;
     if (!matchesWorkspaceSelection(pendingImportProject, workspaceSelectionFromLocation())) return;
+    appendImportLog(`Pending import poll started for ${pendingImportProject.projectSlug}/${pendingImportProject.worktreeSlug}`);
     let cancelled = false;
     const poll = async () => {
       try {
         const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
         if (cancelled) return;
         setProjects(projectsResult);
+        const records = allProjectRecords(projectsResult);
+        console.info("[hyperwiki] import ui pending poll", {
+          wanted: `${pendingImportProject.projectSlug}/${pendingImportProject.worktreeSlug}`,
+          records: records.map((project) => `${project.projectSlug}/${project.worktreeSlug}:${project.id}`),
+        });
         const project = findActiveProject(projectsResult, unavailableProjectIds, {
           projectSlug: pendingImportProject.projectSlug,
           worktreeSlug: pendingImportProject.worktreeSlug,
         });
         if (!project) return;
+        appendImportLog(`Pending import found project ${project.id}`);
         clearPendingImportProject();
         setPendingImportProject(null);
         setActiveProject(project);
         setStatus("Imported project ready");
         void loadProjectData(project);
         void loadSessionsForProject(project, scopeForRoute({ kind: "wiki", path: "/wiki/plans/index.html" }));
-      } catch {
-        // Keep the holding view visible until the registry catches up.
+      } catch (error) {
+        console.warn("[hyperwiki] import ui pending poll failed", error);
       }
     };
     void poll();
@@ -438,8 +453,12 @@ function App() {
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
       const selectedProject = findActiveProject(projectsResult.value, unavailableProjectIds, workspaceSelectionFromLocation());
+      if (pendingImportProject || window.location.pathname.startsWith("/workspace/") || readImportLog().length) {
+        appendImportLog(`Project list loaded count=${allProjectRecords(projectsResult.value).length} selected=${selectedProject?.id || "none"} route=${window.location.pathname}${window.location.hash || ""}`);
+      }
       setActiveProject(selectedProject);
       if (selectedProject && pendingImportProject && matchesWorkspaceSelection(selectedProject, workspaceSelectionFromLocation())) {
+        appendImportLog(`Clearing pending import after selecting ${selectedProject.id}`);
         clearPendingImportProject();
         setPendingImportProject(null);
       }
@@ -761,6 +780,7 @@ function App() {
   async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
     baseDataRequestId.current += 1;
     setStatus("Initializing project");
+    appendImportLog(`Create request started title=${input.title}`);
     const startedAt = Math.floor(Date.now() / 1000);
     const createRequest = hyperwikiApi
       .json<ProjectCreateResponse>("/api/projects/create", {
@@ -779,6 +799,7 @@ function App() {
       createRequest,
       recoverCreatedProject(input.title, startedAt),
     ]);
+    appendImportLog(`Create request resolved project=${project.id} slug=${project.projectSlug}/${project.worktreeSlug}`);
     setStatus(`Project created: ${project.name}`);
     setProjects((current) => withOptimisticProject(current, project));
     openImportedPlanningWorkspace(project);
@@ -1518,17 +1539,14 @@ function NewProjectView({
   const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
 
   function logImport(message: string, error?: unknown) {
-    const line = `${new Date().toLocaleTimeString()} ${message}`;
-    setImportLog((current) => {
-      const next = [...current, line].slice(-8);
-      window.sessionStorage.setItem("hyperwiki.importLog", JSON.stringify(next));
-      return next;
-    });
-    if (error) console.error(message, error);
+    appendImportLog(message, error);
+    setImportLog(readImportLog());
   }
 
   async function handleFile(file: File | null) {
     if (!file) return;
+    clearImportLog();
+    setImportLog([]);
     setIsSubmitting(true);
     setStatus(`Reading ${file.name}...`);
     logImport(`Reading ${file.name}`);
@@ -1574,12 +1592,16 @@ function NewProjectView({
     const routeToWorkspace = (project = pendingProject) => {
       if (routed) return;
       routed = true;
+      logImport(`Writing pending import marker ${project.projectSlug}/${project.worktreeSlug}`);
       writePendingImportProject(project);
-      window.location.assign(`/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.html`);
+      const target = `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.html`;
+      logImport(`Forcing workspace route ${target}`);
+      window.location.assign(target);
     };
     setIsSubmitting(true);
     setHandoffProject(pendingProject);
     setStatus("Initializing project...");
+    logImport(`Handoff view set for ${pendingProject.projectSlug}/${pendingProject.worktreeSlug}`);
     logImport("Creating imported project");
     const fallbackTimer = window.setTimeout(routeToWorkspace, 900);
     void onCreateProject(input)
@@ -1656,10 +1678,33 @@ function NewProjectView({
 
 function readImportLog() {
   try {
-    const parsed = JSON.parse(window.sessionStorage.getItem("hyperwiki.importLog") || "[]");
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(-8) : [];
+    const parsed = JSON.parse(window.sessionStorage.getItem(importLogStorageKey) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(-16) : [];
   } catch {
     return [];
+  }
+}
+
+function appendImportLog(message: string, error?: unknown) {
+  const line = `${new Date().toLocaleTimeString()} ${message}`;
+  try {
+    const next = [...readImportLog(), line].slice(-16);
+    window.sessionStorage.setItem(importLogStorageKey, JSON.stringify(next));
+  } catch {
+    // Import logging is diagnostic only.
+  }
+  if (error) {
+    console.error(`[hyperwiki] import ui ${message}`, error);
+  } else {
+    console.info(`[hyperwiki] import ui ${message}`);
+  }
+}
+
+function clearImportLog() {
+  try {
+    window.sessionStorage.removeItem(importLogStorageKey);
+  } catch {
+    // Ignore diagnostic cleanup failures.
   }
 }
 
