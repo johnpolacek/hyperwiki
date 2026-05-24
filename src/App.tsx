@@ -285,7 +285,6 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
   const baseDataRequestId = useRef(0);
-  const importPlanningAutoStartKey = useRef("");
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -294,7 +293,6 @@ function App() {
   const hasRegisteredProjects = projectGroups.length > 0;
   const workspaceSelection = workspaceSelectionFromLocation();
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
-  const isImportedPlanningIntake = useMemo(() => route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && hasImportedSource(wikiPages) && !hasGeneratedPlanPages(wikiPages), [route, wikiPages]);
 
   useEffect(() => {
     function onPopState() {
@@ -417,26 +415,6 @@ function App() {
     }
     void loadSessions();
   }, [terminalScope, activeProject, hasLoadedProjects]);
-
-  useEffect(() => {
-    if (!activeProject || !isImportedPlanningIntake) return;
-    if (isSessionsLoading) return;
-    const key = `${activeProject.id}:${currentWikiPath}`;
-    const existingAgent = sessions.find(isAgentSession);
-    if (existingAgent?.command) {
-      setActiveSessionId(existingAgent.id);
-      return;
-    }
-    if (importPlanningAutoStartKey.current === key) return;
-    importPlanningAutoStartKey.current = key;
-    setStatus("Starting imported project planning agent");
-    void sendAgentPromptToProject(activeProject, importedProjectPlanningPrompt(activeProject), currentWikiPath, terminalScope, layout, sessions)
-      .then(() => setStatus("Imported project planning prompt sent"))
-      .catch((error) => {
-        importPlanningAutoStartKey.current = "";
-        setStatus(error instanceof Error ? error.message : "Could not start imported project planning agent.");
-      });
-  }, [activeProject, currentWikiPath, isImportedPlanningIntake, isSessionsLoading, layout, sessions, terminalScope]);
 
   async function loadBaseData() {
     const requestId = baseDataRequestId.current + 1;
@@ -1190,13 +1168,16 @@ function WorkspacePane(props: {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
   }
   if (props.route.kind === "plan-create") {
-    return <PlanCreationView activeProject={props.activeProject} onCancel={() => props.onNavigate({ kind: "wiki", path: "/wiki/plans/index.mdx" })} onStart={props.onStartPlanCreation} />;
+    return <PlanCreationView activeProject={props.activeProject} isImportedFirstPlan={hasImportedSource(props.wikiPages) && !hasGeneratedPlanPages(props.wikiPages)} onCancel={() => props.onNavigate({ kind: "wiki", path: "/wiki/plans/index.mdx" })} onStart={props.onStartPlanCreation} />;
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
+  }
+  if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
+    return <ImportedPlanningQAView activeProject={props.activeProject} onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1397,14 +1378,16 @@ function CommandBar({
 
 function PlanCreationView({
   activeProject,
+  isImportedFirstPlan = false,
   onCancel,
   onStart,
 }: {
   activeProject: ProjectRecord | null;
+  isImportedFirstPlan?: boolean;
   onCancel: () => void;
   onStart: (intent: string) => Promise<void>;
 }) {
-  const [intent, setIntent] = useState("");
+  const [intent, setIntent] = useState(isImportedFirstPlan ? "Create the first MVP plan from the imported source." : "");
   const [isStarting, setIsStarting] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -1418,42 +1401,86 @@ function PlanCreationView({
   }
 
   return (
-    <main className="grid min-h-0 bg-background">
-      <section className="mx-auto flex min-h-0 w-full max-w-5xl flex-col gap-6 px-8 py-8">
-        <header className="flex items-start justify-between gap-4 border-b pb-5">
-          <div className="grid gap-2">
-            <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Plan creation</p>
-            <h1 className="m-0 text-3xl font-bold">Create an MDX plan</h1>
-            <p className="m-0 max-w-2xl text-sm text-muted-foreground">
-              Start with the rough intent. Hyperwiki will launch an agent interview that uses the repo, wiki, and grill-with-docs-style questions before writing staged MDX plan docs with verification.
+    <main className="grid min-h-0 bg-background antialiased">
+      <section className="mx-auto flex min-h-0 w-full max-w-4xl flex-col gap-6 px-8 py-8">
+        <header className="flex items-start justify-between gap-4 pb-2">
+          <div className="grid gap-3">
+            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan creation</p>
+            <h1 className="m-0 text-4xl font-semibold leading-tight text-balance">Create New Plan</h1>
+            <p className="m-0 max-w-2xl text-base leading-7 text-muted-foreground text-pretty">
+              {isImportedFirstPlan
+                ? "Hyperwiki will use the imported source as the planning brief, start a focused Q&A, then write the first MVP plan when the blocking decisions are clear."
+                : "Hyperwiki will start a focused Q&A, inspect the repo and wiki, then write plan docs when the blocking decisions are clear."}
             </p>
           </div>
-          <Button variant="outline" onClick={onCancel} type="button">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" variant="outline" onClick={onCancel} type="button">
             Cancel
           </Button>
         </header>
-        <form className="grid gap-4" onSubmit={submit}>
-          <label className="grid gap-2">
-            <span className="text-sm font-bold">What are we planning?</span>
-            <textarea
-              className="min-h-[260px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onChange={(event) => setIntent(event.target.value)}
-              placeholder="Describe the feature, workflow, refactor, research track, or product change..."
-              value={intent}
-            />
-          </label>
-          <div className="grid gap-2 rounded-md border bg-card p-4 text-sm text-muted-foreground">
-            <div><strong className="text-foreground">Project:</strong> {activeProject?.name || "No active project"}</div>
-            <div><strong className="text-foreground">Output:</strong> MDX wiki plan pages under <code>wiki/plans/</code></div>
-            <div><strong className="text-foreground">Required:</strong> plan, stages or compact unit structure, and verification for every executable unit</div>
-          </div>
+        <form className="grid gap-5 rounded-lg bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_32px_rgba(0,0,0,0.05)]" onSubmit={submit}>
+          {!isImportedFirstPlan ? (
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold">Planning focus</span>
+              <textarea
+                className="min-h-[180px] rounded-md bg-background p-4 text-sm leading-6 outline-none shadow-[inset_0_0_0_1px_hsl(var(--border))] transition-shadow focus-visible:shadow-[inset_0_0_0_1px_hsl(var(--ring)),0_0_0_3px_hsl(var(--ring)/0.18)]"
+                onChange={(event) => setIntent(event.target.value)}
+                placeholder="Feature, workflow, refactor, research track, or product change..."
+                value={intent}
+              />
+            </label>
+          ) : (
+            <div className="grid gap-3 rounded-md bg-background p-4 shadow-[inset_0_0_0_1px_hsl(var(--border))]">
+              <h2 className="m-0 text-lg font-semibold">Imported source detected</h2>
+              <p className="m-0 max-w-2xl text-sm leading-6 text-muted-foreground text-pretty">
+                This is the first plan for {activeProject?.name || "this project"}, so Hyperwiki will create an MVP plan from the imported source after the Q&A resolves open decisions.
+              </p>
+            </div>
+          )}
           <div className="flex justify-end">
-            <Button disabled={isStarting || !activeProject} type="submit">
+            <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject} type="submit">
               {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-              Start Interview
+              Start Q&A
             </Button>
           </div>
         </form>
+      </section>
+    </main>
+  );
+}
+
+function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: ProjectRecord | null; onStart: () => Promise<void> }) {
+  const [isStarting, setIsStarting] = useState(false);
+
+  async function start() {
+    setIsStarting(true);
+    try {
+      await onStart();
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!activeProject) return;
+    void start();
+  }, [activeProject?.id]);
+
+  return (
+    <main className="grid min-h-0 place-items-center bg-background px-8 antialiased">
+      <section className="grid w-full max-w-2xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
+        <div className="grid gap-3">
+          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
+          <h1 className="m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
+          <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">
+            Hyperwiki found the imported source for {activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.
+          </p>
+        </div>
+        <div className="flex justify-end">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject} onClick={start} type="button">
+            {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
+            {isStarting ? "Starting Q&A" : "Start Q&A"}
+          </Button>
+        </div>
       </section>
     </main>
   );
@@ -3106,6 +3133,10 @@ function hasGeneratedPlanPages(pages: WikiPage[]) {
   });
 }
 
+function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
+  return route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && hasImportedSource(pages) && !hasGeneratedPlanPages(pages);
+}
+
 function agentLaunchCommand(layout: LayoutResponse | null) {
   return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
@@ -3118,7 +3149,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "Goal:",
-    "Run a fresh source-grounded planning interview for this imported project, then create the plan docs only after the user has answered enough questions.",
+    "Run a fresh source-grounded planning interview for this imported project, then create the first MVP plan docs only after the user has answered enough questions.",
     "",
     "Source context:",
     "- Read wiki/index.mdx first.",
@@ -3128,14 +3159,15 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
-    "- Do not assume this is an MVP unless the imported source or the user confirms that lifecycle.",
-    "- Do not create wiki/plans/mvp/ during intake by default.",
-    "- When the interview is done, create a decision-complete MDX plan under the most accurate wiki/plans/ location.",
-    "- Preserve the plan > stages > units structure when a staged implementation plan is warranted.",
+    "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
+    "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
+    "- When the interview is done, create a decision-complete MDX MVP plan under wiki/plans/mvp/.",
+    "- Preserve the plan > stages > units structure.",
     "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
     "- Do not create many single-unit stages unless each has a real phase boundary.",
     "- Name unknowns instead of inventing certainty.",
     "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Replace the import intake copy with the created MVP plan state once the plan exists.",
     "- Update wiki/log.mdx and source briefs only when the interview creates durable project context.",
     "- Keep all durable project knowledge under wiki/.",
     "",
@@ -3145,6 +3177,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
 }
 
 function planCreationPrompt(project: ProjectRecord | null, intent: string) {
+  const normalizedIntent = intent.trim() || "Create the next plan from current project context.";
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
@@ -3168,7 +3201,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     `Project root: ${project?.root || "Unknown"}`,
     "",
     "Initial user intent:",
-    intent,
+    normalizedIntent,
   ].join("\n");
 }
 
