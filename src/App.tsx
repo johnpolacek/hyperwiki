@@ -1406,7 +1406,7 @@ function PlanCreationView({
         <header className="flex items-start justify-between gap-4 pb-2">
           <div className="grid gap-3">
             <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan creation</p>
-            <h1 className="m-0 text-4xl font-semibold leading-tight text-balance">Create New Plan</h1>
+            <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Create New Plan</h1>
             <p className="m-0 max-w-2xl text-base leading-7 text-muted-foreground text-pretty">
               {isImportedFirstPlan
                 ? "Hyperwiki will use the imported source as the planning brief, start a focused Q&A, then write the first MVP plan when the blocking decisions are clear."
@@ -1470,7 +1470,7 @@ function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: Pro
       <section className="grid w-full max-w-2xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
-          <h1 className="m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
+          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">
             Hyperwiki found the imported source for {activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.
           </p>
