@@ -326,6 +326,10 @@ function App() {
 
   useEffect(() => {
     if (!hasLoadedProjects || hasRegisteredProjects || activeProject || route.kind !== "wiki") return;
+    if (window.location.pathname.startsWith("/workspace/")) {
+      appendImportLog(`Holding workspace route while project registry catches up: route=${window.location.pathname}${window.location.hash || ""}`);
+      return;
+    }
     if (isPendingImportRoute) {
       appendImportLog("Holding workspace route for pending import; not redirecting to New Project");
       return;
