@@ -275,6 +275,7 @@ function App() {
   const [projects, setProjects] = useState<ProjectListResponse>({});
   const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
   const [activeProject, setActiveProject] = useState<ProjectRecord | null>(null);
+  const [pendingImportProject, setPendingImportProject] = useState<ProjectRecord | null>(() => readPendingImportProject());
   const [unavailableProjectIds, setUnavailableProjectIds] = useState<Set<string>>(() => new Set());
   const [workspace, setWorkspace] = useState<WorkspaceResponse | null>(null);
   const [preview, setPreview] = useState<AppPreviewResponse | null>(null);
@@ -297,6 +298,8 @@ function App() {
   const sidebarModel = useMemo(() => buildSidebarModel(wikiPages), [wikiPages]);
   const projectGroups = useMemo(() => normalizeProjectGroups(projects, unavailableProjectIds), [projects, unavailableProjectIds]);
   const hasRegisteredProjects = projectGroups.length > 0;
+  const workspaceSelection = workspaceSelectionFromLocation();
+  const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
   const isImportedPlanningIntake = useMemo(() => route.kind === "wiki" && route.path === "/wiki/plans/index.html" && hasImportedSource(wikiPages) && !hasGeneratedPlanPages(wikiPages), [route, wikiPages]);
 
   useEffect(() => {
@@ -313,9 +316,10 @@ function App() {
 
   useEffect(() => {
     if (!hasLoadedProjects || hasRegisteredProjects || route.kind !== "wiki") return;
+    if (isPendingImportRoute) return;
     setRoute({ kind: "new-project" });
     window.history.replaceState(null, "", "/projects/new");
-  }, [hasLoadedProjects, hasRegisteredProjects, route.kind]);
+  }, [hasLoadedProjects, hasRegisteredProjects, isPendingImportRoute, route.kind]);
 
   useEffect(() => {
     if (route.kind !== "wiki") return;
@@ -351,6 +355,38 @@ function App() {
     setWikiError("");
     setWikiHtml("");
   }, [wikiError, activeProject]);
+
+  useEffect(() => {
+    if (!pendingImportProject || activeProject || route.kind !== "wiki") return;
+    if (!matchesWorkspaceSelection(pendingImportProject, workspaceSelectionFromLocation())) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
+        if (cancelled) return;
+        setProjects(projectsResult);
+        const project = findActiveProject(projectsResult, unavailableProjectIds, {
+          projectSlug: pendingImportProject.projectSlug,
+          worktreeSlug: pendingImportProject.worktreeSlug,
+        });
+        if (!project) return;
+        clearPendingImportProject();
+        setPendingImportProject(null);
+        setActiveProject(project);
+        setStatus("Imported project ready");
+        void loadProjectData(project);
+        void loadSessionsForProject(project, scopeForRoute({ kind: "wiki", path: "/wiki/plans/index.html" }));
+      } catch {
+        // Keep the holding view visible until the registry catches up.
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeProject, pendingImportProject, route.kind, unavailableProjectIds]);
 
   useEffect(() => {
     if (hasLoadedProjects && !activeProject) {
@@ -401,7 +437,12 @@ function App() {
     if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
-      setActiveProject(findActiveProject(projectsResult.value, unavailableProjectIds, workspaceSelectionFromLocation()));
+      const selectedProject = findActiveProject(projectsResult.value, unavailableProjectIds, workspaceSelectionFromLocation());
+      setActiveProject(selectedProject);
+      if (selectedProject && pendingImportProject && matchesWorkspaceSelection(selectedProject, workspaceSelectionFromLocation())) {
+        clearPendingImportProject();
+        setPendingImportProject(null);
+      }
       setHasLoadedProjects(true);
     }
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
@@ -786,8 +827,8 @@ function App() {
     setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
   }
 
-  const isProjectUnavailable = hasLoadedProjects && !activeProject;
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable;
+  const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
 
   return (
     <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
@@ -826,6 +867,7 @@ function App() {
           onRunCommand={runCommandAction}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
+          pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
@@ -1094,6 +1136,7 @@ function WorkspacePane(props: {
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   onSwitchProject: (project: ProjectRecord) => void;
+  pendingImportProject: ProjectRecord | null;
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
@@ -1111,6 +1154,9 @@ function WorkspacePane(props: {
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
+  }
+  if (props.pendingImportProject) {
+    return <PendingImportView project={props.pendingImportProject} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
@@ -1445,6 +1491,18 @@ function formatProjectDate(value?: string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
+function PendingImportView({ project }: { project: ProjectRecord }) {
+  return (
+    <section className="flex min-h-0 items-center justify-center bg-background p-8">
+      <div className="grid max-w-md gap-3 text-center">
+        <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
+        <h1 className="font-ui m-0 text-2xl font-bold">Opening {project.name}</h1>
+        <p className="m-0 text-sm text-muted-foreground">Waiting for the imported project to appear in the local registry.</p>
+      </div>
+    </section>
+  );
+}
+
 function NewProjectView({
   onCreateProject,
 }: {
@@ -1516,6 +1574,7 @@ function NewProjectView({
     const routeToWorkspace = (project = pendingProject) => {
       if (routed) return;
       routed = true;
+      writePendingImportProject(project);
       window.location.assign(`/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/plans/index.html`);
     };
     setIsSubmitting(true);
@@ -2671,6 +2730,38 @@ function pendingImportedProject(title: string): ProjectRecord {
     worktreeSlug: "main",
     available: true,
   };
+}
+
+const pendingImportStorageKey = "hyperwiki.pendingImportProject";
+
+function readPendingImportProject() {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(pendingImportStorageKey) || "null") as ProjectRecord | null;
+    if (!parsed?.projectSlug || !parsed?.worktreeSlug) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writePendingImportProject(project: ProjectRecord) {
+  try {
+    window.sessionStorage.setItem(pendingImportStorageKey, JSON.stringify(project));
+  } catch {
+    // Session storage is best-effort; route fallback still works without it.
+  }
+}
+
+function clearPendingImportProject() {
+  try {
+    window.sessionStorage.removeItem(pendingImportStorageKey);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function matchesWorkspaceSelection(project: ProjectRecord, selection: ReturnType<typeof workspaceSelectionFromLocation>) {
+  return Boolean(selection && project.projectSlug === selection.projectSlug && project.worktreeSlug === selection.worktreeSlug);
 }
 
 function workspaceSelectionFromLocation() {
