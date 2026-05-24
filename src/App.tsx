@@ -647,8 +647,15 @@ function App() {
   async function planImportedProject(project: ProjectRecord) {
     const key = `${project.id}:import-qna`;
     if (importedPlanningStartKeys.current.has(key)) {
-      appendImportLog(`Imported Q&A start skipped duplicate project=${project.id}`);
-      return;
+      const existingAgent = sessions.find(isAgentSession);
+      if (existingAgent?.command) {
+        appendImportLog(`Imported Q&A duplicate recovered existing agent project=${project.id} session=${existingAgent.id}`);
+        setActiveSessionId(existingAgent.id);
+        setStatus("Imported project Q&A is already running");
+        return;
+      }
+      appendImportLog(`Imported Q&A duplicate had no agent session; retrying project=${project.id}`);
+      importedPlanningStartKeys.current.delete(key);
     }
     importedPlanningStartKeys.current.add(key);
     const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
@@ -1518,8 +1525,8 @@ function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: Pro
   }, [activeProject?.id]);
 
   return (
-    <main className="grid min-h-0 place-items-center bg-background px-8 antialiased">
-      <section className="grid w-full max-w-2xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
+    <main className="grid min-h-0 place-items-start bg-background px-8 pt-12 antialiased">
+      <section className="mt-2 grid w-full max-w-2xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
