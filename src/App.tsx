@@ -305,11 +305,23 @@ function App() {
 
   useEffect(() => {
     function onPopState() {
+      appendImportLog(`Popstate route=${window.location.pathname}${window.location.hash || ""}`);
       setRoute(routeFromLocation());
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const data = event.data as { type?: string; path?: string } | null;
+      if (!data || data.type !== "hyperwiki:navigate" || !data.path?.startsWith("/wiki/")) return;
+      appendImportLog(`Iframe wiki navigation path=${data.path} activeProject=${activeProject?.id || "none"}`);
+      navigate({ kind: "wiki", path: data.path });
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [activeProject]);
 
   useEffect(() => {
     if (pendingImportProject || window.location.pathname.startsWith("/workspace/") || readImportLog().length) {
@@ -491,11 +503,14 @@ function App() {
   }
 
   function navigate(nextRoute: ViewRoute) {
+    const nextUrl = urlForRoute(nextRoute, activeProject);
+    appendImportLog(`Navigate route=${nextRoute.kind}${nextRoute.kind === "wiki" ? `:${nextRoute.path}` : ""} url=${nextUrl} activeProject=${activeProject?.id || "none"}`);
     setRoute(nextRoute);
-    window.history.pushState(null, "", urlForRoute(nextRoute, activeProject));
+    window.history.pushState(null, "", nextUrl);
   }
 
   async function switchProject(project: ProjectRecord) {
+    appendImportLog(`Switch project ${project.id} ${project.projectSlug}/${project.worktreeSlug}`);
     setActiveProject(project);
     setIsProjectsOpen(false);
     const loaded = await loadProjectData(project);
@@ -1232,10 +1247,28 @@ function WikiErrorState({ error, onNewProject, onProjects }: { error: string; on
 
 function embeddedWikiHtml(html: string) {
   const style = "<style id=\"hyperwiki-embedded-style\">.wiki-header{display:none!important}.wiki-page{padding-top:32px!important}.wiki-page>h1+p:has(a[href*='/wiki/plans/mvp/stage-']){display:none!important}</style>";
+  const script = `<script id="hyperwiki-embedded-navigation">
+document.addEventListener("click", function(event) {
+  var link = event.target && event.target.closest ? event.target.closest("a[href]") : null;
+  if (!link) return;
+  var url;
+  try {
+    url = new URL(link.getAttribute("href"), window.location.href);
+  } catch (_) {
+    return;
+  }
+  var path = url.pathname;
+  var projectWikiMatch = path.match(/^\\/projects\\/[^/]+(\\/wiki\\/.*)$/);
+  if (projectWikiMatch) path = projectWikiMatch[1];
+  if (!path.startsWith("/wiki/")) return;
+  event.preventDefault();
+  window.parent.postMessage({ type: "hyperwiki:navigate", path: path + url.search + url.hash }, "*");
+});
+</script>`;
   if (!html.trim()) return html;
   if (html.includes("hyperwiki-embedded-style")) return html;
-  if (html.includes("</head>")) return html.replace("</head>", `${style}</head>`);
-  return `${style}${html}`;
+  if (html.includes("</head>")) return html.replace("</head>", `${style}${script}</head>`);
+  return `${style}${script}${html}`;
 }
 
 function isMissingFileError(error: string) {

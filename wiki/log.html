@@ -49,6 +49,8 @@
     <li>Added visible import diagnostics for frontend handoff state, pending marker writes, forced workspace routes, app boot route state, project-list counts, redirect decisions, and pending import polling.</li>
     <li>Added Rust <code>/api/projects</code> registry-list logging with project, checkout, group, and active-project counts to correlate frontend recovery with backend registry state.</li>
     <li>Fixed the empty-registry redirect guard so a valid active project cannot be bounced back to New Project while project groups are still catching up.</li>
+    <li>Added iframe wiki-link interception so clicks inside rendered wiki HTML are routed by the parent React app with active workspace context instead of allowing raw iframe navigation.</li>
+    <li>Added route navigation logs for iframe link clicks, parent navigation, popstate, and project switches to diagnose any remaining workspace-context loss.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-harness</code>, <code>pnpm run smoke:tauri-webdriver</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
   </ul>
 </article>
