@@ -34,6 +34,18 @@ const BUNDLED_SKILLS: &[SkillMetadata] = &[
         skill_path: "skills/frontend-design/SKILL.md",
     },
     SkillMetadata {
+        name: "grill-with-docs",
+        source: "local/grill-with-docs",
+        source_type: "local",
+        skill_path: "SKILL.md",
+    },
+    SkillMetadata {
+        name: "make-interfaces-feel-better",
+        source: "local/make-interfaces-feel-better",
+        source_type: "local",
+        skill_path: "SKILL.md",
+    },
+    SkillMetadata {
         name: "shadcn",
         source: "shadcn/ui",
         source_type: "github",
