@@ -285,6 +285,7 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
   const baseDataRequestId = useRef(0);
+  const lastImportPlanningDiagnostic = useRef("");
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -293,6 +294,7 @@ function App() {
   const hasRegisteredProjects = projectGroups.length > 0;
   const workspaceSelection = workspaceSelectionFromLocation();
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
+  const importPlanningState = useMemo(() => importedPlanningState(route, wikiPages), [route, wikiPages]);
 
   useEffect(() => {
     function onPopState() {
@@ -331,6 +333,21 @@ function App() {
     setRoute({ kind: "new-project" });
     window.history.replaceState(null, "", "/projects/new");
   }, [activeProject?.id, hasLoadedProjects, hasRegisteredProjects, isPendingImportRoute, route.kind]);
+
+  useEffect(() => {
+    if (route.kind !== "wiki" || route.path !== "/wiki/plans/index.mdx") return;
+    const diagnostic = JSON.stringify({
+      project: activeProject?.id || "none",
+      importedSource: importPlanningState.hasImportedSource,
+      generatedPlanCount: importPlanningState.generatedPlanPaths.length,
+      generatedPlanPaths: importPlanningState.generatedPlanPaths,
+      qnaIntake: importPlanningState.isIntake,
+      wikiPageCount: wikiPages.length,
+    });
+    if (lastImportPlanningDiagnostic.current === diagnostic) return;
+    lastImportPlanningDiagnostic.current = diagnostic;
+    appendImportLog(`Planning intake state ${diagnostic}`);
+  }, [activeProject?.id, importPlanningState, route, wikiPages.length]);
 
   useEffect(() => {
     if (route.kind !== "wiki") return;
@@ -432,7 +449,12 @@ function App() {
     ]);
     if (requestId !== baseDataRequestId.current) return;
 
-    if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
+    if (wikiResult.status === "fulfilled") {
+      const pages = wikiResult.value.pages || [];
+      setWikiPages(pages);
+      const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
+      appendImportLog(`Base wiki pages loaded project=${activeProject?.id || "none"} pages=${pages.length} importedSource=${planning.hasImportedSource} generatedPlanCount=${planning.generatedPlanPaths.length} qnaIntake=${planning.isIntake}`);
+    }
     if (projectsResult.status === "fulfilled") {
       setProjects(projectsResult.value);
       const selectedProject = findActiveProject(projectsResult.value, unavailableProjectIds, workspaceSelectionFromLocation());
@@ -504,7 +526,12 @@ function App() {
       hyperwikiApi.json<RepoContextResponse>(withProjectQuery("/api/repo", project)),
     ]);
 
-    if (wikiResult.status === "fulfilled") setWikiPages(wikiResult.value.pages || []);
+    if (wikiResult.status === "fulfilled") {
+      const pages = wikiResult.value.pages || [];
+      setWikiPages(pages);
+      const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
+      appendImportLog(`Project data wiki pages loaded project=${project.id} pages=${pages.length} importedSource=${planning.hasImportedSource} generatedPlanCount=${planning.generatedPlanPaths.length} qnaIntake=${planning.isIntake}`);
+    }
     if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
     if (previewResult.status === "fulfilled") setPreview(previewResult.value);
     if (layoutResult.status === "fulfilled") setLayout(layoutResult.value);
@@ -615,11 +642,14 @@ function App() {
 
   async function planImportedProject(project: ProjectRecord) {
     const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+    appendImportLog(`Imported Q&A start requested project=${project.id}`);
     openImportedPlanningWorkspace(project, projectRoute);
     const projectScope = scopeForRoute(projectRoute);
     const loaded = await loadProjectData(project);
     const nextSessions = await loadSessionsForProject(project, projectScope);
+    appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
     const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
+    appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
     setActiveSessionId(session.id);
     await delay(250);
     await loadSessionsForProject(project, projectScope);
@@ -1450,8 +1480,10 @@ function PlanCreationView({
 
 function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: ProjectRecord | null; onStart: () => Promise<void> }) {
   const [isStarting, setIsStarting] = useState(false);
+  const hasStartedRef = useRef("");
 
   async function start() {
+    appendImportLog(`Imported Q&A view start clicked project=${activeProject?.id || "none"}`);
     setIsStarting(true);
     try {
       await onStart();
@@ -1462,6 +1494,9 @@ function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: Pro
 
   useEffect(() => {
     if (!activeProject) return;
+    if (hasStartedRef.current === activeProject.id) return;
+    hasStartedRef.current = activeProject.id;
+    appendImportLog(`Imported Q&A view auto-start project=${activeProject.id}`);
     void start();
   }, [activeProject?.id]);
 
@@ -3123,18 +3158,34 @@ function isAgentSession(session: SessionRecord) {
 }
 
 function hasImportedSource(pages: WikiPage[]) {
-  return pages.some((page) => displayWikiPath(page.path) === "/wiki/sources/import.mdx");
+  return pages.some((page) => displayWikiPath(page.path).endsWith("/wiki/sources/import.mdx"));
 }
 
 function hasGeneratedPlanPages(pages: WikiPage[]) {
-  return pages.some((page) => {
-    const path = displayWikiPath(page.path);
-    return path.startsWith("/wiki/plans/") && path !== "/wiki/plans/index.mdx";
-  });
+  return importedGeneratedPlanPaths(pages).length > 0;
+}
+
+function importedGeneratedPlanPaths(pages: WikiPage[]) {
+  return pages
+    .map((page) => displayWikiPath(page.path))
+    .filter((path) => {
+      if (!path.startsWith("/wiki/plans/") || path === "/wiki/plans/index.mdx") return false;
+      return true;
+    });
+}
+
+function importedPlanningState(route: ViewRoute, pages: WikiPage[]) {
+  const generatedPlanPaths = importedGeneratedPlanPaths(pages);
+  const importedSource = hasImportedSource(pages);
+  return {
+    generatedPlanPaths,
+    hasImportedSource: importedSource,
+    isIntake: route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && importedSource && generatedPlanPaths.length === 0,
+  };
 }
 
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
-  return route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && hasImportedSource(pages) && !hasGeneratedPlanPages(pages);
+  return importedPlanningState(route, pages).isIntake;
 }
 
 function agentLaunchCommand(layout: LayoutResponse | null) {
