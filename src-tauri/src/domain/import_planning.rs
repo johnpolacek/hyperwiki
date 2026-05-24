@@ -10,7 +10,7 @@ pub fn surface() -> DomainSurface {
         responsibilities: &[
             "post-import source-aware planning questions",
             "import planning answer persistence",
-            "source-grounded MVP stage and unit generation",
+            "source-grounded imported project stage and unit generation",
         ],
         parity_gate: "RouteChat-style import Q&A and generated unit verification tests",
     }
@@ -93,7 +93,7 @@ pub fn clarify_import_plan(
     let ready = missing.is_empty();
     let questions = missing.into_iter().take(1).collect::<Vec<_>>();
     let title = if request.plan_title.trim().is_empty() {
-        "MVP Implementation Plan".to_string()
+        "Imported Project Plan".to_string()
     } else {
         request.plan_title.trim().to_string()
     };
@@ -129,34 +129,34 @@ pub fn create_import_plan(
     }
     let answers = AnswerSet::new(&request.answers);
     let title = if request.plan_title.trim().is_empty() {
-        "MVP Implementation Plan"
+        "Imported Project Plan"
     } else {
         request.plan_title.trim()
     };
     let mut wrote = Vec::new();
     write_file(
         root,
-        "wiki/plans/mvp/index.mdx",
-        &mvp_index_html(title),
+        "wiki/plans/imported-project-plan/index.mdx",
+        &imported_plan_index_html(title),
         &mut wrote,
     )?;
     write_file(
         root,
-        "wiki/plans/mvp/stage-01-prototype-foundation.mdx",
+        "wiki/plans/imported-project-plan/stage-01-prototype-foundation.mdx",
         &stage_html(
             "Stage 01 - Prototype Foundation",
             "Build the smallest end-to-end prototype path that proves the imported product idea can work.",
             &[
                 (
-                    "/wiki/plans/mvp/stage-01-prototype-foundation/unit-01-product-and-scope-lock.mdx",
+                    "/wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-01-product-and-scope-lock.mdx",
                     "Unit 01 - Product And Scope Lock",
                 ),
                 (
-                    "/wiki/plans/mvp/stage-01-prototype-foundation/unit-02-technical-foundation.mdx",
+                    "/wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-02-technical-foundation.mdx",
                     "Unit 02 - Technical Foundation",
                 ),
                 (
-                    "/wiki/plans/mvp/stage-01-prototype-foundation/unit-03-core-demo-loop.mdx",
+                    "/wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-03-core-demo-loop.mdx",
                     "Unit 03 - Core Demo Loop",
                 ),
             ],
@@ -165,17 +165,17 @@ pub fn create_import_plan(
     )?;
     write_file(
         root,
-        "wiki/plans/mvp/stage-02-validation-and-hardening.mdx",
+        "wiki/plans/imported-project-plan/stage-02-validation-and-hardening.mdx",
         &stage_html(
             "Stage 02 - Validation And Hardening",
-            "Turn the first demo into an evaluable MVP with safety, UX, and verification evidence.",
+            "Turn the first demo into an evaluable implementation with safety, UX, and verification evidence.",
             &[
                 (
-                    "/wiki/plans/mvp/stage-02-validation-and-hardening/unit-01-safety-and-privacy-model.mdx",
+                    "/wiki/plans/imported-project-plan/stage-02-validation-and-hardening/unit-01-safety-and-privacy-model.mdx",
                     "Unit 01 - Safety And Privacy Model",
                 ),
                 (
-                    "/wiki/plans/mvp/stage-02-validation-and-hardening/unit-02-demo-validation.mdx",
+                    "/wiki/plans/imported-project-plan/stage-02-validation-and-hardening/unit-02-demo-validation.mdx",
                     "Unit 02 - Demo Validation",
                 ),
             ],
@@ -184,7 +184,7 @@ pub fn create_import_plan(
     )?;
     let units = [
         (
-            "wiki/plans/mvp/stage-01-prototype-foundation/unit-01-product-and-scope-lock.mdx",
+            "wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-01-product-and-scope-lock.mdx",
             "Unit 01 - Product And Scope Lock",
             format!(
                 "Confirm the first mode ({}) and explicit non-goals before product code starts.",
@@ -198,7 +198,7 @@ pub fn create_import_plan(
             "Complete when the first scenario, non-goals, and success criteria are recorded without contradicting source evidence.".to_string(),
         ),
         (
-            "wiki/plans/mvp/stage-01-prototype-foundation/unit-02-technical-foundation.mdx",
+            "wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-02-technical-foundation.mdx",
             "Unit 02 - Technical Foundation",
             format!(
                 "Create the runnable foundation for {} using {} location data and {} as the model/provider direction.",
@@ -211,7 +211,7 @@ pub fn create_import_plan(
             "Complete when a future agent can run the app locally and see the first-mode foundation without guessing setup steps.".to_string(),
         ),
         (
-            "wiki/plans/mvp/stage-01-prototype-foundation/unit-03-core-demo-loop.mdx",
+            "wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-03-core-demo-loop.mdx",
             "Unit 03 - Core Demo Loop",
             format!(
                 "Implement the first end-to-end demo loop with {} output.",
@@ -222,7 +222,7 @@ pub fn create_import_plan(
             "Complete when the first demo proves the imported product promise in one focused scenario.".to_string(),
         ),
         (
-            "wiki/plans/mvp/stage-02-validation-and-hardening/unit-01-safety-and-privacy-model.mdx",
+            "wiki/plans/imported-project-plan/stage-02-validation-and-hardening/unit-01-safety-and-privacy-model.mdx",
             "Unit 01 - Safety And Privacy Model",
             format!(
                 "Harden the first demo around safety/privacy requirements: {}",
@@ -230,13 +230,13 @@ pub fn create_import_plan(
             ),
             "Add user-facing boundaries, provider/source attribution expectations, and mode-specific safeguards before expanding prototype breadth.".to_string(),
             "Manual: review driving/transit or movement-sensitive states against the safety model; verify unsafe interactions are deferred or guarded.".to_string(),
-            "Complete when the MVP can be demoed without hiding safety, privacy, or attribution constraints.".to_string(),
+            "Complete when the first implementation can be demoed without hiding safety, privacy, or attribution constraints.".to_string(),
         ),
         (
-            "wiki/plans/mvp/stage-02-validation-and-hardening/unit-02-demo-validation.mdx",
+            "wiki/plans/imported-project-plan/stage-02-validation-and-hardening/unit-02-demo-validation.mdx",
             "Unit 02 - Demo Validation",
             format!("Validate the prototype against: {}", answers.get("success-criteria")),
-            "Run the demo acceptance pass, capture findings, update source briefs, and decide whether to continue, narrow, or expand the MVP.".to_string(),
+            "Run the demo acceptance pass, capture findings, update source briefs, and decide whether to continue, narrow, or expand the implementation.".to_string(),
             "Automated: rerun all project checks. Manual: perform the demo acceptance checklist and record pass/fail evidence in the unit and log.".to_string(),
             "Complete when validation evidence supports the next product decision or names the blocker clearly.".to_string(),
         ),
@@ -258,7 +258,7 @@ pub fn create_import_plan(
     append_log(root, title, &mut wrote)?;
     Ok(ImportPlanningCreateResponse {
         planning,
-        display_path: "/wiki/plans/mvp/index.mdx".to_string(),
+        display_path: "/wiki/plans/imported-project-plan/index.mdx".to_string(),
         wrote,
     })
 }
@@ -425,11 +425,11 @@ fn write_file(
     Ok(())
 }
 
-fn mvp_index_html(title: &str) -> String {
+fn imported_plan_index_html(title: &str) -> String {
     page(
         title,
         &format!(
-            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Shape: two-stage MVP implementation plan</li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: complete Unit 01 before product code starts.</li></ul></section><section><h2>Stages</h2><ul><li><a href=\"/wiki/plans/mvp/stage-01-prototype-foundation.mdx\">Stage 01 - Prototype Foundation</a></li><li><a href=\"/wiki/plans/mvp/stage-02-validation-and-hardening.mdx\">Stage 02 - Validation And Hardening</a></li></ul></section>",
+            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Shape: two-stage imported project plan</li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: complete Unit 01 before product code starts.</li></ul></section><section><h2>Stages</h2><ul><li><a href=\"/wiki/plans/imported-project-plan/stage-01-prototype-foundation.mdx\">Stage 01 - Prototype Foundation</a></li><li><a href=\"/wiki/plans/imported-project-plan/stage-02-validation-and-hardening.mdx\">Stage 02 - Validation And Hardening</a></li></ul></section>",
             escape_html(title)
         ),
     )
@@ -439,7 +439,7 @@ fn plans_index_html(title: &str) -> String {
     page(
         "Plans",
         &format!(
-            "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current plan: <a href=\"/wiki/plans/mvp/index.mdx\">{}</a></li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: execute Unit 01 after reviewing the source-grounded plan.</li></ul></section><section><h2>Active Plans</h2><ul><li><a href=\"/wiki/plans/mvp/index.mdx\">{}</a> was created from the post-import Q&amp;A gate.</li></ul></section>",
+            "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current plan: <a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a></li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: execute Unit 01 after reviewing the source-grounded plan.</li></ul></section><section><h2>Active Plans</h2><ul><li><a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a> was created from the post-import Q&amp;A gate.</li></ul></section>",
             escape_html(title),
             escape_html(title)
         ),
@@ -489,7 +489,7 @@ fn append_log(root: &Path, title: &str, wrote: &mut Vec<String>) -> Result<(), (
     let mut html =
         fs::read_to_string(&path).unwrap_or_else(|_| page("Log", "<h1>Project Log</h1>"));
     let entry = format!(
-        "<article><h2>planning | post-import Q&amp;A completed</h2><ul><li>Created <a href=\"/wiki/plans/mvp/index.mdx\">{}</a> after source-aware import questions were answered.</li></ul></article>",
+        "<article><h2>planning | post-import Q&amp;A completed</h2><ul><li>Created <a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a> after source-aware import questions were answered.</li></ul></article>",
         escape_html(title)
     );
     if let Some(index) = html.find("<h1>Project Log</h1>") {

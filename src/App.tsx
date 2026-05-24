@@ -257,7 +257,7 @@ interface ImportPlanningCreateResponse {
   wrote?: string[];
 }
 
-const defaultWikiPath = "/wiki/plans/mvp/index.mdx";
+const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 
 function App() {
@@ -3001,6 +3001,7 @@ function displayWikiPath(path: string) {
 
 function isTopLevelPlanPage(page: WikiPage) {
   const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/index.mdx")) return true;
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return true;
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return true;
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(path)) return true;
@@ -3034,6 +3035,7 @@ function isImmediateChildPlanPage(parent: WikiPage, candidate: WikiPage) {
 
 function planSortKey(page: WikiPage) {
   const path = displayWikiPath(page.path);
+  if (path.endsWith("/wiki/plans/index.mdx")) return "00";
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "01";
   if (path.startsWith("/wiki/plans/mvp/stage-")) return `01-${path}`;
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "99";
@@ -3047,15 +3049,20 @@ function isCompletedPage(page: WikiPage) {
 
 function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: WorkspaceResponse | null) {
   const derived = firstIncompleteWorkPath(pages, roots);
-  if (derived) return derived;
+  if (derived && derived !== defaultWikiPath) return derived;
   const currentPath = workspace?.status?.currentPath;
   if (currentPath) return currentPath;
+  if (derived) return derived;
   return pages.find((page) => page.currentState === "current-unit")?.path || pages.find((page) => page.currentState === "current-plan")?.path || "";
 }
 
 function firstIncompleteWorkPath(pages: WikiPage[], roots: WikiPage[]) {
   for (const root of roots) {
     if (isCompletedPage(root)) continue;
+    if (displayWikiPath(root.path).endsWith("/wiki/plans/index.mdx")) {
+      const hasConcretePlan = roots.some((candidate) => candidate.path !== root.path);
+      if (hasConcretePlan) continue;
+    }
     const stages = childPlanPages(root, pages).filter((page) => !isCompletedPage(page));
     if (!stages.length) return root.path;
     const stage = stages[0];
@@ -3105,13 +3112,13 @@ function agentLaunchCommand(layout: LayoutResponse | null) {
 
 function importedProjectPlanningPrompt(project: ProjectRecord) {
   return [
-    "Use $hyperwiki.",
+    "Use $hyperwiki and $grill-with-docs.",
     "",
     "You are working inside this newly imported Hyperwiki project.",
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "Goal:",
-    "Create a detailed MVP implementation plan for this imported project. The plan must be broken into thoughtful stages and units of work, and every unit must include concrete verification steps.",
+    "Run a fresh source-grounded planning interview for this imported project, then create the plan docs only after the user has answered enough questions.",
     "",
     "Source context:",
     "- Read wiki/index.mdx first.",
@@ -3120,15 +3127,16 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "- Read wiki/sources/prd.mdx, wiki/sources/technical-brief.mdx, and wiki/sources/design-brief.mdx if present.",
     "",
     "Planning requirements:",
-    "- Treat this as a greenfield/pre-launch MVP unless the source clearly says otherwise.",
-    "- Create or update wiki/plans/mvp/ with a decision-complete implementation plan.",
-    "- Use a small number of meaningful stages, with multiple related units per stage.",
-    "- Each unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
-    "- Do not create many single-unit stages.",
+    "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
+    "- Do not assume this is an MVP unless the imported source or the user confirms that lifecycle.",
+    "- Do not create wiki/plans/mvp/ during intake by default.",
+    "- When the interview is done, create a decision-complete MDX plan under the most accurate wiki/plans/ location.",
+    "- Preserve the plan > stages > units structure when a staged implementation plan is warranted.",
+    "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
+    "- Do not create many single-unit stages unless each has a real phase boundary.",
     "- Name unknowns instead of inventing certainty.",
-    "- Ask the user focused questions for maximum clarity before writing stages if decisions are missing.",
-    "- If the source is already decision-complete, create the detailed MVP plan directly.",
     "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Update wiki/log.mdx and source briefs only when the interview creates durable project context.",
     "- Keep all durable project knowledge under wiki/.",
     "",
     `Imported project: ${project.name}`,

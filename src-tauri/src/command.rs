@@ -1184,7 +1184,7 @@ mod tests {
     }
 
     #[test]
-    fn import_planning_endpoints_gate_and_create_detailed_mvp_units() {
+    fn import_planning_endpoints_gate_and_create_detailed_imported_plan_units() {
         let _guard = env_lock();
         let root = temp_root("command-import-planning");
         let home = temp_root("command-import-planning-home");
@@ -1204,7 +1204,7 @@ mod tests {
         let clarify = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/clarify?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[]}".to_string()),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[]}".to_string()),
         });
         assert!(clarify.ok);
         assert!(clarify.text.contains("\"ready\":false"));
@@ -1216,20 +1216,20 @@ mod tests {
         let blocked = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[]}".to_string()),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[]}".to_string()),
         });
         assert_eq!(blocked.status, 409);
 
         let create = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"planTitle\":\"RouteChat MVP\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
         });
         assert!(create.ok, "{}", create.text);
         let unit = fs::read_to_string(
             root.join("wiki")
                 .join("plans")
-                .join("mvp")
+                .join("imported-project-plan")
                 .join("stage-01-prototype-foundation")
                 .join("unit-03-core-demo-loop.mdx"),
         )
