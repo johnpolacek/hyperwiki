@@ -2888,6 +2888,7 @@ function XtermSession({
         });
         const replay = String(started.replay || "");
         if (replay) {
+          appendImportLog(`Terminal replay plain session=${session.id} chars=${replay.length} text=${terminalPlainTextForLog(replay)}`);
           seenLengthRef.current = replay.length;
           terminal.write(stripTerminalDisplayControlSequences(replay));
         }
@@ -2907,10 +2908,12 @@ function XtermSession({
         if (output.length > seenLengthRef.current) {
           const next = output.slice(seenLengthRef.current);
           seenLengthRef.current = output.length;
+          appendImportLog(`Terminal output plain session=${session.id} chars=${next.length} total=${output.length} text=${terminalPlainTextForLog(next)}`);
           terminal.write(stripTerminalDisplayControlSequences(next));
         } else if (output.length < seenLengthRef.current) {
           seenLengthRef.current = output.length;
           terminal.clear();
+          appendImportLog(`Terminal output reset plain session=${session.id} chars=${output.length} text=${terminalPlainTextForLog(output)}`);
           terminal.write(stripTerminalDisplayControlSequences(output));
         }
       } catch {
@@ -3434,6 +3437,15 @@ function normalizeTerminalInput(data: string) {
 
 function stripTerminalDisplayControlSequences(data: string) {
   return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
+}
+
+function terminalPlainTextForLog(data: string) {
+  return stripTerminalDisplayControlSequences(data)
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .slice(-1200);
 }
 
 function delay(ms: number) {
