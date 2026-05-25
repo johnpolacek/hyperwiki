@@ -9,6 +9,7 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Emitter;
 
 pub fn surface() -> DomainSurface {
     DomainSurface {
@@ -24,7 +25,9 @@ pub fn surface() -> DomainSurface {
     }
 }
 
-const OUTPUT_BUFFER_LIMIT: usize = 20000;
+const OUTPUT_BUFFER_LIMIT: usize = 64 * 1024;
+const REPLAY_BUFFER_LIMIT: usize = 2 * 1024 * 1024;
+pub const TERMINAL_OUTPUT_EVENT: &str = "terminal://output";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +62,22 @@ pub struct TerminalStartResponse {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalReplayResponse {
+    pub session_id: String,
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputEvent {
+    pub session_id: String,
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TerminalOutputResponse {
     pub output: String,
 }
@@ -85,13 +104,13 @@ enum TerminalProcess {
         child: Box<dyn PtyChild + Send + Sync>,
         master: Box<dyn MasterPty + Send>,
         writer: Box<dyn Write + Send>,
-        output: Arc<Mutex<String>>,
+        output: Arc<Mutex<TerminalOutputBuffers>>,
         registry: SessionRegistry,
     },
     Pipe {
         child: Child,
         stdin: Option<ChildStdin>,
-        output: Arc<Mutex<String>>,
+        output: Arc<Mutex<TerminalOutputBuffers>>,
         registry: SessionRegistry,
     },
 }
@@ -107,6 +126,15 @@ impl TerminalManager {
         &mut self,
         root: impl AsRef<Path>,
         request: TerminalStartRequest,
+    ) -> Result<TerminalStartResponse, String> {
+        self.start_session_with_app(root, request, None)
+    }
+
+    pub fn start_session_with_app(
+        &mut self,
+        root: impl AsRef<Path>,
+        request: TerminalStartRequest,
+        app: Option<tauri::AppHandle>,
     ) -> Result<TerminalStartResponse, String> {
         let root = root.as_ref();
         let id = request.id.clone().unwrap_or_else(next_terminal_id);
@@ -129,9 +157,11 @@ impl TerminalManager {
             });
         }
 
-        match self.start_pty_session(root, &id, request.clone()) {
+        match self.start_pty_session(root, &id, request.clone(), app.clone()) {
             Ok(response) => Ok(response),
-            Err(pty_error) => self.start_pipe_session_with_warning(root, &id, request, &pty_error),
+            Err(pty_error) => {
+                self.start_pipe_session_with_warning(root, &id, request, &pty_error, app)
+            }
         }
     }
 
@@ -160,7 +190,7 @@ impl TerminalManager {
                 replay: existing.output(),
             });
         }
-        self.start_pipe_session_with_warning(root, &id, request, "")
+        self.start_pipe_session_with_warning(root, &id, request, "", None)
     }
 
     fn start_pty_session(
@@ -168,6 +198,7 @@ impl TerminalManager {
         root: &Path,
         id: &str,
         request: TerminalStartRequest,
+        app: Option<tauri::AppHandle>,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
         let launch_command = request.command.clone();
@@ -197,8 +228,8 @@ impl TerminalManager {
             .take_writer()
             .map_err(|error| format!("Could not open PTY input: {error}"))?;
         let mut writer = writer;
-        let output = Arc::new(Mutex::new(String::new()));
-        capture_output(reader, Arc::clone(&output));
+        let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
+        capture_output(reader, Arc::clone(&output), id.to_string(), app);
         launch_recorded_command(writer.as_mut(), launch_command.as_deref())?;
         let registry = SessionRegistry::new(root);
         let session = registry
@@ -244,6 +275,7 @@ impl TerminalManager {
         id: &str,
         request: TerminalStartRequest,
         warning: &str,
+        app: Option<tauri::AppHandle>,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
         let launch_command = request.command.clone();
@@ -256,20 +288,23 @@ impl TerminalManager {
             .spawn()
             .map_err(|error| format!("Could not start terminal shell: {error}"))?;
 
-        let output = Arc::new(Mutex::new(String::new()));
+        let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
         if !warning.is_empty() {
             append_output(
                 &output,
-                &format!(
+                id,
+                format!(
                     "\r\n[hyperwiki] PTY spawn failed; using pipe fallback for this session.\r\n[hyperwiki] {warning}\r\n\r\n"
-                ),
+                )
+                .as_bytes(),
+                app.as_ref(),
             );
         }
         if let Some(stdout) = child.stdout.take() {
-            capture_output(stdout, Arc::clone(&output));
+            capture_output(stdout, Arc::clone(&output), id.to_string(), app.clone());
         }
         if let Some(stderr) = child.stderr.take() {
-            capture_output(stderr, Arc::clone(&output));
+            capture_output(stderr, Arc::clone(&output), id.to_string(), app.clone());
         }
         let mut stdin = child.stdin.take();
         if let Some(writer) = stdin.as_mut() {
@@ -371,6 +406,18 @@ impl TerminalManager {
         })
     }
 
+    pub fn replay(&self, id: &str) -> Result<TerminalReplayResponse, String> {
+        let Some(process) = self.sessions.get(id) else {
+            return Err("Terminal session not found.".to_string());
+        };
+        let snapshot = process.replay();
+        Ok(TerminalReplayResponse {
+            session_id: id.to_string(),
+            seq: snapshot.seq,
+            bytes: snapshot.bytes,
+        })
+    }
+
     pub fn close(&mut self, id: &str) -> Result<SessionRecord, String> {
         let Some(mut process) = self.sessions.remove(id) else {
             return Err("Terminal session not found.".to_string());
@@ -401,10 +448,21 @@ impl TerminalProcess {
         self.output_buffer()
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+            .transcript
             .clone()
     }
 
-    fn output_buffer(&self) -> &Arc<Mutex<String>> {
+    fn replay(&self) -> TerminalReplaySnapshot {
+        let value = self.output_buffer()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        TerminalReplaySnapshot {
+            seq: value.seq,
+            bytes: value.replay.clone(),
+        }
+    }
+
+    fn output_buffer(&self) -> &Arc<Mutex<TerminalOutputBuffers>> {
         match self {
             TerminalProcess::Pty { output, .. } => output,
             TerminalProcess::Pipe { output, .. } => output,
@@ -432,24 +490,60 @@ impl TerminalProcess {
     }
 }
 
-fn capture_output(mut reader: impl Read + Send + 'static, output: Arc<Mutex<String>>) {
+#[derive(Default)]
+struct TerminalOutputBuffers {
+    seq: u64,
+    replay: Vec<u8>,
+    transcript: String,
+}
+
+struct TerminalReplaySnapshot {
+    seq: u64,
+    bytes: Vec<u8>,
+}
+
+fn capture_output(
+    mut reader: impl Read + Send + 'static,
+    output: Arc<Mutex<TerminalOutputBuffers>>,
+    session_id: String,
+    app: Option<tauri::AppHandle>,
+) {
     thread::spawn(move || {
         let mut buffer = [0_u8; 1024];
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
-                Ok(size) => append_output(&output, &String::from_utf8_lossy(&buffer[..size])),
+                Ok(size) => append_output(&output, &session_id, &buffer[..size], app.as_ref()),
                 Err(_) => break,
             }
         }
     });
 }
 
-fn append_output(output: &Arc<Mutex<String>>, chunk: &str) {
-    let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
-    value.push_str(chunk);
-    if value.len() > OUTPUT_BUFFER_LIMIT {
-        trim_output_buffer(&mut value);
+fn append_output(
+    output: &Arc<Mutex<TerminalOutputBuffers>>,
+    session_id: &str,
+    chunk: &[u8],
+    app: Option<&tauri::AppHandle>,
+) {
+    let event = {
+        let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
+        value.seq = value.seq.saturating_add(1);
+        value.replay.extend_from_slice(chunk);
+        if value.replay.len() > REPLAY_BUFFER_LIMIT {
+            let drain_to = value.replay.len() - REPLAY_BUFFER_LIMIT;
+            value.replay.drain(..drain_to);
+        }
+        value.transcript.push_str(&String::from_utf8_lossy(chunk));
+        trim_output_buffer(&mut value.transcript);
+        TerminalOutputEvent {
+            session_id: session_id.to_string(),
+            seq: value.seq,
+            bytes: chunk.to_vec(),
+        }
+    };
+    if let Some(app) = app {
+        let _ = app.emit(TERMINAL_OUTPUT_EVENT, event);
     }
 }
 

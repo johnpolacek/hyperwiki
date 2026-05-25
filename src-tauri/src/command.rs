@@ -17,8 +17,15 @@ pub struct HyperwikiResponse {
     pub text: String,
 }
 
+static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+pub fn set_app_handle(app: tauri::AppHandle) {
+    let _ = APP_HANDLE.set(app);
+}
+
 #[tauri::command]
 pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
+    let app = APP_HANDLE.get().cloned();
     if request.path == "/api/settings" {
         let store = crate::domain::settings::SettingsStore::from_environment();
         if request.method == "GET" {
@@ -462,7 +469,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         let mut manager = terminal_manager()
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        return match manager.start_session(project_root, parsed) {
+        return match manager.start_session_with_app(project_root, parsed, app) {
             Ok(result) => json_response(200, &result),
             Err(error) => error_response(500, error),
         };
@@ -516,6 +523,12 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         }
         if request.method == "GET" && action == "output" {
             return match manager.output(id) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(404, error),
+            };
+        }
+        if request.method == "GET" && action == "replay" {
+            return match manager.replay(id) {
                 Ok(result) => json_response(200, &result),
                 Err(error) => error_response(404, error),
             };
@@ -1414,6 +1427,11 @@ mod tests {
         });
         let launch_output = wait_for_terminal_output("terminal-command", "tauri-terminal-launch");
         let output = wait_for_terminal_output("terminal-command", "tauri-terminal-command");
+        let replay = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/terminal-command/replay".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/terminal-command".to_string(),
             method: "DELETE".to_string(),
@@ -1433,6 +1451,9 @@ mod tests {
         assert!(write.ok);
         assert!(launch_output.contains("tauri-terminal-launch"));
         assert!(output.contains("tauri-terminal-command"));
+        assert!(replay.ok);
+        assert!(replay.text.contains("\"sessionId\":\"terminal-command\""));
+        assert!(replay.text.contains("\"bytes\""));
         assert!(close.ok);
         assert!(close.text.contains("\"status\":\"closed\""));
     }

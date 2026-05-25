@@ -352,6 +352,10 @@ fn run_reset_cli(args: &[String]) {
 
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            command::set_app_handle(app.handle().clone());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![command::hyperwiki_request])
         .run(tauri::generate_context!())
         .expect("error while running hyperwiki Tauri app");

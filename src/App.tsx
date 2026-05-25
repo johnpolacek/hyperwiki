@@ -215,6 +215,18 @@ interface TerminalStartResponse {
   replay?: string;
 }
 
+interface TerminalReplayResponse {
+  sessionId: string;
+  seq: number;
+  bytes: number[];
+}
+
+interface TerminalOutputEventPayload {
+  sessionId: string;
+  seq: number;
+  bytes: number[];
+}
+
 interface ReviewWorkflow {
   id: string;
   label: string;
@@ -2819,9 +2831,8 @@ function XtermSession({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
-  const seenLengthRef = useRef(0);
+  const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
-  const displayControlCarryRef = useRef("");
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -2829,10 +2840,12 @@ function XtermSession({
     const container = containerRef.current;
     if (!container) return;
     closedRef.current = false;
-    seenLengthRef.current = 0;
+    seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
-    displayControlCarryRef.current = "";
     pendingRef.current = [];
+    let hasLoadedReplay = false;
+    let eventBuffer: TerminalOutputEventPayload[] = [];
+    let unlisten: (() => void) | null = null;
 
     const terminal = new Terminal({
       cursorBlink: true,
@@ -2867,7 +2880,7 @@ function XtermSession({
     const flush = async () => {
       while (!closedRef.current && pendingRef.current.length) {
         const input = pendingRef.current.shift() || "";
-        await sendInput(session.id, normalizeTerminalInput(input));
+        await sendInput(session.id, input);
       }
     };
 
@@ -2881,8 +2894,27 @@ function XtermSession({
     const observer = new ResizeObserver(fit);
     observer.observe(container);
 
+    const writeTerminalChunk = (payload: TerminalOutputEventPayload) => {
+      if (payload.sessionId !== session.id || payload.seq <= seenSeqRef.current) return;
+      seenSeqRef.current = payload.seq;
+      const bytes = Uint8Array.from(payload.bytes || []);
+      if (!bytes.length) return;
+      logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, terminalBytesToText(bytes), loggedPlainTextRef);
+      terminal.write(bytes);
+    };
+
+    const handleTerminalChunk = (payload: TerminalOutputEventPayload) => {
+      if (payload.sessionId !== session.id) return;
+      if (!hasLoadedReplay) {
+        eventBuffer.push(payload);
+        return;
+      }
+      writeTerminalChunk(payload);
+    };
+
     async function attach() {
       try {
+        unlisten = await listenTerminalOutput(handleTerminalChunk);
         const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
           method: "POST",
           body: {
@@ -2895,12 +2927,16 @@ function XtermSession({
             planPath: session.planPath || scope.planPath,
           },
         });
-        const replay = String(started.replay || "");
-        if (replay) {
-          logTerminalPlainText(session.id, "Terminal replay plain", replay.length, null, replay, loggedPlainTextRef);
-          seenLengthRef.current = replay.length;
-          terminal.write(stripTerminalDisplayControlSequences(replay, displayControlCarryRef));
+        const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
+        if (replay.bytes?.length) {
+          const bytes = Uint8Array.from(replay.bytes);
+          logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, terminalBytesToText(bytes), loggedPlainTextRef);
+          terminal.write(bytes);
         }
+        seenSeqRef.current = replay.seq || 0;
+        hasLoadedReplay = true;
+        eventBuffer.sort((left, right) => left.seq - right.seq).forEach(writeTerminalChunk);
+        eventBuffer = [];
         fit();
         void flush();
       } catch (error) {
@@ -2909,35 +2945,12 @@ function XtermSession({
       }
     }
 
-    const poll = async () => {
-      if (closedRef.current) return;
-      try {
-        const result = await hyperwikiApi.json<{ output?: string }>(`/api/terminal/${encodeURIComponent(session.id)}/output`);
-        const output = String(result.output || "");
-        if (output.length > seenLengthRef.current) {
-          const next = output.slice(seenLengthRef.current);
-          seenLengthRef.current = output.length;
-          logTerminalPlainText(session.id, "Terminal output plain", next.length, output.length, output, loggedPlainTextRef);
-          terminal.write(stripTerminalDisplayControlSequences(next, displayControlCarryRef));
-        } else if (output.length < seenLengthRef.current) {
-          seenLengthRef.current = output.length;
-          terminal.clear();
-          displayControlCarryRef.current = "";
-          logTerminalPlainText(session.id, "Terminal output reset plain", output.length, null, output, loggedPlainTextRef);
-          terminal.write(stripTerminalDisplayControlSequences(output, displayControlCarryRef));
-        }
-      } catch {
-        // A closed session is reflected by the next session refresh.
-      }
-    };
-
     void attach();
-    const pollTimer = window.setInterval(poll, 250);
     const fitTimer = window.setTimeout(fit, 0);
 
     return () => {
       closedRef.current = true;
-      window.clearInterval(pollTimer);
+      if (unlisten) unlisten();
       window.clearTimeout(fitTimer);
       observer.disconnect();
       dataDisposable.dispose();
@@ -3439,10 +3452,36 @@ async function sendResize(sessionId: string, cols: number, rows: number) {
   });
 }
 
-function normalizeTerminalInput(data: string) {
-  if (data === "\x1b\x1b[D") return "\x1bb";
-  if (data === "\x1b\x1b[C") return "\x1bf";
-  return data;
+type TauriEvent = {
+  payload?: unknown;
+};
+
+type TauriEventGlobal = typeof globalThis & {
+  __TAURI__?: {
+    event?: {
+      listen?: (event: string, handler: (event: TauriEvent) => void) => Promise<() => void>;
+    };
+  };
+};
+
+async function listenTerminalOutput(handler: (payload: TerminalOutputEventPayload) => void) {
+  const listen = (globalThis as TauriEventGlobal).__TAURI__?.event?.listen;
+  if (typeof listen !== "function") {
+    throw new Error("Tauri event transport is unavailable for terminal output.");
+  }
+  return listen("terminal://output", (event) => {
+    const payload = event.payload as Partial<TerminalOutputEventPayload> | null;
+    if (!payload || typeof payload.sessionId !== "string" || typeof payload.seq !== "number" || !Array.isArray(payload.bytes)) return;
+    handler({
+      sessionId: payload.sessionId,
+      seq: payload.seq,
+      bytes: payload.bytes.filter((value): value is number => Number.isInteger(value) && value >= 0 && value <= 255),
+    });
+  });
+}
+
+function terminalBytesToText(bytes: Uint8Array) {
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
 function stripTerminalDisplayControlSequences(data: string, carry?: { current: string }) {
