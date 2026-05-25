@@ -304,6 +304,7 @@ function App() {
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
   const [planningActivity, setPlanningActivity] = useState("");
+  const [planningWorkstream, setPlanningWorkstream] = useState<string[]>([]);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -661,6 +662,8 @@ function App() {
     planningQuestionBuffers.current.set(sessionId, next);
     const activity = latestPlanningActivity(next);
     if (activity) setPlanningActivity((currentActivity) => currentActivity === activity ? currentActivity : activity);
+    const workstream = planningWorkstreamLines(next);
+    if (workstream.length) setPlanningWorkstream(workstream);
     const question = extractLatestPlanningQuestion(next, sessionId);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
@@ -688,6 +691,7 @@ function App() {
     appendImportLog(`Planning answer submitted session=${question.sessionId} question=${question.id}`);
     setLastPlanningAnswer(trimmed);
     setPlanningActivity("Answer sent to the planning agent");
+    setPlanningWorkstream((current) => [...current.slice(-8), "Answer sent to the planning agent"]);
     setActivePlanningQuestion(null);
     setPlanningInterviewStatus("waiting_for_question");
     setStatus("Planning answer sent");
@@ -747,6 +751,7 @@ function App() {
       appendImportLog(`Imported Q&A start requested project=${project.id}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
+      setPlanningWorkstream(["Starting the planning agent"]);
       openImportedPlanningWorkspace(project, projectRoute);
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -764,7 +769,8 @@ function App() {
       setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
       setActiveSessionId(session.id);
       setPlanningInterviewStatus("waiting_for_question");
-      setPlanningActivity("Planning prompt sent; waiting for the first structured question");
+      setPlanningActivity((current) => current || "Planning prompt sent; waiting for the first structured question");
+      setPlanningWorkstream((current) => current.length ? current : ["Planning prompt sent; waiting for the first structured question"]);
       setStatus("Imported project Q&A started");
     })();
     importedPlanningRuns.current.set(key, run);
@@ -1047,6 +1053,7 @@ function App() {
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
           planningActivity={planningActivity}
+          planningWorkstream={planningWorkstream}
           lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
           planningInterviewStatus={planningInterviewStatus}
@@ -1060,8 +1067,10 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        {isUtilityRoute || route.kind === "plan-create" ? null : (
-          <div className={cn("min-h-0", isImportedPlanningActive && "fixed bottom-0 right-0 size-px overflow-hidden opacity-0 pointer-events-none")}>
+        {isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
+          <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
+        ) : (
+          <div className="min-h-0">
             <TerminalPane
               activeSessionId={activeSessionId}
               activeProject={activeProject}
@@ -1325,6 +1334,7 @@ function WorkspacePane(props: {
   onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
   planningActivity: string;
+  planningWorkstream: string[];
   lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
   planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
@@ -1361,6 +1371,7 @@ function WorkspacePane(props: {
       <ImportedPlanningQAView
         activeProject={props.activeProject}
         activity={props.planningActivity}
+        workstream={props.planningWorkstream}
         lastAnswer={props.lastPlanningAnswer}
         onAnswer={props.onAnswerPlanningQuestion}
         onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
@@ -1641,6 +1652,7 @@ function PlanCreationView({
 function ImportedPlanningQAView({
   activeProject,
   activity,
+  workstream,
   lastAnswer,
   onAnswer,
   onStart,
@@ -1649,6 +1661,7 @@ function ImportedPlanningQAView({
 }: {
   activeProject: ProjectRecord | null;
   activity: string;
+  workstream: string[];
   lastAnswer: string;
   onAnswer: (answer: string) => Promise<void>;
   onStart: () => Promise<void>;
@@ -1801,12 +1814,18 @@ function ImportedPlanningQAView({
           </div>
         ) : null}
         {!question && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
-          <div className="grid gap-2 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
+          <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               <span>{waitingLabel}</span>
             </div>
-            {activity ? <p className="m-0 pl-6 text-xs leading-5 text-muted-foreground text-pretty">{activity}</p> : null}
+            <div className="max-h-64 min-h-32 overflow-auto rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 text-secondary-foreground shadow-inner">
+              {workstream.length ? (
+                workstream.map((line, index) => <p className="m-0 whitespace-pre-wrap" key={`${index}:${line}`}>{line}</p>)
+              ) : (
+                <p className="m-0 whitespace-pre-wrap">{activity || "Starting the planning agent..."}</p>
+              )}
+            </div>
           </div>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2">
@@ -3001,6 +3020,66 @@ function TerminalPane(props: {
   );
 }
 
+function HeadlessTerminalListener({
+  activeProject,
+  onTerminalText,
+  sessions,
+}: {
+  activeProject: ProjectRecord | null;
+  onTerminalText: (sessionId: string, text: string) => void;
+  sessions: SessionRecord[];
+}) {
+  const agentSession = sessions.find(isAgentSession) || null;
+  useEffect(() => {
+    if (!activeProject || !agentSession) return;
+    const session = agentSession;
+    let closed = false;
+    let seenSeq = 0;
+    let eventBuffer: TerminalOutputEventPayload[] = [];
+    let unlisten: (() => void) | null = null;
+
+    const writeChunk = (payload: TerminalOutputEventPayload) => {
+      if (closed || payload.sessionId !== session.id || payload.seq <= seenSeq) return;
+      seenSeq = payload.seq;
+      const bytes = Uint8Array.from(payload.bytes || []);
+      if (!bytes.length) return;
+      onTerminalText(session.id, terminalTextForParsing(terminalBytesToText(bytes)));
+    };
+
+    const handleChunk = (payload: TerminalOutputEventPayload) => {
+      if (payload.sessionId !== session.id) return;
+      if (!seenSeq) {
+        eventBuffer.push(payload);
+        return;
+      }
+      writeChunk(payload);
+    };
+
+    async function attach() {
+      try {
+        unlisten = await listenTerminalOutput(handleChunk);
+        const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
+        if (closed) return;
+        const bytes = Uint8Array.from(replay.bytes || []);
+        if (bytes.length) onTerminalText(session.id, terminalTextForParsing(terminalBytesToText(bytes)));
+        seenSeq = replay.seq || 0;
+        eventBuffer.sort((left, right) => left.seq - right.seq).forEach(writeChunk);
+        eventBuffer = [];
+      } catch (error) {
+        appendImportLog(`Headless terminal listener failed session=${session.id}`, error);
+      }
+    }
+
+    void attach();
+    return () => {
+      closed = true;
+      if (unlisten) unlisten();
+    };
+  }, [activeProject?.id, agentSession?.id, onTerminalText]);
+
+  return null;
+}
+
 function TerminalSessionTab(props: {
   isActive: boolean;
   onClose: () => void;
@@ -3789,22 +3868,29 @@ function normalizePlanningQuestion(sessionId: string, question: string, recommen
 }
 
 function latestPlanningActivity(text: string) {
-  const lines = terminalTextForParsing(text)
-    .split("\n")
-    .map((line) => line.trim().replace(/^[-•]\s*/, "").replace(/^└\s*/, ""))
-    .filter(Boolean)
-    .slice(-80);
+  const lines = planningWorkstreamLines(text);
   for (let index = lines.length - 1; index >= 0; index -= 1) {
     const line = lines[index];
-    if (line.length < 12 || line.length > 180) continue;
-    if (line.includes("hyperwiki-question") || line.startsWith('"') || line === "{" || line === "}") continue;
-    if (/^(Working|Wor|Work|Worki|Workin|orking|rking|king|ing)/.test(line)) continue;
-    if (/^gpt-\S+\s/.test(line) || line.startsWith("›")) continue;
     if (/^(Explored|Read|Ran|Search|List)\b/.test(line)) return `Agent ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
     if (/^(I |I’|I've|I’ve|Source review|The source|There is|I found|I confirmed)/.test(line)) return line;
   }
   const workingMatch = text.match(/Working\(([^)]*)\)/);
   return workingMatch?.[1] ? `Agent is working (${workingMatch[1]})` : "";
+}
+
+function planningWorkstreamLines(text: string) {
+  return terminalTextForParsing(text)
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-•]\s*/, "").replace(/^└\s*/, ""))
+    .filter((line) => {
+      if (!line || line.length < 3 || line.length > 220) return false;
+      if (line.includes("hyperwiki-question") || line.startsWith('"') || line === "{" || line === "}" || line === "[" || line === "]") return false;
+      if (/^(Wor|Work|Worki|Workin|Working|orking|rking|king|ing|M+|\d+\s+[A-Za-z])$/.test(line)) return false;
+      if (/^gpt-\S+\s/.test(line) || line.startsWith("›")) return false;
+      if (/^[\u2500-╿]{6,}$/.test(line)) return false;
+      return true;
+    })
+    .slice(-18);
 }
 
 function looseJsonStringField(raw: string, field: string) {
