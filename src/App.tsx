@@ -1100,7 +1100,7 @@ function App() {
   }, [activeProject?.id, isUtilityRoute, route.kind]);
 
   return (
-    <main className="hyperwiki-shell flex min-h-svh flex-col bg-background text-foreground">
+    <main className="hyperwiki-shell flex h-svh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <TopBar
         activeProject={activeProject}
         isProjectsOpen={isProjectsOpen}
@@ -1117,7 +1117,7 @@ function App() {
       />
       <section
         className={cn(
-          "grid min-h-0 flex-1 overflow-hidden",
+          "grid h-full min-h-0 flex-1 overflow-hidden",
           isUtilityRoute || route.kind === "plan-create"
             ? "grid-cols-1"
             : isImportedPlanningActive
@@ -1166,7 +1166,7 @@ function App() {
         {isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
         ) : (
-          <div className="min-h-0">
+          <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
               activeSessionId={activeSessionId}
               activeProject={activeProject}
@@ -1206,7 +1206,7 @@ function TopBar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <header className="flex min-h-12 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
+    <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
@@ -1339,8 +1339,8 @@ function WikiSidebar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <aside className="flex min-h-0 flex-col overflow-hidden border-r bg-card">
-      <nav className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
+      <nav className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <h2 className="mb-2 px-1 text-xs font-bold uppercase text-muted-foreground">Plans</h2>
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
@@ -1479,14 +1479,14 @@ function WorkspacePane(props: {
     );
   }
   return (
-    <section className="flex min-h-0 min-w-0 flex-col bg-background">
-      <div className="flex min-h-12 items-center justify-between border-b bg-card px-3">
+    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+      <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
       </div>
-      <div className="relative min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {props.isLoading ? (
           <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-card px-3 py-2 text-xs text-muted-foreground">
             <Loader2 aria-hidden="true" className="size-4 animate-spin" />
@@ -3129,8 +3129,8 @@ function TerminalPane(props: {
   }
 
   return (
-    <aside className="flex min-h-0 flex-col border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
-      <div className="flex min-h-11 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 font-mono text-xs">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
+      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 font-mono text-xs">
         <div className="relative flex min-w-0 flex-1 items-center gap-2">
           <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
           <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]">{branchLabel}</strong>
@@ -3182,7 +3182,7 @@ function TerminalPane(props: {
           </Button>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {props.sessions.length ? (
           <>
             {props.sessions.length > 1 ? (
@@ -3210,7 +3210,7 @@ function TerminalPane(props: {
             </div>
           </>
         ) : (
-          <div className="px-5 py-4 font-mono text-xs text-[#abb5ad]">
+          <div className="min-h-0 flex-1 overflow-auto px-5 py-4 font-mono text-xs text-[#abb5ad]">
             No terminals running
           </div>
         )}

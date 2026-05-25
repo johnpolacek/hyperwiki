@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 fix | three-pane workspace height</h2>
+  <ul>
+    <li>Fixed the React workspace shell so the left wiki sidebar, middle workspace pane, and right terminal pane each fill the available window height beneath the top bar.</li>
+    <li>Contained page-level overflow at the app shell and kept each pane responsible for its own scrolling.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> layout measurement pass against the Vite preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 fix | MDX plan table rendering</h2>
   <ul>
     <li>Fixed the React MDX plan renderer so GitHub-style pipe tables render as semantic tables instead of visible pipe-delimited text.</li>
