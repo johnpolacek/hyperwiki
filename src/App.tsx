@@ -304,6 +304,7 @@ function App() {
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
   const [isPlanningTranscriptOpen, setIsPlanningTranscriptOpen] = useState(false);
+  const [planningActivity, setPlanningActivity] = useState("");
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -659,6 +660,8 @@ function App() {
     const current = planningQuestionBuffers.current.get(sessionId) || "";
     const next = trimPlanningQuestionBuffer(current + text);
     planningQuestionBuffers.current.set(sessionId, next);
+    const activity = latestPlanningActivity(next);
+    if (activity) setPlanningActivity((currentActivity) => currentActivity === activity ? currentActivity : activity);
     const question = extractLatestPlanningQuestion(next, sessionId);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
@@ -685,6 +688,7 @@ function App() {
     await sendInput(question.sessionId, terminalPasteSubmitInput(response));
     appendImportLog(`Planning answer submitted session=${question.sessionId} question=${question.id}`);
     setLastPlanningAnswer(trimmed);
+    setPlanningActivity("Answer sent to the planning agent");
     setActivePlanningQuestion(null);
     setPlanningInterviewStatus("waiting_for_question");
     setStatus("Planning answer sent");
@@ -743,6 +747,8 @@ function App() {
     const run = (async () => {
       appendImportLog(`Imported Q&A start requested project=${project.id}`);
       setPlanningInterviewStatus("starting");
+      setPlanningActivity("Starting the planning agent");
+      setIsPlanningTranscriptOpen(true);
       openImportedPlanningWorkspace(project, projectRoute);
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -760,6 +766,7 @@ function App() {
       setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
       setActiveSessionId(session.id);
       setPlanningInterviewStatus("waiting_for_question");
+      setPlanningActivity("Planning prompt sent; waiting for the first structured question");
       setStatus("Imported project Q&A started");
     })();
     importedPlanningRuns.current.set(key, run);
@@ -1042,6 +1049,7 @@ function App() {
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
           isPlanningTranscriptOpen={isPlanningTranscriptOpen}
+          planningActivity={planningActivity}
           lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
           planningInterviewStatus={planningInterviewStatus}
@@ -1321,6 +1329,7 @@ function WorkspacePane(props: {
   onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
   isPlanningTranscriptOpen: boolean;
+  planningActivity: string;
   lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
   planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
@@ -1358,6 +1367,7 @@ function WorkspacePane(props: {
       <ImportedPlanningQAView
         activeProject={props.activeProject}
         isTranscriptOpen={props.isPlanningTranscriptOpen}
+        activity={props.planningActivity}
         lastAnswer={props.lastPlanningAnswer}
         onAnswer={props.onAnswerPlanningQuestion}
         onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
@@ -1638,6 +1648,7 @@ function PlanCreationView({
 
 function ImportedPlanningQAView({
   activeProject,
+  activity,
   isTranscriptOpen,
   lastAnswer,
   onAnswer,
@@ -1647,6 +1658,7 @@ function ImportedPlanningQAView({
   status,
 }: {
   activeProject: ProjectRecord | null;
+  activity: string;
   isTranscriptOpen: boolean;
   lastAnswer: string;
   onAnswer: (answer: string) => Promise<void>;
@@ -1705,6 +1717,7 @@ function ImportedPlanningQAView({
   const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
   const isWaiting = status === "waiting_for_question" || status === "answering";
   const title = hasQuestion ? "MVP Planning Question" : isWaiting && lastAnswer ? "Waiting for Next Question" : "Starting MVP Planning Q&A";
+  const waitingLabel = lastAnswer ? "Waiting for the next app question" : "Waiting for the first app question";
   const description = hasQuestion
     ? "Choose an answer here. The agent transcript is available only for debugging."
     : status === "answering" || isAnswering
@@ -1800,9 +1813,12 @@ function ImportedPlanningQAView({
           </div>
         ) : null}
         {!question && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
-          <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            {lastAnswer ? "Waiting for the next app question" : "Waiting for the first app question"}
+          <div className="grid gap-2 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              <span>{waitingLabel}</span>
+            </div>
+            {activity ? <p className="m-0 pl-6 text-xs leading-5 text-muted-foreground text-pretty">{activity}</p> : null}
           </div>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2">
@@ -3785,6 +3801,25 @@ function normalizePlanningQuestion(sessionId: string, question: string, recommen
     reasoning,
     options: normalizedOptions,
   };
+}
+
+function latestPlanningActivity(text: string) {
+  const lines = terminalTextForParsing(text)
+    .split("\n")
+    .map((line) => line.trim().replace(/^[-•]\s*/, "").replace(/^└\s*/, ""))
+    .filter(Boolean)
+    .slice(-80);
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index];
+    if (line.length < 12 || line.length > 180) continue;
+    if (line.includes("hyperwiki-question") || line.startsWith('"') || line === "{" || line === "}") continue;
+    if (/^(Working|Wor|Work|Worki|Workin|orking|rking|king|ing)/.test(line)) continue;
+    if (/^gpt-\S+\s/.test(line) || line.startsWith("›")) continue;
+    if (/^(Explored|Read|Ran|Search|List)\b/.test(line)) return `Agent ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
+    if (/^(I |I’|I've|I’ve|Source review|The source|There is|I found|I confirmed)/.test(line)) return line;
+  }
+  const workingMatch = text.match(/Working\(([^)]*)\)/);
+  return workingMatch?.[1] ? `Agent is working (${workingMatch[1]})` : "";
 }
 
 function looseJsonStringField(raw: string, field: string) {
