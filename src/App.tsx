@@ -686,10 +686,12 @@ function App() {
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
     const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
-    await delay(1200);
+    const ready = await waitForAgentPromptReady(session.id);
+    appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
     let lastError: unknown;
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
+        appendImportLog(`Agent prompt submit attempt=${attempt + 1} session=${session.id} scope=${scope.scope}`);
         await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", project), {
           method: "POST",
           body: {
@@ -698,9 +700,11 @@ function App() {
             scope: scope.scope,
           },
         });
+        appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id}`);
         return session;
       } catch (error) {
         lastError = error;
+        appendImportLog(`Agent prompt submit failed attempt=${attempt + 1} session=${session.id}`, error);
         await delay(250);
       }
     }
@@ -3139,18 +3143,6 @@ function XtermSession({
     async function attach() {
       try {
         unlisten = await listenTerminalOutput(handleTerminalChunk);
-        const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
-          method: "POST",
-          body: {
-            id: session.id,
-            name: session.name,
-            role: session.role,
-            command: session.command,
-            scope: session.scope || scope.scope,
-            scopeKind: session.scopeKind || scope.scopeKind,
-            planPath: session.planPath || scope.planPath,
-          },
-        });
         const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
@@ -3829,6 +3821,30 @@ async function sendInput(sessionId: string, input: string) {
     method: "POST",
     body: { input },
   });
+}
+
+async function waitForAgentPromptReady(sessionId: string) {
+  const startedAt = Date.now();
+  let lastText = "";
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    try {
+      const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
+      const bytes = Uint8Array.from(replay.bytes || []);
+      const plain = terminalTextForParsing(terminalBytesToText(bytes));
+      lastText = plain.slice(-240);
+      if (isAgentPromptReady(plain)) return true;
+    } catch (error) {
+      lastText = error instanceof Error ? error.message : String(error);
+    }
+    await delay(250);
+  }
+  appendImportLog(`Agent prompt readiness timed out session=${sessionId} waitedMs=${Date.now() - startedAt} tail=${JSON.stringify(lastText)}`);
+  return false;
+}
+
+function isAgentPromptReady(text: string) {
+  const normalized = text.replace(/\s+/g, " ");
+  return /\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}");
 }
 
 async function sendResize(sessionId: string, cols: number, rows: number) {
