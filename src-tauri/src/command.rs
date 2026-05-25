@@ -207,6 +207,25 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => json_response(200, &serde_json::Value::Null),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/source") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let source_path = query_param(&request.path, "path")
+            .and_then(|path| percent_decode_path_segment(&path))
+            .unwrap_or_else(|| "/wiki/index.mdx".to_string());
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::read_wiki_source(project_root, &source_path) {
+            Ok(source) => json_response(200, &source),
+            Err(error) => error_response(404, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -747,6 +766,26 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     })
 }
 
+fn percent_decode_path_segment(value: &str) -> Option<String> {
+    let mut output = String::new();
+    let mut chars = value.as_bytes().iter().copied();
+    while let Some(byte) = chars.next() {
+        if byte == b'%' {
+            let high = chars.next()?;
+            let low = chars.next()?;
+            let hex = [high, low];
+            let text = std::str::from_utf8(&hex).ok()?;
+            let decoded = u8::from_str_radix(text, 16).ok()?;
+            output.push(decoded as char);
+        } else if byte == b'+' {
+            output.push(' ');
+        } else {
+            output.push(byte as char);
+        }
+    }
+    Some(output)
+}
+
 fn path_project_id(path: &str) -> Option<String> {
     let path_without_query = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
     let rest = path_without_query.strip_prefix("/projects/")?;
@@ -1239,6 +1278,38 @@ mod tests {
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
         assert!(response.text.contains("/wiki/index.mdx"));
+    }
+
+    #[test]
+    fn wiki_source_endpoint_returns_exact_source_and_markdown() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-source");
+        let home = temp_root("command-wiki-source-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "---\ntitle: \"Sample\"\n---\n\n<PlanHero><h1>Sample</h1></PlanHero>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/source?path=%2Fwiki%2Fplans%2Fsample.mdx".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("<PlanHero>"));
+        assert!(response.text.contains("\"markdown\":\"# Sample\""));
     }
 
     #[test]

@@ -24,6 +24,7 @@ import {
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
+import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { Button } from "@/components/ui/button";
 import { hyperwikiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,12 @@ interface WikiPage {
 
 interface WikiListResponse {
   pages?: WikiPage[];
+}
+
+interface WikiSourceResponse {
+  path: string;
+  source: string;
+  markdown: string;
 }
 
 interface ProjectRecord {
@@ -294,6 +301,7 @@ function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
   const [wikiPages, setWikiPages] = useState<WikiPage[]>([]);
   const [wikiHtml, setWikiHtml] = useState("");
+  const [wikiSource, setWikiSource] = useState<WikiSourceResponse | null>(null);
   const [wikiError, setWikiError] = useState("");
   const [isWikiLoading, setIsWikiLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectListResponse>({});
@@ -405,14 +413,24 @@ function App() {
     let cancelled = false;
     setIsWikiLoading(true);
     setWikiError("");
-    hyperwikiApi
-      .text(wikiRequestPath(route.path, activeProject))
-      .then((html) => {
-        if (!cancelled) setWikiHtml(html);
+    const request = isReactRenderedPlanPath(route.path)
+      ? hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(route.path)}`, activeProject))
+      : hyperwikiApi.text(wikiRequestPath(route.path, activeProject));
+    request
+      .then((result) => {
+        if (cancelled) return;
+        if (typeof result === "string") {
+          setWikiHtml(result);
+          setWikiSource(null);
+        } else {
+          setWikiHtml("");
+          setWikiSource(result);
+        }
       })
       .catch((error) => {
         if (!cancelled) {
           setWikiHtml("");
+          setWikiSource(null);
           setWikiError(error instanceof Error ? error.message : String(error));
         }
       })
@@ -1088,6 +1106,7 @@ function App() {
           settings={settings}
           wikiError={wikiError}
           wikiHtml={wikiHtml}
+          wikiSource={wikiSource}
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
@@ -1369,6 +1388,7 @@ function WorkspacePane(props: {
   settings: SettingsResponse | null;
   wikiError: string;
   wikiHtml: string;
+  wikiSource: WikiSourceResponse | null;
   wikiPath: string;
   wikiPages: WikiPage[];
 }) {
@@ -1421,6 +1441,12 @@ function WorkspacePane(props: {
         ) : null}
         {props.wikiError ? (
           <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
+        ) : props.wikiSource && isReactRenderedPlanPath(props.wikiPath) ? (
+          <MdxPlanRenderer
+            markdown={props.wikiSource.markdown}
+            onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
+            source={props.wikiSource.source}
+          />
         ) : (
           <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
         )}
@@ -3695,6 +3721,10 @@ function importedPlanningState(route: ViewRoute, pages: WikiPage[]) {
 
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
   return importedPlanningState(route, pages).isIntake;
+}
+
+function isReactRenderedPlanPath(path: string) {
+  return displayWikiPath(path).startsWith("/wiki/plans/") && path.endsWith(".mdx");
 }
 
 function isIncompleteImportProject(project: ProjectRecord | null | undefined) {

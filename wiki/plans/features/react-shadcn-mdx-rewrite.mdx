@@ -17,8 +17,8 @@ wikiKind: "plan"
       <dl className="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>active</dd>
         <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
-        <dt>Current unit</dt><dd>Stage 04 Unit 01 - Define Trusted MDX Renderer</dd>
-        <dt>Next action</dt><dd>Define the trusted MDX renderer, plan component registry, and sample MDX plan rendering path.</dd>
+        <dt>Current unit</dt><dd>Stage 05 Unit 01 - Update Wiki Indexing</dd>
+        <dt>Next action</dt><dd>Extend Rust domain, scaffold, project-contract, MCP, verification, and review surfaces around the React-rendered MDX plan source contract.</dd>
         <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
         <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
       </dl>
@@ -290,39 +290,39 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <header>
         <div>
           <h2>Stage 04 - MDX Plan Runtime</h2>
-          <p>Make visual plans first-class React surfaces while preserving clean source and agent-readable derivatives.</p>
+          <p>Complete. Visual plan pages now render as first-class React surfaces while preserving exact source reads and agent-readable Markdown derivatives.</p>
         </div>
         <span className="stage-number">Stage 04</span>
       </header>
       <ol className="units">
         <li className="unit">
           <h3>Unit 04.1 - Define Trusted MDX Renderer</h3>
-          <p>Render trusted local MDX plan files with a Hyperwiki component registry: <code>PlanHero</code>, <code>PlanSummary</code>, <code>PlanUnit</code>, <code>Decision</code>, <code>Evidence</code>, <code>Verification</code>, <code>Callout</code>, and <code>CommandBlock</code>.</p>
+          <p>Complete. Plan wiki pages under <code>/wiki/plans/**/*.mdx</code> now load exact source through the Tauri command API and render directly in React with a local registry for trusted plan sections, stages, units, decisions, evidence, verification, callouts, and command blocks.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Create a sample MDX plan that uses every component.</li>
-            <li>Confirm the rendered plan works inside the desktop app.</li>
-            <li>Confirm trusted-code assumptions are documented in source and wiki guidance.</li>
+            <li>Added <code>src/components/MdxPlanRenderer.tsx</code> with trusted local plan-source parsing and component mapping.</li>
+            <li>Plan links now navigate through React route state instead of iframe postMessage.</li>
+            <li>Ran <code>pnpm run check</code>.</li>
           </ul>
         </li>
         <li className="unit">
           <h3>Unit 04.2 - Add Markdown Derivative Pipeline</h3>
-          <p>Derive clean Markdown for LLM/project-contract use by stripping imports, exports, and visual wrappers while preserving headings, lists, code blocks, and component children.</p>
+          <p>Complete. Rust now derives clean Markdown from MDX source by stripping frontmatter, imports, exports, and visual wrappers while preserving headings, lists, code blocks, and useful component children.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Add tests covering every plan component and nested Markdown content.</li>
-            <li>Confirm the derivative does not leak implementation imports or JSX-only scaffolding.</li>
-            <li>Confirm the derivative remains readable when pasted into an agent prompt.</li>
+            <li>Added <code>mdx_markdown_derivative</code> in the Rust wiki domain.</li>
+            <li>Added tests for component-wrapper stripping and Markdown readability.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
           </ul>
         </li>
         <li className="unit">
           <h3>Unit 04.3 - Split Display And Source Endpoints</h3>
-          <p>Serve rendered plan content for app display and raw source through an explicit source endpoint for editor and agent workflows.</p>
+          <p>Complete. App display can use React-rendered plan source, while source/editor/agent workflows can read exact MDX plus the Markdown derivative from an explicit source endpoint.</p>
           <strong>Verification</strong>
           <ul>
-            <li><code>GET /wiki/plans/**/*.mdx</code> returns rendered display content.</li>
-            <li><code>GET /api/wiki/source?path=...</code> returns exact repo source text.</li>
-            <li>Path traversal and non-wiki paths are rejected.</li>
+            <li><code>GET /api/wiki/source?path=...</code> returns exact repo source text plus Markdown derivative.</li>
+            <li>Path traversal and non-MDX wiki source paths are rejected.</li>
+            <li>Command endpoint tests cover source and derivative response shape.</li>
           </ul>
         </li>
       </ol>
@@ -469,13 +469,14 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <h2>Copy Handoff</h2>
       <div className="copy-row">
         <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.mdx
-Current unit: Stage 04 Unit 01 - Define Trusted MDX Renderer
-Next action: define the trusted MDX renderer, plan component registry, and sample MDX plan rendering path.
+Current unit: Stage 05 Unit 01 - Update Wiki Indexing
+Next action: extend Rust domain, scaffold, project-contract, MCP, verification, and review surfaces around the React-rendered MDX plan source contract.
 Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
 Batch 1 is complete: Vite, React, TypeScript, Tailwind v4, shadcn config, first Button primitive, Tauri dist build wiring, typed API adapter, and dist static smoke coverage are in place.
 Batch 2 shell pass is complete: React now owns the topbar, project switcher, wiki navigation/rendering shell, app route surfaces, and initial scoped terminal pane.
 Batch 3 terminal pass is complete: React now owns xterm attachment, replay, live output polling, keyboard input, resize, scoped session tabs, rename, close, and attach/restart controls.
 Batch 4 command workflow pass is complete: React owns Execute, Worktree, Modify, Review, and the New Plan entry now opens the full-page MDX agent interview instead of the retired deterministic plan-create endpoint.
+Batch 5 MDX plan runtime pass is complete: React renders plan pages directly from exact MDX source, Rust exposes `/api/wiki/source`, and Markdown derivatives are covered by Rust tests.
 Required skill commands:
 npx skills add https://github.com/shadcn/ui --skill shadcn
 npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>

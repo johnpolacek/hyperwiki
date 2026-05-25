@@ -33,6 +33,14 @@ pub struct WikiPageList {
     pub pages: Vec<WikiPage>,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiSource {
+    pub path: String,
+    pub source: String,
+    pub markdown: String,
+}
+
 pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> WikiPageList {
     let wiki_root = root.as_ref().join("wiki");
     if !wiki_root.is_dir() {
@@ -62,6 +70,28 @@ pub fn read_wiki_page(root: impl AsRef<Path>, request_path: &str) -> Result<Stri
     Ok(render_mdx_page(&mdx))
 }
 
+pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<WikiSource, String> {
+    let Some(relative) = wiki_relative_path(request_path) else {
+        return Err("Not a wiki page path.".to_string());
+    };
+    if relative
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err("Invalid wiki page path.".to_string());
+    }
+    let page_path = root.as_ref().join("wiki").join(relative);
+    if page_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
+        return Err("Only MDX wiki source can be served.".to_string());
+    }
+    let source = fs::read_to_string(page_path).map_err(|error| error.to_string())?;
+    Ok(WikiSource {
+        path: format!("/wiki/{relative}"),
+        markdown: mdx_markdown_derivative(&source),
+        source,
+    })
+}
+
 fn wiki_relative_path(path: &str) -> Option<&str> {
     let path = path.split_once('?').map(|(path, _)| path).unwrap_or(path);
     if let Some(relative) = path.strip_prefix("/wiki/") {
@@ -70,6 +100,120 @@ fn wiki_relative_path(path: &str) -> Option<&str> {
     let marker = "/wiki/";
     path.find(marker)
         .and_then(|index| path.get(index + marker.len()..))
+}
+
+pub fn mdx_markdown_derivative(mdx: &str) -> String {
+    let body = strip_frontmatter(mdx);
+    let mut output = String::new();
+    let mut in_code = false;
+    let mut text = String::new();
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with("import ") || trimmed.starts_with("export ") {
+            continue;
+        }
+        if trimmed.starts_with("```") {
+            flush_markdown_text(&mut output, &mut text);
+            in_code = !in_code;
+            output.push_str(trimmed);
+            output.push('\n');
+            continue;
+        }
+        if in_code {
+            output.push_str(line);
+            output.push('\n');
+            continue;
+        }
+        let line = strip_mdx_wrappers(line);
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            flush_markdown_text(&mut output, &mut text);
+            continue;
+        }
+        if let Some(heading) = html_heading_to_markdown(trimmed) {
+            flush_markdown_text(&mut output, &mut text);
+            output.push_str(&heading);
+            output.push('\n');
+            continue;
+        }
+        if let Some(item) = html_list_item_to_markdown(trimmed) {
+            flush_markdown_text(&mut output, &mut text);
+            output.push_str("- ");
+            output.push_str(&item);
+            output.push('\n');
+            continue;
+        }
+        if trimmed.starts_with('<') && trimmed.ends_with('>') {
+            flush_markdown_text(&mut output, &mut text);
+            continue;
+        }
+        if !text.is_empty() {
+            text.push(' ');
+        }
+        text.push_str(&strip_html(trimmed));
+    }
+    flush_markdown_text(&mut output, &mut text);
+    output
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+fn flush_markdown_text(output: &mut String, text: &mut String) {
+    let trimmed = text.trim();
+    if !trimmed.is_empty() {
+        output.push_str(trimmed);
+        output.push_str("\n\n");
+    }
+    text.clear();
+}
+
+fn strip_mdx_wrappers(line: &str) -> String {
+    line.replace(" className=", " class=")
+        .replace("<PlanHero", "<section")
+        .replace("</PlanHero>", "</section>")
+        .replace("<PlanSummary", "<section")
+        .replace("</PlanSummary>", "</section>")
+        .replace("<PlanUnit", "<section")
+        .replace("</PlanUnit>", "</section>")
+        .replace("<Decision", "<section")
+        .replace("</Decision>", "</section>")
+        .replace("<Evidence", "<section")
+        .replace("</Evidence>", "</section>")
+        .replace("<Verification", "<section")
+        .replace("</Verification>", "</section>")
+        .replace("<Callout", "<section")
+        .replace("</Callout>", "</section>")
+        .replace("<CommandBlock", "<pre")
+        .replace("</CommandBlock>", "</pre>")
+}
+
+fn html_heading_to_markdown(line: &str) -> Option<String> {
+    for level in 1..=6 {
+        let start = format!("<h{level}");
+        let end = format!("</h{level}>");
+        if let Some(value) = first_between_case_insensitive(line, &start, &end) {
+            let content = value
+                .split_once('>')
+                .map(|(_, content)| strip_html(content))
+                .unwrap_or_else(|| strip_html(&value));
+            return Some(format!("{} {}", "#".repeat(level), content));
+        }
+    }
+    None
+}
+
+fn html_list_item_to_markdown(line: &str) -> Option<String> {
+    first_between_case_insensitive(line, "<li", "</li>").map(|value| {
+        let content = value
+            .split_once('>')
+            .map(|(_, content)| content)
+            .unwrap_or(&value);
+        strip_html(content)
+    })
 }
 
 fn walk_wiki(
@@ -567,6 +711,33 @@ mod tests {
         let pages = list_wiki_pages(&root, Some("project-1")).pages;
         assert_eq!(pages[0].path, "/projects/project-1/wiki/source-index.mdx");
         assert_eq!(pages[0].title, "Source Index");
+    }
+
+    #[test]
+    fn reads_exact_wiki_source_with_markdown_derivative() {
+        let root = temp_root("wiki-source");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "---\ntitle: \"Sample\"\n---\n\n<PlanHero><h1>Sample</h1></PlanHero>\n<PlanSummary><ul><li>Status: active</li></ul></PlanSummary>\n<CommandBlock>pnpm run check</CommandBlock>",
+        )
+        .unwrap();
+
+        let source = read_wiki_source(&root, "/wiki/plans/sample.mdx").unwrap();
+
+        assert!(source.source.contains("<PlanHero>"));
+        assert!(source.markdown.contains("# Sample"));
+        assert!(source.markdown.contains("- Status: active"));
+        assert!(!source.markdown.contains("PlanHero"));
+    }
+
+    #[test]
+    fn rejects_unsafe_wiki_source_paths() {
+        let root = temp_root("wiki-source-reject");
+
+        let error = read_wiki_source(&root, "/wiki/../AGENTS.md").unwrap_err();
+
+        assert_eq!(error, "Invalid wiki page path.");
     }
 
     fn temp_root(label: &str) -> PathBuf {
