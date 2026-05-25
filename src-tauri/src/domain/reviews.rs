@@ -184,6 +184,13 @@ fn review_workflow_prompt(
         "Project contract:".to_string(),
         contract.agent_context.clone(),
         String::new(),
+        "Current plan Markdown source:".to_string(),
+        if contract.plan.markdown.is_empty() {
+            "- Not available".to_string()
+        } else {
+            contract.plan.markdown.clone()
+        },
+        String::new(),
         "Review instructions:".to_string(),
         instructions,
         String::new(),
@@ -298,6 +305,7 @@ mod tests {
             assert!(prompt.contains(&format!("Workflow: {label}")));
             assert!(prompt.contains("Project: Review Test"));
             assert!(prompt.contains("Current plan:"));
+            assert!(prompt.contains("Current plan Markdown source:"));
             assert!(prompt.contains("Verification loops:"));
             assert!(prompt.contains(
                 "Do not edit wiki files, commit, or change code unless the user explicitly asks"

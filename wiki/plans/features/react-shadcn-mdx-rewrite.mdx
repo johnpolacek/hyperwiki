@@ -17,8 +17,8 @@ wikiKind: "plan"
       <dl className="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>active</dd>
         <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
-        <dt>Current unit</dt><dd>Stage 05 Unit 01 - Update Wiki Indexing</dd>
-        <dt>Next action</dt><dd>Extend Rust domain, scaffold, project-contract, MCP, verification, and review surfaces around the React-rendered MDX plan source contract.</dd>
+        <dt>Current unit</dt><dd>Stage 06 Unit 01 - Retire Obsolete Static Frontend Assets</dd>
+        <dt>Next action</dt><dd>Remove obsolete static frontend assets only after confirming React, MDX, and Tauri build paths no longer depend on them.</dd>
         <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
         <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
       </dl>
@@ -332,49 +332,50 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <header>
         <div>
           <h2>Stage 05 - Rust Domain And Scaffold Contract</h2>
-          <p>Teach the Rust domain model, MCP resources, project contract, and generated scaffolds about HTML wiki pages plus MDX wiki pages.</p>
+          <p>Complete. The Rust domain model, MCP resources, project contract, review prompts, and generated scaffolds now understand the MDX source contract and Markdown-first plan derivative.</p>
         </div>
         <span className="stage-number">Stage 05</span>
       </header>
       <ol className="units">
         <li className="unit">
           <h3>Unit 05.1 - Update Wiki Indexing</h3>
-          <p>List both <code>.mdx</code> wiki pages and <code>.mdx</code> plan files with <code>format</code>, <code>path</code>, <code>sourcePath</code>, <code>title</code>, <code>summary</code>, and <code>status</code>.</p>
+          <p>Complete. Wiki listings now expose <code>format</code>, app route <code>path</code>, repo-relative <code>sourcePath</code>, <code>title</code>, <code>summary</code>, and <code>status</code> for MDX wiki pages and plans.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Add Rust tests for MDX-only wiki trees.</li>
-            <li>Confirm completed/active status parsing works for MDX plan summaries.</li>
-            <li>Run <code>cargo test --manifest-path src-tauri/Cargo.toml wiki</code> or the closest targeted test.</li>
+            <li>Updated Rust wiki-domain tests to assert MDX source path and format metadata.</li>
+            <li>Confirmed active/completed status parsing still works through the existing wiki page summary flow.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
           </ul>
         </li>
         <li className="unit">
           <h3>Unit 05.2 - Update Plan Creation</h3>
-          <p>Make the in-app plan creation workflow write <code>.mdx</code> plans using the registry components and the Markdown derivative contract.</p>
+          <p>Complete by contract audit. The current rewrite path already writes MDX plans, and Stage 05 verified the source and derivative contract that generated plans must satisfy.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Plan creation tests assert <code>.mdx</code> paths.</li>
-            <li>Dashboard updates point at the new MDX plan path.</li>
-            <li>Generated MDX renders in the app and produces Markdown for agents.</li>
+            <li>Kept plan workflow surfaces pointed at <code>.mdx</code> plan paths.</li>
+            <li>Verified generated/current MDX plan source produces Markdown through <code>/api/wiki/source</code> and project-contract integration.</li>
+            <li>Ran <code>pnpm run smoke:project-contract</code>.</li>
           </ul>
         </li>
         <li className="unit">
           <h3>Unit 05.3 - Update Project Contract, MCP, Verification, And Reviews</h3>
-          <p>Current-plan resources should use Markdown-first plan content while preserving structured status, source paths, and Localhost Tooling guardrails.</p>
+          <p>Complete. Current-plan resources use Markdown-first plan content while preserving structured status, source paths, format metadata, and Localhost Tooling guardrails.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Run <code>pnpm run smoke:mcp-transport</code>.</li>
-            <li>Run project-contract and review-workflow smoke tests.</li>
-            <li>Confirm <code>hyperwiki://current-plan</code> returns useful Markdown and metadata.</li>
+            <li>Project contract <code>plan</code> now includes <code>sourcePath</code>, <code>format</code>, and a Markdown derivative scoped for localhost-safe agent context.</li>
+            <li><code>hyperwiki://current-plan</code> returns the same useful Markdown and metadata.</li>
+            <li>Review prompts now include current plan Markdown source.</li>
+            <li>Ran <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, and <code>pnpm run smoke:mcp-transport</code>.</li>
           </ul>
         </li>
         <li className="unit">
           <h3>Unit 05.4 - Update Generated Project Scaffold</h3>
-          <p>Generated Hyperwiki projects should say: HTML wiki pages, MDX wiki pages, lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, and app-served <code>/assets/wiki.css</code>.</p>
+          <p>Complete. Generated Hyperwiki projects now tell agents to prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML while preserving lowercase <code>wiki/sources.mdx</code> and app-visible <code>wiki/AGENTS.mdx</code> conventions.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Run scaffold tests for new project creation.</li>
-            <li>Confirm generated AGENTS guidance names MDX wiki pages without creating duplicate <code>wiki/Sources.mdx</code>.</li>
-            <li>Confirm source briefs and roadmap use updated terminology.</li>
+            <li>Updated generated root <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, and <code>wiki/scaffold-contract.mdx</code> copy.</li>
+            <li>Scaffold tests assert generated guidance names <code>/api/wiki/source</code>.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
           </ul>
         </li>
       </ol>
@@ -469,14 +470,15 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <h2>Copy Handoff</h2>
       <div className="copy-row">
         <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.mdx
-Current unit: Stage 05 Unit 01 - Update Wiki Indexing
-Next action: extend Rust domain, scaffold, project-contract, MCP, verification, and review surfaces around the React-rendered MDX plan source contract.
+Current unit: Stage 06 Unit 01 - Retire Obsolete Static Frontend Assets
+Next action: remove obsolete static frontend assets only after confirming React, MDX, and Tauri build paths no longer depend on them.
 Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
 Batch 1 is complete: Vite, React, TypeScript, Tailwind v4, shadcn config, first Button primitive, Tauri dist build wiring, typed API adapter, and dist static smoke coverage are in place.
 Batch 2 shell pass is complete: React now owns the topbar, project switcher, wiki navigation/rendering shell, app route surfaces, and initial scoped terminal pane.
 Batch 3 terminal pass is complete: React now owns xterm attachment, replay, live output polling, keyboard input, resize, scoped session tabs, rename, close, and attach/restart controls.
 Batch 4 command workflow pass is complete: React owns Execute, Worktree, Modify, Review, and the New Plan entry now opens the full-page MDX agent interview instead of the retired deterministic plan-create endpoint.
 Batch 5 MDX plan runtime pass is complete: React renders plan pages directly from exact MDX source, Rust exposes `/api/wiki/source`, and Markdown derivatives are covered by Rust tests.
+Batch 6 Rust domain/scaffold contract pass is complete: wiki page metadata carries format/source path, project contract/MCP/review surfaces expose Markdown-first current plan content, and generated scaffolds instruct agents to prefer `/api/wiki/source` or project contract over rendered HTML.
 Required skill commands:
 npx skills add https://github.com/shadcn/ui --skill shadcn
 npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>

@@ -1698,7 +1698,7 @@ fn scaffold_contract_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Scaffold Contract",
-        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for MDX-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.mdx</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.mdx</code> for wiki agent guidance.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
+        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for MDX-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.mdx</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.mdx</code> for wiki agent guidance.</li><li>Render plan pages from exact MDX source; agent-facing current-plan resources should use the Markdown derivative exposed by <code>/api/wiki/source</code> and the project contract.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
     )
 }
 
@@ -1744,13 +1744,13 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Wiki Agent Guide",
-        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.mdx before project-specific work and use wiki/sources.mdx as the source index.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>hyperwiki</code> for wiki maintenance, <code>grill-with-docs</code> for plan and domain-language stress tests, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> and <code>make-interfaces-feel-better</code> for substantial UI work and polish, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
+        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.mdx before project-specific work and use wiki/sources.mdx as the source index. For active plans, prefer the project contract or <code>/api/wiki/source</code> Markdown derivative over rendered app HTML.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>hyperwiki</code> for wiki maintenance, <code>grill-with-docs</code> for plan and domain-language stress tests, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> and <code>make-interfaces-feel-better</code> for substantial UI work and polish, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
     )
 }
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; Hyperwiki uses lowercase `wiki/sources.mdx`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; Hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -2090,10 +2090,12 @@ mod tests {
         )
         .unwrap();
         assert!(agents.contains("Do not add a duplicate `wiki/Sources.mdx`"));
+        assert!(agents.contains("/api/wiki/source"));
         assert!(agents.contains("Portless-backed `dev` script"));
         assert!(config.contains("\"launchCommand\": \"codex --yolo\""));
         assert!(sources.contains("lowercase <code>wiki/sources.mdx</code>"));
         assert!(contract.contains("wiki/AGENTS.mdx"));
+        assert!(contract.contains("/api/wiki/source"));
         assert_default_skills_installed(&created.project.root);
         assert!(registry
             .list(Some(&created.project.id))

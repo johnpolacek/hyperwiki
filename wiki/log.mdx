@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 05</h2>
+  <ul>
+    <li>Completed the Stage 05 Rust Domain And Scaffold Contract batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Extended wiki page metadata with MDX <code>format</code> and repo-relative <code>sourcePath</code>, and exposed current-plan Markdown through project-contract, MCP, and review prompt surfaces.</li>
+    <li>Updated generated scaffold guidance so agents prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, and <code>pnpm run smoke:mcp-transport</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 04</h2>
   <ul>
     <li>Completed the Stage 04 MDX Plan Runtime batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>

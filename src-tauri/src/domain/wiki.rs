@@ -23,6 +23,8 @@ pub struct WikiPage {
     pub title: String,
     pub summary: Vec<String>,
     pub path: String,
+    pub source_path: String,
+    pub format: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
 }
@@ -134,6 +136,11 @@ pub fn mdx_markdown_derivative(mdx: &str) -> String {
             flush_markdown_text(&mut output, &mut text);
             output.push_str(&heading);
             output.push('\n');
+            for item in html_list_items_to_markdown(trimmed) {
+                output.push_str("- ");
+                output.push_str(&item);
+                output.push('\n');
+            }
             continue;
         }
         if let Some(item) = html_list_item_to_markdown(trimmed) {
@@ -207,13 +214,25 @@ fn html_heading_to_markdown(line: &str) -> Option<String> {
 }
 
 fn html_list_item_to_markdown(line: &str) -> Option<String> {
-    first_between_case_insensitive(line, "<li", "</li>").map(|value| {
+    html_list_items_to_markdown(line).into_iter().next()
+}
+
+fn html_list_items_to_markdown(line: &str) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut rest = line;
+    while let Some(value) = first_between_case_insensitive(rest, "<li", "</li>") {
         let content = value
             .split_once('>')
             .map(|(_, content)| content)
             .unwrap_or(&value);
-        strip_html(content)
-    })
+        items.push(strip_html(content));
+        if let Some((_, next)) = rest.split_once("</li>") {
+            rest = next;
+        } else {
+            break;
+        }
+    }
+    items
 }
 
 fn walk_wiki(
@@ -248,6 +267,8 @@ fn walk_wiki(
         pages.push(WikiPage {
             title,
             summary,
+            source_path: format!("wiki/{relative_path}"),
+            format: "mdx".to_string(),
             path,
             status,
         });
@@ -543,10 +564,7 @@ fn render_mdx_body(mdx: &str) -> String {
         }
         if let Some((level, text)) = markdown_heading(trimmed) {
             close_list(&mut html, &mut in_list);
-            html.push_str(&format!(
-                "<h{level}>{}</h{level}>\n",
-                inline_markdown(text)
-            ));
+            html.push_str(&format!("<h{level}>{}</h{level}>\n", inline_markdown(text)));
             continue;
         }
         if let Some(item) = trimmed.strip_prefix("- ") {
@@ -663,6 +681,8 @@ mod tests {
         let pages = list_wiki_pages(&root, None).pages;
         assert_eq!(pages.len(), 2);
         assert_eq!(pages[0].path, "/wiki/index.mdx");
+        assert_eq!(pages[0].source_path, "wiki/index.mdx");
+        assert_eq!(pages[0].format, "mdx");
         assert_eq!(pages[0].title, "Home");
         assert_eq!(pages[0].status.as_deref(), Some("active"));
         assert_eq!(pages[1].title, "Feature Plan");
@@ -697,7 +717,10 @@ mod tests {
         .unwrap();
 
         let pages = list_wiki_pages(&root, None).pages;
-        assert_eq!(pages[0].path, "/wiki/plans/features/remove-legacy-node-runtime.mdx");
+        assert_eq!(
+            pages[0].path,
+            "/wiki/plans/features/remove-legacy-node-runtime.mdx"
+        );
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
     }
