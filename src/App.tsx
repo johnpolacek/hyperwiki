@@ -1818,26 +1818,16 @@ function ImportedPlanningQAView({
     }
   }
 
-  const hasQuestion = Boolean(question);
   const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
-  const isWaiting = status === "waiting_for_question" || status === "answering";
-  const title = hasQuestion ? "MVP Planning Question" : isWaiting && lastAnswer ? "Waiting for Next Question" : "Starting MVP Planning Q&A";
+  const title = "Planning Q&A";
   const waitingLabel = lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
-  const description = hasQuestion
-    ? "Choose an answer here. Hyperwiki will send it to the planning agent and show the next question when it is ready."
-    : status === "answering" || isAnswering
-    ? "Sending your answer to the planning agent."
-    : lastAnswer
-    ? `Answer sent: ${lastAnswer}. The agent is reasoning through that answer and will ask the next question here.`
-    : hasStarted || status === "starting" || status === "waiting_for_question"
-    ? "The planning agent is reading the imported source and preparing the first question here."
-    : `Hyperwiki found the imported source for ${activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.`;
+  const description = "Answer questions and make important decisions to create your project.";
 
   return (
     <main className="grid min-h-0 place-items-start overflow-auto bg-background px-8 pt-12 antialiased">
       <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
         <div className="grid gap-3">
-          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
+          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creating project</p>
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{title}</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">{description}</p>
         </div>
