@@ -408,6 +408,58 @@ function App() {
   }, [activeProject?.id, importPlanningState, route, wikiPages.length]);
 
   useEffect(() => {
+    if (!activeProject || !isImportedPlanningActive) return;
+    if (!["starting", "waiting_for_question", "answering"].includes(planningInterviewStatus)) return;
+    let cancelled = false;
+    const project = activeProject;
+    const poll = async () => {
+      const [wikiResult, projectsResult, workspaceResult] = await Promise.allSettled([
+        hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
+        hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", project)),
+        hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", project)),
+      ]);
+      if (cancelled) return;
+      const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : [];
+      if (wikiResult.status === "fulfilled") setWikiPages(pages);
+      let selectedProject = project;
+      if (projectsResult.status === "fulfilled") {
+        setProjects(projectsResult.value);
+        selectedProject = findActiveProject(projectsResult.value, unavailableProjectIds, {
+          projectSlug: project.projectSlug,
+          worktreeSlug: project.worktreeSlug,
+        }) || project;
+        setActiveProject(selectedProject);
+      }
+      if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
+      const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
+      const completed = selectedProject.importPlanning?.status === "complete" || planning.generatedPlanPaths.length > 0;
+      if (!completed) return;
+      appendImportLog(`Imported Q&A completion detected project=${project.id} generatedPlanCount=${planning.generatedPlanPaths.length}`);
+      importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
+      setActivePlanningQuestion(null);
+      setPlanningInterviewStatus("idle");
+      setPlanningActivity("Generated MVP plan is ready.");
+      setPlanningWorkstream(["Generated MVP plan is ready."]);
+      setStatus("Imported project plan created");
+      const nextPath = importCompletionLandingPath(
+        workspaceResult.status === "fulfilled" ? workspaceResult.value : null,
+        planning.generatedPlanPaths,
+      );
+      if (route.kind === "wiki" && route.path !== nextPath) {
+        const nextRoute: ViewRoute = { kind: "wiki", path: nextPath };
+        setRoute(nextRoute);
+        window.history.replaceState(null, "", urlForRoute(nextRoute, selectedProject));
+      }
+    };
+    void poll();
+    const timer = window.setInterval(poll, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [activeProject?.id, currentWikiPath, isImportedPlanningActive, planningInterviewStatus, route.kind, unavailableProjectIds]);
+
+  useEffect(() => {
     if (route.kind !== "wiki") return;
     if (hasLoadedProjects && !hasRegisteredProjects && !activeProject) return;
     if (hasLoadedProjects && !activeProject) return;
@@ -3729,6 +3781,12 @@ function importedPlanningState(route: ViewRoute, pages: WikiPage[]) {
     hasImportedSource: importedSource,
     isIntake: route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && importedSource && generatedPlanPaths.length === 0,
   };
+}
+
+function importCompletionLandingPath(workspace: WorkspaceResponse | null, generatedPlanPaths: string[]) {
+  const currentPath = workspace?.status?.currentPath || "";
+  if (currentPath && currentPath !== "/wiki/plans/index.mdx") return currentPath;
+  return generatedPlanPaths.find((path) => path.endsWith("/index.mdx")) || generatedPlanPaths[0] || "/wiki/plans/index.mdx";
 }
 
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {

@@ -27,6 +27,7 @@ wikiKind: "plan"
     <li>Expose import planning status on project records and through import-planning command endpoints.</li>
     <li>Mark incomplete imports in Projects and route them back to the planning intake surface when opened.</li>
     <li>Resume agent planning with saved Q&amp;A context when the original session is gone.</li>
+    <li>Follow-up: while Q&amp;A is running, poll for generated plan files so the UI exits the waiting state once the agent writes the MVP plan.</li>
   </ul>
 </section>
 <section>
@@ -41,6 +42,7 @@ wikiKind: "plan"
   <h2>Closeout</h2>
   <ul>
     <li>Implemented durable import planning status derivation, Q&amp;A answer persistence, project-list status badges, incomplete import resume routing, and command endpoint coverage.</li>
+    <li>Follow-up fix handles agent-authored plans that bypass the deterministic create-plan endpoint by refreshing project/wiki state and navigating to the generated plan when files appear.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
   </ul>
 </section>
