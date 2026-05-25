@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 fix | nested plan sidebar navigation</h2>
+  <ul>
+    <li>Restored explicit expand/collapse controls for parent plan rows in the React sidebar instead of relying on nested summary/button behavior.</li>
+    <li>Updated plan-tree path matching so generic plan directories, legacy stage-directory unit files, and documented <code>units/stage-XX/</code> unit files render as Plan &gt; Stage &gt; Unit.</li>
+    <li>Hardened the imported-project planning prompt so future MVP plans must write separate stage and unit files instead of collapsing them into headings inside <code>wiki/plans/mvp/index.mdx</code>.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 fix | wiki prose typography</h2>
   <ul>
     <li>Restored the React shell font split so normal wiki, sidebar, workspace, and terminal chrome text use the active docs primary font instead of inheriting the mono stack.</li>

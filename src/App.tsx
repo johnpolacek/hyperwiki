@@ -1376,21 +1376,36 @@ function PlanNode({ page, pages, currentPath, currentWorkPath, onNavigate, depth
   const children = childPlanPages(page, pages);
   const isCurrent = Boolean(currentWorkPath) && pathContainsSelectedPage(page.path, currentWorkPath);
   const isSelected = currentPath === page.path;
+  const shouldOpen = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || (Boolean(currentWorkPath) && pathContainsSelectedPage(child.path, currentWorkPath)));
+  const [isOpen, setIsOpen] = useState(shouldOpen);
+  useEffect(() => {
+    if (shouldOpen) setIsOpen(true);
+  }, [shouldOpen]);
   if (!children.length) {
     return <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />;
   }
-  const open = isSelected || isCurrent || children.some((child) => pathContainsSelectedPage(child.path, currentPath) || (Boolean(currentWorkPath) && pathContainsSelectedPage(child.path, currentWorkPath)));
   return (
-    <details className="grid min-w-0 gap-1 overflow-hidden" open={open}>
-      <summary className="min-w-0 cursor-pointer list-none overflow-hidden">
-        <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />
-      </summary>
-      <div className="grid min-w-0 gap-1 overflow-hidden">
-        {children.map((child) => (
-          <PlanNode currentPath={currentPath} currentWorkPath={currentWorkPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} />
-        ))}
+    <div className="grid min-w-0 gap-1 overflow-hidden">
+      <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: `${depth * 12}px` }}>
+        <button
+          aria-expanded={isOpen}
+          aria-label={`${isOpen ? "Collapse" : "Expand"} ${cleanPageTitle(page)}`}
+          className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+          onClick={() => setIsOpen((value) => !value)}
+          type="button"
+        >
+          <ChevronDown aria-hidden="true" className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} />
+        </button>
+        <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={0} onNavigate={onNavigate} page={page} selected={isSelected} />
       </div>
-    </details>
+      {isOpen ? (
+        <div className="grid min-w-0 gap-1 overflow-hidden">
+          {children.map((child) => (
+            <PlanNode currentPath={currentPath} currentWorkPath={currentWorkPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -3669,6 +3684,7 @@ function isTopLevelPlanPage(page: WikiPage) {
   if (path.endsWith("/wiki/plans/index.mdx")) return true;
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return true;
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return true;
+  if (/^\/wiki\/plans\/(?!zzz_completed\/)[^/]+\/index\.mdx$/.test(path)) return true;
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(path)) return true;
   return /^\/wiki\/plans\/[^/]+\.mdx$/.test(path) && !path.endsWith("/index.mdx");
 }
@@ -3689,13 +3705,24 @@ function isImmediateChildPlanPage(parent: WikiPage, candidate: WikiPage) {
   const parentPath = displayWikiPath(parent.path);
   const candidatePath = displayWikiPath(candidate.path);
   if (parentPath === candidatePath) return false;
-  if (parentPath.endsWith("/wiki/plans/mvp/index.mdx")) return /^\/wiki\/plans\/mvp\/stage-[^/]+\.mdx$/.test(candidatePath);
   if (parentPath.endsWith("/wiki/plans/zzz_completed/index.mdx")) {
     return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.mdx$/.test(candidatePath) && !candidatePath.endsWith("/index.mdx")) || isCompletedTopLevelPlanPage(candidate);
   }
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(parentPath)) return false;
-  const parentBase = parentPath.replace(/\.mdx$/, "");
+  const stage = parentPath.match(/^(.*)\/stage-(\d+)[^/]*\.mdx$/);
+  if (stage) {
+    const legacyBase = parentPath.replace(/\.mdx$/, "");
+    const legacyChild = candidatePath.startsWith(`${legacyBase}/`) && !candidatePath.slice(legacyBase.length + 1).includes("/");
+    const unitBase = `${stage[1]}/units/stage-${stage[2]}`;
+    const documentedChild = candidatePath.startsWith(`${unitBase}/`) && !candidatePath.slice(unitBase.length + 1).includes("/");
+    return legacyChild || documentedChild;
+  }
+  const parentBase = planTreeBasePath(parentPath);
   return candidatePath.startsWith(`${parentBase}/`) && !candidatePath.slice(parentBase.length + 1).includes("/");
+}
+
+function planTreeBasePath(path: string) {
+  return path.endsWith("/index.mdx") ? path.slice(0, -"/index.mdx".length) : path.replace(/\.mdx$/, "");
 }
 
 function planSortKey(page: WikiPage) {
@@ -3748,7 +3775,9 @@ function pathContainsSelectedPage(path: string, selectedPath: string) {
   const normalizedPath = displayWikiPath(path);
   const normalizedSelected = displayWikiPath(selectedPath);
   if (normalizedSelected === normalizedPath) return true;
-  const basePath = normalizedPath.endsWith("/index.mdx") ? normalizedPath.slice(0, -"/index.mdx".length) : normalizedPath.replace(/\.mdx$/, "");
+  const stage = normalizedPath.match(/^(.*)\/stage-(\d+)[^/]*\.mdx$/);
+  if (stage && normalizedSelected.startsWith(`${stage[1]}/units/stage-${stage[2]}/`)) return true;
+  const basePath = planTreeBasePath(normalizedPath);
   return normalizedSelected.startsWith(`${basePath}/`);
 }
 
@@ -3846,8 +3875,9 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
     "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
     "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
-    "- When the interview is done, create a decision-complete MDX MVP plan under wiki/plans/mvp/.",
-    "- Preserve the plan > stages > units structure.",
+    "- When the interview is done, create a decision-complete MDX MVP plan under wiki/plans/mvp/ with separate navigable files.",
+    "- Preserve the plan > stages > units structure as files: wiki/plans/mvp/index.mdx, wiki/plans/mvp/stage-XX-name.mdx, and one MDX file per unit under either wiki/plans/mvp/stage-XX-name/unit-XX-name.mdx or wiki/plans/mvp/units/stage-XX/XX-name.mdx.",
+    "- Do not collapse stages and units into headings inside wiki/plans/mvp/index.mdx; the sidebar depends on stage and unit files.",
     "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
     "- Do not create many single-unit stages unless each has a real phase boundary.",
     "- Name unknowns instead of inventing certainty.",
