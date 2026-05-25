@@ -1366,6 +1366,15 @@ wikiKind: "page"
   </ul>
 </article>
 <article>
+  <h2>2026-05-25 implementation | React theme-aware page background</h2>
+  <ul>
+    <li>Added a React app theme bridge that maps saved Settings theme tokens into Tailwind semantic CSS variables.</li>
+    <li>Changed utility route backgrounds to derive from the active theme's docs/UI background, so theme-tinted presets such as Signal no longer render as neutral gray.</li>
+    <li>Applied saved theme changes immediately after Settings saves and added root font smoothing for crisper text.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>agent-browser</code> screenshots for Settings and New Project on the existing Vite preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-22 implementation | restored React settings workflows</h2>
   <ul>
     <li>Restored Settings as a global full-width surface without project sidebar or terminal chrome.</li>

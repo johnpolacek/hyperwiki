@@ -329,6 +329,10 @@ function App() {
   const isImportedPlanningActive = isImportedPlanningIntakeRoute(route, wikiPages);
 
   useEffect(() => {
+    applyAppTheme(settings?.theme);
+  }, [settings?.theme]);
+
+  useEffect(() => {
     function onPopState() {
       appendImportLog(`Popstate route=${window.location.pathname}${window.location.hash || ""}`);
       setRoute(routeFromLocation());
@@ -2251,6 +2255,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
     setStatus("Saving...");
     try {
       const saved = await hyperwikiApi.json<SettingsResponse>("/api/settings", { method: "PUT", body: next });
+      applyAppTheme(saved.theme);
       setDraft(saved);
       setThemeDraft(saved.theme || null);
       setStatus("Saved.");
@@ -2679,6 +2684,46 @@ function effectiveTheme(theme?: SettingsResponse["theme"]): NormalizedTheme {
   return mergePreset(normalizePreset(preset), { label: hasThemeOverrides(theme) ? "Custom" : preset.label || "Custom", tokens: theme?.customTokens || {} });
 }
 
+function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
+  const theme = effectiveTheme(themeSettings);
+  const ui = theme.tokens.ui || {};
+  const docs = theme.tokens.docs || {};
+  const root = document.documentElement;
+  const background = normalizeColor(docs.bg || ui.bg || "#f7f7f4", "#f7f7f4");
+  const panel = normalizeColor(ui.panel || docs.panel || "#ffffff", "#ffffff");
+  const foreground = normalizeColor(ui.text || docs.text || "#20231f", "#20231f");
+  const mutedForeground = normalizeColor(ui.muted || docs.muted || "#62675f", "#62675f");
+  const border = normalizeColor(ui.border || docs.border || "#d8d8d0", "#d8d8d0");
+  const accent = normalizeColor(ui.accent || docs.link || "#276ef1", "#276ef1");
+  const secondary = mixHex(accent, theme.mode === "dark" ? "#ffffff" : panel, theme.mode === "dark" ? 0.18 : 0.9);
+  const muted = mixHex(mutedForeground, background, theme.mode === "dark" ? 0.68 : 0.84);
+
+  root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  setCssVars(root, {
+    "--background": background,
+    "--foreground": foreground,
+    "--card": panel,
+    "--card-foreground": foreground,
+    "--popover": panel,
+    "--popover-foreground": foreground,
+    "--primary": accent,
+    "--primary-foreground": readableTextOn(accent),
+    "--secondary": secondary,
+    "--secondary-foreground": foreground,
+    "--muted": muted,
+    "--muted-foreground": mutedForeground,
+    "--accent": accent,
+    "--accent-foreground": readableTextOn(accent),
+    "--border": border,
+    "--input": border,
+    "--ring": accent,
+  });
+}
+
+function setCssVars(element: HTMLElement, vars: Record<string, string>) {
+  Object.entries(vars).forEach(([name, value]) => element.style.setProperty(name, value));
+}
+
 function normalizePreset(preset?: ThemePreset): NormalizedTheme {
   const docs = { ...(preset?.tokens?.docs || {}) };
   const ui = { ...(preset?.tokens?.ui || {}) };
@@ -2737,8 +2782,51 @@ function fontLabel(value?: string) {
   return value.split(",")[0].replaceAll("\"", "").trim();
 }
 
-function normalizeColor(value?: string) {
-  return /^#[0-9a-f]{6}$/i.test(value || "") ? value || "#4361ee" : "#4361ee";
+function normalizeColor(value?: string, fallback = "#4361ee") {
+  return /^#[0-9a-f]{6}$/i.test(value || "") ? value || fallback : fallback;
+}
+
+function readableTextOn(color: string) {
+  return contrastRatio("#ffffff", color) >= contrastRatio("#111312", color) ? "#ffffff" : "#111312";
+}
+
+function mixHex(a: string, b: string, amount: number) {
+  const left = hexToRgb(normalizeColor(a));
+  const right = hexToRgb(normalizeColor(b));
+  return rgbToHex({
+    r: Math.round(left.r * (1 - amount) + right.r * amount),
+    g: Math.round(left.g * (1 - amount) + right.g * amount),
+    b: Math.round(left.b * (1 - amount) + right.b * amount),
+  });
+}
+
+function contrastRatio(a: string, b: string) {
+  const left = relativeLuminance(hexToRgb(normalizeColor(a)));
+  const right = relativeLuminance(hexToRgb(normalizeColor(b)));
+  const light = Math.max(left, right);
+  const dark = Math.min(left, right);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+function relativeLuminance(rgb: { r: number; g: number; b: number }) {
+  const [r, g, b] = [rgb.r, rgb.g, rgb.b].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return r * 0.2126 + g * 0.7152 + b * 0.0722;
+}
+
+function hexToRgb(hex: string) {
+  const normalized = normalizeColor(hex);
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }) {
+  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
 function renderAgentsManagedBlock(settings: { soul?: SettingsResponse["soul"]; memory?: SettingsResponse["memory"] }) {
