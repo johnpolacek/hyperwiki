@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   Activity,
   BookOpen,
@@ -227,6 +227,15 @@ interface TerminalOutputEventPayload {
   bytes: number[];
 }
 
+interface PlanningQuestion {
+  id: string;
+  sessionId: string;
+  question: string;
+  recommendedAnswer: string;
+  reasoning: string;
+  options: string[];
+}
+
 interface ReviewWorkflow {
   id: string;
   label: string;
@@ -291,6 +300,7 @@ function App() {
   const [reviewWorkflows, setReviewWorkflows] = useState<ReviewWorkflow[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -300,6 +310,7 @@ function App() {
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
+  const planningQuestionBuffers = useRef(new Map<string, string>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -637,6 +648,31 @@ function App() {
     await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
   }
 
+  const handleTerminalText = useCallback((sessionId: string, text: string) => {
+    if (!text) return;
+    const current = planningQuestionBuffers.current.get(sessionId) || "";
+    const next = trimPlanningQuestionBuffer(current + text);
+    planningQuestionBuffers.current.set(sessionId, next);
+    const question = extractLatestPlanningQuestion(next, sessionId);
+    if (question) {
+      setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
+    }
+  }, []);
+
+  async function answerPlanningQuestion(answer: string) {
+    const question = activePlanningQuestion;
+    const trimmed = answer.trim();
+    if (!question || !trimmed) return;
+    const response = [
+      "Hyperwiki planning answer:",
+      trimmed,
+      "",
+    ].join("\n");
+    await sendInput(question.sessionId, response);
+    setActivePlanningQuestion(null);
+    setStatus("Planning answer sent");
+  }
+
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
     const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
     await delay(1200);
@@ -969,10 +1005,12 @@ function App() {
           onPlanImportedProject={planImportedProject}
           onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
+          onAnswerPlanningQuestion={answerPlanningQuestion}
           onStartPlanCreation={startPlanCreation}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
+          planningQuestion={activePlanningQuestion}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
@@ -994,6 +1032,7 @@ function App() {
             onRestartSession={restartSession}
             onSelectSession={setActiveSessionId}
             onStart={startTerminal}
+            onTerminalText={handleTerminalText}
             repoContext={repoContext}
             scope={terminalScope}
             workspace={workspace}
@@ -1236,6 +1275,7 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
+  onAnswerPlanningQuestion: (answer: string) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
@@ -1243,6 +1283,7 @@ function WorkspacePane(props: {
   onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
   pendingImportProject: ProjectRecord | null;
+  planningQuestion: PlanningQuestion | null;
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
@@ -1271,7 +1312,7 @@ function WorkspacePane(props: {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
-    return <ImportedPlanningQAView activeProject={props.activeProject} onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()} />;
+    return <ImportedPlanningQAView activeProject={props.activeProject} onAnswer={props.onAnswerPlanningQuestion} onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()} question={props.planningQuestion} />;
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1542,10 +1583,24 @@ function PlanCreationView({
   );
 }
 
-function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: ProjectRecord | null; onStart: () => Promise<void> }) {
+function ImportedPlanningQAView({
+  activeProject,
+  onAnswer,
+  onStart,
+  question,
+}: {
+  activeProject: ProjectRecord | null;
+  onAnswer: (answer: string) => Promise<void>;
+  onStart: () => Promise<void>;
+  question: PlanningQuestion | null;
+}) {
   const [isStarting, setIsStarting] = useState(false);
+  const [isAnswering, setIsAnswering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
+  const [selectedOption, setSelectedOption] = useState("");
+  const [otherAnswer, setOtherAnswer] = useState("");
   const hasStartedRef = useRef("");
+  const otherAnswerRef = useRef<HTMLTextAreaElement | null>(null);
 
   async function start() {
     if (hasStarted) return;
@@ -1567,18 +1622,117 @@ function ImportedPlanningQAView({ activeProject, onStart }: { activeProject: Pro
     void start();
   }, [activeProject?.id]);
 
+  useEffect(() => {
+    setSelectedOption("");
+    setOtherAnswer("");
+  }, [question?.id]);
+
+  async function submitAnswer(answer: string) {
+    const trimmed = answer.trim();
+    if (!trimmed) return;
+    setIsAnswering(true);
+    try {
+      await onAnswer(trimmed);
+      setSelectedOption("");
+      setOtherAnswer("");
+    } finally {
+      setIsAnswering(false);
+    }
+  }
+
+  const hasQuestion = Boolean(question);
+  const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
+
   return (
-    <main className="grid min-h-0 place-items-start bg-background px-8 pt-12 antialiased">
-      <section className="mt-2 grid w-full max-w-2xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
+    <main className="grid min-h-0 place-items-start overflow-auto bg-background px-8 pt-12 antialiased">
+      <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
-          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Starting MVP Planning Q&A</h1>
+          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{hasQuestion ? "MVP Planning Question" : "Starting MVP Planning Q&A"}</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">
-            {hasStarted
+            {hasQuestion
+              ? "Choose the best answer below, or use Other to send a note that rejects the listed options."
+              : hasStarted
               ? "The Q&A prompt has been sent. Continue the interview in the agent terminal, then Hyperwiki will create the first MVP plan with stages, units, and verification."
               : `Hyperwiki found the imported source for ${activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.`}
           </p>
         </div>
+        {question ? (
+          <div className="grid gap-4 rounded-md border bg-background p-4">
+            <div className="grid gap-2">
+              <h2 className="font-ui m-0 text-xl font-semibold leading-snug">{question.question}</h2>
+              {question.recommendedAnswer ? (
+                <p className="m-0 rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
+                  <span className="font-semibold">Recommended:</span> {question.recommendedAnswer}
+                </p>
+              ) : null}
+              {question.reasoning ? <p className="m-0 text-sm leading-6 text-muted-foreground">{question.reasoning}</p> : null}
+            </div>
+            {question.options.length ? (
+              <div className="grid gap-2">
+                {question.options.map((option, index) => {
+                  const selected = selectedOption === option;
+                  return (
+                    <button
+                      className={cn(
+                        "flex min-h-11 items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
+                        selected && "border-primary bg-secondary text-secondary-foreground",
+                      )}
+                      disabled={isAnswering}
+                      key={`${question.id}:${index}:${option}`}
+                      onClick={() => {
+                        setSelectedOption(option);
+                        void submitAnswer(option);
+                      }}
+                      type="button"
+                    >
+                      <span>{option}</span>
+                      {index === 0 ? <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">recommended</span> : null}
+                    </button>
+                  );
+                })}
+                <button
+                  className={cn(
+                    "flex min-h-11 items-center justify-between gap-3 rounded-md border border-dashed bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
+                    selectedOption === "__other__" && "border-primary bg-secondary text-secondary-foreground",
+                  )}
+                  disabled={isAnswering}
+                  onClick={() => {
+                    setSelectedOption("__other__");
+                    window.setTimeout(() => otherAnswerRef.current?.focus(), 0);
+                  }}
+                  type="button"
+                >
+                  <span>None of the above</span>
+                  <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">add note</span>
+                </button>
+              </div>
+            ) : null}
+            <form
+              className="grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void submitAnswer(otherAnswer);
+              }}
+            >
+              <label className="text-sm font-semibold" htmlFor="planning-other-answer">Other</label>
+              <textarea
+                className="min-h-24 rounded-md border bg-card px-3 py-2 text-sm leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                id="planning-other-answer"
+                onChange={(event) => setOtherAnswer(event.target.value)}
+                placeholder="None of the above. Use this instead..."
+                ref={otherAnswerRef}
+                value={otherAnswer}
+              />
+              <div className="flex justify-end">
+                <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={!canSubmitOther} type="submit">
+                  {isAnswering ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : null}
+                  Send Other
+                </Button>
+              </div>
+            </form>
+          </div>
+        ) : null}
         <div className="flex justify-end">
           <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
@@ -2619,6 +2773,7 @@ function TerminalPane(props: {
   onRestartSession: (session: SessionRecord) => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
+  onTerminalText: (sessionId: string, text: string) => void;
   repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   workspace: WorkspaceResponse | null;
@@ -2756,7 +2911,7 @@ function TerminalPane(props: {
             ) : null}
             <div className="min-h-0 flex-1">
               {activeSession ? (
-                <XtermSession activeProject={props.activeProject} key={activeSession.id} scope={props.scope} session={activeSession} />
+                <XtermSession activeProject={props.activeProject} key={activeSession.id} onTerminalText={props.onTerminalText} scope={props.scope} session={activeSession} />
               ) : null}
             </div>
           </>
@@ -2821,10 +2976,12 @@ function TerminalSessionTab(props: {
 
 function XtermSession({
   activeProject,
+  onTerminalText,
   scope,
   session,
 }: {
   activeProject: ProjectRecord | null;
+  onTerminalText: (sessionId: string, text: string) => void;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   session: SessionRecord;
 }) {
@@ -2899,7 +3056,9 @@ function XtermSession({
       seenSeqRef.current = payload.seq;
       const bytes = Uint8Array.from(payload.bytes || []);
       if (!bytes.length) return;
-      logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, terminalBytesToText(bytes), loggedPlainTextRef);
+      const text = terminalBytesToText(bytes);
+      onTerminalText(session.id, terminalTextForParsing(text));
+      logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
       terminal.write(bytes);
     };
 
@@ -2930,7 +3089,9 @@ function XtermSession({
         const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
-          logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, terminalBytesToText(bytes), loggedPlainTextRef);
+          const text = terminalBytesToText(bytes);
+          onTerminalText(session.id, terminalTextForParsing(text));
+          logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
           terminal.write(bytes);
         }
         seenSeqRef.current = replay.seq || 0;
@@ -2959,7 +3120,7 @@ function XtermSession({
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [activeProject, scope.planPath, scope.scope, scope.scopeKind, session]);
+  }, [activeProject, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session]);
 
   return <div className="h-full min-h-0 bg-foreground p-2" ref={containerRef} />;
 }
@@ -3297,6 +3458,10 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
+    "- For every user-facing question, emit a fenced ```json block containing a single object with type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options.",
+    "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
+    "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
+    "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
     "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
     "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
     "- When the interview is done, create a decision-complete MDX MVP plan under wiki/plans/mvp/.",
@@ -3328,6 +3493,8 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
     "- Inspect repo evidence before asking questions the repo can answer.",
     "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
+    "- For every user-facing question, emit a fenced ```json block containing a single object with type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options.",
+    "- Put the recommended answer first in options. After the block, stop and wait for the user's answer.",
     "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
     "- Preserve a flexible plan > stages > units structure; compact plans may use one implicit stage.",
     "- Every executable unit must include a Verification section or component.",
@@ -3438,6 +3605,59 @@ function scopeForRoute(route: ViewRoute) {
   return { scope: route.path, scopeKind: "wiki", planPath: null };
 }
 
+function trimPlanningQuestionBuffer(text: string) {
+  return text.length > 40000 ? text.slice(-40000) : text;
+}
+
+function extractLatestPlanningQuestion(text: string, sessionId: string): PlanningQuestion | null {
+  const blocks = [...text.matchAll(/```(?:json|hyperwiki-question)?\s*([\s\S]*?)```/gi)];
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const raw = blocks[index]?.[1]?.trim();
+    if (!raw) continue;
+    const parsed = parsePlanningQuestionJson(raw, sessionId);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function parsePlanningQuestionJson(raw: string, sessionId: string): PlanningQuestion | null {
+  try {
+    const value = JSON.parse(raw) as Partial<PlanningQuestion> & { type?: string };
+    if (value.type !== "hyperwiki-question") return null;
+    const question = stringValue(value.question);
+    if (!question) return null;
+    const recommendedAnswer = stringValue(value.recommendedAnswer);
+    const reasoning = stringValue(value.reasoning);
+    const options = Array.isArray(value.options)
+      ? value.options.map(stringValue).filter(Boolean).slice(0, 7)
+      : [];
+    const normalizedOptions = options.length || !recommendedAnswer ? options : [recommendedAnswer];
+    return {
+      id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions),
+      sessionId,
+      question,
+      recommendedAnswer,
+      reasoning,
+      options: normalizedOptions,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function stableQuestionId(sessionId: string, question: string, recommendedAnswer: string, options: string[]) {
+  const input = `${sessionId}\n${question}\n${recommendedAnswer}\n${options.join("\n")}`;
+  let hash = 0;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = Math.imul(31, hash) + input.charCodeAt(index) | 0;
+  }
+  return `${sessionId}:${Math.abs(hash)}`;
+}
+
 async function sendInput(sessionId: string, input: string) {
   await hyperwikiApi.json(`/api/terminal/${encodeURIComponent(sessionId)}/write`, {
     method: "POST",
@@ -3482,6 +3702,15 @@ async function listenTerminalOutput(handler: (payload: TerminalOutputEventPayloa
 
 function terminalBytesToText(bytes: Uint8Array) {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+function terminalTextForParsing(data: string) {
+  return stripTerminalDisplayControlSequences(data)
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b[()][A-Za-z0-9]/g, "")
+    .replace(/[\u001b\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/\r/g, "\n");
 }
 
 function stripTerminalDisplayControlSequences(data: string, carry?: { current: string }) {
