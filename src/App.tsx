@@ -3458,7 +3458,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
-    "- For every user-facing question, emit a fenced ```json block containing a single object with type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options.",
+    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
@@ -3493,7 +3493,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
     "- Inspect repo evidence before asking questions the repo can answer.",
     "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
-    "- For every user-facing question, emit a fenced ```json block containing a single object with type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options.",
+    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
     "- Put the recommended answer first in options. After the block, stop and wait for the user's answer.",
     "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
     "- Preserve a flexible plan > stages > units structure; compact plans may use one implicit stage.",
@@ -3617,7 +3617,64 @@ function extractLatestPlanningQuestion(text: string, sessionId: string): Plannin
     const parsed = parsePlanningQuestionJson(raw, sessionId);
     if (parsed) return parsed;
   }
+  const rawObjects = extractRawPlanningQuestionObjects(text);
+  for (let index = rawObjects.length - 1; index >= 0; index -= 1) {
+    const parsed = parsePlanningQuestionJson(rawObjects[index], sessionId);
+    if (parsed) return parsed;
+  }
   return null;
+}
+
+function extractRawPlanningQuestionObjects(text: string) {
+  const objects: string[] = [];
+  const marker = "\"type\"";
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const markerIndex = text.indexOf(marker, searchFrom);
+    if (markerIndex === -1) break;
+    const start = text.lastIndexOf("{", markerIndex);
+    if (start === -1) {
+      searchFrom = markerIndex + marker.length;
+      continue;
+    }
+    const end = findJsonObjectEnd(text, start);
+    if (end === -1) {
+      searchFrom = markerIndex + marker.length;
+      continue;
+    }
+    const candidate = text.slice(start, end + 1);
+    if (candidate.includes("hyperwiki-question")) objects.push(candidate);
+    searchFrom = end + 1;
+  }
+  return objects;
+}
+
+function findJsonObjectEnd(text: string, start: number) {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+    } else if (char === "{") {
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return -1;
 }
 
 function parsePlanningQuestionJson(raw: string, sessionId: string): PlanningQuestion | null {
