@@ -6,7 +6,6 @@ import {
   Circle,
   Command,
   ExternalLink,
-  FileText,
   FolderOpen,
   FolderGit2,
   GitBranch,
@@ -18,8 +17,10 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Sparkles,
   Square,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -2162,48 +2163,50 @@ function NewProjectView({
   }
 
   return (
-    <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-20">
-      <div className="max-w-[68rem]">
-        <form className="w-full min-w-0 rounded-lg border bg-card px-6 py-8 shadow-[0_24px_70px_color-mix(in_srgb,var(--foreground)_10%,transparent)] md:px-9 md:py-10" data-testid="new-project-form" onSubmit={handleSubmit}>
-          <header className="mb-8">
-            <p className="m-0 text-sm font-bold uppercase tracking-normal text-muted-foreground">Imported Source</p>
-            <h1 className="font-ui m-0 mt-7 text-4xl font-bold leading-tight tracking-normal text-card-foreground md:text-5xl">What are we building?</h1>
-            <p className="m-0 mt-5 max-w-[55rem] text-base leading-8 text-muted-foreground md:text-lg">
-              Add a source brief or import a file. Hyperwiki will start a focused planning interview from that material.
-            </p>
-          </header>
+    <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
+      <div className="mx-auto grid w-full max-w-[60rem] gap-9">
+        <header className="px-1">
+          <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">New Project</h1>
+          <p className="m-0 mt-5 max-w-[42rem] text-lg leading-8 text-muted-foreground text-pretty">
+            Import a brief or source file. HyperWiki will do the rest.
+          </p>
+        </header>
 
-          <div className="grid min-w-0 gap-4">
-            <label className="grid min-w-0 gap-2">
-              <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
-              <input className="min-h-14 w-full min-w-0 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Routechat" required value={title} onChange={(event) => setTitle(event.target.value)} />
-            </label>
+        <form className="grid gap-6 rounded-lg bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_72px_rgba(0,0,0,0.08)] md:p-10" data-testid="new-project-form" onSubmit={handleSubmit}>
+          <label className="group flex min-h-44 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
+            <Upload aria-hidden="true" className="mb-5 size-11 text-primary transition-transform group-hover:-translate-y-0.5" />
+            <span className="text-lg font-bold text-card-foreground">Import project file</span>
+            <small className="mt-2 text-base text-muted-foreground">Markdown or HTML</small>
+            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+          </label>
 
-            <label className="grid min-w-0 gap-2">
-              <span className="text-xs font-bold uppercase text-muted-foreground">Source brief</span>
-              <textarea className="min-h-[13rem] w-full min-w-0 resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Paste the imported source, product note, or rough project brief." required value={document} onChange={(event) => setDocument(event.target.value)} />
-            </label>
-
-            <label className="group flex min-h-14 w-full min-w-0 cursor-pointer items-center gap-3 rounded-md border bg-background px-4 text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
-              <FileText aria-hidden="true" className="size-5 shrink-0" />
-              <span className="min-w-0 flex-1 truncate text-base">Import Markdown, MDX, or HTML instead</span>
-              <span className="rounded-md border px-3 py-1 text-xs font-bold uppercase">Choose File</span>
-              <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
-            </label>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-sm font-bold uppercase text-muted-foreground" aria-hidden="true">
+            <span className="h-px bg-border" />
+            <span>OR</span>
+            <span className="h-px bg-border" />
           </div>
 
-          <div className="mt-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <label className="flex items-center gap-3 text-sm font-bold text-muted-foreground">
-              <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
-              <span>Initialize Git and create an initial commit</span>
-            </label>
-            <Button className="min-h-14 px-6 text-base" disabled={isSubmitting} type="submit">
-              {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-              {isSubmitting ? "Planning Running" : "Start Planning"}
-            </Button>
-          </div>
+          <label className="grid gap-2">
+            <span className="text-base font-bold text-card-foreground">Project Name</span>
+            <input className="min-h-14 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name..." required value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
 
-          {status ? <p className="m-0 mt-5 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
+          <label className="grid gap-2">
+            <span className="text-base font-bold text-card-foreground">Brief</span>
+            <textarea className="min-h-[16rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
+          </label>
+
+          <label className="flex min-h-10 items-center gap-3 text-base text-card-foreground">
+            <input className="size-5 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
+            <span>Initialize Git and create an initial commit</span>
+          </label>
+
+          <Button className="min-h-14 w-full text-base active:scale-[0.96] transition-transform" disabled={isSubmitting} type="submit">
+            {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Sparkles aria-hidden="true" data-icon="inline-start" />}
+            {isSubmitting ? "Starting Agent Planning..." : "Import And Start Agent Planning"}
+          </Button>
+
+          {status ? <p className="m-0 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
           <ImportLog lines={importLog} />
         </form>
       </div>
