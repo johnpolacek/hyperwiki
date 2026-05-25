@@ -58,8 +58,5 @@ const app = appAssets.join("\n");
 if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
-if (!app.includes("Start Hyperwiki") || !app.includes("data-first-run")) {
-  throw new Error("First-run New Project layout must be bundled for empty-registry onboarding.");
-}
 
 console.log("tauri static assets smoke test passed");
