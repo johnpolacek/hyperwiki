@@ -5,6 +5,7 @@ interface MdxPlanRendererProps {
   source: string;
   markdown?: string;
   onNavigate: (path: string) => void;
+  path?: string;
 }
 
 const componentTags = [
@@ -18,8 +19,8 @@ const componentTags = [
   "CommandBlock",
 ];
 
-export function MdxPlanRenderer({ source, markdown, onNavigate }: MdxPlanRendererProps) {
-  const content = useMemo(() => renderTrustedMdx(source, onNavigate), [source, onNavigate]);
+export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanRendererProps) {
+  const content = useMemo(() => renderTrustedMdx(source, onNavigate, path), [source, onNavigate, path]);
   if (!source.trim()) {
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
   }
@@ -33,20 +34,22 @@ export function MdxPlanRenderer({ source, markdown, onNavigate }: MdxPlanRendere
   );
 }
 
-function renderTrustedMdx(source: string, onNavigate: (path: string) => void) {
+function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string) {
   if (typeof DOMParser === "undefined") return null;
   const html = mdxBodyToHtml(source);
   const document = new DOMParser().parseFromString(`<main>${html}</main>`, "text/html");
-  return Array.from(document.body.firstElementChild?.childNodes || []).map((node, index) => renderNode(node, `${index}`, onNavigate));
+  return Array.from(document.body.firstElementChild?.childNodes || []).map((node, index) => renderNode(node, `${index}`, onNavigate, path));
 }
 
 function mdxBodyToHtml(source: string) {
   const body = normalizeComponentTags(stripFrontmatter(source).replaceAll("className=", "class="));
+  const lines = body.split(/\r?\n/);
   const html: string[] = [];
   let inCode = false;
   let code = "";
   let inList = false;
-  for (const line of body.split(/\r?\n/)) {
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
     const trimmed = line.trim();
     if (trimmed.startsWith("```")) {
       if (inCode) {
@@ -100,6 +103,16 @@ function mdxBodyToHtml(source: string) {
       html.push(`<li>${inlineMarkdown(item[1])}</li>`);
       continue;
     }
+    const table = parseTableBlock(lines, lineIndex);
+    if (table) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      html.push(table.html);
+      lineIndex = table.nextIndex - 1;
+      continue;
+    }
     if (inList) {
       html.push("</ul>");
       inList = false;
@@ -108,6 +121,46 @@ function mdxBodyToHtml(source: string) {
   }
   if (inList) html.push("</ul>");
   return html.join("\n");
+}
+
+function parseTableBlock(lines: string[], startIndex: number) {
+  const headerLine = lines[startIndex];
+  const separatorLine = lines[startIndex + 1];
+  if (!isTableRowLine(headerLine) || !isTableSeparatorLine(separatorLine)) return null;
+
+  const headers = splitTableRow(headerLine);
+  const rows: string[][] = [];
+  let nextIndex = startIndex + 2;
+  while (nextIndex < lines.length && isTableRowLine(lines[nextIndex])) {
+    rows.push(splitTableRow(lines[nextIndex]));
+    nextIndex += 1;
+  }
+
+  const head = headers.map((cell) => `<th>${inlineMarkdown(cell)}</th>`).join("");
+  const body = rows
+    .map((row) => `<tr>${headers.map((_, index) => `<td>${inlineMarkdown(row[index] || "")}</td>`).join("")}</tr>`)
+    .join("");
+
+  return {
+    html: `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`,
+    nextIndex,
+  };
+}
+
+function isTableRowLine(line: string | undefined) {
+  if (!line) return false;
+  const trimmed = line.trim();
+  return trimmed.startsWith("|") && trimmed.endsWith("|") && trimmed.includes("|", 1);
+}
+
+function isTableSeparatorLine(line: string | undefined) {
+  if (!isTableRowLine(line)) return false;
+  if (!line) return false;
+  return splitTableRow(line).every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function splitTableRow(line: string) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
 }
 
 function stripFrontmatter(source: string) {
@@ -126,12 +179,12 @@ function normalizeComponentTags(source: string) {
   }, source);
 }
 
-function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => void): ReactNode {
+function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => void, path?: string): ReactNode {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (!(node instanceof Element)) return null;
 
   const tag = node.tagName.toLowerCase();
-  const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate));
+  const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path));
   const className = node.getAttribute("class") || "";
   const component = node.getAttribute("data-plan-component") || "";
   const classTokens = new Set(className.split(/\s+/).filter(Boolean));
@@ -141,16 +194,16 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   }
   if (tag === "a") {
     const href = node.getAttribute("href") || "";
+    const wikiPath = resolveWikiLink(href, path);
     return (
       <a
         className="font-semibold text-primary underline-offset-4 hover:underline"
         href={href}
         key={key}
         onClick={(event) => {
-          if (!href.startsWith("/wiki/") && !href.startsWith("/projects/")) return;
+          if (!wikiPath) return;
           event.preventDefault();
-          const projectWikiMatch = href.match(/^\/projects\/[^/]+(\/wiki\/.*)$/);
-          onNavigate(projectWikiMatch?.[1] || href);
+          onNavigate(wikiPath);
         }}
       >
         {children}
@@ -164,6 +217,12 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
   if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
   if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-secondary px-4 py-3 font-mono text-xs leading-6" key={key}>{children}</pre>;
+  if (tag === "table") return <div className="overflow-x-auto rounded-md border" key={key}><table className="w-full border-collapse text-sm">{children}</table></div>;
+  if (tag === "thead") return <thead className="bg-secondary/70 text-foreground" key={key}>{children}</thead>;
+  if (tag === "tbody") return <tbody className="divide-y" key={key}>{children}</tbody>;
+  if (tag === "tr") return <tr key={key}>{children}</tr>;
+  if (tag === "th") return <th className="px-3 py-2 text-left font-bold leading-6" key={key}>{children}</th>;
+  if (tag === "td") return <td className="px-3 py-2 align-top leading-6 text-muted-foreground" key={key}>{children}</td>;
   if (tag === "ul") return <ul className="m-0 grid gap-2 pl-5 text-sm leading-7 text-muted-foreground" key={key}>{children}</ul>;
   if (tag === "ol") return <ol className="m-0 grid gap-2 pl-5 text-sm leading-7 text-muted-foreground" key={key}>{children}</ol>;
   if (tag === "li") return <li key={key}>{children}</li>;
@@ -191,8 +250,34 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   return <span key={key}>{children}</span>;
 }
 
+function resolveWikiLink(href: string, currentPath?: string) {
+  if (href.startsWith("/wiki/")) return href;
+
+  const projectWikiMatch = href.match(/^\/projects\/[^/]+(\/wiki\/.*)$/);
+  if (projectWikiMatch) return projectWikiMatch[1];
+
+  if (!currentPath || href.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(href)) return null;
+  if (!href.startsWith("./") && !href.startsWith("../") && !href.endsWith(".mdx")) return null;
+
+  const [targetPath] = href.split("#");
+  const baseParts = currentPath.split("/").slice(0, -1);
+  for (const part of targetPath.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      baseParts.pop();
+      continue;
+    }
+    baseParts.push(part);
+  }
+
+  const resolved = baseParts.join("/");
+  return resolved.startsWith("/wiki/") ? resolved : null;
+}
+
 function inlineMarkdown(value: string) {
-  return escapeHtml(value).replace(/`([^`]+)`/g, "<code>$1</code>");
+  return escapeHtml(value)
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
 function escapeHtml(value: string) {

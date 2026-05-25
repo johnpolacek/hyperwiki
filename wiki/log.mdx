@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 fix | MDX plan table rendering</h2>
+  <ul>
+    <li>Fixed the React MDX plan renderer so GitHub-style pipe tables render as semantic tables instead of visible pipe-delimited text.</li>
+    <li>Added inline Markdown link rendering and route-aware relative MDX navigation for links inside rendered plan content.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 polish | New Project upload-first form restored</h2>
   <ul>
     <li>Restored the New Project route to the upload-first form: page title, import drop zone, OR divider, Project Name field, Brief textarea, Git initialization checkbox, and full-width agent planning action.</li>

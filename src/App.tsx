@@ -1499,6 +1499,7 @@ function WorkspacePane(props: {
           <MdxPlanRenderer
             markdown={props.wikiSource.markdown}
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
+            path={props.wikiPath}
             source={props.wikiSource.source}
           />
         ) : (
