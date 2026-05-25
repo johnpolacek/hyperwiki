@@ -2169,13 +2169,14 @@ function NewProjectView({
   const subhead = isFirstProject
     ? "Create your first project by importing a brief or source file. HyperWiki will do the rest."
     : "Import a brief or source file. HyperWiki will do the rest.";
+  const canSubmitBrief = Boolean(title.trim() && document.trim());
 
   return (
     <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
       <div className="mx-auto grid w-full max-w-[60rem] gap-9">
         <header className="px-1">
           <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">{heading}</h1>
-          <p className="m-0 mt-5 text-lg leading-8 text-muted-foreground text-pretty">
+          <p className="m-0 mt-3 text-lg leading-8 text-muted-foreground text-pretty">
             {subhead}
           </p>
         </header>
@@ -2201,7 +2202,7 @@ function NewProjectView({
 
           <label className="grid gap-2">
             <span className="text-base font-bold text-card-foreground">Brief</span>
-            <textarea className="min-h-[16rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
+            <textarea className="min-h-[9rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
 
           <label className="flex min-h-10 items-center gap-3 text-base text-card-foreground">
@@ -2209,9 +2210,9 @@ function NewProjectView({
             <span>Initialize Git and create an initial commit</span>
           </label>
 
-          <Button className="min-h-14 w-full text-base active:scale-[0.96] transition-transform" disabled={isSubmitting} type="submit">
+          <Button className="min-h-14 w-full text-base active:scale-[0.96] transition-transform" disabled={isSubmitting || !canSubmitBrief} type="submit">
             {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Sparkles aria-hidden="true" data-icon="inline-start" />}
-            {isSubmitting ? "Starting Agent Planning..." : "Import And Start Agent Planning"}
+            {isSubmitting ? "Starting Agent Planning..." : "Start Agent Planning"}
           </Button>
 
           {status ? <p className="m-0 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
