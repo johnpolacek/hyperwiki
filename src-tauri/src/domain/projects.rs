@@ -47,6 +47,8 @@ pub struct ProjectRecord {
     pub last_opened_at: Option<String>,
     #[serde(default)]
     pub active: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub import_planning: Option<crate::domain::import_planning::ImportPlanningStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -179,6 +181,9 @@ impl ProjectRegistry {
             available: true,
             last_opened_at: Some(now_isoish()),
             active: false,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &project.root,
+            )),
         };
         registry.projects = prune_missing_worktrees(with_unique_slugs(
             std::iter::once(record.clone())
@@ -222,6 +227,9 @@ impl ProjectRegistry {
                 worktree_slug,
                 available: project.available,
                 active: false,
+                import_planning: project
+                    .available
+                    .then(|| crate::domain::import_planning::import_planning_status(&item.root)),
                 ..item
             });
         }
@@ -261,6 +269,9 @@ impl ProjectRegistry {
         project.available.then_some(ProjectRecord {
             name: project.name,
             available: true,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &record.root,
+            )),
             ..record
         })
     }
@@ -285,6 +296,9 @@ impl ProjectRegistry {
         project.available.then_some(ProjectRecord {
             name: project.name,
             available: true,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &record.root,
+            )),
             ..record
         })
     }
@@ -2343,6 +2357,7 @@ mod tests {
             available: true,
             last_opened_at: None,
             active: false,
+            import_planning: None,
         }
     }
 

@@ -243,6 +243,8 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
             <li>Ran <code>pnpm run check</code>.</li>
             <li>Ran <code>pnpm run build:frontend</code>.</li>
             <li>Added a React theme-token bridge so utility routes such as Settings and New Project use the active theme's tinted background, panel, border, text, accent, muted, and readable foreground tokens instead of the neutral fallback.</li>
+            <li>Polished the New Project route into an imported-source card matching the agent Q&amp;A visual language, with large prompt heading, contained source fields, inline file import, Git toggle, and right-aligned planning action.</li>
+            <li>Rechecked New Project desktop and mobile layout with <code>agent-browser</code>; fixed mobile overflow from long placeholder and import labels.</li>
             <li>Verified Settings and New Project visually with <code>agent-browser</code> against the running Vite preview on <code>127.0.0.1:1420</code>; the frontend-only server falls back to the default theme when the settings API is unavailable.</li>
             <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
             <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>

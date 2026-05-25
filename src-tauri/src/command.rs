@@ -259,6 +259,50 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::import_planning::clarify_import_plan(&project.root, parsed),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/import-planning/status") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        return json_response(
+            200,
+            &crate::domain::import_planning::import_planning_status(&project.root),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/question") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        return json_response(
+            200,
+            &crate::domain::import_planning::import_planning_status(&project.root),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/answer") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::import_planning::ImportPlanningProgressRequest>(body)
+                    .ok()
+            })
+            .unwrap_or(crate::domain::import_planning::ImportPlanningProgressRequest {
+                question: None,
+                answer: String::new(),
+            });
+        return match crate::domain::import_planning::record_import_planning_answer(
+            &project.root,
+            parsed,
+        ) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "POST" && request.path.starts_with("/api/import-planning/create-plan") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
         else {
@@ -725,13 +769,14 @@ fn current_project_record() -> Option<crate::domain::projects::ProjectRecord> {
     info.available
         .then_some(crate::domain::projects::ProjectRecord {
             id: "current".to_string(),
-            root,
+            root: root.clone(),
             name: info.name,
             project_slug: "current".to_string(),
             worktree_slug: "main".to_string(),
             last_opened_at: None,
             available: true,
             active: false,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(&root)),
         })
 }
 
@@ -1208,6 +1253,11 @@ mod tests {
             "<h1>Product Brief</h1><section class=\"summary\"><h2>Summary</h2><ul><li>RouteChat gives spontaneous guided audio tours.</li></ul></section><section><h2>Problem</h2><p>Most tours require planning.</p></section><section><h2>MVP</h2><ul><li>Generates narration from current location.</li></ul></section><section><h2>Promotion Criteria</h2><ul><li>A safety model for driving and transit use.</li></ul></section>",
         )
         .unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import.mdx"),
+            "<h1>Source Import</h1><p>RouteChat gives spontaneous guided audio tours.</p>",
+        )
+        .unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
         let project = crate::domain::projects::ProjectRegistry::from_environment()
@@ -1225,6 +1275,23 @@ mod tests {
         assert!(clarify
             .text
             .contains("Pick the one lane this prototype has to prove first."));
+
+        let status = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/status?project={}", project.id),
+            method: "GET".to_string(),
+            body: None,
+        });
+        assert!(status.ok);
+        assert!(status.text.contains("\"status\":\"incomplete\""));
+
+        let answer = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/answer?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"question\":{\"id\":\"first-mode\",\"label\":\"First Mode\",\"prompt\":\"Pick the one lane this prototype has to prove first.\",\"impact\":\"blocking\",\"rationale\":\"Scope lock.\"},\"answer\":\"Walking tours first.\"}".to_string()),
+        });
+        assert!(answer.ok, "{}", answer.text);
+        assert!(answer.text.contains("\"answeredCount\":1"));
+        assert!(root.join("wiki").join("sources").join("import-qna.mdx").exists());
 
         let blocked = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),

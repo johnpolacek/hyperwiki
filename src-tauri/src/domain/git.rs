@@ -609,6 +609,7 @@ mod tests {
             available: true,
             last_opened_at: None,
             active: false,
+            import_planning: None,
         };
 
         let error = create_worktree_checkout(

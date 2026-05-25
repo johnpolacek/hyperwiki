@@ -7,6 +7,22 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 implementation | incomplete import resume</h2>
+  <ul>
+    <li>Completed <a href="/wiki/plans/features/incomplete-import-resume.mdx">Incomplete Import Resume</a> so abandoned imported projects remain registered, visibly marked, and resumable from saved Q&amp;A context.</li>
+    <li>Added Rust import planning status/progress endpoints, derived project-list import status, repo-visible <code>wiki/sources/import-qna.mdx</code> persistence, React project-card status, and incomplete-import resume routing.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | New Project source card</h2>
+  <ul>
+    <li>Restyled the React New Project route as a large imported-source card with prompt-style heading, contained source fields, inline file import, Git initialization toggle, and right-aligned planning action.</li>
+    <li>Verified desktop and mobile previews with <code>agent-browser</code> against <code>http://127.0.0.1:1420/projects/new</code>, including a mobile overflow fix for long placeholder and import labels.</li>
+    <li>Ran <code>pnpm run check</code> and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-24 implementation | MDX-first planning reset</h2>
   <ul>
     <li>Changed Hyperwiki's canonical wiki artifact format from app-rendered HTML pages to app-rendered MDX pages under <code>wiki/**/*.mdx</code>, while preserving Markdown-only agent convention files such as root <code>AGENTS.md</code>.</li>
