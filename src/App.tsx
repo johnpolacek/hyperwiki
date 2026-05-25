@@ -1393,11 +1393,12 @@ function WorkspacePane(props: {
   wikiPath: string;
   wikiPages: WikiPage[];
 }) {
+  const isFirstProject = props.hasLoadedProjects && props.projectGroups.length === 0;
   if (props.route.kind === "projects") {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
@@ -1409,7 +1410,7 @@ function WorkspacePane(props: {
     return <PendingImportView project={props.pendingImportProject} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
   }
   if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
     return (
@@ -2054,8 +2055,10 @@ function PendingImportView({ project }: { project: ProjectRecord }) {
 }
 
 function NewProjectView({
+  isFirstProject = false,
   onCreateProject,
 }: {
+  isFirstProject?: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
 }) {
   const [title, setTitle] = useState("");
@@ -2162,13 +2165,18 @@ function NewProjectView({
     );
   }
 
+  const heading = isFirstProject ? "Welcome to HyperWiki" : "New Project";
+  const subhead = isFirstProject
+    ? "Create your first project by importing a brief or source file. HyperWiki will do the rest."
+    : "Import a brief or source file. HyperWiki will do the rest.";
+
   return (
     <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
       <div className="mx-auto grid w-full max-w-[60rem] gap-9">
         <header className="px-1">
-          <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">New Project</h1>
+          <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">{heading}</h1>
           <p className="m-0 mt-5 max-w-[42rem] text-lg leading-8 text-muted-foreground text-pretty">
-            Import a brief or source file. HyperWiki will do the rest.
+            {subhead}
           </p>
         </header>
 
