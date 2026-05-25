@@ -315,6 +315,7 @@ function App() {
   const importedPlanningCompletedKeys = useRef(new Set<string>());
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
+  const loggedPlanningQuestionIds = useRef(new Set<string>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -660,7 +661,10 @@ function App() {
     planningQuestionBuffers.current.set(sessionId, next);
     const question = extractLatestPlanningQuestion(next, sessionId);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
-      appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length}`);
+      if (!loggedPlanningQuestionIds.current.has(question.id)) {
+        loggedPlanningQuestionIds.current.add(question.id);
+        appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length}`);
+      }
       setPlanningInterviewStatus("question_ready");
       setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
     }
@@ -677,7 +681,9 @@ function App() {
     ].join("\n");
     answeredPlanningQuestionIds.current.add(question.id);
     setPlanningInterviewStatus("answering");
-    await sendInput(question.sessionId, response);
+    appendImportLog(`Planning answer submitting session=${question.sessionId} question=${question.id} chars=${trimmed.length}`);
+    await sendInput(question.sessionId, terminalPasteSubmitInput(response));
+    appendImportLog(`Planning answer submitted session=${question.sessionId} question=${question.id}`);
     setLastPlanningAnswer(trimmed);
     setActivePlanningQuestion(null);
     setPlanningInterviewStatus("waiting_for_question");
@@ -3821,6 +3827,10 @@ async function sendInput(sessionId: string, input: string) {
     method: "POST",
     body: { input },
   });
+}
+
+function terminalPasteSubmitInput(message: string) {
+  return `\x1b[200~${message}\x1b[201~\r`;
 }
 
 async function waitForAgentPromptReady(sessionId: string) {
