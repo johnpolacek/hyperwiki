@@ -655,6 +655,7 @@ function App() {
     planningQuestionBuffers.current.set(sessionId, next);
     const question = extractLatestPlanningQuestion(next, sessionId);
     if (question) {
+      appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length}`);
       setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
     }
   }, []);
@@ -3680,25 +3681,65 @@ function findJsonObjectEnd(text: string, start: number) {
 function parsePlanningQuestionJson(raw: string, sessionId: string): PlanningQuestion | null {
   try {
     const value = JSON.parse(raw) as Partial<PlanningQuestion> & { type?: string };
-    if (value.type !== "hyperwiki-question") return null;
-    const question = stringValue(value.question);
-    if (!question) return null;
-    const recommendedAnswer = stringValue(value.recommendedAnswer);
-    const reasoning = stringValue(value.reasoning);
-    const options = Array.isArray(value.options)
-      ? value.options.map(stringValue).filter(Boolean).slice(0, 7)
-      : [];
-    const normalizedOptions = options.length || !recommendedAnswer ? options : [recommendedAnswer];
-    return {
-      id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions),
-      sessionId,
-      question,
-      recommendedAnswer,
-      reasoning,
-      options: normalizedOptions,
-    };
+    return planningQuestionFromValue(value, sessionId);
   } catch {
-    return null;
+    return parseLoosePlanningQuestion(raw, sessionId);
+  }
+}
+
+function parseLoosePlanningQuestion(raw: string, sessionId: string): PlanningQuestion | null {
+  if (!raw.includes("hyperwiki-question")) return null;
+  const question = looseJsonStringField(raw, "question");
+  if (!question) return null;
+  const recommendedAnswer = looseJsonStringField(raw, "recommendedAnswer");
+  const reasoning = looseJsonStringField(raw, "reasoning");
+  const options = looseJsonArrayField(raw, "options");
+  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options);
+}
+
+function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: string }, sessionId: string) {
+  if (value.type !== "hyperwiki-question") return null;
+  const question = stringValue(value.question);
+  if (!question) return null;
+  const recommendedAnswer = stringValue(value.recommendedAnswer);
+  const reasoning = stringValue(value.reasoning);
+  const options = Array.isArray(value.options)
+    ? value.options.map(stringValue).filter(Boolean).slice(0, 7)
+    : [];
+  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options);
+}
+
+function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: string[]) {
+  const normalizedOptions = options.length || !recommendedAnswer ? options : [recommendedAnswer];
+  return {
+    id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions),
+    sessionId,
+    question,
+    recommendedAnswer,
+    reasoning,
+    options: normalizedOptions,
+  };
+}
+
+function looseJsonStringField(raw: string, field: string) {
+  const match = raw.match(new RegExp(`"${field}"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,\\s*"|,\\s*\\]|\\s*\\})`));
+  return match?.[1] ? unescapeLooseJsonString(match[1]) : "";
+}
+
+function looseJsonArrayField(raw: string, field: string) {
+  const match = raw.match(new RegExp(`"${field}"\\s*:\\s*\\[([\\s\\S]*?)\\]`));
+  if (!match?.[1]) return [];
+  return [...match[1].matchAll(/"([\s\S]*?)"\s*,?/g)]
+    .map((item) => unescapeLooseJsonString(item[1] || ""))
+    .filter(Boolean)
+    .slice(0, 7);
+}
+
+function unescapeLooseJsonString(value: string) {
+  try {
+    return JSON.parse(`"${value.replace(/\n/g, "\\n")}"`).trim();
+  } catch {
+    return value.replace(/\s+/g, " ").trim();
   }
 }
 
