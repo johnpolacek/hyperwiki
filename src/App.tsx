@@ -2821,6 +2821,7 @@ function XtermSession({
   const fitRef = useRef<FitAddon | null>(null);
   const seenLengthRef = useRef(0);
   const loggedPlainTextRef = useRef("");
+  const displayControlCarryRef = useRef("");
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -2830,6 +2831,7 @@ function XtermSession({
     closedRef.current = false;
     seenLengthRef.current = 0;
     loggedPlainTextRef.current = "";
+    displayControlCarryRef.current = "";
     pendingRef.current = [];
 
     const terminal = new Terminal({
@@ -2897,7 +2899,7 @@ function XtermSession({
         if (replay) {
           logTerminalPlainText(session.id, "Terminal replay plain", replay.length, null, replay, loggedPlainTextRef);
           seenLengthRef.current = replay.length;
-          terminal.write(stripTerminalDisplayControlSequences(replay));
+          terminal.write(stripTerminalDisplayControlSequences(replay, displayControlCarryRef));
         }
         fit();
         void flush();
@@ -2916,12 +2918,13 @@ function XtermSession({
           const next = output.slice(seenLengthRef.current);
           seenLengthRef.current = output.length;
           logTerminalPlainText(session.id, "Terminal output plain", next.length, output.length, output, loggedPlainTextRef);
-          terminal.write(stripTerminalDisplayControlSequences(next));
+          terminal.write(stripTerminalDisplayControlSequences(next, displayControlCarryRef));
         } else if (output.length < seenLengthRef.current) {
           seenLengthRef.current = output.length;
           terminal.clear();
+          displayControlCarryRef.current = "";
           logTerminalPlainText(session.id, "Terminal output reset plain", output.length, null, output, loggedPlainTextRef);
-          terminal.write(stripTerminalDisplayControlSequences(output));
+          terminal.write(stripTerminalDisplayControlSequences(output, displayControlCarryRef));
         }
       } catch {
         // A closed session is reflected by the next session refresh.
@@ -3442,8 +3445,28 @@ function normalizeTerminalInput(data: string) {
   return data;
 }
 
-function stripTerminalDisplayControlSequences(data: string) {
-  return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
+function stripTerminalDisplayControlSequences(data: string, carry?: { current: string }) {
+  const raw = `${carry?.current || ""}${String(data || "")}`;
+  const { complete, pending } = splitTrailingTerminalControlSequence(raw);
+  if (carry) carry.current = pending;
+  return complete.replace(/\x1b\[\?2026[hl]/g, "");
+}
+
+function splitTrailingTerminalControlSequence(data: string) {
+  const escapeIndex = data.lastIndexOf("\x1b");
+  if (escapeIndex === -1) return { complete: data, pending: "" };
+  const suffix = data.slice(escapeIndex);
+  if (suffix === "\x1b") return { complete: data.slice(0, escapeIndex), pending: suffix };
+  if (suffix.startsWith("\x1b[")) {
+    if (/^\x1b\[[0-?]*[ -/]*[@-~]$/.test(suffix)) return { complete: data, pending: "" };
+    if (!/[@-~]/.test(suffix.slice(2).replace(/[0-?]/g, "").replace(/[ -/]/g, ""))) {
+      return { complete: data.slice(0, escapeIndex), pending: suffix };
+    }
+  }
+  if (suffix.startsWith("\x1b]") && !suffix.includes("\x07") && !suffix.includes("\x1b\\")) {
+    return { complete: data.slice(0, escapeIndex), pending: suffix };
+  }
+  return { complete: data, pending: "" };
 }
 
 function logTerminalPlainText(
