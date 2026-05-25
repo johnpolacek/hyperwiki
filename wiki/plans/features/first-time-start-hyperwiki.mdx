@@ -1,0 +1,39 @@
+---
+title: "First-Time Start Hyperwiki"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>First-Time Start Hyperwiki</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: none; monitor first-run onboarding during desktop dogfood.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Add a distinct first-run version of the New Project surface for users with an empty Hyperwiki registry. The screen should frame the action as starting Hyperwiki while preserving the existing project creation, Git initialization, import handoff, and agent-led planning Q&amp;A behavior.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Detect first-run state from loaded project groups: no registered projects and no active project.</li>
+    <li>Render the first-run layout on startup and direct <code>/projects/new</code> only while the local project registry is empty.</li>
+    <li>Keep the existing required intake: project name, source brief or imported file, and Git initialization choice.</li>
+    <li>Reuse the existing create-project handoff so the first project opens the planning dashboard and starts the imported-project Q&amp;A automatically.</li>
+    <li>Do not change the agent prompt, Rust project creation API, scaffold generation, or imported-planning contract.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run smoke:tauri-static-assets</code></li>
+    <li>Frontend-only browser inspection confirmed the normal New Project route remains available when the desktop project registry cannot be loaded from Vite alone.</li>
+  </ul>
+</section>

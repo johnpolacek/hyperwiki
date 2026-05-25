@@ -1392,11 +1392,12 @@ function WorkspacePane(props: {
   wikiPath: string;
   wikiPages: WikiPage[];
 }) {
+  const isFirstRun = props.hasLoadedProjects && props.projectGroups.length === 0;
   if (props.route.kind === "projects") {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstRun={isFirstRun} onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
@@ -1408,7 +1409,7 @@ function WorkspacePane(props: {
     return <PendingImportView project={props.pendingImportProject} />;
   }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstRun={isFirstRun} onCreateProject={props.onCreateProject} />;
   }
   if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
     return (
@@ -2053,8 +2054,10 @@ function PendingImportView({ project }: { project: ProjectRecord }) {
 }
 
 function NewProjectView({
+  isFirstRun = false,
   onCreateProject,
 }: {
+  isFirstRun?: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
 }) {
   const [title, setTitle] = useState("");
@@ -2161,15 +2164,101 @@ function NewProjectView({
     );
   }
 
+  const eyebrow = isFirstRun ? "First Hyperwiki Project" : "Imported Source";
+  const heading = isFirstRun ? "Start Hyperwiki" : "What are we building?";
+  const description = isFirstRun
+    ? "Add the first project name and source brief. Hyperwiki will create the local workspace, initialize Git if selected, then start the planning interview."
+    : "Add a source brief or import a file. Hyperwiki will start a focused planning interview from that material.";
+  const sourcePlaceholder = isFirstRun
+    ? "Paste the project idea, product note, imported source, or rough brief that should anchor the first plan."
+    : "Paste the imported source, product note, or rough project brief.";
+  const submitLabel = isFirstRun ? "Start Hyperwiki" : "Start Planning";
+
+  if (isFirstRun) {
+    return (
+      <section className="min-h-0 overflow-auto bg-background px-5 py-8 md:px-8 md:py-12">
+        <div className="mx-auto grid w-full max-w-[76rem] gap-6 xl:grid-cols-[minmax(18rem,0.78fr)_minmax(34rem,1fr)]">
+          <aside className="flex min-h-[22rem] flex-col justify-between rounded-lg bg-card p-7 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_72px_rgba(0,0,0,0.08)] md:p-8">
+            <div className="grid gap-5">
+              <p className="m-0 text-sm font-bold uppercase tracking-normal text-muted-foreground">{eyebrow}</p>
+              <div className="grid gap-4">
+                <h1 className="font-ui m-0 text-5xl font-semibold leading-[0.96] text-balance text-card-foreground md:text-6xl">Start Hyperwiki</h1>
+                <p className="m-0 max-w-[34rem] text-base leading-7 text-muted-foreground text-pretty">
+                  Create the first local project and move straight into the first planning interview.
+                </p>
+              </div>
+            </div>
+            <div className="mt-10 grid gap-3 text-sm leading-6 text-muted-foreground">
+              <div className="rounded-md bg-background p-4 shadow-[inset_0_0_0_1px_hsl(var(--border))]">
+                <strong className="block text-card-foreground">Local first</strong>
+                <span>Project files, Git state, and agent sessions stay inside your machine.</span>
+              </div>
+              <div className="rounded-md bg-background p-4 shadow-[inset_0_0_0_1px_hsl(var(--border))]">
+                <strong className="block text-card-foreground">Plan first</strong>
+                <span>The existing Q&A flow starts automatically after the workspace opens.</span>
+              </div>
+            </div>
+          </aside>
+
+          <form
+            className="w-full min-w-0 rounded-lg bg-card px-6 py-7 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_72px_rgba(0,0,0,0.08)] md:px-8 md:py-8"
+            data-testid="new-project-form"
+            data-first-run="true"
+            onSubmit={handleSubmit}
+          >
+            <header className="mb-7">
+              <p className="m-0 text-sm font-bold uppercase tracking-normal text-muted-foreground">{eyebrow}</p>
+              <h2 className="font-ui m-0 mt-4 text-3xl font-semibold leading-tight text-balance text-card-foreground md:text-4xl">{heading}</h2>
+              <p className="m-0 mt-4 max-w-[48rem] text-base leading-7 text-muted-foreground text-pretty">{description}</p>
+            </header>
+
+            <div className="grid min-w-0 gap-4">
+              <label className="grid min-w-0 gap-2">
+                <span className="text-xs font-bold uppercase text-muted-foreground">Project name</span>
+                <input className="min-h-14 w-full min-w-0 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Routechat" required value={title} onChange={(event) => setTitle(event.target.value)} />
+              </label>
+
+              <label className="grid min-w-0 gap-2">
+                <span className="text-xs font-bold uppercase text-muted-foreground">Source brief</span>
+                <textarea className="min-h-[14rem] w-full min-w-0 resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" placeholder={sourcePlaceholder} required value={document} onChange={(event) => setDocument(event.target.value)} />
+              </label>
+
+              <label className="group flex min-h-14 w-full min-w-0 cursor-pointer items-center gap-3 rounded-md border bg-background px-4 text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+                <FileText aria-hidden="true" data-icon="inline-start" />
+                <span className="min-w-0 flex-1 truncate text-base">Import Markdown, MDX, or HTML instead</span>
+                <span className="rounded-md border px-3 py-1 text-xs font-bold uppercase">Choose File</span>
+                <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+              </label>
+            </div>
+
+            <div className="mt-7 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <label className="flex min-h-10 items-center gap-3 text-sm font-bold text-muted-foreground">
+                <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
+                <span>Initialize Git and create an initial commit</span>
+              </label>
+              <Button className="min-h-14 px-6 text-base active:scale-[0.96] transition-transform" disabled={isSubmitting} type="submit">
+                {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
+                {isSubmitting ? "Planning Running" : submitLabel}
+              </Button>
+            </div>
+
+            {status ? <p className="m-0 mt-5 rounded-md bg-background px-4 py-3 text-sm text-muted-foreground shadow-[inset_0_0_0_1px_hsl(var(--border))]" role="status">{status}</p> : null}
+            <ImportLog lines={importLog} />
+          </form>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-20">
       <div className="max-w-[68rem]">
         <form className="w-full min-w-0 rounded-lg border bg-card px-6 py-8 shadow-[0_24px_70px_color-mix(in_srgb,var(--foreground)_10%,transparent)] md:px-9 md:py-10" data-testid="new-project-form" onSubmit={handleSubmit}>
           <header className="mb-8">
-            <p className="m-0 text-sm font-bold uppercase tracking-normal text-muted-foreground">Imported Source</p>
-            <h1 className="font-ui m-0 mt-7 text-4xl font-bold leading-tight tracking-normal text-card-foreground md:text-5xl">What are we building?</h1>
+            <p className="m-0 text-sm font-bold uppercase tracking-normal text-muted-foreground">{eyebrow}</p>
+            <h1 className="font-ui m-0 mt-7 text-4xl font-bold leading-tight tracking-normal text-card-foreground text-balance md:text-5xl">{heading}</h1>
             <p className="m-0 mt-5 max-w-[55rem] text-base leading-8 text-muted-foreground md:text-lg">
-              Add a source brief or import a file. Hyperwiki will start a focused planning interview from that material.
+              {description}
             </p>
           </header>
 
@@ -2181,7 +2270,7 @@ function NewProjectView({
 
             <label className="grid min-w-0 gap-2">
               <span className="text-xs font-bold uppercase text-muted-foreground">Source brief</span>
-              <textarea className="min-h-[13rem] w-full min-w-0 resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Paste the imported source, product note, or rough project brief." required value={document} onChange={(event) => setDocument(event.target.value)} />
+              <textarea className="min-h-[13rem] w-full min-w-0 resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/80 focus-visible:ring-2 focus-visible:ring-ring" placeholder={sourcePlaceholder} required value={document} onChange={(event) => setDocument(event.target.value)} />
             </label>
 
             <label className="group flex min-h-14 w-full min-w-0 cursor-pointer items-center gap-3 rounded-md border bg-background px-4 text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
@@ -2199,7 +2288,7 @@ function NewProjectView({
             </label>
             <Button className="min-h-14 px-6 text-base" disabled={isSubmitting} type="submit">
               {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-              {isSubmitting ? "Planning Running" : "Start Planning"}
+              {isSubmitting ? "Planning Running" : submitLabel}
             </Button>
           </div>
 
