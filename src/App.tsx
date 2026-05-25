@@ -2724,19 +2724,24 @@ function TerminalPane(props: {
       <div className="flex min-h-0 flex-1 flex-col">
         {props.sessions.length ? (
           <>
-            <div className="flex max-h-40 shrink-0 flex-col gap-2 overflow-auto border-b border-[#2c302d] p-2">
-              {props.sessions.map((session) => (
-                <TerminalSessionTab
-                  isActive={activeSession?.id === session.id}
-                  key={session.id}
-                  onClose={() => props.onCloseSession(session.id)}
-                  onRename={(name) => props.onRenameSession(session.id, name)}
-                  onRestart={() => props.onRestartSession(session)}
-                  onSelect={() => props.onSelectSession(session.id)}
-                  session={session}
-                />
-              ))}
-            </div>
+            {props.sessions.length > 1 ? (
+              <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#2c302d] bg-[#151816] px-2 py-1.5 font-mono text-xs">
+                {props.sessions.map((session) => (
+                  <button
+                    className={cn(
+                      "max-w-44 truncate rounded border border-transparent px-2.5 py-1 text-left text-[#9da79f] transition-colors hover:border-[#3a403b] hover:text-[#eef2ec]",
+                      activeSession?.id === session.id && "border-[#8ea0ff] bg-[#8ea0ff]/15 text-[#eef2ec]",
+                    )}
+                    key={session.id}
+                    onClick={() => props.onSelectSession(session.id)}
+                    title={session.cwd || session.command || session.shell || session.id}
+                    type="button"
+                  >
+                    {session.name || session.role || "terminal"}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="min-h-0 flex-1">
               {activeSession ? (
                 <XtermSession activeProject={props.activeProject} key={activeSession.id} scope={props.scope} session={activeSession} />
@@ -2815,6 +2820,7 @@ function XtermSession({
   const terminalRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const seenLengthRef = useRef(0);
+  const loggedPlainTextRef = useRef("");
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -2823,6 +2829,7 @@ function XtermSession({
     if (!container) return;
     closedRef.current = false;
     seenLengthRef.current = 0;
+    loggedPlainTextRef.current = "";
     pendingRef.current = [];
 
     const terminal = new Terminal({
@@ -2888,7 +2895,7 @@ function XtermSession({
         });
         const replay = String(started.replay || "");
         if (replay) {
-          appendImportLog(`Terminal replay plain session=${session.id} chars=${replay.length} text=${terminalPlainTextForLog(replay)}`);
+          logTerminalPlainText(session.id, "Terminal replay plain", replay.length, null, replay, loggedPlainTextRef);
           seenLengthRef.current = replay.length;
           terminal.write(stripTerminalDisplayControlSequences(replay));
         }
@@ -2908,12 +2915,12 @@ function XtermSession({
         if (output.length > seenLengthRef.current) {
           const next = output.slice(seenLengthRef.current);
           seenLengthRef.current = output.length;
-          appendImportLog(`Terminal output plain session=${session.id} chars=${next.length} total=${output.length} text=${terminalPlainTextForLog(next)}`);
+          logTerminalPlainText(session.id, "Terminal output plain", next.length, output.length, output, loggedPlainTextRef);
           terminal.write(stripTerminalDisplayControlSequences(next));
         } else if (output.length < seenLengthRef.current) {
           seenLengthRef.current = output.length;
           terminal.clear();
-          appendImportLog(`Terminal output reset plain session=${session.id} chars=${output.length} text=${terminalPlainTextForLog(output)}`);
+          logTerminalPlainText(session.id, "Terminal output reset plain", output.length, null, output, loggedPlainTextRef);
           terminal.write(stripTerminalDisplayControlSequences(output));
         }
       } catch {
@@ -3439,13 +3446,47 @@ function stripTerminalDisplayControlSequences(data: string) {
   return String(data || "").replace(/\x1b\[\?2026[hl]/g, "");
 }
 
+function logTerminalPlainText(
+  sessionId: string,
+  label: string,
+  chars: number,
+  total: number | null,
+  output: string,
+  previous: { current: string },
+) {
+  const text = terminalPlainTextForLog(output);
+  if (!text || text === previous.current) return;
+  previous.current = text;
+  const totalPart = total === null ? "" : ` total=${total}`;
+  appendImportLog(`${label} session=${sessionId} chars=${chars}${totalPart} text=${text}`);
+}
+
 function terminalPlainTextForLog(data: string) {
-  return stripTerminalDisplayControlSequences(data)
+  const text = stripTerminalDisplayControlSequences(data)
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
     .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
-    .replace(/\r/g, "\\r")
-    .replace(/\n/g, "\\n")
-    .slice(-1200);
+    .replace(/\x1b[()][A-Za-z0-9]/g, "")
+    .replace(/[\u001b\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/\r/g, "\n");
+  return text
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .filter(isUsefulTerminalLogLine)
+    .slice(-16)
+    .join("\\n")
+    .slice(-1600);
+}
+
+function isUsefulTerminalLogLine(line: string) {
+  if (!line) return false;
+  if (/^(?:[WM•\s]*Working|Working|M M|S|l|g|\d+|[?;:\d\[\]HKl]+)$/.test(line)) return false;
+  if (/^›\s*.*mplement\s+\{feature\}/i.test(line)) return false;
+  if (/^gpt-[\w.-]+\s+\w+\s+·\s+/.test(line)) return false;
+  if (/^model:\s|^directory:\s|^permissions:\s|^Tip:\s/.test(line)) return false;
+  if (/^[-─]{8,}$/.test(line)) return false;
+  if (/^[╭╰│╯─\s>_OpenAICodex().\w:-]+$/.test(line) && line.includes("Codex")) return false;
+  if (/^(?:active|agent|pty|reconnectable)$/.test(line)) return false;
+  return /[A-Za-z]{3,}/.test(line);
 }
 
 function delay(ms: number) {
