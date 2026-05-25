@@ -1381,24 +1381,19 @@ function PlanNode({ page, pages, currentPath, currentWorkPath, onNavigate, depth
   useEffect(() => {
     if (shouldOpen) setIsOpen(true);
   }, [shouldOpen]);
-  if (!children.length) {
-    return <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={depth} onNavigate={onNavigate} page={page} selected={isSelected} />;
-  }
   return (
     <div className="grid min-w-0 gap-1 overflow-hidden">
-      <div className="flex min-w-0 items-center gap-1" style={{ paddingLeft: `${depth * 12}px` }}>
-        <button
-          aria-expanded={isOpen}
-          aria-label={`${isOpen ? "Collapse" : "Expand"} ${cleanPageTitle(page)}`}
-          className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-          onClick={() => setIsOpen((value) => !value)}
-          type="button"
-        >
-          <ChevronDown aria-hidden="true" className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} />
-        </button>
-        <SidebarPageButton current={isCurrent} currentPath={currentPath} depth={0} onNavigate={onNavigate} page={page} selected={isSelected} />
-      </div>
-      {isOpen ? (
+      <SidebarPageButton
+        current={isCurrent}
+        depth={depth}
+        hasChildren={Boolean(children.length)}
+        isOpen={isOpen}
+        onNavigate={onNavigate}
+        onToggle={() => setIsOpen((value) => !value)}
+        page={page}
+        selected={isSelected}
+      />
+      {children.length && isOpen ? (
         <div className="grid min-w-0 gap-1 overflow-hidden">
           {children.map((child) => (
             <PlanNode currentPath={currentPath} currentWorkPath={currentWorkPath} depth={depth + 1} key={child.path} onNavigate={onNavigate} page={child} pages={pages} />
@@ -1409,25 +1404,66 @@ function PlanNode({ page, pages, currentPath, currentWorkPath, onNavigate, depth
   );
 }
 
-function SidebarPageButton({ page, currentPath, onNavigate, depth, current, selected }: { page: WikiPage; currentPath: string; onNavigate: (path: string) => void; depth: number; current?: boolean; selected?: boolean }) {
+function SidebarPageButton({
+  page,
+  currentPath,
+  onNavigate,
+  depth,
+  current,
+  selected,
+  hasChildren = false,
+  isOpen = false,
+  onToggle,
+}: {
+  page: WikiPage;
+  currentPath?: string;
+  onNavigate: (path: string) => void;
+  depth: number;
+  current?: boolean;
+  selected?: boolean;
+  hasChildren?: boolean;
+  isOpen?: boolean;
+  onToggle?: () => void;
+}) {
   const isSelected = selected ?? currentPath === page.path;
   return (
-    <button
+    <div
       className={cn(
-        "flex w-full max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-md px-2 py-2 text-left text-sm hover:bg-secondary",
-        isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+        "grid min-h-10 min-w-0 grid-cols-[1.25rem_0.875rem_minmax(0,1fr)] items-center gap-2 rounded-md py-1.5 pe-2 text-sm transition-colors",
+        isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
       )}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onNavigate(page.path);
-      }}
-      style={{ paddingLeft: `${8 + depth * 12}px` }}
-      type="button"
+      style={{ paddingLeft: `${8 + depth * 18}px` }}
     >
-      <span className={cn("size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
-      <span className="min-w-0 flex-1 truncate font-bold">{cleanPageTitle(page)}</span>
-    </button>
+      {hasChildren ? (
+        <button
+          aria-expanded={isOpen}
+          aria-label={`${isOpen ? "Collapse" : "Expand"} ${cleanPageTitle(page)}`}
+          className="grid size-5 place-items-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggle?.();
+          }}
+          type="button"
+        >
+          <ChevronDown aria-hidden="true" className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} />
+        </button>
+      ) : (
+        <span aria-hidden="true" className="size-5" />
+      )}
+      <span className={cn("mx-auto size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
+      <button
+        className="min-w-0 truncate text-left font-bold"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onNavigate(page.path);
+        }}
+        type="button"
+      >
+        {cleanPageTitle(page)}
+      </button>
+    </div>
   );
 }
 

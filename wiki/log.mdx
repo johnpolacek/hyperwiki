@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 fix | sidebar tree indentation</h2>
+  <ul>
+    <li>Reworked React plan sidebar rows to use a fixed grid for disclosure, current-status dot, and label columns at every depth.</li>
+    <li>Leaf unit rows now reserve the disclosure column, keeping Plan, Stage, and Unit labels aligned in a predictable hierarchy.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 fix | nested plan sidebar navigation</h2>
   <ul>
     <li>Restored explicit expand/collapse controls for parent plan rows in the React sidebar instead of relying on nested summary/button behavior.</li>
