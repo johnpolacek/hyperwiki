@@ -2175,7 +2175,7 @@ function NewProjectView({
       <div className="mx-auto grid w-full max-w-[60rem] gap-9">
         <header className="px-1">
           <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">{heading}</h1>
-          <p className="m-0 mt-5 max-w-[42rem] text-lg leading-8 text-muted-foreground text-pretty">
+          <p className="m-0 mt-5 text-lg leading-8 text-muted-foreground text-pretty">
             {subhead}
           </p>
         </header>
