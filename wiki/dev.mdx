@@ -21,7 +21,7 @@ src-tauri/target/release/hyperwiki</code></pre>
   <li>The canonical app runtime is the Tauri bundle at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
   <li>The Rust binary provides commands for <code>init</code>, <code>reset</code>, <code>dev</code>, <code>launch</code>, <code>mcp</code>, and <code>wt</code>.</li>
   <li><code>pnpm dev</code> runs <code>tauri dev</code>; Hyperwiki no longer has a browser-server development runtime.</li>
-  <li>Browser assets required by the Tauri bundle must live under <code>public/</code>, including vendored xterm files under <code>public/vendor/@xterm/</code>.</li>
+  <li>The Vite React app is the only app shell. Static files under <code>public/</code> are limited to package-served assets such as <code>/assets/wiki.css</code>, <code>/assets/theme.css</code>, favicon, and docs fonts.</li>
 </ul>
 <h2>Project Previews</h2>
 <ul>

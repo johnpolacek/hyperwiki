@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "wiki/plans/features/remove-legacy-node-runtime.html",
+  "source": "wiki/plans/features/remove-legacy-node-runtime.mdx",
   "surfaces": [
     "app-shell",
     "projects",
@@ -23,5 +23,5 @@
     "smoke:tauri-webdriver",
     "check:all"
   ],
-  "manualChecklist": "wiki/plans/tauri-desktop-dogfood-checklist.html"
+  "manualChecklist": "wiki/plans/tauri-desktop-dogfood-checklist.mdx"
 }

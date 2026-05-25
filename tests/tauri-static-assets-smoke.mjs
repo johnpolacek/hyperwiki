@@ -3,37 +3,40 @@ import path from "node:path";
 
 const requiredAssets = [
   "dist/index.html",
-  "dist/assets/app.css",
-  "dist/assets/app.js",
-  "dist/assets/app-api.js",
   "dist/assets/wiki.css",
   "dist/assets/theme.css",
-  "dist/app.js",
-  "dist/app-api.js",
-  "dist/vendor/@xterm/xterm/lib/xterm.mjs",
-  "dist/vendor/@xterm/xterm/css/xterm.css",
-  "dist/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
-  "dist/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
+  "dist/favicon.ico",
+  "dist/vendor/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
+  "dist/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf"
 ];
 
 for (const asset of requiredAssets) {
   await access(path.resolve(asset));
 }
 
-const mirroredAssets = [
-  ["public/app.css", "dist/assets/app.css"],
-  ["public/app.js", "dist/assets/app.js"],
-  ["public/app-api.js", "dist/assets/app-api.js"],
-  ["public/wiki.css", "dist/assets/wiki.css"]
+const forbiddenAssets = [
+  "dist/.DS_Store",
+  "dist/app.css",
+  "dist/app.js",
+  "dist/app-api.js",
+  "dist/wiki.css",
+  "dist/assets/app.css",
+  "dist/assets/app.js",
+  "dist/assets/app-api.js",
+  "dist/vendor/@xterm/xterm/lib/xterm.mjs",
+  "dist/vendor/@xterm/xterm/css/xterm.css",
+  "dist/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
+  "dist/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
 ];
 
-for (const [source, mirror] of mirroredAssets) {
-  const [sourceText, mirrorText] = await Promise.all([
-    readFile(path.resolve(source), "utf8"),
-    readFile(path.resolve(mirror), "utf8")
-  ]);
-  if (sourceText !== mirrorText) {
-    throw new Error(`Tauri static asset mirror is stale: ${mirror} must match ${source}`);
+for (const asset of forbiddenAssets) {
+  try {
+    await access(path.resolve(asset));
+    throw new Error(`Obsolete static frontend asset must not be bundled: ${asset}`);
+  } catch (error) {
+    if (error && error.code !== "ENOENT") {
+      throw error;
+    }
   }
 }
 
@@ -46,8 +49,13 @@ if (!index.includes("/assets/index-")) {
   throw new Error("Tauri dist index must load Vite app assets.");
 }
 
-const app = await readFile(path.resolve("dist/assets/app.js"), "utf8");
-if (!app.includes("wiki\\/plans\\/features") || !app.includes(".test(path)) return true")) {
+const appAssets = await Promise.all(
+  distAssets
+    .filter((asset) => /^index-.*\.js$/.test(asset))
+    .map((asset) => readFile(path.resolve("dist/assets", asset), "utf8"))
+);
+const app = appAssets.join("\n");
+if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
 

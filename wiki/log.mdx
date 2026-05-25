@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 06</h2>
+  <ul>
+    <li>Completed the Stage 06 Cleanup, Parity, And Handoff batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Removed the obsolete static app shell, duplicate static asset mirrors, root <code>public/wiki.css</code>, and vendored browser xterm files; kept package-served docs assets, theme fallback, favicon, and fonts.</li>
+    <li>Moved the API adapter smoke to the React TypeScript adapter and changed the static asset smoke to assert the old shell is absent from <code>dist</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>, <code>pnpm run smoke:tauri-webdriver</code> with the expected macOS WKWebView skip, <code>pnpm run tauri:build</code>, and a packaged app launch check across New Project, Settings, and Projects.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 05</h2>
   <ul>
     <li>Completed the Stage 05 Rust Domain And Scaffold Contract batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>

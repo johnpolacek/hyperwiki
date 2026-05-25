@@ -62,7 +62,7 @@ try {
 
   await waitFor(port, sessionId, async () => {
     const url = await currentUrl(port, sessionId);
-    return url.includes("/workspace/routechat/main") && url.includes("#/wiki/plans/index.html");
+    return url.includes("/workspace/routechat/main") && url.includes("#/wiki/plans/index.mdx");
   }, "workspace planning dashboard URL");
 
   await waitForText(port, sessionId, "Planning Dashboard");
@@ -78,7 +78,7 @@ try {
   const sessionsDir = path.join(project.root, ".hyperwiki", "sessions");
   const sessionFiles = await import("node:fs/promises").then((fs) => fs.readdir(sessionsDir));
   const sessions = await Promise.all(sessionFiles.map(async (file) => JSON.parse(await readFile(path.join(sessionsDir, file), "utf8"))));
-  assert.ok(sessions.some((session) => session.role === "agent" && session.scope === "/wiki/plans/index.html"), "agent planning session should be persisted for the dashboard");
+  assert.ok(sessions.some((session) => session.role === "agent" && session.scope === "/wiki/plans/index.mdx"), "agent planning session should be persisted for the dashboard");
 
   console.log("tauri import planning WebDriver smoke test passed");
 } finally {

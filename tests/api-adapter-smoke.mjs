@@ -1,5 +1,23 @@
 import assert from "node:assert/strict";
-import { createHyperwikiApi } from "../public/app-api.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import ts from "typescript";
+
+const source = await readFile(path.resolve("src/lib/api.ts"), "utf8");
+const compiled = ts.transpileModule(source, {
+  compilerOptions: {
+    module: ts.ModuleKind.ES2022,
+    target: ts.ScriptTarget.ES2022,
+  },
+}).outputText;
+const tempDir = path.join(os.tmpdir(), `hyperwiki-api-smoke-${process.pid}`);
+await mkdir(tempDir, { recursive: true });
+const tempModule = path.join(tempDir, "api.mjs");
+await writeFile(tempModule, compiled);
+
+const { createHyperwikiApi } = await import(pathToFileURL(tempModule).href);
 
 let invoked = null;
 const tauriApi = createHyperwikiApi({
