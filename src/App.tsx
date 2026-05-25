@@ -301,6 +301,9 @@ function App() {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
+  const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
+  const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
+  const [isPlanningTranscriptOpen, setIsPlanningTranscriptOpen] = useState(false);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -311,6 +314,7 @@ function App() {
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
   const planningQuestionBuffers = useRef(new Map<string, string>());
+  const answeredPlanningQuestionIds = useRef(new Set<string>());
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -320,6 +324,7 @@ function App() {
   const workspaceSelection = workspaceSelectionFromLocation();
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
   const importPlanningState = useMemo(() => importedPlanningState(route, wikiPages), [route, wikiPages]);
+  const isImportedPlanningActive = isImportedPlanningIntakeRoute(route, wikiPages);
 
   useEffect(() => {
     function onPopState() {
@@ -654,8 +659,9 @@ function App() {
     const next = trimPlanningQuestionBuffer(current + text);
     planningQuestionBuffers.current.set(sessionId, next);
     const question = extractLatestPlanningQuestion(next, sessionId);
-    if (question) {
+    if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length}`);
+      setPlanningInterviewStatus("question_ready");
       setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
     }
   }, []);
@@ -669,8 +675,12 @@ function App() {
       trimmed,
       "",
     ].join("\n");
+    answeredPlanningQuestionIds.current.add(question.id);
+    setPlanningInterviewStatus("answering");
     await sendInput(question.sessionId, response);
+    setLastPlanningAnswer(trimmed);
     setActivePlanningQuestion(null);
+    setPlanningInterviewStatus("waiting_for_question");
     setStatus("Planning answer sent");
   }
 
@@ -722,6 +732,7 @@ function App() {
     }
     const run = (async () => {
       appendImportLog(`Imported Q&A start requested project=${project.id}`);
+      setPlanningInterviewStatus("starting");
       openImportedPlanningWorkspace(project, projectRoute);
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -738,6 +749,7 @@ function App() {
       importedPlanningCompletedKeys.current.add(key);
       setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
       setActiveSessionId(session.id);
+      setPlanningInterviewStatus("waiting_for_question");
       setStatus("Imported project Q&A started");
     })();
     importedPlanningRuns.current.set(key, run);
@@ -987,7 +999,16 @@ function App() {
         status={status}
         workspace={workspace}
       />
-      <section className={cn("grid min-h-0 flex-1 overflow-hidden", isUtilityRoute || route.kind === "plan-create" ? "grid-cols-1" : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]")}>
+      <section
+        className={cn(
+          "grid min-h-0 flex-1 overflow-hidden",
+          isUtilityRoute || route.kind === "plan-create"
+            ? "grid-cols-1"
+            : isImportedPlanningActive && !isPlanningTranscriptOpen
+            ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
+            : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
+        )}
+      >
         {isUtilityRoute || route.kind === "plan-create" ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
@@ -1010,11 +1031,15 @@ function App() {
           onStartPlanCreation={startPlanCreation}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
+          isPlanningTranscriptOpen={isPlanningTranscriptOpen}
+          lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
+          planningInterviewStatus={planningInterviewStatus}
           planningQuestion={activePlanningQuestion}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
+          setIsPlanningTranscriptOpen={setIsPlanningTranscriptOpen}
           settings={settings}
           wikiError={wikiError}
           wikiHtml={wikiHtml}
@@ -1022,23 +1047,25 @@ function App() {
           wikiPages={wikiPages}
         />
         {isUtilityRoute || route.kind === "plan-create" ? null : (
-          <TerminalPane
-            activeSessionId={activeSessionId}
-            activeProject={activeProject}
-            isLoading={isSessionsLoading}
-            onCloseSession={closeSession}
-            onCreateWorktree={createWorktreeFromTerminal}
-            onInitializeGit={initializeGitFromTerminal}
-            onRenameSession={renameSession}
-            onRestartSession={restartSession}
-            onSelectSession={setActiveSessionId}
-            onStart={startTerminal}
-            onTerminalText={handleTerminalText}
-            repoContext={repoContext}
-            scope={terminalScope}
-            workspace={workspace}
-            sessions={sessions}
-          />
+          <div className={cn("min-h-0", isImportedPlanningActive && !isPlanningTranscriptOpen && "fixed bottom-0 right-0 size-px overflow-hidden opacity-0 pointer-events-none")}>
+            <TerminalPane
+              activeSessionId={activeSessionId}
+              activeProject={activeProject}
+              isLoading={isSessionsLoading}
+              onCloseSession={closeSession}
+              onCreateWorktree={createWorktreeFromTerminal}
+              onInitializeGit={initializeGitFromTerminal}
+              onRenameSession={renameSession}
+              onRestartSession={restartSession}
+              onSelectSession={setActiveSessionId}
+              onStart={startTerminal}
+              onTerminalText={handleTerminalText}
+              repoContext={repoContext}
+              scope={terminalScope}
+              workspace={workspace}
+              sessions={sessions}
+            />
+          </div>
         )}
       </section>
     </main>
@@ -1283,11 +1310,15 @@ function WorkspacePane(props: {
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
+  isPlanningTranscriptOpen: boolean;
+  lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
+  planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
   planningQuestion: PlanningQuestion | null;
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
+  setIsPlanningTranscriptOpen: (open: boolean) => void;
   settings: SettingsResponse | null;
   wikiError: string;
   wikiHtml: string;
@@ -1313,7 +1344,18 @@ function WorkspacePane(props: {
     return <NewProjectView onCreateProject={props.onCreateProject} />;
   }
   if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
-    return <ImportedPlanningQAView activeProject={props.activeProject} onAnswer={props.onAnswerPlanningQuestion} onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()} question={props.planningQuestion} />;
+    return (
+      <ImportedPlanningQAView
+        activeProject={props.activeProject}
+        isTranscriptOpen={props.isPlanningTranscriptOpen}
+        lastAnswer={props.lastPlanningAnswer}
+        onAnswer={props.onAnswerPlanningQuestion}
+        onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
+        onToggleTranscript={() => props.setIsPlanningTranscriptOpen(!props.isPlanningTranscriptOpen)}
+        question={props.planningQuestion}
+        status={props.planningInterviewStatus}
+      />
+    );
   }
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-background">
@@ -1586,14 +1628,22 @@ function PlanCreationView({
 
 function ImportedPlanningQAView({
   activeProject,
+  isTranscriptOpen,
+  lastAnswer,
   onAnswer,
   onStart,
+  onToggleTranscript,
   question,
+  status,
 }: {
   activeProject: ProjectRecord | null;
+  isTranscriptOpen: boolean;
+  lastAnswer: string;
   onAnswer: (answer: string) => Promise<void>;
   onStart: () => Promise<void>;
+  onToggleTranscript: () => void;
   question: PlanningQuestion | null;
+  status: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
@@ -1643,20 +1693,25 @@ function ImportedPlanningQAView({
 
   const hasQuestion = Boolean(question);
   const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
+  const isWaiting = status === "waiting_for_question" || status === "answering";
+  const title = hasQuestion ? "MVP Planning Question" : isWaiting && lastAnswer ? "Waiting for Next Question" : "Starting MVP Planning Q&A";
+  const description = hasQuestion
+    ? "Choose an answer here. The agent transcript is available only for debugging."
+    : status === "answering" || isAnswering
+    ? "Sending your answer to the planning agent."
+    : lastAnswer
+    ? `Answer sent: ${lastAnswer}. The agent is reasoning through that answer and will ask the next question here.`
+    : hasStarted || status === "starting" || status === "waiting_for_question"
+    ? "The planning agent is reading the imported source and preparing the first question here."
+    : `Hyperwiki found the imported source for ${activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.`;
 
   return (
     <main className="grid min-h-0 place-items-start overflow-auto bg-background px-8 pt-12 antialiased">
       <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Imported source</p>
-          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{hasQuestion ? "MVP Planning Question" : "Starting MVP Planning Q&A"}</h1>
-          <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">
-            {hasQuestion
-              ? "Choose the best answer below, or use Other to send a note that rejects the listed options."
-              : hasStarted
-              ? "The Q&A prompt has been sent. Continue the interview in the agent terminal, then Hyperwiki will create the first MVP plan with stages, units, and verification."
-              : `Hyperwiki found the imported source for ${activeProject?.name || "this project"}. It is starting a focused interview now, then it will create the first MVP plan with stages, units, and verification.`}
-          </p>
+          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{title}</h1>
+          <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">{description}</p>
         </div>
         {question ? (
           <div className="grid gap-4 rounded-md border bg-background p-4">
@@ -1734,10 +1789,19 @@ function ImportedPlanningQAView({
             </form>
           </div>
         ) : null}
-        <div className="flex justify-end">
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject} onClick={start} type="button">
+        {!question && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
+          <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-muted-foreground">
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            {lastAnswer ? "Waiting for the next app question" : "Waiting for the first app question"}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" onClick={onToggleTranscript} type="button" variant="outline">
+            {isTranscriptOpen ? "Hide Agent Transcript" : "Show Agent Transcript"}
+          </Button>
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject || status !== "idle"} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-            {isStarting ? "Starting Q&A" : hasStarted ? "Q&A Started" : "Start Q&A"}
+            {isStarting ? "Starting Q&A" : hasStarted || status !== "idle" ? "Q&A Running" : "Start Q&A"}
           </Button>
         </div>
       </section>
@@ -3460,8 +3524,10 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
     "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
+    "- After receiving `Hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
     "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
     "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
@@ -3495,7 +3561,9 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     "- Inspect repo evidence before asking questions the repo can answer.",
     "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
     "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. After the block, stop and wait for the user's answer.",
+    "- After receiving `Hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
     "- Preserve a flexible plan > stages > units structure; compact plans may use one implicit stage.",
     "- Every executable unit must include a Verification section or component.",
