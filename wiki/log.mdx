@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 fix | wiki prose typography</h2>
+  <ul>
+    <li>Restored the React shell font split so normal wiki, sidebar, workspace, and terminal chrome text use the active docs primary font instead of inheriting the mono stack.</li>
+    <li>Kept mono styling for code surfaces, JSON textareas, and xterm output through the active docs mono and terminal font variables.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> computed-font check against the Vite preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 fix | three-pane workspace height</h2>
   <ul>
     <li>Fixed the React workspace shell so the left wiki sidebar, middle workspace pane, and right terminal pane each fill the available window height beneath the top bar.</li>

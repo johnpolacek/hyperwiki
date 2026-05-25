@@ -2799,6 +2799,7 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const theme = effectiveTheme(themeSettings);
   const ui = theme.tokens.ui || {};
   const docs = theme.tokens.docs || {};
+  const terminal = theme.tokens.terminal || {};
   const root = document.documentElement;
   const background = normalizeColor(docs.bg || ui.bg || "#f7f7f4", "#f7f7f4");
   const panel = normalizeColor(ui.panel || docs.panel || "#ffffff", "#ffffff");
@@ -2808,6 +2809,9 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const accent = normalizeColor(ui.accent || docs.link || "#276ef1", "#276ef1");
   const secondary = mixHex(accent, theme.mode === "dark" ? "#ffffff" : panel, theme.mode === "dark" ? 0.18 : 0.9);
   const muted = mixHex(mutedForeground, background, theme.mode === "dark" ? 0.68 : 0.84);
+  const primaryFont = cssFontValue(docs.serifFont, "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif");
+  const monoFont = cssFontValue(docs.monoFont, "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace");
+  const terminalFont = cssFontValue(terminal.font, monoFont);
 
   root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
   setCssVars(root, {
@@ -2828,7 +2832,15 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--border": border,
     "--input": border,
     "--ring": accent,
+    "--docs-serif-font": primaryFont,
+    "--docs-mono-font": monoFont,
+    "--terminal-font": terminalFont,
+    "--sidebar-font": cssFontValue(ui.sidebarFont, primaryFont),
   });
+}
+
+function cssFontValue(value: string | undefined, fallback: string) {
+  return value?.trim() || fallback;
 }
 
 function setCssVars(element: HTMLElement, vars: Record<string, string>) {
@@ -3130,7 +3142,7 @@ function TerminalPane(props: {
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
-      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 font-mono text-xs">
+      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
         <div className="relative flex min-w-0 flex-1 items-center gap-2">
           <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
           <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]">{branchLabel}</strong>
@@ -3186,7 +3198,7 @@ function TerminalPane(props: {
         {props.sessions.length ? (
           <>
             {props.sessions.length > 1 ? (
-              <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#2c302d] bg-[#151816] px-2 py-1.5 font-mono text-xs">
+              <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#2c302d] bg-[#151816] px-2 py-1.5 text-xs">
                 {props.sessions.map((session) => (
                   <button
                     className={cn(
@@ -3210,7 +3222,7 @@ function TerminalPane(props: {
             </div>
           </>
         ) : (
-          <div className="min-h-0 flex-1 overflow-auto px-5 py-4 font-mono text-xs text-[#abb5ad]">
+          <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
             No terminals running
           </div>
         )}
@@ -3358,9 +3370,10 @@ function XtermSession({
     let eventBuffer: TerminalOutputEventPayload[] = [];
     let unlisten: (() => void) | null = null;
 
+    const terminalFont = getComputedStyle(document.documentElement).getPropertyValue("--terminal-font").trim() || "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     const terminal = new Terminal({
       cursorBlink: true,
-      fontFamily: "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontFamily: terminalFont,
       fontSize: 13,
       lineHeight: 1.3,
       scrollback: 10000,
