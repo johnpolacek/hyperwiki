@@ -2184,8 +2184,8 @@ function NewProjectView({
         <form className="grid gap-6 rounded-lg bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_72px_rgba(0,0,0,0.08)] md:p-10" data-testid="new-project-form" onSubmit={handleSubmit}>
           <label className="group flex min-h-44 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
             <Upload aria-hidden="true" className="mb-5 size-11 text-primary transition-transform group-hover:-translate-y-0.5" />
-            <span className="text-lg font-bold text-card-foreground">Import project file</span>
-            <small className="mt-2 text-base text-muted-foreground">Markdown or HTML</small>
+            <span className="rounded-md bg-primary px-5 py-2.5 text-base font-bold text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.10),0_8px_22px_rgba(0,0,0,0.10)] transition-transform group-active:scale-[0.96]">Import Project File</span>
+            <small className="mt-3 text-base text-muted-foreground">Markdown or HTML</small>
             <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
           </label>
 
