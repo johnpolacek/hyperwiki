@@ -303,7 +303,6 @@ function App() {
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
-  const [isPlanningTranscriptOpen, setIsPlanningTranscriptOpen] = useState(false);
   const [planningActivity, setPlanningActivity] = useState("");
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
@@ -748,7 +747,6 @@ function App() {
       appendImportLog(`Imported Q&A start requested project=${project.id}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
-      setIsPlanningTranscriptOpen(true);
       openImportedPlanningWorkspace(project, projectRoute);
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -1021,7 +1019,7 @@ function App() {
           "grid min-h-0 flex-1 overflow-hidden",
           isUtilityRoute || route.kind === "plan-create"
             ? "grid-cols-1"
-            : isImportedPlanningActive && !isPlanningTranscriptOpen
+            : isImportedPlanningActive
             ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
             : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
         )}
@@ -1048,7 +1046,6 @@ function App() {
           onStartPlanCreation={startPlanCreation}
           onSetSidePanelMode={setSidePanelMode}
           onSwitchProject={switchProject}
-          isPlanningTranscriptOpen={isPlanningTranscriptOpen}
           planningActivity={planningActivity}
           lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
@@ -1057,7 +1054,6 @@ function App() {
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
-          setIsPlanningTranscriptOpen={setIsPlanningTranscriptOpen}
           settings={settings}
           wikiError={wikiError}
           wikiHtml={wikiHtml}
@@ -1065,7 +1061,7 @@ function App() {
           wikiPages={wikiPages}
         />
         {isUtilityRoute || route.kind === "plan-create" ? null : (
-          <div className={cn("min-h-0", isImportedPlanningActive && !isPlanningTranscriptOpen && "fixed bottom-0 right-0 size-px overflow-hidden opacity-0 pointer-events-none")}>
+          <div className={cn("min-h-0", isImportedPlanningActive && "fixed bottom-0 right-0 size-px overflow-hidden opacity-0 pointer-events-none")}>
             <TerminalPane
               activeSessionId={activeSessionId}
               activeProject={activeProject}
@@ -1328,7 +1324,6 @@ function WorkspacePane(props: {
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   onStartPlanCreation: (intent: string) => Promise<void>;
   onSwitchProject: (project: ProjectRecord) => void;
-  isPlanningTranscriptOpen: boolean;
   planningActivity: string;
   lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
@@ -1337,7 +1332,6 @@ function WorkspacePane(props: {
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
-  setIsPlanningTranscriptOpen: (open: boolean) => void;
   settings: SettingsResponse | null;
   wikiError: string;
   wikiHtml: string;
@@ -1366,12 +1360,10 @@ function WorkspacePane(props: {
     return (
       <ImportedPlanningQAView
         activeProject={props.activeProject}
-        isTranscriptOpen={props.isPlanningTranscriptOpen}
         activity={props.planningActivity}
         lastAnswer={props.lastPlanningAnswer}
         onAnswer={props.onAnswerPlanningQuestion}
         onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
-        onToggleTranscript={() => props.setIsPlanningTranscriptOpen(!props.isPlanningTranscriptOpen)}
         question={props.planningQuestion}
         status={props.planningInterviewStatus}
       />
@@ -1649,21 +1641,17 @@ function PlanCreationView({
 function ImportedPlanningQAView({
   activeProject,
   activity,
-  isTranscriptOpen,
   lastAnswer,
   onAnswer,
   onStart,
-  onToggleTranscript,
   question,
   status,
 }: {
   activeProject: ProjectRecord | null;
   activity: string;
-  isTranscriptOpen: boolean;
   lastAnswer: string;
   onAnswer: (answer: string) => Promise<void>;
   onStart: () => Promise<void>;
-  onToggleTranscript: () => void;
   question: PlanningQuestion | null;
   status: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
 }) {
@@ -1717,9 +1705,9 @@ function ImportedPlanningQAView({
   const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
   const isWaiting = status === "waiting_for_question" || status === "answering";
   const title = hasQuestion ? "MVP Planning Question" : isWaiting && lastAnswer ? "Waiting for Next Question" : "Starting MVP Planning Q&A";
-  const waitingLabel = lastAnswer ? "Waiting for the next app question" : "Waiting for the first app question";
+  const waitingLabel = lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
   const description = hasQuestion
-    ? "Choose an answer here. The agent transcript is available only for debugging."
+    ? "Choose an answer here. Hyperwiki will send it to the planning agent and show the next question when it is ready."
     : status === "answering" || isAnswering
     ? "Sending your answer to the planning agent."
     : lastAnswer
@@ -1822,9 +1810,6 @@ function ImportedPlanningQAView({
           </div>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" onClick={onToggleTranscript} type="button" variant="outline">
-            {isTranscriptOpen ? "Hide Agent Transcript" : "Show Agent Transcript"}
-          </Button>
           <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject || status !== "idle"} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
             {isStarting ? "Starting Q&A" : hasStarted || status !== "idle" ? "Q&A Running" : "Start Q&A"}
