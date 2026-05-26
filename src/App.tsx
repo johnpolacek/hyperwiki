@@ -1542,18 +1542,18 @@ function WorkspacePane(props: {
     <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
       <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
           <Button
             aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
-            size="sm"
-            variant="outline"
+            size="icon"
+            title={props.isExpanded ? "Restore sidebars" : "Expand document"}
+            variant="ghost"
             onClick={props.onToggleExpanded}
           >
             {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
-            {props.isExpanded ? "restore" : "expand"}
           </Button>
+          <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
