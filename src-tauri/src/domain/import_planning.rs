@@ -292,14 +292,25 @@ pub fn create_import_plan(
             "wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-02-technical-foundation.mdx",
             "Unit 02 - Technical Foundation",
             format!(
-                "Create the runnable foundation for {} using {} location data and {} as the model/provider direction.",
+                "Create the runnable foundation for {} with frontend {}, backend/runtime {}, storage {}, auth {}, services {}, {} location data, and {} as the model/provider direction.",
                 answers.get("platform"),
+                answers.get("frontend-stack"),
+                answers.get("backend-runtime"),
+                answers.get("data-storage"),
+                answers.get("auth-users"),
+                answers.get("services-integrations"),
                 answers.get("location-source"),
                 answers.get("provider")
             ),
-            "Add the minimum app/runtime scaffold, configuration notes, and local preview command needed for the first demo loop. Do not implement saved tours or broad mode support in this unit.".to_string(),
-            "Automated: run the package/type/build checks available for the chosen stack. Manual: launch the local preview and confirm the foundation screen loads.".to_string(),
-            "Complete when a future agent can run the app locally and see the first-mode foundation without guessing setup steps.".to_string(),
+            format!(
+                "Add the minimum app/runtime scaffold, configuration notes, environment variable placeholders, and local preview path needed for the first demo loop. Use these local command assumptions: {}. Do not implement saved tours or broad mode support in this unit.",
+                answers.get("dev-commands")
+            ),
+            format!(
+                "Automated: run the selected local checks: {}. Manual: launch the local preview/deployment target from those commands and confirm the foundation screen loads.",
+                answers.get("dev-commands")
+            ),
+            "Complete when a future agent can run the app locally, understand the frontend/backend/storage/auth/service boundaries, and see the first-mode foundation without guessing setup steps.".to_string(),
         ),
         (
             "wiki/plans/imported-project-plan/stage-01-prototype-foundation/unit-03-core-demo-loop.mdx",
@@ -506,7 +517,42 @@ fn import_question_sequence(source: &ImportedSource) -> Vec<ImportPlanningQuesti
             "Platform",
             "Where should the first version live: web app, mobile app, desktop, CLI, or something else with a pulse?",
             "blocking",
-            "This choice sets the stack, APIs, preview command, and the tests we can actually trust.",
+            "This choice frames the stack, APIs, preview command, and tests we can actually trust.",
+        ),
+        question(
+            "frontend-stack",
+            "Frontend Stack",
+            "What client or UI stack should the first implementation use, including framework and styling direction if there is a UI?",
+            "blocking",
+            "Future agents need the visible surface and frontend conventions before they scaffold routes, components, or checks.",
+        ),
+        question(
+            "backend-runtime",
+            "Backend Runtime",
+            "What backend, API, or server/runtime layer should the first version use, or should it be explicitly client-only for now?",
+            "blocking",
+            "This prevents agents from inventing an API boundary, server framework, or runtime ownership mid-implementation.",
+        ),
+        question(
+            "data-storage",
+            "Data Storage",
+            "What persistence or data storage should the first version use: none, local files/storage, SQLite, Postgres, hosted database, or another choice?",
+            "blocking",
+            "Storage choices affect schema work, local setup, privacy, seed data, and the verification path.",
+        ),
+        question(
+            "auth-users",
+            "Auth And Users",
+            "What auth and user model should the first version assume: no accounts, local-only identity, email login, OAuth, org accounts, or something else?",
+            "blocking",
+            "Auth assumptions change data boundaries, UI states, security posture, and what must be deferred.",
+        ),
+        question(
+            "services-integrations",
+            "Services And Integrations",
+            "Which external services, APIs, SDKs, or integrations are required for the first demo, and which should be mocked or deferred?",
+            "blocking",
+            "Services introduce credentials, network failure modes, cost, rate limits, and setup instructions.",
         ),
         question(
             "location-source",
@@ -528,6 +574,13 @@ fn import_question_sequence(source: &ImportedSource) -> Vec<ImportPlanningQuesti
             "Which model or provider should the plan assume first, so future agents are not provider-shopping mid-sprint?",
             "blocking",
             "Provider assumptions affect setup, attribution, cost, fallback behavior, and how honest the plan can be.",
+        ),
+        question(
+            "dev-commands",
+            "Local Commands",
+            "What package manager, dev command, build/typecheck/test commands, preview/deployment target, and required environment variables should implementation agents assume?",
+            "blocking",
+            "Executable units need concrete local commands and setup boundaries instead of vague 'run the app' instructions.",
         ),
         question(
             "safety-privacy",

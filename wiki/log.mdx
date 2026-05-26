@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-26 implementation | initial stack Q&amp;A gate</h2>
+  <ul>
+    <li>Kept <code>$grill-with-docs</code> engaged for imported-project and plan-creation interviews while making technical-stack completeness explicit in Hyperwiki's own prompts.</li>
+    <li>Extended deterministic import planning with required frontend, backend/runtime, persistence, auth, services, provider, and local command questions.</li>
+    <li>Updated generated technical-foundation units so stack decisions carry into implementation and verification instructions.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-26 maintenance | plans index reframe</h2>
   <ul>
     <li>Renamed the user-facing <code>/wiki/plans/index.mdx</code> surface to Plans while preserving the canonical route for project contracts, MCP current-plan context, imports, generated scaffolds, review prompts, and terminal scoping.</li>
