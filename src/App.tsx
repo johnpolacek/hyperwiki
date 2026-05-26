@@ -1032,7 +1032,7 @@ function App() {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main" || action === "modify") {
-        const prompt = action === "modify" && payload?.prompt ? payload.prompt : workflowPrompt(action, workspace, currentWikiPath);
+        const prompt = workflowPrompt(action, workspace, currentWikiPath, payload?.prompt || "");
         await sendTrackedAgentPrompt(action === "modify" ? "modify" : "execute", action === "modify" ? "Modify Plan" : "Execute Unit", prompt);
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
@@ -3262,9 +3262,12 @@ function RightActionPane({
               {...DISABLE_TEXT_CORRECTION_PROPS}
               className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onChange={(event) => setModifyText(event.target.value)}
-              placeholder="Tell the agent how to change the plan..."
+              placeholder="Describe the planning wiki change. This will not implement product code."
               value={modifyText}
             />
+            <p className="m-0 text-sm leading-6 text-muted-foreground">
+              Docs-only: Modify Plan is limited to app-visible wiki planning files.
+            </p>
             <Button className="min-h-12 w-full" type="submit">
               <Play aria-hidden="true" data-icon="inline-start" />
               Send
@@ -4264,23 +4267,38 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
   ].join("\n");
 }
 
-function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, visiblePath: string) {
+function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, visiblePath: string, userRequest = "") {
   const status = workspace?.status || {};
   const unitTitle = status.current || "No current unit resolved";
   const unitPath = status.currentPath || "";
   if (action === "modify") {
+    const normalizedRequest = userRequest.trim() || "No additional user change text was supplied. Inspect the visible planning page and make only necessary planning/wiki updates.";
     return [
-      "Modify the currently visible Hyperwiki plan or wiki page.",
+      "Modify Plan is a planning/wiki-only operation.",
       "",
       `Visible page path: ${visiblePath}`,
       `Current unit: ${unitTitle}`,
       `Current unit path: ${unitPath || "none"}`,
       "",
+      "User requested planning change:",
+      normalizedRequest,
+      "",
+      "Allowed files:",
+      "- Edit only app-visible planning/wiki MDX files under wiki/, especially wiki/plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context.",
+      "",
+      "Hard restrictions:",
+      "- Do not implement product code from this Modify Plan request.",
+      "- Do not create, edit, delete, format, or commit files outside the allowed wiki planning files.",
+      "- Do not change src/**, app/**, components/**, lib/**, public/**, tests/**, package manifests, lockfiles, build config, runtime config, or generated application assets.",
+      "- Do not run ahead into Execute Unit behavior. If the requested change requires code, update the plan to describe that execution work and stop.",
+      "- If you discover existing non-wiki changes, report them clearly and leave them untouched.",
+      "",
       "Instructions:",
-      "- Inspect the page and repo state before editing.",
-      "- Keep the change scoped to the user's requested modification.",
+      "- Inspect the visible planning page and relevant wiki index/log context before editing.",
+      "- Keep the change scoped to the user's requested planning modification.",
       "- Update durable wiki context only when the evidence supports it.",
-      "- Run relevant checks before summarizing the result.",
+      "- Run only relevant documentation/static checks when useful; do not use Modify Plan as a reason to build or change product code.",
+      "- Summarize exactly which wiki planning files changed.",
     ].join("\n");
   }
   return [

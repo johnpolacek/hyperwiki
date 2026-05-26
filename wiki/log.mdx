@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-26 fix | modify plan docs-only boundary</h2>
+  <ul>
+    <li>Changed Modify Plan handoffs so the textarea request is wrapped in an explicit planning/wiki-only prompt instead of being sent directly to the agent.</li>
+    <li>Limited Modify Plan instructions to app-visible wiki planning files and explicitly prohibited product code, dependency, config, test, asset, and execution-unit changes.</li>
+    <li>Updated the Modify Plan panel copy and static asset smoke assertion to label the action as docs-only.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-26 fix | visible agent activity feed</h2>
   <ul>
     <li>Changed Modify, Execute, worktree, and review handoffs to show a simplified live agent activity feed by default, with raw terminal available as a secondary view.</li>

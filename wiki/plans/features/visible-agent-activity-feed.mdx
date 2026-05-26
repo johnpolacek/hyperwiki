@@ -29,6 +29,7 @@ wikiKind: "plan"
     <li>Reuse terminal event parsing to populate a full scrollable feed and a copy-friendly troubleshooting transcript while suppressing spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
     <li>Treat remaining manual/provider gates as outcome detail after a completed agent run instead of classifying the whole handoff as blocked.</li>
     <li>Disable normal Modify and Execute actions for completed or stale plan pages and show an Open current action when active work exists.</li>
+    <li>Constrain Modify Plan handoffs to planning/wiki edits only. The textarea request is wrapped in an explicit docs-only prompt so agents update app-visible wiki planning files rather than implementing product code, changing dependencies, or running ahead into execution.</li>
   </ul>
 </section>
 
