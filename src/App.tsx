@@ -31,6 +31,7 @@ import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { Button } from "@/components/ui/button";
 import { hyperwikiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
 type ViewRoute =
   | { kind: "wiki"; path: string }
@@ -3723,8 +3724,8 @@ function cleanPageTitle(page: WikiPage) {
   if (path.endsWith("/wiki/plans/index.mdx")) return "Planning Dashboard";
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "MVP Plan";
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "Completed Plans";
-  if (isUnitPage(page)) return page.title.replace(/^Unit (\d+) - /, (_match, unit) => `Unit ${unit.padStart(2, "0")}: `);
-  if (path.includes("/stage-")) return page.title.replace(/^Stage (\d+) - /, (_match, stage) => `Stage ${stage.padStart(2, "0")}: `);
+  if (isUnitPage(page)) return normalizePlanDisplayTitle(page.title);
+  if (path.includes("/stage-")) return normalizePlanDisplayTitle(page.title);
   if (page.title.toLowerCase() === "prd") return "PRD";
   if (path.includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;
@@ -3837,7 +3838,8 @@ function pathContainsSelectedPage(path: string, selectedPath: string) {
 }
 
 function titleForPath(path: string, pages: WikiPage[]) {
-  return pages.find((page) => page.path === path)?.title || path.split("/").pop() || "Wiki";
+  const page = pages.find((candidate) => candidate.path === path);
+  return page ? cleanPageTitle(page) : normalizePlanDisplayTitle(path.split("/").pop() || "Wiki");
 }
 
 function isAgentSession(session: SessionRecord) {

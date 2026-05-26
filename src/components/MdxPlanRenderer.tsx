@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
 interface MdxPlanRendererProps {
   source: string;
@@ -185,6 +186,7 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
 
   const tag = node.tagName.toLowerCase();
   const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path));
+  const titleChildren = normalizeTitleChildren(children);
   const className = node.getAttribute("class") || "";
   const component = node.getAttribute("data-plan-component") || "";
   const classTokens = new Set(className.split(/\s+/).filter(Boolean));
@@ -206,13 +208,13 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
           onNavigate(wikiPath);
         }}
       >
-        {children}
+        {titleChildren}
       </a>
     );
   }
-  if (tag === "h1") return <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl" key={key}>{children}</h1>;
-  if (tag === "h2") return <h2 className="m-0 text-lg font-bold leading-tight md:text-xl" key={key}>{children}</h2>;
-  if (tag === "h3") return <h3 className="m-0 text-base font-bold leading-snug" key={key}>{children}</h3>;
+  if (tag === "h1") return <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl" key={key}>{titleChildren}</h1>;
+  if (tag === "h2") return <h2 className="m-0 text-lg font-bold leading-tight md:text-xl" key={key}>{titleChildren}</h2>;
+  if (tag === "h3") return <h3 className="m-0 text-base font-bold leading-snug" key={key}>{titleChildren}</h3>;
   if (tag === "p") return <p className="m-0 text-sm leading-7 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
   if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
@@ -248,6 +250,10 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "div") return <div className="grid gap-3" key={key}>{children}</div>;
 
   return <span key={key}>{children}</span>;
+}
+
+function normalizeTitleChildren(children: ReactNode[]) {
+  return children.map((child) => typeof child === "string" ? normalizePlanDisplayTitle(child) : child);
 }
 
 function resolveWikiLink(href: string, currentPath?: string) {
