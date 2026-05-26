@@ -1544,6 +1544,7 @@ function WorkspacePane(props: {
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <Button
             aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
+            className="size-8"
             size="icon"
             title={props.isExpanded ? "Restore sidebars" : "Expand document"}
             variant="outline"
