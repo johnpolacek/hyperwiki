@@ -1546,7 +1546,7 @@ function WorkspacePane(props: {
             aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
             size="icon"
             title={props.isExpanded ? "Restore sidebars" : "Expand document"}
-            variant="ghost"
+            variant="outline"
             onClick={props.onToggleExpanded}
           >
             {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
