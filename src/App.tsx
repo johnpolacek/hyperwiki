@@ -419,6 +419,16 @@ function App() {
   }, [activeProject?.id, importPlanningState, route, wikiPages.length]);
 
   useEffect(() => {
+    if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
+    if (isImportedPlanningActive) return;
+    const landingPath = planLandingPath(workspace, wikiPages);
+    if (!landingPath || landingPath === defaultWikiPath) return;
+    const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
+    setRoute(nextRoute);
+    window.history.replaceState(null, "", urlForRoute(nextRoute, activeProject));
+  }, [activeProject, isImportedPlanningActive, route, wikiPages, workspace]);
+
+  useEffect(() => {
     if (!activeProject || !isImportedPlanningActive) return;
     if (!["starting", "waiting_for_question", "answering"].includes(planningInterviewStatus)) return;
     let cancelled = false;
@@ -638,7 +648,7 @@ function App() {
     setIsProjectsOpen(false);
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
-    const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : loadedWorkspace?.status?.currentPath || defaultWikiPath;
+    const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loadedWorkspace, loaded.pages);
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
     const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${landingPath}`;
@@ -673,6 +683,7 @@ function App() {
     return {
       workspace: workspaceResult.status === "fulfilled" ? workspaceResult.value : null,
       layout: layoutResult.status === "fulfilled" ? layoutResult.value : null,
+      pages: wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : [],
     };
   }
 
@@ -1118,6 +1129,7 @@ function App() {
     <main className="hyperwiki-shell flex h-svh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <TopBar
         activeProject={activeProject}
+        homePath={planLandingPath(workspace, wikiPages)}
         isProjectsOpen={isProjectsOpen}
         isUpNextOpen={isUpNextOpen}
         onRefresh={loadBaseData}
@@ -1212,6 +1224,7 @@ function App() {
 
 function TopBar(props: {
   activeProject: ProjectRecord | null;
+  homePath: string;
   isProjectsOpen: boolean;
   isUpNextOpen: boolean;
   onNavigate: (route: ViewRoute) => void;
@@ -1226,7 +1239,7 @@ function TopBar(props: {
 }) {
   return (
     <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
-      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
+      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
         {props.activeProject?.name ? (
@@ -3807,6 +3820,14 @@ function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: Wo
   if (currentPath) return currentPath;
   if (derived) return derived;
   return pages.find((page) => page.currentState === "current-unit")?.path || pages.find((page) => page.currentState === "current-plan")?.path || "";
+}
+
+function planLandingPath(workspace: WorkspaceResponse | null, pages: WikiPage[]) {
+  const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
+  const currentPath = currentPlanWorkPath(sorted, roots, workspace);
+  if (currentPath && currentPath !== defaultWikiPath) return currentPath;
+  return sorted.find((page) => !isPlansIndexPage(page) && displayWikiPath(page.path).startsWith("/wiki/plans/"))?.path || defaultWikiPath;
 }
 
 function firstIncompleteWorkPath(pages: WikiPage[], roots: WikiPage[]) {
