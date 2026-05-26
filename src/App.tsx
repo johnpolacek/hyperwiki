@@ -820,12 +820,13 @@ function App() {
       if (!currentRun || currentRun.sessionId !== sessionId) return currentRun;
       const lines = workstream.length ? workstream : currentRun.lines;
       const phase = inferAgentRunPhase(next, lines, currentRun.phase);
+      const outcome = agentRunOutcome(next, lines, phase) || currentRun.outcome;
       return {
         ...currentRun,
         phase,
-        activity: activity || currentRun.activity,
+        activity: phase === "complete" || phase === "blocked" ? outcome || agentRunPhaseLabel(phase) : activity || currentRun.activity,
         lines,
-        outcome: agentRunOutcome(next, lines, phase) || currentRun.outcome,
+        outcome,
       };
     });
     const question = extractLatestPlanningQuestion(next, sessionId);
@@ -4469,8 +4470,8 @@ function agentRunPhaseLabel(phase: AgentRunPhase) {
 
 function inferAgentRunPhase(text: string, lines: string[], current: AgentRunPhase): AgentRunPhase {
   const joined = lines.join("\n");
-  if (/Remaining blocker|blocked by|blocked:/i.test(joined)) return "blocked";
   if (/Worked for|Handled the workspace request|Checks run successfully|worktree remains clean|No code or wiki edits were needed/i.test(joined)) return "complete";
+  if (/Remaining blocker|blocked by|blocked:/i.test(joined)) return "blocked";
   if (/Edited |Apply patch|changed \d+ files?/i.test(joined)) return "editing";
   if (/Ran pnpm|Ran npm|Ran yarn|Ran cargo|typecheck|lint|test|build|smoke/i.test(joined)) return "checking";
   if (/Explored|Read |Search |List |Inspect/i.test(joined)) return "exploring";
@@ -4479,17 +4480,25 @@ function inferAgentRunPhase(text: string, lines: string[], current: AgentRunPhas
 }
 
 function agentRunOutcome(text: string, lines: string[], phase: AgentRunPhase) {
-  const joined = lines.join("\n");
   if (phase === "blocked") {
     const blocker = lines.find((line) => /Remaining blocker|blocked by|blocked:/i.test(line));
     return blocker || "Agent run is blocked.";
   }
   if (phase !== "complete") return "";
+  const commit = text.match(/Committed(?:\s+[^.]{0,120}?)?\s+as\s+([a-f0-9]{7,40})\s+([^\n.]+)/i);
+  const remaining = text.match(/Remaining blocker:\s*([\s\S]{0,260}?)(?:\.|\n|$)/i);
+  if (commit) {
+    return normalizeAgentOutcome(`Agent finished and committed ${commit[1]} ${commit[2]}.${remaining ? ` Remaining blocker: ${remaining[1]}.` : ""}`);
+  }
   if (/git status --short\s*└ \(no output\)|worktree remains clean|No code or wiki edits were needed/i.test(text)) {
-    return "Agent finished and the worktree remained clean.";
+    return normalizeAgentOutcome(`Agent finished and the worktree remained clean.${remaining ? ` Remaining blocker: ${remaining[1]}.` : ""}`);
   }
   const summary = [...lines].reverse().find((line) => /Handled the workspace request|Checks run successfully|passed|complete/i.test(line));
-  return summary || "Agent finished.";
+  return normalizeAgentOutcome(summary ? `${summary}${remaining ? ` Remaining blocker: ${remaining[1]}.` : ""}` : `Agent finished.${remaining ? ` Remaining blocker: ${remaining[1]}.` : ""}`);
+}
+
+function normalizeAgentOutcome(value: string) {
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function planningWorkstreamLines(text: string) {
