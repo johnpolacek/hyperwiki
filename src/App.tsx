@@ -43,6 +43,12 @@ type ViewRoute =
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
 type SidePanelMode = "terminal" | "modify" | "new-plan";
 
+const DISABLE_TEXT_CORRECTION_PROPS = {
+  autoCapitalize: "off",
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
+
 interface WikiPage {
   title: string;
   path: string;
@@ -1694,7 +1700,7 @@ function CommandBar({
             >
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-bold">Branch</span>
-                <input className="border bg-background px-2 py-2" onChange={(event) => setBranch(event.target.value)} value={branch} />
+                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="border bg-background px-2 py-2" onChange={(event) => setBranch(event.target.value)} value={branch} />
               </label>
               <Button type="submit">
                 <GitBranch aria-hidden="true" data-icon="inline-start" />
@@ -1735,11 +1741,11 @@ function CommandBar({
             >
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-bold">Title</span>
-                <input className="border bg-background px-2 py-2" onChange={(event) => setTitle(event.target.value)} value={title} />
+                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="border bg-background px-2 py-2" onChange={(event) => setTitle(event.target.value)} value={title} />
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-bold">Intent</span>
-                <textarea className="min-h-24 border bg-background px-2 py-2" onChange={(event) => setIntent(event.target.value)} value={intent} />
+                <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-24 border bg-background px-2 py-2" onChange={(event) => setIntent(event.target.value)} value={intent} />
               </label>
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-bold">Type</span>
@@ -1807,6 +1813,7 @@ function PlanCreationView({
             <label className="grid gap-2">
               <span className="text-sm font-semibold">Planning focus</span>
               <textarea
+                {...DISABLE_TEXT_CORRECTION_PROPS}
                 className="min-h-[180px] rounded-md bg-background p-4 text-sm leading-6 outline-none shadow-[inset_0_0_0_1px_hsl(var(--border))] transition-shadow focus-visible:shadow-[inset_0_0_0_1px_hsl(var(--ring)),0_0_0_3px_hsl(var(--ring)/0.18)]"
                 onChange={(event) => setIntent(event.target.value)}
                 placeholder="Feature, workflow, refactor, research track, or product change..."
@@ -1971,6 +1978,7 @@ function ImportedPlanningQAView({
             >
               <label className="text-sm font-semibold" htmlFor="planning-other-answer">Other</label>
               <textarea
+                {...DISABLE_TEXT_CORRECTION_PROPS}
                 className="min-h-24 rounded-md border bg-card px-3 py-2 text-sm leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 id="planning-other-answer"
                 onChange={(event) => setOtherAnswer(event.target.value)}
@@ -2319,12 +2327,12 @@ function NewProjectView({
 
           <label className="grid gap-2">
             <span className="text-base font-bold text-card-foreground">Project Name</span>
-            <input className="min-h-14 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name..." required value={title} onChange={(event) => setTitle(event.target.value)} />
+            <input {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-14 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name..." required value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
 
           <label className="grid gap-2">
             <span className="text-base font-bold text-card-foreground">Brief</span>
-            <textarea className="min-h-[9rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
+            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[9rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
 
           <label className="flex min-h-10 items-center gap-3 text-base text-card-foreground">
@@ -2553,7 +2561,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
               </div>
               <details className="mt-4">
                 <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">Advanced JSON</summary>
-                <textarea className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
+                <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
               </details>
             </section>
             <section className="grid rounded-md border bg-card p-6">
@@ -2615,7 +2623,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
               <h2 className="text-sm font-bold uppercase">AGENTS.md</h2>
               <span className="truncate text-xs text-muted-foreground">{agentsFile.path || "AGENTS.md"}</span>
             </div>
-            <textarea className="min-h-[360px] w-full rounded-md border bg-background p-4 font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
+            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[360px] w-full rounded-md border bg-background p-4 font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
           </section>
         </div>
         <SettingsStatus status={status} />
@@ -2837,7 +2845,7 @@ function TextareaField({ label, onChange, rows, value }: { label: string; onChan
   return (
     <label className="mb-4 grid gap-2 text-xs font-bold uppercase text-muted-foreground">
       {label}
-      <textarea className="w-full rounded-md border bg-background p-3 font-mono text-sm font-normal normal-case text-foreground" rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
+      <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="w-full rounded-md border bg-background p-3 font-mono text-sm font-normal normal-case text-foreground" rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -2845,8 +2853,8 @@ function TextareaField({ label, onChange, rows, value }: { label: string; onChan
 function MemoryEditor({ entry, index, onChange, onRemove }: { entry: MemoryEntry; index: number; onChange: (entry: MemoryEntry) => void; onRemove: () => void }) {
   return (
     <article className="grid gap-2 rounded-md border bg-background p-3">
-      <input className="rounded-md border bg-card px-3 py-2 text-sm" placeholder={`Memory ${index + 1}`} value={entry.title || ""} onChange={(event) => onChange({ ...entry, title: event.target.value })} />
-      <textarea className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => onChange({ ...entry, content: event.target.value })} />
+      <input {...DISABLE_TEXT_CORRECTION_PROPS} className="rounded-md border bg-card px-3 py-2 text-sm" placeholder={`Memory ${index + 1}`} value={entry.title || ""} onChange={(event) => onChange({ ...entry, title: event.target.value })} />
+      <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => onChange({ ...entry, content: event.target.value })} />
       <div className="flex items-center justify-between gap-3">
         <label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
           <input className="size-4 accent-primary" checked={entry.enabled !== false} type="checkbox" onChange={(event) => onChange({ ...entry, enabled: event.target.checked })} />
@@ -3089,6 +3097,7 @@ function RightActionPane({
           >
             <h1 className="m-0 text-3xl font-bold">Modify Plan</h1>
             <textarea
+              {...DISABLE_TEXT_CORRECTION_PROPS}
               className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onChange={(event) => setModifyText(event.target.value)}
               placeholder="Tell the agent how to change the plan..."
@@ -3110,11 +3119,11 @@ function RightActionPane({
             <h1 className="m-0 text-3xl font-bold">Create Plan</h1>
             <label className="flex flex-col gap-1 text-sm font-bold">
               Title
-              <input className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTitle(event.target.value)} value={title} />
+              <input {...DISABLE_TEXT_CORRECTION_PROPS} className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTitle(event.target.value)} value={title} />
             </label>
             <label className="flex flex-col gap-1 text-sm font-bold">
               Intent
-              <textarea className="min-h-48 rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setIntent(event.target.value)} value={intent} />
+              <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-48 rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setIntent(event.target.value)} value={intent} />
             </label>
             <Button className="min-h-12 w-full" type="submit">
               + plan
@@ -3217,7 +3226,7 @@ function TerminalPane(props: {
               </header>
               <label className="grid gap-1.5">
                 <span className="text-[11px] font-bold uppercase text-[#9da79f]">Branch</span>
-                <input className="w-full rounded-md border border-[#3a403b] bg-[#0c0f0d] px-2.5 py-2 text-xs text-[#eef2ec] outline-none focus:border-[#8ea0ff]" disabled={!hasGit} value={worktreeBranch} onChange={(event) => setWorktreeBranch(event.target.value)} />
+                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="w-full rounded-md border border-[#3a403b] bg-[#0c0f0d] px-2.5 py-2 text-xs text-[#eef2ec] outline-none focus:border-[#8ea0ff]" disabled={!hasGit} value={worktreeBranch} onChange={(event) => setWorktreeBranch(event.target.value)} />
               </label>
               <dl className="grid gap-1.5 rounded-md border border-[#2c302d] bg-[#151917] p-2.5">
                 <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Slug</dt><dd className="truncate text-right">{worktreeSlug}</dd></div>
@@ -3368,6 +3377,7 @@ function TerminalSessionTab(props: {
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1 text-left">
           <input
+            {...DISABLE_TEXT_CORRECTION_PROPS}
             aria-label="Session name"
             className="w-full bg-transparent text-sm font-bold outline-none"
             onBlur={() => props.onRename(draftName)}
