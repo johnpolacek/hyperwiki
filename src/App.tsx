@@ -3090,7 +3090,7 @@ function RightActionPane({
             <textarea
               className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onChange={(event) => setModifyText(event.target.value)}
-              placeholder="Describe how the agent should revise this page..."
+              placeholder="Tell the agent how to change the plan..."
               value={modifyText}
             />
             <Button className="min-h-12 w-full" type="submit">

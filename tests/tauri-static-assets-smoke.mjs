@@ -58,7 +58,7 @@ const app = appAssets.join("\n");
 if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
-if (!app.includes("Modify Plan") || !app.includes("Describe how the agent should revise this page")) {
+if (!app.includes("Modify Plan") || !app.includes("Tell the agent how to change the plan")) {
   throw new Error("Command bar modify action must bundle the visible Modify Plan pane.");
 }
 
