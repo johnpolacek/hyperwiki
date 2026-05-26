@@ -1458,7 +1458,7 @@ function SidebarPageButton({
       ) : (
         <span aria-hidden="true" className="size-4" />
       )}
-      <span className={cn("mx-auto size-[7px] shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
+      <span className={cn("mx-auto size-[6px] shrink-0 rounded-full", current ? "bg-[#25a244] opacity-70 shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
       <button
         className="min-w-0 truncate text-left font-normal"
         onClick={(event) => {
