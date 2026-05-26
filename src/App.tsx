@@ -1177,7 +1177,7 @@ function App() {
         {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
         ) : sidePanelMode === "modify" || sidePanelMode === "new-plan" ? (
-          <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} onSetMode={setSidePanelMode} status={status} />
+          <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} />
         ) : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
@@ -3067,13 +3067,9 @@ function escapeRegExp(value: string) {
 function RightActionPane({
   mode,
   onRunCommand,
-  onSetMode,
-  status,
 }: {
   mode: "modify" | "new-plan";
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetMode: (mode: SidePanelMode) => void;
-  status: string;
 }) {
   const [modifyText, setModifyText] = useState("");
   const [title, setTitle] = useState("");
@@ -3082,29 +3078,6 @@ function RightActionPane({
   return (
     <aside className="min-h-0 overflow-auto border-l bg-background p-8 max-xl:hidden">
       <section className="rounded-lg border bg-card p-8 shadow-[0_18px_44px_rgba(32,35,31,0.08)]">
-        <div className="mb-5 flex items-center gap-2">
-          <button
-            className={cn("rounded-md border px-3 py-1.5 text-sm font-bold", mode === "modify" ? "bg-foreground text-background" : "bg-background")}
-            onClick={() => onSetMode("modify")}
-            type="button"
-          >
-            Modify
-          </button>
-          <button
-            className={cn("rounded-md border px-3 py-1.5 text-sm font-bold", mode === "new-plan" ? "bg-foreground text-background" : "bg-background")}
-            onClick={() => onSetMode("new-plan")}
-            type="button"
-          >
-            New Plan
-          </button>
-          <button
-            className="rounded-md border bg-background px-3 py-1.5 text-sm font-bold"
-            onClick={() => onSetMode("terminal")}
-            type="button"
-          >
-            Terminal
-          </button>
-        </div>
         {mode === "modify" ? (
           <form
             className="flex flex-col gap-5"
@@ -3113,7 +3086,7 @@ function RightActionPane({
               onRunCommand("modify", { prompt: modifyText });
             }}
           >
-            <h1 className="m-0 text-3xl font-bold">Modify Page</h1>
+            <h1 className="m-0 text-3xl font-bold">Modify Plan</h1>
             <textarea
               className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onChange={(event) => setModifyText(event.target.value)}
@@ -3147,7 +3120,6 @@ function RightActionPane({
             </Button>
           </form>
         )}
-        <p className="mt-4 text-xs text-muted-foreground" role="status">{status}</p>
       </section>
     </aside>
   );
