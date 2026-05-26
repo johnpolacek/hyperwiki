@@ -1374,11 +1374,12 @@ function WikiSidebar(props: {
 function PlanTree({ pages, currentPath, onNavigate, workspace }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null }) {
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
+  const visibleRoots = roots.filter((page) => !isPlansIndexPage(page));
   const currentPlanPath = currentPlanWorkPath(sorted, roots, workspace);
-  if (!roots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
+  if (!visibleRoots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
   return (
     <div className="grid gap-1">
-      {roots.map((page) => (
+      {visibleRoots.map((page) => (
         <PlanNode currentPath={currentPath} currentWorkPath={currentPlanPath} key={page.path} onNavigate={onNavigate} page={page} pages={sorted} />
       ))}
     </div>
@@ -3729,6 +3730,10 @@ function isTopLevelPlanPage(page: WikiPage) {
   if (/^\/wiki\/plans\/(?!zzz_completed\/)[^/]+\/index\.mdx$/.test(path)) return true;
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(path)) return true;
   return /^\/wiki\/plans\/[^/]+\.mdx$/.test(path) && !path.endsWith("/index.mdx");
+}
+
+function isPlansIndexPage(page: WikiPage) {
+  return displayWikiPath(page.path).endsWith("/wiki/plans/index.mdx");
 }
 
 function isCompletedTopLevelPlanPage(page: WikiPage) {
