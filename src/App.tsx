@@ -11,6 +11,8 @@ import {
   GitBranch,
   LayoutDashboard,
   Loader2,
+  Maximize2,
+  Minimize2,
   Play,
   Plus,
   RotateCcw,
@@ -328,6 +330,7 @@ function App() {
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
+  const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
@@ -1093,6 +1096,7 @@ function App() {
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
+  const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute && route.kind !== "plan-create";
 
   useEffect(() => {
     if (!isUtilityRoute && route.kind !== "plan-create") return;
@@ -1118,14 +1122,14 @@ function App() {
       <section
         className={cn(
           "grid h-full min-h-0 flex-1 overflow-hidden",
-          isUtilityRoute || route.kind === "plan-create"
+          isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create"
             ? "grid-cols-1"
             : isImportedPlanningActive
             ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
             : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
         )}
       >
-        {isUtilityRoute || route.kind === "plan-create" ? null : (
+        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
             model={sidebarModel}
@@ -1137,6 +1141,7 @@ function App() {
         <WorkspacePane
           activeProject={activeProject}
           hasLoadedProjects={hasLoadedProjects}
+          isExpanded={isMainPaneExpanded}
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
@@ -1146,6 +1151,7 @@ function App() {
           onAnswerPlanningQuestion={answerPlanningQuestion}
           onStartPlanCreation={startPlanCreation}
           onSetSidePanelMode={setSidePanelMode}
+          onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
           onSwitchProject={switchProject}
           planningActivity={planningActivity}
           planningWorkstream={planningWorkstream}
@@ -1163,7 +1169,7 @@ function App() {
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
         />
-        {isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
+        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
         ) : (
           <div className="h-full min-h-0 overflow-hidden">
@@ -1470,6 +1476,7 @@ function SidebarPageButton({
 function WorkspacePane(props: {
   activeProject: ProjectRecord | null;
   hasLoadedProjects: boolean;
+  isExpanded: boolean;
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
@@ -1479,6 +1486,7 @@ function WorkspacePane(props: {
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
   onStartPlanCreation: (intent: string) => Promise<void>;
+  onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
   planningActivity: string;
   planningWorkstream: string[];
@@ -1535,7 +1543,18 @@ function WorkspacePane(props: {
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
-        <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
+            size="sm"
+            variant="outline"
+            onClick={props.onToggleExpanded}
+          >
+            {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
+            {props.isExpanded ? "restore" : "expand"}
+          </Button>
+          <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+        </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {props.isLoading ? (

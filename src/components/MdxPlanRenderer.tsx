@@ -26,7 +26,7 @@ export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanR
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
+      <div className="mx-auto flex max-w-[72rem] flex-col gap-5 px-6 py-8 md:px-10">
         {content}
         {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
       </div>
@@ -210,9 +210,9 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
       </a>
     );
   }
-  if (tag === "h1") return <h1 className="m-0 text-4xl font-bold leading-tight md:text-5xl" key={key}>{children}</h1>;
-  if (tag === "h2") return <h2 className="m-0 text-2xl font-bold leading-tight" key={key}>{children}</h2>;
-  if (tag === "h3") return <h3 className="m-0 text-lg font-bold leading-snug" key={key}>{children}</h3>;
+  if (tag === "h1") return <h1 className="m-0 text-3xl font-bold leading-tight md:text-4xl" key={key}>{children}</h1>;
+  if (tag === "h2") return <h2 className="m-0 text-xl font-bold leading-tight md:text-2xl" key={key}>{children}</h2>;
+  if (tag === "h3") return <h3 className="m-0 text-base font-bold leading-snug md:text-lg" key={key}>{children}</h3>;
   if (tag === "p") return <p className="m-0 text-sm leading-7 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
   if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
