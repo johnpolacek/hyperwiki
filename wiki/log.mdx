@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-25 polish | compact sidebar tree spacing</h2>
+  <ul>
+    <li>Reduced the horizontal depth step and internal grid columns for nested plan sidebar rows so Stage and Unit labels have more usable width.</li>
+    <li>Kept the fixed disclosure, status-dot, and label columns introduced for consistent Plan &gt; Stage &gt; Unit alignment.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-25 fix | sidebar tree indentation</h2>
   <ul>
     <li>Reworked React plan sidebar rows to use a fixed grid for disclosure, current-status dot, and label columns at every depth.</li>

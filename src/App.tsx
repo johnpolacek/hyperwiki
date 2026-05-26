@@ -1429,16 +1429,16 @@ function SidebarPageButton({
   return (
     <div
       className={cn(
-        "grid min-h-10 min-w-0 grid-cols-[1.25rem_0.875rem_minmax(0,1fr)] items-center gap-2 rounded-md py-1.5 pe-2 text-sm transition-colors",
+        "grid min-h-10 min-w-0 grid-cols-[1rem_0.625rem_minmax(0,1fr)] items-center gap-1.5 rounded-md py-1.5 pe-2 text-sm transition-colors",
         isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
       )}
-      style={{ paddingLeft: `${8 + depth * 18}px` }}
+      style={{ paddingLeft: `${8 + depth * 12}px` }}
     >
       {hasChildren ? (
         <button
           aria-expanded={isOpen}
           aria-label={`${isOpen ? "Collapse" : "Expand"} ${cleanPageTitle(page)}`}
-          className="grid size-5 place-items-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground"
+          className="grid size-4 place-items-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground"
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -1446,10 +1446,10 @@ function SidebarPageButton({
           }}
           type="button"
         >
-          <ChevronDown aria-hidden="true" className={cn("size-3.5 transition-transform", !isOpen && "-rotate-90")} />
+          <ChevronDown aria-hidden="true" className={cn("size-3 transition-transform", !isOpen && "-rotate-90")} />
         </button>
       ) : (
-        <span aria-hidden="true" className="size-5" />
+        <span aria-hidden="true" className="size-4" />
       )}
       <span className={cn("mx-auto size-2 shrink-0 rounded-full", current ? "bg-[#25a244] shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
       <button
