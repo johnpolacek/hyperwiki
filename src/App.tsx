@@ -1232,7 +1232,7 @@ function TopBar(props: {
         {props.activeProject?.name ? (
           <>
             <span className="text-xs font-bold text-muted-foreground/60">|</span>
-            <span className="truncate text-sm font-semibold text-foreground">{props.activeProject.name}</span>
+            <span className="truncate text-sm font-normal text-foreground">{props.activeProject.name}</span>
           </>
         ) : null}
       </button>
