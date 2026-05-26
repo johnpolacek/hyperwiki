@@ -4401,7 +4401,14 @@ function terminalPlainTextForLog(data: string) {
 
 function isUsefulTerminalLogLine(line: string) {
   if (!line) return false;
-  if (/^(?:[WM•\s]*Working|Working|M M|S|l|g|\d+|[?;:\d\[\]HKl]+)$/.test(line)) return false;
+  const normalized = line.replace(/^[-•]\s*/, "").trim();
+  if (!normalized) return false;
+  if (/^%+$/.test(normalized)) return false;
+  if (/^(?:Wor|Work|Worki|Workin|Working|orking|rking|king|ing)$/.test(normalized)) return false;
+  if (/^(?:[WM•\s]*Working|Working|M+|M M|S|l|g|\d+|[?;:\d\[\]HKl]+)$/.test(normalized)) return false;
+  if (/(?:esc to interrupt|background terminals? running|\/ps to vi|ctrl \+ t to view transcript)/i.test(normalized)) return false;
+  if (/^(?:\d{1,3};){1,}\d{1,3}[A-Za-z]?$/.test(normalized)) return false;
+  if (/^(?:\d{1,3};){1,}\d{1,3};\d{1,3}m/.test(normalized)) return false;
   if (/^›\s*.*mplement\s+\{feature\}/i.test(line)) return false;
   if (/^gpt-[\w.-]+\s+\w+\s+·\s+/.test(line)) return false;
   if (/^model:\s|^directory:\s|^permissions:\s|^Tip:\s/.test(line)) return false;
