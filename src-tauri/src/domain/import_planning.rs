@@ -617,7 +617,7 @@ fn plans_index_html(title: &str) -> String {
     page(
         "Plans",
         &format!(
-            "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current plan: <a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a></li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: execute Unit 01 after reviewing the source-grounded plan.</li></ul></section><section><h2>Active Plans</h2><ul><li><a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a> was created from the post-import Q&amp;A gate.</li></ul></section>",
+            "<h1>Plans</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current plan: <a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a></li><li>Current stage: Stage 01 - Prototype Foundation</li><li>Current unit: Unit 01 - Product And Scope Lock</li><li>Next action: execute Unit 01 after reviewing the source-grounded plan.</li></ul></section><section><h2>Active Plans</h2><ul><li><a href=\"/wiki/plans/imported-project-plan/index.mdx\">{}</a> was created from the post-import Q&amp;A gate.</li></ul></section>",
             escape_html(title),
             escape_html(title)
         ),
@@ -782,7 +782,7 @@ mod tests {
         .unwrap();
         fs::write(
             root.join("wiki").join("plans").join("index.mdx"),
-            "<h1>Planning Dashboard</h1>",
+            "<h1>Plans</h1>",
         )
         .unwrap();
     }

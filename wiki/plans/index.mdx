@@ -1,23 +1,23 @@
 ---
-title: "Planning Dashboard"
+title: "Plans"
 description: "Hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Planning Dashboard</h1>
+<h1>Plans</h1>
 <section className="summary">
   <h2>Summary</h2>
   <ul>
     <li>Status: ready for merge</li>
-    <li>Shape: completed rewrite plan</li>
-    <li>Current plan: <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a></li>
-    <li>Current unit: all stages complete</li>
+    <li>Shape: completed maintenance plan</li>
+    <li>Current plan: none</li>
+    <li>Current unit: none</li>
     <li>Next action: merge <code>frontend-rewrite</code> to <code>main</code> after final user approval; pushing still requires approval.</li>
   </ul>
 </section>
 <section>
   <h2>Current Planning State</h2>
-  <p>The MVP, complete Tauri rewrite, legacy Node runtime removal, new plan workflow, multi-agent provider support, and React/shadcn/MDX rewrite plans are complete. The rewrite branch is ready for final merge review.</p>
+  <p>The Plans index is the canonical current-work contract for project contracts, MCP, imports, generated scaffolds, and agent handoffs. The Plans Index Reframe is complete.</p>
 </section>
 <section>
   <h2>Active Plans</h2>
@@ -28,6 +28,7 @@ wikiKind: "plan"
 <section>
   <h2>Recently Completed</h2>
   <ul>
+    <li><a href="/wiki/plans/features/plans-index-reframe.mdx">Plans Index Reframe</a> replaces dashboard-facing language with Plans index language while keeping <code>/wiki/plans/index.mdx</code> stable for contracts, imports, generated scaffolds, and agent handoffs.</li>
     <li><a href="/wiki/plans/features/restore-modify-page-pane.mdx">Restore Modify Page Pane</a> reconnects the React command-bar modify action to the existing right-side page revision prompt.</li>
     <li><a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> moved Hyperwiki's app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui; plan pages now render from trusted local MDX with Markdown-first derivatives for agents, and obsolete static shell assets have been removed.</li>
     <li><a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a> adds a vendored default skill bundle to new Hyperwiki projects, installed offline during CLI and dashboard initialization with a <code>--no-skills</code> opt-out.</li>

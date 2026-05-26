@@ -155,7 +155,7 @@ After 2 minutes, the reader can identify the current project focus, the authorit
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Planning dashboard and implementation contract. |
+| [Plans](plans/index.mdx) | Plans index and implementation contract. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 
 ## Source Briefs
@@ -301,7 +301,7 @@ wikiKind: "source-brief"
 ```mdx
 ---
 title: "[Project Name] Plans"
-description: "Planning dashboard and implementation contract for [Project Name]."
+description: "Plans index and implementation contract for [Project Name]."
 wikiKind: "plans-index"
 ---
 

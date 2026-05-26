@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-26 maintenance | plans index reframe</h2>
+  <ul>
+    <li>Renamed the user-facing <code>/wiki/plans/index.mdx</code> surface to Plans while preserving the canonical route for project contracts, MCP current-plan context, imports, generated scaffolds, review prompts, and terminal scoping.</li>
+    <li>Updated generated project/import templates, Hyperwiki skill references, active plan docs, and import-planning smoke expectations to use Plans index language.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code>; the WebDriver smoke skipped on macOS WKWebView.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-26 fix | restore modify page pane</h2>
   <ul>
     <li>Reconnected the React command-bar <code>modify</code> action to the existing right-side Modify Page prompt.</li>

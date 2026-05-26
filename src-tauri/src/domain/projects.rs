@@ -1173,7 +1173,7 @@ fn index_page(options: &InitProjectOptions) -> String {
     let plan_link = if options.source_document.trim().is_empty() {
         "<li><a href=\"/wiki/plans/mvp/index.mdx\">MVP plan</a></li>"
     } else {
-        "<li><a href=\"/wiki/plans/index.mdx\">Planning intake</a></li>"
+        "<li><a href=\"/wiki/plans/index.mdx\">Plans</a></li>"
     };
     layout(
         options,
@@ -1192,7 +1192,7 @@ fn plans_index_page(options: &InitProjectOptions) -> String {
         return layout(
             options,
             "Plans",
-            "<h1>Planning Dashboard</h1>\
+            "<h1>Plans</h1>\
 <section class=\"summary\"><h2>Summary</h2><ul>\
 <li>Status: planning</li>\
 <li>Current stage: none; source-grounded Q&amp;A has not produced a real implementation stage yet.</li>\
@@ -1205,7 +1205,7 @@ fn plans_index_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Plans",
-        "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.mdx\">Stage 01 - Project Direction And Setup</a></li></ul>",
+        "<h1>Plans</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.mdx\">Stage 01 - Project Direction And Setup</a></li></ul>",
     )
 }
 

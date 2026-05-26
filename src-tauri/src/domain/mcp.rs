@@ -324,7 +324,7 @@ fn resource_payload(root: &Path, uri: &str) -> Result<Value, (i32, String)> {
 fn mcp_resources() -> Vec<McpResource> {
     vec![
         resource("hyperwiki://project-contract", "Project Contract", "Machine-readable project facts, current plan state, source briefs, guardrails, verification loops, layout, wiki pages, and runtime boundaries.", "localhost-tooling", "/api/project-contract", "$"),
-        resource("hyperwiki://current-plan", "Current Plan", "Current planning dashboard status, source path, and Markdown derivative derived from repo-visible MDX.", "canonical-wiki", "/api/project-contract", "$.plan"),
+        resource("hyperwiki://current-plan", "Current Plan", "Current plans index status, source path, and Markdown derivative derived from repo-visible MDX.", "canonical-wiki", "/api/project-contract", "$.plan"),
         resource("hyperwiki://source-index", "Source Index", "Source index and generated source briefs that define durable product and technical context.", "canonical-wiki", "/api/project-contract", "$.sources"),
         resource("hyperwiki://verification-loops", "Verification Loops", "Configured or inferred verification loops plus latest local runtime evidence.", "runtime-evidence", "/api/verification", "$"),
         resource("hyperwiki://guardrails", "Guardrails", "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.", "localhost-tooling", "/api/guardrails", "$"),

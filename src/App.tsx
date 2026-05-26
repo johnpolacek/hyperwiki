@@ -3707,7 +3707,7 @@ function isProjectWikiPage(page: WikiPage) {
 
 function cleanPageTitle(page: WikiPage) {
   const path = displayWikiPath(page.path);
-  if (path.endsWith("/wiki/plans/index.mdx")) return "Planning Dashboard";
+  if (path.endsWith("/wiki/plans/index.mdx")) return "Plans";
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "MVP Plan";
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "Completed Plans";
   if (isUnitPage(page)) return normalizePlanDisplayTitle(page.title);

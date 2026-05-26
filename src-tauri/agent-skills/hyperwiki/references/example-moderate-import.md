@@ -22,7 +22,7 @@ This example shows the expected import posture for an existing frontend app with
 ```mdx
 ---
 title: "Invoice Review Plans"
-description: "Planning dashboard and implementation contract for Invoice Review."
+description: "Plans index and implementation contract for Invoice Review."
 wikiKind: "plans-index"
 ---
 

@@ -48,7 +48,7 @@ wikiKind: "plan"
 
     <section className="panel" aria-labelledby="intent">
       <h2 id="intent">Intent</h2>
-      <p>Extend Hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for Hyperwiki's own repository. The app should interview the user through an LLM-guided clarification loop, create or update files under the selected project's <code>wiki/</code> directory only after the clarity gate passes, update that project's planning dashboard, and navigate the user into the newly created project plan.</p>
+      <p>Extend Hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for Hyperwiki's own repository. The app should interview the user through an LLM-guided clarification loop, create or update files under the selected project's <code>wiki/</code> directory only after the clarity gate passes, update that project's Plans index, and navigate the user into the newly created project plan.</p>
     </section>
 
     <section className="workflow-map" aria-labelledby="flow">
@@ -168,7 +168,7 @@ wikiKind: "plan"
         </li>
         <li>
           <h3>Unit 03 - Wiki file generation</h3>
-          <p>Write the compact plan page, update the selected project's planning dashboard, and append a project-context log entry only when appropriate.</p>
+          <p>Write the compact plan page, update the selected project's Plans index, and append a project-context log entry only when appropriate.</p>
           <p><strong>Verification:</strong> fixture tests that inspect generated HTML and confirm no placeholder leakage.</p>
         </li>
         <li>
@@ -198,10 +198,10 @@ wikiKind: "plan"
     <section className="panel" aria-labelledby="execution-notes">
       <h2 id="execution-notes">Execution Notes</h2>
       <ul>
-        <li>2026-05-21: Fixed the existing plan sidebar tree so active feature plans under <code>wiki/plans/features/*.mdx</code> render as top-level plan entries. This was discovered after adding this plan directly to the wiki and finding that the Tauri app listed the planning dashboard but not the active feature plan.</li>
+        <li>2026-05-21: Fixed the existing plan sidebar tree so active feature plans under <code>wiki/plans/features/*.mdx</code> render as top-level plan entries. This was discovered after adding this plan directly to the wiki and finding that the Tauri app listed the Plans index but not the active feature plan.</li>
         <li>2026-05-21: Fixed wiki status extraction so completed plans with a plain <code>Summary</code> section, such as <code>Remove Legacy Node Runtime</code>, group under Completed Plans in the Tauri sidebar.</li>
         <li>2026-05-21: Added the requirement that project plan creation include an LLM-led Q&amp;A clarification loop before generating plan files.</li>
-        <li>2026-05-21: Implemented the full project plan creation workflow in branch <code>feature/project-plan-creation</code>: Rust clarify/create endpoints, clarity gate tests, generated plan file writes, dashboard/log updates, conflict feedback, and the workspace <code>+ plan</code> Q&amp;A surface.</li>
+        <li>2026-05-21: Implemented the full project plan creation workflow in branch <code>feature/project-plan-creation</code>: Rust clarify/create endpoints, clarity gate tests, generated plan file writes, Plans index/log updates, conflict feedback, and the workspace <code>+ plan</code> Q&amp;A surface.</li>
         <li>2026-05-21: Reworked the create-plan clarification UI from multi-card canned questions into a focused one-question wizard. The clarify endpoint now generates the next highest-impact question from the title, intent, plan type, and prior answers, then returns only that question until the required clarity gate passes.</li>
       </ul>
     </section>

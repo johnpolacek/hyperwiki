@@ -1,0 +1,38 @@
+---
+title: "Plans Index Reframe"
+description: "Reframe the old current-work surface as a lightweight Plans index while preserving the canonical planning contract path."
+wikiKind: "plan"
+---
+
+<h1>Plans Index Reframe</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: merge after review.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code> passed. <code>pnpm run smoke:tauri-webdriver</code> skipped on macOS WKWebView.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Hyperwiki should not present a separate current-work dashboard product surface when the durable artifact is really the Plans index. The canonical <code>wiki/plans/index.mdx</code> file remains the current-work contract for compatibility with project contracts, MCP, import planning, generated scaffolds, and agent handoffs.</p>
+</section>
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Rename visible page titles, generated templates, tests, and active agent guidance from dashboard language to Plans or Plans index.</li>
+    <li>Keep existing routes, public contract field names, terminal scoping, and import fallback behavior stable.</li>
+    <li>Leave historical log entries unchanged unless they are active guidance.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>pnpm run test:tauri</code> passed.</li>
+    <li><code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+    <li><code>pnpm run smoke:tauri-webdriver</code> skipped because Tauri desktop WebDriver is not supported on macOS WKWebView.</li>
+  </ul>
+</section>

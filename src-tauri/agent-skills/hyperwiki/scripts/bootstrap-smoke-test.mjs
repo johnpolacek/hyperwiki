@@ -65,7 +65,7 @@ Confirm invoice schema, authentication/session boundary, audit persistence, and 
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Planning dashboard and implementation contract. |
+| [Plans](plans/index.mdx) | Plans index and implementation contract. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 
 ## Source Briefs
@@ -157,7 +157,7 @@ Confirm schema, session boundary, audit persistence, and export destination.
 `],
   ["wiki/plans/index.mdx", `---
 title: "Invoice Review Plans"
-description: "Planning dashboard and implementation contract for Invoice Review."
+description: "Plans index and implementation contract for Invoice Review."
 wikiKind: "plans-index"
 ---
 

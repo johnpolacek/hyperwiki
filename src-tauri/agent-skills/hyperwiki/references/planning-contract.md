@@ -73,7 +73,7 @@ For larger plans, the agent may first propose the outline of stages and units, t
 
 Plan files must be useful from a terminal. Optimize the first 80 lines of `wiki/plans/index.mdx` and every active plan for quick inspection with `sed`, `head`, or `less`.
 
-`wiki/plans/index.mdx` is the plan dashboard. Keep its top section current enough to answer:
+`wiki/plans/index.mdx` is the Plans index and current-work contract. Keep its top section current enough to answer:
 
 - active plan
 - planning shape
@@ -107,7 +107,7 @@ When the user asks to inspect, continue, or execute a plan from the CLI, use thi
 3. Read only the relevant plan or unit files needed for the next action.
 4. Summarize current state in the response instead of dumping long MDX.
 5. Provide exact paths and useful read commands, such as `sed -n '1,80p' wiki/plans/index.mdx`.
-6. If no single current unit is clear, ask the user to choose or update the dashboard before implementation.
+6. If no single current unit is clear, ask the user to choose or update the Plans index before implementation.
 
 Resume and continue prompts are orientation prompts by default. If the user says "resume", "continue", "pick up", "look at", or "work on" a branch, worktree, feature, or plan, stop after orientation and ask what they want next unless they explicitly requested implementation or planning.
 
@@ -426,7 +426,7 @@ Before moving a plan, confirm:
 - every unit has `Verification` recorded with automated, manual, or explicitly deferred verification
 - no current blocker or next action remains inside the plan except follow-up work that has been moved to a new active plan, roadmap deferred work, or `wiki/log.mdx`
 
-After moving a plan, update active dashboards:
+After moving a plan, update active plan indexes:
 
 - remove the archived plan from active current-plan, current-stage, and current-unit fields
 - add or update a compact completed section in `wiki/plans/index.mdx` linking to the archived location

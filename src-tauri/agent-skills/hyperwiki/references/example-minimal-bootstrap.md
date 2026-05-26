@@ -17,7 +17,7 @@ Link Minder is a small CLI for checking a list of URLs and reporting broken or r
 
 ## Reader Goal
 
-After 2 minutes, the reader can identify the source index, planning dashboard, and next implementation decision.
+After 2 minutes, the reader can identify the source index, Plans index, and next implementation decision.
 
 ## Current Focus
 
@@ -30,7 +30,7 @@ Confirm the input file format and output report shape before app scaffold work.
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Planning dashboard and implementation contract. |
+| [Plans](plans/index.mdx) | Plans index and implementation contract. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 ```
 

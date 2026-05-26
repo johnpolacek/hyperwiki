@@ -22,7 +22,7 @@ wikiKind: "plan"
     <section>
       <h2>User Flow</h2>
       <ol>
-        <li>The user clicks <code>+ new plan</code> from the Planning Dashboard or plan sidebar header.</li>
+        <li>The user clicks <code>+ new plan</code> from the Plans index or plan sidebar header.</li>
         <li>Hyperwiki opens a compact creation surface that asks for the plan title, short intent, and whether the work is a feature, fix, cleanup, or research spike.</li>
         <li>The app previews the generated slug, wiki path, first unit title, and the execution target that will become active after creation.</li>
         <li>On create, Hyperwiki writes the plan page, updates <code>wiki/plans/index.mdx</code>, records the action in <code>wiki/log.mdx</code>, and navigates to the new plan.</li>
@@ -44,7 +44,7 @@ wikiKind: "plan"
       <ul>
         <li>Feature plans should default to <code>wiki/plans/features/&lt;slug&gt;.mdx</code>.</li>
         <li>The generated page should include Summary, Intent, User Flow or Implementation, Verification, and Closeout sections.</li>
-        <li>The Planning Dashboard should list the new plan as active until it is closed out.</li>
+        <li>The Plans index should list the new plan as active until it is closed out.</li>
         <li>The project log should receive a concise planning entry when the plan is created.</li>
         <li>All writes are repo-visible wiki changes; runtime state should only remember UI draft form contents if needed.</li>
       </ul>

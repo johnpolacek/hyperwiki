@@ -63,9 +63,9 @@ try {
   await waitFor(port, sessionId, async () => {
     const url = await currentUrl(port, sessionId);
     return url.includes("/workspace/routechat/main") && url.includes("#/wiki/plans/index.mdx");
-  }, "workspace planning dashboard URL");
+  }, "workspace plans index URL");
 
-  await waitForText(port, sessionId, "Planning Dashboard");
+  await waitForText(port, sessionId, "Plans");
   await waitForText(port, sessionId, "No plan pages.");
   await waitForText(port, sessionId, "Agent");
 
