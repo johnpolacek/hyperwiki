@@ -41,6 +41,7 @@ type ViewRoute =
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
+type SidePanelMode = "terminal" | "modify" | "new-plan";
 
 interface WikiPage {
   title: string;
@@ -330,7 +331,7 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
-  const [sidePanelMode, setSidePanelMode] = useState<"modify" | "new-plan">("modify");
+  const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("terminal");
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
@@ -894,10 +895,12 @@ function App() {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main" || action === "modify") {
+        setSidePanelMode("terminal");
         await sendAgentPrompt(action === "modify" && payload?.prompt ? payload.prompt : workflowPrompt(action, workspace, currentWikiPath));
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
       if (action === "execute-worktree") {
+        setSidePanelMode("terminal");
         const branch = payload?.branch || `feature/${slugify(workspace?.status?.current || titleForPath(currentWikiPath, wikiPages))}`;
         const result = await hyperwikiApi.json<{ branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }>(withProjectQuery("/api/worktrees", activeProject), {
           method: "POST",
@@ -908,6 +911,7 @@ function App() {
         setStatus(`Worktree ready: ${result.branch || branch}`);
       }
       if (action === "review" && payload?.workflowId) {
+        setSidePanelMode("terminal");
         await ensureAgentSession();
         await hyperwikiApi.json(withProjectQuery("/api/review-workflows/run", activeProject), {
           method: "POST",
@@ -1172,6 +1176,8 @@ function App() {
         />
         {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
+        ) : sidePanelMode === "modify" || sidePanelMode === "new-plan" ? (
+          <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} onSetMode={setSidePanelMode} status={status} />
         ) : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
@@ -1485,7 +1491,7 @@ function WorkspacePane(props: {
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
+  onSetSidePanelMode: (mode: SidePanelMode) => void;
   onStartPlanCreation: (intent: string) => Promise<void>;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
@@ -1642,7 +1648,7 @@ function CommandBar({
   wikiPath,
 }: {
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetSidePanelMode: (mode: "modify" | "new-plan") => void;
+  onSetSidePanelMode: (mode: SidePanelMode) => void;
   reviewWorkflows: ReviewWorkflow[];
   wikiPath: string;
 }) {
@@ -3066,7 +3072,7 @@ function RightActionPane({
 }: {
   mode: "modify" | "new-plan";
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetMode: (mode: "modify" | "new-plan") => void;
+  onSetMode: (mode: SidePanelMode) => void;
   status: string;
 }) {
   const [modifyText, setModifyText] = useState("");
@@ -3090,6 +3096,13 @@ function RightActionPane({
             type="button"
           >
             New Plan
+          </button>
+          <button
+            className="rounded-md border bg-background px-3 py-1.5 text-sm font-bold"
+            onClick={() => onSetMode("terminal")}
+            type="button"
+          >
+            Terminal
           </button>
         </div>
         {mode === "modify" ? (

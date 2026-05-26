@@ -58,5 +58,8 @@ const app = appAssets.join("\n");
 if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
+if (!app.includes("Modify Page") || !app.includes("Describe how the agent should revise this page")) {
+  throw new Error("Command bar modify action must bundle the visible Modify Page pane.");
+}
 
 console.log("tauri static assets smoke test passed");
