@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-26 fix | visible agent activity feed</h2>
+  <ul>
+    <li>Changed Modify, Execute, worktree, and review handoffs to show a simplified live agent activity feed by default, with raw terminal available as a secondary view.</li>
+    <li>Added completed and stale plan-page guards so normal Modify and Execute actions are disabled when the visible plan is not the current active work.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> shell render check against the existing Vite preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-26 fix | open active work on startup</h2>
   <ul>
     <li>Stopped normal app startup, project switching, and the brand home action from landing on the Plans index when active or first available plan work exists.</li>

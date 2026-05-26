@@ -41,7 +41,9 @@ type ViewRoute =
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
-type SidePanelMode = "terminal" | "modify" | "new-plan";
+type SidePanelMode = "terminal" | "modify" | "new-plan" | "agent-activity";
+type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
+type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 
 const DISABLE_TEXT_CORRECTION_PROPS = {
   autoCapitalize: "off",
@@ -57,6 +59,26 @@ interface WikiPage {
   currentState?: string;
   format?: "html" | "mdx";
   sourcePath?: string;
+}
+
+interface AgentRunState {
+  id: string;
+  kind: AgentRunKind;
+  label: string;
+  phase: AgentRunPhase;
+  sessionId: string | null;
+  activity: string;
+  lines: string[];
+  outcome: string;
+  startedAt: number;
+}
+
+interface PlanPageActionState {
+  isPlanPage: boolean;
+  isComplete: boolean;
+  isStale: boolean;
+  currentPath: string;
+  message: string;
 }
 
 interface WikiListResponse {
@@ -338,6 +360,7 @@ function App() {
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("terminal");
+  const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
@@ -356,6 +379,7 @@ function App() {
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
   const importPlanningState = useMemo(() => importedPlanningState(route, wikiPages), [route, wikiPages]);
   const isImportedPlanningActive = isImportedPlanningIntakeRoute(route, wikiPages);
+  const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages, workspace), [currentWikiPath, wikiPages, workspace]);
 
   useEffect(() => {
     applyAppTheme(settings?.theme);
@@ -761,6 +785,28 @@ function App() {
     await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
   }
 
+  function startAgentRun(kind: AgentRunKind, label: string) {
+    const run: AgentRunState = {
+      id: `${kind}-${Date.now()}`,
+      kind,
+      label,
+      phase: "starting",
+      sessionId: null,
+      activity: "Starting agent session",
+      lines: ["Starting agent session"],
+      outcome: "",
+      startedAt: Date.now(),
+    };
+    setAgentRun(run);
+    setSidePanelMode("agent-activity");
+    return run.id;
+  }
+
+  function updateAgentRun(runId: string | null, update: Partial<AgentRunState>) {
+    if (!runId) return;
+    setAgentRun((current) => current?.id === runId ? { ...current, ...update } : current);
+  }
+
   const handleTerminalText = useCallback((sessionId: string, text: string) => {
     if (!text) return;
     const current = planningQuestionBuffers.current.get(sessionId) || "";
@@ -770,6 +816,18 @@ function App() {
     if (activity) setPlanningActivity((currentActivity) => currentActivity === activity ? currentActivity : activity);
     const workstream = planningWorkstreamLines(next);
     if (workstream.length) setPlanningWorkstream(workstream);
+    setAgentRun((currentRun) => {
+      if (!currentRun || currentRun.sessionId !== sessionId) return currentRun;
+      const lines = workstream.length ? workstream : currentRun.lines;
+      const phase = inferAgentRunPhase(next, lines, currentRun.phase);
+      return {
+        ...currentRun,
+        phase,
+        activity: activity || currentRun.activity,
+        lines,
+        outcome: agentRunOutcome(next, lines, phase) || currentRun.outcome,
+      };
+    });
     const question = extractLatestPlanningQuestion(next, sessionId);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
@@ -839,6 +897,59 @@ function App() {
       }
     }
     throw lastError instanceof Error ? lastError : new Error("Agent unavailable.");
+  }
+
+  async function sendTrackedAgentPrompt(kind: AgentRunKind, label: string, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, existingRunId?: string) {
+    const runId = existingRunId || startAgentRun(kind, label);
+    try {
+      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions);
+      updateAgentRun(runId, {
+        sessionId: session.id,
+        phase: "waiting",
+        activity: "Waiting for the agent prompt",
+        lines: ["Agent session started", "Waiting for the agent prompt"],
+      });
+      const ready = await waitForAgentPromptReady(session.id);
+      appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
+      updateAgentRun(runId, {
+        phase: "sent",
+        activity: ready ? "Sending prompt to agent" : "Sending prompt after readiness timeout",
+        lines: ready ? ["Agent session started", "Prompt ready", "Sending prompt to agent"] : ["Agent session started", "Prompt readiness timed out", "Sending prompt to agent"],
+      });
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        try {
+          appendImportLog(`Agent prompt submit attempt=${attempt + 1} session=${session.id} scope=${scope.scope}`);
+          await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
+            method: "POST",
+            body: {
+              prompt,
+              currentPage,
+              scope: scope.scope,
+            },
+          });
+          appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id}`);
+          updateAgentRun(runId, {
+            phase: "sent",
+            activity: "Prompt sent; waiting for agent activity",
+            lines: ["Agent session started", "Prompt sent; waiting for agent activity"],
+          });
+          return session;
+        } catch (error) {
+          lastError = error;
+          appendImportLog(`Agent prompt submit failed attempt=${attempt + 1} session=${session.id}`, error);
+          await delay(250);
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error("Agent unavailable.");
+    } catch (error) {
+      updateAgentRun(runId, {
+        phase: "blocked",
+        activity: error instanceof Error ? error.message : "Agent run could not start",
+        outcome: error instanceof Error ? error.message : "Agent run could not start",
+      });
+      throw error;
+    }
   }
 
   async function planImportedProject(project: ProjectRecord) {
@@ -912,24 +1023,31 @@ function App() {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main" || action === "modify") {
-        setSidePanelMode("terminal");
-        await sendAgentPrompt(action === "modify" && payload?.prompt ? payload.prompt : workflowPrompt(action, workspace, currentWikiPath));
+        const prompt = action === "modify" && payload?.prompt ? payload.prompt : workflowPrompt(action, workspace, currentWikiPath);
+        await sendTrackedAgentPrompt(action === "modify" ? "modify" : "execute", action === "modify" ? "Modify Plan" : "Execute Unit", prompt);
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
       if (action === "execute-worktree") {
-        setSidePanelMode("terminal");
+        const runId = startAgentRun("worktree", "Run Dev Worktree");
         const branch = payload?.branch || `feature/${slugify(workspace?.status?.current || titleForPath(currentWikiPath, wikiPages))}`;
+        updateAgentRun(runId, { activity: `Creating worktree ${branch}`, lines: [`Creating worktree ${branch}`] });
         const result = await hyperwikiApi.json<{ branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }>(withProjectQuery("/api/worktrees", activeProject), {
           method: "POST",
           body: { branch },
         });
         await loadBaseData();
-        await sendAgentPrompt(existingWorktreePrompt(workspace, currentWikiPath, result));
+        await sendTrackedAgentPrompt("worktree", "Run Dev Worktree", existingWorktreePrompt(workspace, currentWikiPath, result), currentWikiPath, terminalScope, layout, sessions, runId);
         setStatus(`Worktree ready: ${result.branch || branch}`);
       }
       if (action === "review" && payload?.workflowId) {
-        setSidePanelMode("terminal");
-        await ensureAgentSession();
+        const runId = startAgentRun("review", "Review Workflow");
+        const session = await ensureAgentSession();
+        updateAgentRun(runId, {
+          sessionId: session.id,
+          phase: "sent",
+          activity: "Review prompt sent; waiting for agent activity",
+          lines: ["Agent session started", "Review prompt sent; waiting for agent activity"],
+        });
         await hyperwikiApi.json(withProjectQuery("/api/review-workflows/run", activeProject), {
           method: "POST",
           body: {
@@ -1191,9 +1309,15 @@ function App() {
           wikiSource={wikiSource}
           wikiPath={currentWikiPath}
           wikiPages={wikiPages}
+          activePlanState={activePlanState}
         />
         {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
+        ) : sidePanelMode === "agent-activity" ? (
+          <>
+            <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
+            <AgentActivityPane agentRun={agentRun} onShowTerminal={() => setSidePanelMode("terminal")} />
+          </>
         ) : sidePanelMode === "modify" || sidePanelMode === "new-plan" ? (
           <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} />
         ) : (
@@ -1501,6 +1625,7 @@ function SidebarPageButton({
 }
 
 function WorkspacePane(props: {
+  activePlanState: PlanPageActionState;
   activeProject: ProjectRecord | null;
   hasLoadedProjects: boolean;
   isExpanded: boolean;
@@ -1581,7 +1706,7 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CommandBar onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+          <CommandBar activePlanState={props.activePlanState} onNavigate={props.onNavigate} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -1662,11 +1787,15 @@ function isMissingFileError(error: string) {
 }
 
 function CommandBar({
+  activePlanState,
+  onNavigate,
   onRunCommand,
   onSetSidePanelMode,
   reviewWorkflows,
   wikiPath,
 }: {
+  activePlanState: PlanPageActionState;
+  onNavigate: (route: ViewRoute) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: SidePanelMode) => void;
   reviewWorkflows: ReviewWorkflow[];
@@ -1684,6 +1813,16 @@ function CommandBar({
 
   return (
     <div className="relative flex items-center gap-2">
+      {activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale) ? (
+        <div className="flex min-w-0 items-center gap-2 rounded-md border bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">
+          <span className="max-w-56 truncate">{activePlanState.message}</span>
+          {activePlanState.currentPath ? (
+            <button className="shrink-0 font-bold underline-offset-2 hover:underline" type="button" onClick={() => onNavigate({ kind: "wiki", path: activePlanState.currentPath })}>
+              Open current
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <Button
         size="sm"
         variant="outline"
@@ -1691,10 +1830,10 @@ function CommandBar({
       >
         + plan
       </Button>
-      <Button size="sm" variant="outline" onClick={() => onSetSidePanelMode("modify")}>
+      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onSetSidePanelMode("modify")}>
         modify
       </Button>
-      <Button size="sm" onClick={() => onRunCommand("execute-main")}>
+      <Button size="sm" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
         execute
       </Button>
       <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
@@ -3148,6 +3287,55 @@ function RightActionPane({
   );
 }
 
+function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunState | null; onShowTerminal: () => void }) {
+  const phaseLabel = agentRun ? agentRunPhaseLabel(agentRun.phase) : "No active run";
+  const lines = agentRun?.lines.length ? agentRun.lines : [agentRun?.activity || "Waiting for agent activity"];
+  const isDone = agentRun?.phase === "complete" || agentRun?.phase === "blocked";
+
+  return (
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l bg-background max-xl:hidden">
+      <header className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b bg-card px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          {isDone ? <Activity aria-hidden="true" className="size-4 text-muted-foreground" /> : <Loader2 aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />}
+          <div className="min-w-0">
+            <p className="m-0 truncate text-sm font-bold">{agentRun?.label || "Agent Activity"}</p>
+            <p className="m-0 truncate text-xs text-muted-foreground">{phaseLabel}</p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={onShowTerminal}>
+          Raw terminal
+        </Button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        <section className="grid gap-4">
+          <div className="rounded-md border bg-card p-4">
+            <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Current activity</p>
+            <p className="m-0 mt-2 text-sm leading-6">{agentRun?.activity || "Waiting for agent output."}</p>
+          </div>
+          <div className="rounded-md border bg-card">
+            <div className="border-b px-4 py-3">
+              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Feed</p>
+            </div>
+            <div className="max-h-[52vh] min-h-64 overflow-auto px-4 py-3 font-mono text-xs leading-5">
+              {lines.map((line, index) => (
+                <p className="m-0 whitespace-pre-wrap border-l border-border py-1 pl-3 text-muted-foreground" key={`${index}:${line}`}>
+                  {line}
+                </p>
+              ))}
+            </div>
+          </div>
+          {agentRun?.outcome ? (
+            <div className={cn("rounded-md border p-4", agentRun.phase === "blocked" ? "bg-destructive/10" : "bg-secondary")}>
+              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Outcome</p>
+              <p className="m-0 mt-2 text-sm leading-6">{agentRun.outcome}</p>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </aside>
+  );
+}
+
 function TerminalPane(props: {
   activeSessionId: string | null;
   activeProject: ProjectRecord | null;
@@ -3813,6 +4001,30 @@ function isCompletedPage(page: WikiPage) {
   return pageStatus(page) === "complete";
 }
 
+function planPageActionState(path: string, pages: WikiPage[], workspace: WorkspaceResponse | null): PlanPageActionState {
+  const displayPath = displayWikiPath(path);
+  const isPlanPage = displayPath.includes("/wiki/plans/") && displayPath.endsWith(".mdx");
+  const page = pages.find((candidate) => displayWikiPath(candidate.path) === displayPath);
+  const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
+  const roots = sorted.filter((candidate) => isTopLevelPlanPage(candidate) && !isCompletedTopLevelPlanPage(candidate));
+  const currentPath = currentPlanWorkPath(sorted, roots, workspace);
+  const currentDisplayPath = displayWikiPath(currentPath);
+  const isComplete = Boolean(page && isCompletedPage(page));
+  const isStale = Boolean(isPlanPage && currentDisplayPath && displayPath !== currentDisplayPath && !displayPath.endsWith("/wiki/plans/index.mdx"));
+  const message = isComplete
+    ? "This unit is complete."
+    : isStale
+    ? "This is not the current active unit."
+    : "";
+  return {
+    isPlanPage,
+    isComplete,
+    isStale,
+    currentPath,
+    message,
+  };
+}
+
 function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: WorkspaceResponse | null) {
   const derived = firstIncompleteWorkPath(pages, roots);
   if (derived && derived !== defaultWikiPath) return derived;
@@ -4230,6 +4442,54 @@ function latestPlanningActivity(text: string) {
   }
   const workingMatch = text.match(/Working\(([^)]*)\)/);
   return workingMatch?.[1] ? `Agent is working (${workingMatch[1]})` : "";
+}
+
+function agentRunPhaseLabel(phase: AgentRunPhase) {
+  switch (phase) {
+    case "starting":
+      return "Starting agent";
+    case "waiting":
+      return "Waiting for prompt";
+    case "sent":
+      return "Prompt sent";
+    case "exploring":
+      return "Exploring project";
+    case "editing":
+      return "Editing files";
+    case "checking":
+      return "Running checks";
+    case "complete":
+      return "Complete";
+    case "blocked":
+      return "Blocked";
+    default:
+      return "Idle";
+  }
+}
+
+function inferAgentRunPhase(text: string, lines: string[], current: AgentRunPhase): AgentRunPhase {
+  const joined = lines.join("\n");
+  if (/Remaining blocker|blocked by|blocked:/i.test(joined)) return "blocked";
+  if (/Worked for|Handled the workspace request|Checks run successfully|worktree remains clean|No code or wiki edits were needed/i.test(joined)) return "complete";
+  if (/Edited |Apply patch|changed \d+ files?/i.test(joined)) return "editing";
+  if (/Ran pnpm|Ran npm|Ran yarn|Ran cargo|typecheck|lint|test|build|smoke/i.test(joined)) return "checking";
+  if (/Explored|Read |Search |List |Inspect/i.test(joined)) return "exploring";
+  if (/Please handle this hyperwiki workspace request|Prompt sent/i.test(text)) return "sent";
+  return current;
+}
+
+function agentRunOutcome(text: string, lines: string[], phase: AgentRunPhase) {
+  const joined = lines.join("\n");
+  if (phase === "blocked") {
+    const blocker = lines.find((line) => /Remaining blocker|blocked by|blocked:/i.test(line));
+    return blocker || "Agent run is blocked.";
+  }
+  if (phase !== "complete") return "";
+  if (/git status --short\s*└ \(no output\)|worktree remains clean|No code or wiki edits were needed/i.test(text)) {
+    return "Agent finished and the worktree remained clean.";
+  }
+  const summary = [...lines].reverse().find((line) => /Handled the workspace request|Checks run successfully|passed|complete/i.test(line));
+  return summary || "Agent finished.";
 }
 
 function planningWorkstreamLines(text: string) {
