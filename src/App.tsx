@@ -1226,13 +1226,13 @@ function TopBar(props: {
 }) {
   return (
     <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
-      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
+      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: defaultWikiPath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
         {props.activeProject?.name ? (
           <>
             <span className="text-xs font-bold text-muted-foreground/60">|</span>
-            <span className="font-ui truncate text-sm font-semibold text-foreground">{props.activeProject.name}</span>
+            <span className="truncate text-sm font-semibold text-foreground">{props.activeProject.name}</span>
           </>
         ) : null}
       </button>
