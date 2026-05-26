@@ -10,6 +10,7 @@ wikiKind: "page"
   <h2>2026-05-26 fix | visible agent activity feed</h2>
   <ul>
     <li>Changed Modify, Execute, worktree, and review handoffs to show a simplified live agent activity feed by default, with raw terminal available as a secondary view.</li>
+    <li>Changed the feed from a truncated rolling summary to a full scrollable run feed with a copyable troubleshooting transcript.</li>
     <li>Added completed and stale plan-page guards so normal Modify and Execute actions are disabled when the visible plan is not the current active work.</li>
     <li>Refined feed outcome parsing so successful runs with a remaining manual/provider gate finish as complete with a clear pending-gate note instead of a clipped blocked outcome.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> shell render check against the existing Vite preview.</li>

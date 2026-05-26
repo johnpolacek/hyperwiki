@@ -70,6 +70,7 @@ interface AgentRunState {
   activity: string;
   lines: string[];
   outcome: string;
+  transcript: string;
   startedAt: number;
 }
 
@@ -795,6 +796,7 @@ function App() {
       activity: "Starting agent session",
       lines: ["Starting agent session"],
       outcome: "",
+      transcript: "Starting agent session",
       startedAt: Date.now(),
     };
     setAgentRun(run);
@@ -818,7 +820,9 @@ function App() {
     if (workstream.length) setPlanningWorkstream(workstream);
     setAgentRun((currentRun) => {
       if (!currentRun || currentRun.sessionId !== sessionId) return currentRun;
-      const lines = workstream.length ? workstream : currentRun.lines;
+      const transcript = appendAgentTranscript(currentRun.transcript, text);
+      const fullWorkstream = planningWorkstreamLines(transcript, { limit: 10000, maxLineLength: 2000 });
+      const lines = fullWorkstream.length ? fullWorkstream : workstream.length ? workstream : currentRun.lines;
       const phase = inferAgentRunPhase(next, lines, currentRun.phase);
       const outcome = agentRunOutcome(next, lines, phase) || currentRun.outcome;
       return {
@@ -827,6 +831,7 @@ function App() {
         activity: phase === "complete" || phase === "blocked" ? outcome || agentRunPhaseLabel(phase) : activity || currentRun.activity,
         lines,
         outcome,
+        transcript,
       };
     });
     const question = extractLatestPlanningQuestion(next, sessionId);
@@ -909,6 +914,7 @@ function App() {
         phase: "waiting",
         activity: "Waiting for the agent prompt",
         lines: ["Agent session started", "Waiting for the agent prompt"],
+        transcript: "Agent session started\nWaiting for the agent prompt",
       });
       const ready = await waitForAgentPromptReady(session.id);
       appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
@@ -916,6 +922,7 @@ function App() {
         phase: "sent",
         activity: ready ? "Sending prompt to agent" : "Sending prompt after readiness timeout",
         lines: ready ? ["Agent session started", "Prompt ready", "Sending prompt to agent"] : ["Agent session started", "Prompt readiness timed out", "Sending prompt to agent"],
+        transcript: ready ? "Agent session started\nPrompt ready\nSending prompt to agent" : "Agent session started\nPrompt readiness timed out\nSending prompt to agent",
       });
       let lastError: unknown;
       for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -934,6 +941,7 @@ function App() {
             phase: "sent",
             activity: "Prompt sent; waiting for agent activity",
             lines: ["Agent session started", "Prompt sent; waiting for agent activity"],
+            transcript: "Agent session started\nPrompt sent; waiting for agent activity",
           });
           return session;
         } catch (error) {
@@ -1031,7 +1039,7 @@ function App() {
       if (action === "execute-worktree") {
         const runId = startAgentRun("worktree", "Run Dev Worktree");
         const branch = payload?.branch || `feature/${slugify(workspace?.status?.current || titleForPath(currentWikiPath, wikiPages))}`;
-        updateAgentRun(runId, { activity: `Creating worktree ${branch}`, lines: [`Creating worktree ${branch}`] });
+        updateAgentRun(runId, { activity: `Creating worktree ${branch}`, lines: [`Creating worktree ${branch}`], transcript: `Creating worktree ${branch}` });
         const result = await hyperwikiApi.json<{ branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }>(withProjectQuery("/api/worktrees", activeProject), {
           method: "POST",
           body: { branch },
@@ -1048,6 +1056,7 @@ function App() {
           phase: "sent",
           activity: "Review prompt sent; waiting for agent activity",
           lines: ["Agent session started", "Review prompt sent; waiting for agent activity"],
+          transcript: "Agent session started\nReview prompt sent; waiting for agent activity",
         });
         await hyperwikiApi.json(withProjectQuery("/api/review-workflows/run", activeProject), {
           method: "POST",
@@ -3292,6 +3301,18 @@ function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunSta
   const phaseLabel = agentRun ? agentRunPhaseLabel(agentRun.phase) : "No active run";
   const lines = agentRun?.lines.length ? agentRun.lines : [agentRun?.activity || "Waiting for agent activity"];
   const isDone = agentRun?.phase === "complete" || agentRun?.phase === "blocked";
+  const [copyStatus, setCopyStatus] = useState("");
+  const transcript = agentRun?.transcript.trim() || lines.join("\n");
+
+  async function copyTranscript() {
+    try {
+      await navigator.clipboard.writeText(transcript);
+      setCopyStatus("Copied");
+      window.setTimeout(() => setCopyStatus(""), 1600);
+    } catch {
+      setCopyStatus("Select the transcript text and copy manually");
+    }
+  }
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l bg-background max-xl:hidden">
@@ -3303,9 +3324,15 @@ function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunSta
             <p className="m-0 truncate text-xs text-muted-foreground">{phaseLabel}</p>
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={onShowTerminal}>
-          Raw terminal
-        </Button>
+        <div className="flex shrink-0 items-center gap-2">
+          {copyStatus ? <span className="text-xs text-muted-foreground">{copyStatus}</span> : null}
+          <Button size="sm" variant="outline" onClick={copyTranscript}>
+            Copy transcript
+          </Button>
+          <Button size="sm" variant="outline" onClick={onShowTerminal}>
+            Raw terminal
+          </Button>
+        </div>
       </header>
       <div className="min-h-0 flex-1 overflow-auto p-4">
         <section className="grid gap-4">
@@ -3314,10 +3341,11 @@ function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunSta
             <p className="m-0 mt-2 text-sm leading-6">{agentRun?.activity || "Waiting for agent output."}</p>
           </div>
           <div className="rounded-md border bg-card">
-            <div className="border-b px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
               <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Feed</p>
+              <p className="m-0 text-xs text-muted-foreground">{lines.length} lines</p>
             </div>
-            <div className="max-h-[52vh] min-h-64 overflow-auto px-4 py-3 font-mono text-xs leading-5">
+            <div className="max-h-[42vh] min-h-64 overflow-auto px-4 py-3 font-mono text-xs leading-5">
               {lines.map((line, index) => (
                 <p className="m-0 whitespace-pre-wrap border-l border-border py-1 pl-3 text-muted-foreground" key={`${index}:${line}`}>
                   {line}
@@ -3331,6 +3359,18 @@ function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunSta
               <p className="m-0 mt-2 text-sm leading-6">{agentRun.outcome}</p>
             </div>
           ) : null}
+          <div className="rounded-md border bg-card">
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Troubleshooting transcript</p>
+              <p className="m-0 text-xs text-muted-foreground">{transcript.length.toLocaleString()} chars</p>
+            </div>
+            <textarea
+              {...DISABLE_TEXT_CORRECTION_PROPS}
+              className="min-h-72 w-full resize-y border-0 bg-background p-4 font-mono text-xs leading-5 text-foreground outline-none"
+              readOnly
+              value={transcript}
+            />
+          </div>
         </section>
       </div>
     </aside>
@@ -4501,19 +4541,28 @@ function normalizeAgentOutcome(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function planningWorkstreamLines(text: string) {
+function appendAgentTranscript(current: string, chunk: string) {
+  const text = terminalTextForParsing(chunk);
+  if (!text.trim()) return current;
+  const separator = current && !current.endsWith("\n") ? "\n" : "";
+  return `${current}${separator}${text}`;
+}
+
+function planningWorkstreamLines(text: string, options: { limit?: number; maxLineLength?: number } = {}) {
+  const limit = options.limit ?? 18;
+  const maxLineLength = options.maxLineLength ?? 220;
   return terminalTextForParsing(text)
     .split("\n")
     .map((line) => line.trim().replace(/^[-•]\s*/, "").replace(/^└\s*/, ""))
     .filter((line) => {
-      if (!line || line.length < 3 || line.length > 220) return false;
+      if (!line || line.length < 3 || line.length > maxLineLength) return false;
       if (line.includes("hyperwiki-question") || line.startsWith('"') || line === "{" || line === "}" || line === "[" || line === "]") return false;
       if (/^(Wor|Work|Worki|Workin|Working|orking|rking|king|ing|M+|\d+\s+[A-Za-z])$/.test(line)) return false;
       if (/^gpt-\S+\s/.test(line) || line.startsWith("›")) return false;
       if (/^[\u2500-╿]{6,}$/.test(line)) return false;
       return true;
     })
-    .slice(-18);
+    .slice(-limit);
 }
 
 function looseJsonStringField(raw: string, field: string) {

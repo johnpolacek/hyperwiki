@@ -26,7 +26,7 @@ wikiKind: "plan"
   <ul>
     <li>Add a tracked agent-run state for handoff phase, current activity, feed lines, and outcome.</li>
     <li>Render a simplified Agent Activity pane by default after agent handoffs, with raw terminal available as an explicit secondary view.</li>
-    <li>Reuse terminal event parsing to populate the feed and suppress spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
+    <li>Reuse terminal event parsing to populate a full scrollable feed and a copy-friendly troubleshooting transcript while suppressing spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
     <li>Treat remaining manual/provider gates as outcome detail after a completed agent run instead of classifying the whole handoff as blocked.</li>
     <li>Disable normal Modify and Execute actions for completed or stale plan pages and show an Open current action when active work exists.</li>
   </ul>
