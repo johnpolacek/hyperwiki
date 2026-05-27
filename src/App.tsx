@@ -1843,7 +1843,7 @@ function CommandBar({
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onSetSidePanelMode("modify")}>
         modify
       </Button>
-      <Button size="sm" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
+      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
         execute
       </Button>
       <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
