@@ -7,7 +7,9 @@ const requiredAssets = [
   "dist/assets/theme.css",
   "dist/favicon.ico",
   "dist/vendor/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
-  "dist/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf"
+  "dist/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf",
+  "dist/vendor/fonts/rethink-sans/RethinkSans-Regular.ttf",
+  "dist/vendor/fonts/figtree/Figtree-Regular.ttf"
 ];
 
 for (const asset of requiredAssets) {

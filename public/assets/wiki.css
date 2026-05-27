@@ -44,6 +44,70 @@
   src: url("/vendor/fonts/sometype-mono/SometypeMono-SemiBold.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "Rethink Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/rethink-sans/RethinkSans-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Rethink Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/rethink-sans/RethinkSans-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Rethink Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/rethink-sans/RethinkSans-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Rethink Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/rethink-sans/RethinkSans-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/figtree/Figtree-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/figtree/Figtree-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/figtree/Figtree-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/figtree/Figtree-Bold.ttf") format("truetype");
+}
+
 * {
   box-sizing: border-box;
 }
