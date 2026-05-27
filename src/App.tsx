@@ -468,6 +468,12 @@ function App() {
 
   useEffect(() => {
     if (!activeProject || !isImportedPlanningActive) return;
+    if (!activePlanningQuestion && activeProject.importPlanning?.status === "incomplete" && activeProject.importPlanning.currentQuestion) {
+      setActivePlanningQuestion(importPlanningQuestionToPlanningQuestion(activeProject.importPlanning.currentQuestion));
+      setPlanningInterviewStatus("question_ready");
+      setPlanningActivity(activeProject.importPlanning.nextAction);
+      return;
+    }
     if (!["starting", "waiting_for_question", "answering"].includes(planningInterviewStatus)) return;
     let cancelled = false;
     const project = activeProject;
@@ -862,33 +868,69 @@ function App() {
     const question = activePlanningQuestion;
     const trimmed = answer.trim();
     if (!question || !trimmed) return;
-    const response = [
-      "Hyperwiki planning answer:",
-      trimmed,
-      "",
-    ].join("\n");
     answeredPlanningQuestionIds.current.add(question.id);
     setPlanningInterviewStatus("answering");
     appendImportLog(`Planning answer submitting session=${question.sessionId} question=${question.id} chars=${trimmed.length}`);
-    await sendInput(question.sessionId, terminalPasteSubmitInput(response));
     if (activeProject && isIncompleteImportProject(activeProject)) {
-      void hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
+      const nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
         method: "POST",
         body: {
           question: planningQuestionToImportQuestion(question),
           answer: trimmed,
         },
-      }).catch((error) => {
-        appendImportLog("Could not persist import planning answer", error);
       });
+      applyImportPlanningStatus(nextStatus);
+      if (!nextStatus.currentQuestion && nextStatus.status === "incomplete") {
+        await createImportedPlanFromProgress(activeProject);
+      }
+    } else if (question.sessionId) {
+      const response = [
+        "Hyperwiki planning answer:",
+        trimmed,
+        "",
+      ].join("\n");
+      await sendInput(question.sessionId, terminalPasteSubmitInput(response));
     }
     appendImportLog(`Planning answer submitted session=${question.sessionId} question=${question.id}`);
     setLastPlanningAnswer(trimmed);
     setPlanningActivity("Answer sent to the planning agent");
     setPlanningWorkstream((current) => [...current.slice(-8), "Answer sent to the planning agent"]);
-    setActivePlanningQuestion(null);
-    setPlanningInterviewStatus("waiting_for_question");
+    setActivePlanningQuestion((current) => current?.id === question.id ? null : current);
+    setPlanningInterviewStatus((current) => current === "answering" ? "waiting_for_question" : current);
     setStatus("Planning answer sent");
+  }
+
+  function applyImportPlanningStatus(nextStatus: ImportPlanningStatus) {
+    setActiveProject((current) => current ? { ...current, importPlanning: nextStatus } : current);
+    setProjects((current) => updateProjectImportPlanning(current, activeProject?.id || "", nextStatus));
+    if (nextStatus.currentQuestion) {
+      setActivePlanningQuestion(importPlanningQuestionToPlanningQuestion(nextStatus.currentQuestion));
+      setPlanningInterviewStatus("question_ready");
+      setPlanningActivity(nextStatus.nextAction);
+      return;
+    }
+    setActivePlanningQuestion(null);
+    setPlanningInterviewStatus(nextStatus.status === "complete" ? "idle" : "waiting_for_question");
+    setPlanningActivity(nextStatus.nextAction);
+  }
+
+  async function createImportedPlanFromProgress(project: ProjectRecord) {
+    setStatus("Creating imported project plan");
+    const created = await hyperwikiApi.json<ImportPlanningCreateResponse>(withProjectQuery("/api/import-planning/create-plan", project), {
+      method: "POST",
+      body: {
+        planTitle: `${project.name} MVP Plan`,
+        answers: [],
+      },
+    });
+    appendImportLog(`Imported plan created path=${created.displayPath} wrote=${created.wrote?.length || 0}`);
+    setPlanningInterviewStatus("idle");
+    setActivePlanningQuestion(null);
+    setPlanningActivity("Generated MVP plan is ready.");
+    await loadProjectData(project);
+    const nextRoute: ViewRoute = { kind: "wiki", path: created.displayPath || "/wiki/plans/index.mdx" };
+    setRoute(nextRoute);
+    window.history.replaceState(null, "", urlForRoute(nextRoute, project));
   }
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
@@ -4295,6 +4337,17 @@ function isIncompleteImportProject(project: ProjectRecord | null | undefined) {
   return project?.importPlanning?.status === "incomplete";
 }
 
+function importPlanningQuestionToPlanningQuestion(question: ImportPlanningQuestion): PlanningQuestion {
+  return {
+    id: question.id,
+    sessionId: "",
+    question: question.prompt,
+    recommendedAnswer: "",
+    reasoning: question.rationale,
+    options: [],
+  };
+}
+
 function planningQuestionToImportQuestion(question: PlanningQuestion): ImportPlanningQuestion {
   return {
     id: question.id,
@@ -4302,6 +4355,20 @@ function planningQuestionToImportQuestion(question: PlanningQuestion): ImportPla
     prompt: question.question,
     impact: "blocking",
     rationale: question.reasoning || question.recommendedAnswer || "Captured during imported project planning Q&A.",
+  };
+}
+
+function updateProjectImportPlanning(projects: ProjectListResponse, projectId: string, importPlanning: ImportPlanningStatus): ProjectListResponse {
+  if (!projectId) return projects;
+  const update = (project: ProjectRecord) => project.id === projectId ? { ...project, importPlanning } : project;
+  return {
+    ...projects,
+    projects: projects.projects?.map(update) || [],
+    checkouts: projects.checkouts?.map(update) || [],
+    projectGroups: projects.projectGroups?.map((group) => ({
+      ...group,
+      checkouts: group.checkouts.map(update),
+    })) || [],
   };
 }
 

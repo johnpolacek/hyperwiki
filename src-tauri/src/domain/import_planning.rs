@@ -210,6 +210,10 @@ pub fn create_import_plan(
     request: ImportPlanningRequest,
 ) -> Result<ImportPlanningCreateResponse, (u16, String)> {
     let root = root.as_ref();
+    let request = ImportPlanningRequest {
+        answers: merge_import_planning_answers(read_progress_answers(root), request.answers),
+        ..request
+    };
     let planning = clarify_import_plan(root, request.clone());
     if !planning.ready {
         return Err((
@@ -363,6 +367,23 @@ pub fn create_import_plan(
         display_path: "/wiki/plans/imported-project-plan/index.mdx".to_string(),
         wrote,
     })
+}
+
+fn merge_import_planning_answers(
+    mut saved: Vec<ImportPlanningAnswer>,
+    incoming: Vec<ImportPlanningAnswer>,
+) -> Vec<ImportPlanningAnswer> {
+    for answer in incoming {
+        if answer.answer.trim().is_empty() {
+            continue;
+        }
+        if let Some(saved_answer) = saved.iter_mut().find(|item| item.id == answer.id) {
+            saved_answer.answer = answer.answer;
+        } else {
+            saved.push(answer);
+        }
+    }
+    saved
 }
 
 fn has_generated_plan_pages(root: &Path) -> bool {
