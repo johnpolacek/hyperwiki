@@ -889,12 +889,25 @@ function App() {
       });
       appendImportLog(`Planning answer persisted project=${activeProject.id} question=${question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
       applyImportPlanningStatus(nextStatus);
-    }
-    if (question.sessionId) {
+      if (question.sessionId) {
+        const prompt = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
+        appendImportLog(`Planning answer routing through agent prompt endpoint session=${question.sessionId} question=${question.id} chars=${prompt.length}`);
+        await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
+          method: "POST",
+          body: {
+            prompt,
+            currentPage: currentWikiPath,
+            scope: terminalScope.scope,
+          },
+        });
+        appendImportLog(`Planning answer agent prompt endpoint ok session=${question.sessionId} question=${question.id}`);
+      }
+    } else if (question.sessionId) {
       const response = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
       await sendPasteSubmitInput(question.sessionId, response);
       appendImportLog(`Planning answer sent to terminal session=${question.sessionId} question=${question.id} chars=${response.length}`);
-    } else {
+    }
+    if (!question.sessionId) {
       appendImportLog(`Planning answer has no terminal session question=${question.id}`);
     }
     appendImportLog(`Planning answer submitted session=${question.sessionId || "none"} question=${question.id}`);
