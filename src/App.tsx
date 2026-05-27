@@ -365,6 +365,7 @@ function App() {
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("terminal");
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
+  const [resumedImportPlanningProjectId, setResumedImportPlanningProjectId] = useState<string | null>(null);
   const baseDataRequestId = useRef(0);
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
@@ -387,7 +388,19 @@ function App() {
     && Boolean(activeProject)
     && planningInterviewStatus !== "idle"
     && !hasGeneratedPlanPages(wikiPages);
-  const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting;
+  const isImportPlanningResume = route.kind === "wiki"
+    && route.path === defaultWikiPath
+    && Boolean(activeProject)
+    && resumedImportPlanningProjectId === activeProject?.id
+    && isIncompleteImportProject(activeProject)
+    && !hasGeneratedPlanPages(wikiPages);
+  const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting || isImportPlanningResume;
+  const canResumeImportPlanning = route.kind === "wiki"
+    && route.path === defaultWikiPath
+    && Boolean(activeProject)
+    && isIncompleteImportProject(activeProject)
+    && hasImportedSource(wikiPages)
+    && !hasGeneratedPlanPages(wikiPages);
   const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages, workspace), [currentWikiPath, wikiPages, workspace]);
 
   useEffect(() => {
@@ -1049,6 +1062,15 @@ function App() {
     }
   }
 
+  function resumeImportPlanning() {
+    if (!activeProject) return;
+    const nextRoute: ViewRoute = { kind: "wiki", path: defaultWikiPath };
+    setResumedImportPlanningProjectId(activeProject.id);
+    setRoute(nextRoute);
+    window.history.pushState(null, "", urlForRoute(nextRoute, activeProject));
+    void planImportedProject(activeProject);
+  }
+
   function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" }) {
     setActiveProject(project);
     setIsProjectsOpen(false);
@@ -1329,6 +1351,7 @@ function App() {
           onNavigate={navigate}
           onCreateProject={createProject}
           onPlanImportedProject={planImportedProject}
+          onResumeImportPlanning={resumeImportPlanning}
           onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
           onAnswerPlanningQuestion={answerPlanningQuestion}
@@ -1341,6 +1364,7 @@ function App() {
           lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
           isImportPlanningView={isImportPlanningView}
+          canResumeImportPlanning={canResumeImportPlanning}
           planningInterviewStatus={planningInterviewStatus}
           planningQuestion={activePlanningQuestion}
           projectGroups={projectGroups}
@@ -1677,6 +1701,7 @@ function WorkspacePane(props: {
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answer: string) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
+  onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: SidePanelMode) => void;
@@ -1688,6 +1713,7 @@ function WorkspacePane(props: {
   lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
   isImportPlanningView: boolean;
+  canResumeImportPlanning: boolean;
   planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
   planningQuestion: PlanningQuestion | null;
   projectGroups: ProjectGroup[];
@@ -1750,7 +1776,7 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CommandBar activePlanState={props.activePlanState} onNavigate={props.onNavigate} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onNavigate={props.onNavigate} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -1832,14 +1858,18 @@ function isMissingFileError(error: string) {
 
 function CommandBar({
   activePlanState,
+  canResumeImportPlanning,
   onNavigate,
+  onResumeImportPlanning,
   onRunCommand,
   onSetSidePanelMode,
   reviewWorkflows,
   wikiPath,
 }: {
   activePlanState: PlanPageActionState;
+  canResumeImportPlanning: boolean;
   onNavigate: (route: ViewRoute) => void;
+  onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: SidePanelMode) => void;
   reviewWorkflows: ReviewWorkflow[];
@@ -1866,6 +1896,12 @@ function CommandBar({
             </button>
           ) : null}
         </div>
+      ) : null}
+      {canResumeImportPlanning ? (
+        <Button size="sm" onClick={onResumeImportPlanning}>
+          <Play aria-hidden="true" data-icon="inline-start" />
+          Resume Q&A
+        </Button>
       ) : null}
       <Button
         size="sm"
