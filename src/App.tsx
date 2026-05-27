@@ -387,6 +387,12 @@ function App() {
   const isPendingImportRoute = Boolean(route.kind === "wiki" && pendingImportProject && matchesWorkspaceSelection(pendingImportProject, workspaceSelection));
   const importPlanningState = useMemo(() => importedPlanningState(route, wikiPages), [route, wikiPages]);
   const isImportedPlanningActive = isImportedPlanningIntakeRoute(route, wikiPages);
+  const isImportPlanningStarting = route.kind === "wiki"
+    && route.path === defaultWikiPath
+    && Boolean(activeProject)
+    && planningInterviewStatus !== "idle"
+    && !hasGeneratedPlanPages(wikiPages);
+  const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting;
   const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages, workspace), [currentWikiPath, wikiPages, workspace]);
 
   useEffect(() => {
@@ -1205,6 +1211,9 @@ function App() {
     appendImportLog(`Create request resolved project=${project.id} slug=${project.projectSlug}/${project.worktreeSlug}`);
     setStatus(`Project created: ${project.name}`);
     setProjects((current) => withOptimisticProject(current, project));
+    setPlanningInterviewStatus("starting");
+    setPlanningActivity("Starting the planning agent");
+    setPlanningWorkstream(["Starting the planning agent"]);
     openImportedPlanningWorkspace(project);
     void planImportedProject(project);
     void hyperwikiApi
@@ -1283,7 +1292,7 @@ function App() {
           "grid h-full min-h-0 flex-1 overflow-hidden",
           isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create"
             ? "grid-cols-1"
-            : isImportedPlanningActive
+            : isImportPlanningView
             ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
             : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
         )}
@@ -1316,6 +1325,7 @@ function App() {
           planningWorkstream={planningWorkstream}
           lastPlanningAnswer={lastPlanningAnswer}
           pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
+          isImportPlanningView={isImportPlanningView}
           planningInterviewStatus={planningInterviewStatus}
           planningQuestion={activePlanningQuestion}
           projectGroups={projectGroups}
@@ -1329,7 +1339,7 @@ function App() {
           wikiPages={wikiPages}
           activePlanState={activePlanState}
         />
-        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportedPlanningActive ? (
+        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? (
           <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
         ) : sidePanelMode === "agent-activity" ? (
           <>
@@ -1662,6 +1672,7 @@ function WorkspacePane(props: {
   planningWorkstream: string[];
   lastPlanningAnswer: string;
   pendingImportProject: ProjectRecord | null;
+  isImportPlanningView: boolean;
   planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
   planningQuestion: PlanningQuestion | null;
   projectGroups: ProjectGroup[];
@@ -1693,7 +1704,7 @@ function WorkspacePane(props: {
   if (props.hasLoadedProjects && !props.activeProject) {
     return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
   }
-  if (isImportedPlanningIntakeRoute(props.route, props.wikiPages)) {
+  if (props.isImportPlanningView) {
     return (
       <ImportedPlanningQAView
         activeProject={props.activeProject}
