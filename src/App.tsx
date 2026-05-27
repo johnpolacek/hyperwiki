@@ -3025,8 +3025,8 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
                 <i aria-hidden="true" className="ml-auto block h-4 w-8 rounded-full border" style={{ background: theme.tokens.terminal?.bg || "transparent" }} />
               </span>
               <span className="min-w-0">
-                <strong className="block truncate text-sm">{theme.label || key}</strong>
-                <span className="block truncate text-xs text-muted-foreground">{key}</span>
+                <strong className="block truncate text-sm" style={{ fontFamily: theme.tokens.docs?.serifFont }}>{theme.label || key}</strong>
+                <span className="block truncate text-xs text-muted-foreground" style={{ fontFamily: theme.tokens.docs?.monoFont }}>{key}</span>
               </span>
             </button>
           );

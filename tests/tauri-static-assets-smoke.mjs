@@ -9,7 +9,9 @@ const requiredAssets = [
   "dist/vendor/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
   "dist/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf",
   "dist/vendor/fonts/rethink-sans/RethinkSans-Regular.ttf",
-  "dist/vendor/fonts/figtree/Figtree-Regular.ttf"
+  "dist/vendor/fonts/figtree/Figtree-Regular.ttf",
+  "dist/vendor/fonts/eb-garamond/EBGaramond-400.ttf",
+  "dist/vendor/fonts/source-code-pro/SourceCodePro-400.ttf"
 ];
 
 for (const asset of requiredAssets) {

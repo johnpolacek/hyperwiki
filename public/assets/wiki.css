@@ -108,6 +108,510 @@
   src: url("/vendor/fonts/figtree/Figtree-Bold.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/cormorant-garamond/CormorantGaramond-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/cormorant-garamond/CormorantGaramond-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/cormorant-garamond/CormorantGaramond-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/dm-sans/DMSans-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/dm-sans/DMSans-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/dm-sans/DMSans-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/dm-sans/DMSans-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/eb-garamond/EBGaramond-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/eb-garamond/EBGaramond-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/eb-garamond/EBGaramond-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/fira-code/FiraCode-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/fira-code/FiraCode-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/fira-code/FiraCode-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/fira-code/FiraCode-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-mono/IBMPlexMono-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-mono/IBMPlexMono-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-mono/IBMPlexMono-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-mono/IBMPlexMono-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-sans/IBMPlexSans-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-sans/IBMPlexSans-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-sans/IBMPlexSans-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/ibm-plex-sans/IBMPlexSans-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/jetbrains-mono/JetBrainsMono-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/jetbrains-mono/JetBrainsMono-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/jetbrains-mono/JetBrainsMono-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/jetbrains-mono/JetBrainsMono-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/lora/Lora-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/lora/Lora-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/lora/Lora-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/merriweather/Merriweather-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Merriweather";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/merriweather/Merriweather-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/montserrat/Montserrat-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/montserrat/Montserrat-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/montserrat/Montserrat-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Montserrat";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/montserrat/Montserrat-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/newsreader/Newsreader-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/newsreader/Newsreader-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/newsreader/Newsreader-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/noto-sans/NotoSans-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/noto-sans/NotoSans-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/noto-sans/NotoSans-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/noto-sans/NotoSans-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/roboto-mono/RobotoMono-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/roboto-mono/RobotoMono-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/roboto-mono/RobotoMono-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/roboto-mono/RobotoMono-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/source-code-pro/SourceCodePro-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/source-code-pro/SourceCodePro-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/source-code-pro/SourceCodePro-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/source-code-pro/SourceCodePro-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/source-sans-3/SourceSans3-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/source-sans-3/SourceSans3-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/source-sans-3/SourceSans3-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Sans 3";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/source-sans-3/SourceSans3-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/source-serif-4/SourceSerif4-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/source-serif-4/SourceSerif4-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/source-serif-4/SourceSerif4-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/space-mono/SpaceMono-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/space-mono/SpaceMono-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Work Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/vendor/fonts/work-sans/WorkSans-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Work Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/vendor/fonts/work-sans/WorkSans-500.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Work Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/vendor/fonts/work-sans/WorkSans-600.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Work Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/vendor/fonts/work-sans/WorkSans-700.ttf") format("truetype");
+}
+
 * {
   box-sizing: border-box;
 }
