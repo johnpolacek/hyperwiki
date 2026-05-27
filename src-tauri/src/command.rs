@@ -116,6 +116,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 summary: None,
                 document: None,
                 document_type: None,
+                source_documents: Vec::new(),
                 planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
                 install_agent_skills: None,

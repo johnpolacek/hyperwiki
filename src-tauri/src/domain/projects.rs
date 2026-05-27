@@ -79,6 +79,8 @@ pub struct ProjectCreateRequest {
     #[serde(default)]
     pub document_type: Option<String>,
     #[serde(default)]
+    pub source_documents: Vec<SourceDocument>,
+    #[serde(default)]
     pub planning_answers: BTreeMap<String, PlanningAnswer>,
     #[serde(default)]
     pub initialize_git: Option<bool>,
@@ -86,6 +88,14 @@ pub struct ProjectCreateRequest {
     pub install_agent_skills: Option<bool>,
     #[serde(default)]
     pub agent_launch_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceDocument {
+    pub name: String,
+    pub document_type: String,
+    pub content: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -367,7 +377,7 @@ pub fn create_project_from_dashboard(
     registry: &ProjectRegistry,
     request: ProjectCreateRequest,
 ) -> Result<ProjectCreateResponse, (u16, String)> {
-    let title = request.title.trim();
+    let title = request.title.trim().to_string();
     if title.is_empty() {
         return Err((400, "Project title is required.".to_string()));
     }
@@ -377,18 +387,20 @@ pub fn create_project_from_dashboard(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("Imported from Dashboard markdown.");
-    let source_document = request.document.unwrap_or_default();
-    let source_document_type = request.document_type.unwrap_or_default();
+    let source_documents = normalized_source_documents(&request);
+    let (source_document, source_document_type) = combined_source_document(&source_documents);
     let source_facts = SourceFacts::from_document(&source_document, &source_document_type, summary);
-    let project_root = unique_project_root(title).map_err(|error| (500, error))?;
+    let initialize_git = request.initialize_git;
+    let project_root = unique_project_root(&title).map_err(|error| (500, error))?;
     fs::create_dir_all(&project_root).map_err(|error| (500, error.to_string()))?;
     init_hyperwiki_project(
         &project_root,
         InitProjectOptions {
-            project_name: title.to_string(),
+            project_name: title.clone(),
             summary: source_facts.summary.clone(),
             source_document,
             source_document_type,
+            source_documents,
             source_facts,
             planning_answers: request.planning_answers,
             agent_launch_command: request.agent_launch_command.unwrap_or_default(),
@@ -399,7 +411,7 @@ pub fn create_project_from_dashboard(
         },
     )
     .map_err(|error| (500, error))?;
-    let git = if request.initialize_git == Some(false) {
+    let git = if initialize_git == Some(false) {
         crate::domain::git::GitInitResult {
             status: "skipped".to_string(),
             git_root: None,
@@ -432,6 +444,7 @@ pub struct InitProjectOptions {
     pub summary: String,
     pub source_document: String,
     pub source_document_type: String,
+    pub source_documents: Vec<SourceDocument>,
     pub source_facts: SourceFacts,
     pub planning_answers: BTreeMap<String, PlanningAnswer>,
     pub agent_launch_command: String,
@@ -439,6 +452,103 @@ pub struct InitProjectOptions {
     pub package_scripts: Vec<String>,
     pub install_agent_skills: bool,
     pub overwrite: bool,
+}
+
+fn normalized_source_documents(request: &ProjectCreateRequest) -> Vec<SourceDocument> {
+    let mut documents = request
+        .source_documents
+        .iter()
+        .cloned()
+        .filter_map(|document| {
+            let content = document.content.trim().to_string();
+            if content.is_empty() {
+                return None;
+            }
+            let name = document.name.trim();
+            Some(SourceDocument {
+                name: if name.is_empty() {
+                    "Imported source".to_string()
+                } else {
+                    name.to_string()
+                },
+                document_type: normalized_document_type(&document.document_type),
+                content,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if documents.is_empty() {
+        if let Some(document) = &request.document {
+            let content = document.trim().to_string();
+            if !content.is_empty() {
+                documents.push(SourceDocument {
+                    name: "Imported source".to_string(),
+                    document_type: normalized_document_type(
+                        request.document_type.as_deref().unwrap_or_default(),
+                    ),
+                    content,
+                });
+            }
+        }
+    }
+
+    documents
+}
+
+fn normalized_document_type(document_type: &str) -> String {
+    if document_type.eq_ignore_ascii_case("html") {
+        "html".to_string()
+    } else {
+        "markdown".to_string()
+    }
+}
+
+fn combined_source_document(documents: &[SourceDocument]) -> (String, String) {
+    if documents.is_empty() {
+        return (String::new(), String::new());
+    }
+    if documents.len() == 1 {
+        return (
+            documents[0].content.clone(),
+            documents[0].document_type.clone(),
+        );
+    }
+    let combined = documents
+        .iter()
+        .map(|document| {
+            format!(
+                "# Imported file: {}\n\nSource type: {}\n\n{}",
+                document.name,
+                document.document_type,
+                combined_document_content(document)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n---\n\n");
+    (combined, "markdown".to_string())
+}
+
+fn combined_document_content(document: &SourceDocument) -> String {
+    if !document.document_type.eq_ignore_ascii_case("html") {
+        return document.content.clone();
+    }
+    html_sections(&document.content)
+        .into_iter()
+        .map(|section| {
+            let mut content = format!("## {}", section.heading);
+            if section.items.is_empty() {
+                content.push_str("\n\n");
+                content.push_str(&remove_heading_prefix(&section.text, &section.heading));
+            } else {
+                for item in section.items {
+                    content.push_str("\n- ");
+                    content.push_str(&item);
+                }
+            }
+            content
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 struct BundledAgentSkillFile {
@@ -994,7 +1104,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
 }
 
 fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
-    let pages = [
+    let pages = vec![
         ("wiki/index.mdx", index_page(options)),
         ("wiki/AGENTS.mdx", wiki_agent_page(options)),
         ("wiki/log.mdx", log_page(options)),
@@ -1029,6 +1139,9 @@ fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), St
         ("wiki/sources/import.mdx", import_page(options)),
     ];
     for (relative, content) in pages {
+        write_if_safe(&root.join(relative), &content, options.overwrite)?;
+    }
+    for (relative, content) in imported_source_pages(options) {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
     }
     Ok(())
@@ -1321,6 +1434,26 @@ fn import_roadmap_page(options: &InitProjectOptions) -> String {
 fn import_page(options: &InitProjectOptions) -> String {
     let body = if options.source_document.is_empty() {
         "<h1>Source Import</h1><p>No source document was imported.</p>".to_string()
+    } else if options.source_documents.len() > 1 {
+        let links = options
+            .source_documents
+            .iter()
+            .enumerate()
+            .map(|(index, document)| {
+                format!(
+                    "<li><a href=\"/wiki/sources/imported/{}\">{}</a> <span>({})</span></li>",
+                    escape_html(&imported_source_filename(index, &document.name)),
+                    escape_html(&document.name),
+                    escape_html(&document.document_type)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        format!(
+            "<h1>Source Import</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Imported {} source documents as one ordered planning bundle.</li><li>Existing source extraction used the combined bundle in selection order.</li></ul></section><section><h2>Imported Documents</h2><ol>{}</ol></section>",
+            options.source_documents.len(),
+            links
+        )
     } else {
         format!(
             "<h1>Source Import</h1><p>Type: {}</p><pre>{}</pre>",
@@ -1329,6 +1462,47 @@ fn import_page(options: &InitProjectOptions) -> String {
         )
     };
     layout(options, "Source Import", &body)
+}
+
+fn imported_source_pages(options: &InitProjectOptions) -> Vec<(String, String)> {
+    if options.source_documents.len() <= 1 {
+        return Vec::new();
+    }
+    options
+        .source_documents
+        .iter()
+        .enumerate()
+        .map(|(index, document)| {
+            let title = format!("Imported Source - {}", document.name);
+            let body = format!(
+                "<h1>{}</h1><p>Type: {}</p><pre>{}</pre>",
+                escape_html(&title),
+                escape_html(&document.document_type),
+                escape_html(&document.content)
+            );
+            (
+                format!(
+                    "wiki/sources/imported/{}",
+                    imported_source_filename(index, &document.name)
+                ),
+                layout(options, &title, &body),
+            )
+        })
+        .collect()
+}
+
+fn imported_source_filename(index: usize, name: &str) -> String {
+    let stem = name
+        .rsplit_once('.')
+        .map(|(stem, _)| stem)
+        .unwrap_or(name)
+        .trim();
+    let slug = slugify(stem);
+    format!(
+        "{:02}-{}.mdx",
+        index + 1,
+        if slug.is_empty() { "source" } else { &slug }
+    )
 }
 
 impl SourceFacts {
@@ -1670,7 +1844,8 @@ fn or_unknown(value: &str) -> &str {
 
 fn html_list_or_unknown(items: &[String]) -> String {
     if items.is_empty() {
-        return "<p>Unknown; resolve through source review and focused agent Q&amp;A.</p>".to_string();
+        return "<p>Unknown; resolve through source review and focused agent Q&amp;A.</p>"
+            .to_string();
     }
     format!(
         "<ul>{}</ul>",
@@ -1939,7 +2114,9 @@ mod tests {
         let registry = ProjectRegistry::new(&home);
 
         assert!(registry.resolve(Some("routechat"), None).is_none());
-        assert!(registry.resolve_by_slug("routechat", Some("main")).is_none());
+        assert!(registry
+            .resolve_by_slug("routechat", Some("main"))
+            .is_none());
         assert!(registry.read_raw().projects.is_empty());
     }
 
@@ -2035,6 +2212,7 @@ mod tests {
                 summary: Some("A Markdown pattern library.".to_string()),
                 document: Some("# Source\n".to_string()),
                 document_type: Some("markdown".to_string()),
+                source_documents: Vec::new(),
                 planning_answers: BTreeMap::new(),
                 initialize_git: Some(true),
                 install_agent_skills: None,
@@ -2056,6 +2234,13 @@ mod tests {
             .root
             .join("wiki")
             .join("index.mdx")
+            .is_file());
+        assert!(created
+            .project
+            .root
+            .join("wiki")
+            .join("sources")
+            .join("import.mdx")
             .is_file());
         assert!(!created
             .project
@@ -2141,6 +2326,7 @@ mod tests {
                         .to_string(),
                 ),
                 document_type: Some("html".to_string()),
+                source_documents: Vec::new(),
                 planning_answers,
                 initialize_git: Some(false),
                 install_agent_skills: None,
@@ -2172,6 +2358,80 @@ mod tests {
             .join("planning-interview.mdx")
             .exists());
         assert!(!root.join("wiki").join("plans").join("mvp").exists());
+    }
+
+    #[test]
+    fn multi_document_import_writes_bundle_index_and_imported_source_pages() {
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let projects_dir = temp_root("multi-import-projects-dir");
+        let home = temp_root("multi-import-home");
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let registry = ProjectRegistry::new(&home);
+
+        let created = create_project_from_dashboard(
+            &registry,
+            ProjectCreateRequest {
+                title: "Bundle Import".to_string(),
+                summary: Some("Imported bundle.".to_string()),
+                document: None,
+                document_type: None,
+                source_documents: vec![
+                    SourceDocument {
+                        name: "01-product.md".to_string(),
+                        document_type: "markdown".to_string(),
+                        content: "# Idea\n\n- First selected product signal.\n".to_string(),
+                    },
+                    SourceDocument {
+                        name: "02-design.html".to_string(),
+                        document_type: "html".to_string(),
+                        content: "<section><h2>Idea</h2><ul><li>Second selected design signal.</li></ul></section>".to_string(),
+                    },
+                ],
+                planning_answers: BTreeMap::new(),
+                initialize_git: Some(false),
+                install_agent_skills: None,
+                agent_launch_command: None,
+            },
+        )
+        .unwrap();
+
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+
+        let root = created.project.root;
+        let import =
+            fs::read_to_string(root.join("wiki").join("sources").join("import.mdx")).unwrap();
+        let first = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("imported")
+                .join("01-01-product.mdx"),
+        )
+        .unwrap();
+        let second = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("imported")
+                .join("02-02-design.mdx"),
+        )
+        .unwrap();
+        let technical = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("technical-brief.mdx"),
+        )
+        .unwrap();
+
+        assert!(import.contains("Imported 2 source documents"));
+        assert!(import.contains("/wiki/sources/imported/01-01-product.mdx"));
+        assert!(import.contains("/wiki/sources/imported/02-02-design.mdx"));
+        assert!(first.contains("First selected product signal."));
+        assert!(second.contains("&lt;section&gt;&lt;h2&gt;Idea&lt;/h2&gt;"));
+        let first_index = technical.find("First selected product signal").unwrap();
+        let second_index = technical.find("Second selected design signal").unwrap();
+        assert!(first_index < second_index);
     }
 
     #[test]
@@ -2231,8 +2491,13 @@ mod tests {
         init_hyperwiki_project(&root, init_options("Preserve Skills")).unwrap();
 
         assert_eq!(
-            fs::read_to_string(root.join(".agents").join("skills").join("shadcn").join("SKILL.md"))
-                .unwrap(),
+            fs::read_to_string(
+                root.join(".agents")
+                    .join("skills")
+                    .join("shadcn")
+                    .join("SKILL.md")
+            )
+            .unwrap(),
             "custom shadcn"
         );
         let lock = skills_lock(&root);
@@ -2379,6 +2644,7 @@ mod tests {
             summary: "Test project summary.".to_string(),
             source_document: String::new(),
             source_document_type: String::new(),
+            source_documents: Vec::new(),
             source_facts: SourceFacts {
                 summary: "Test project summary.".to_string(),
                 ..Default::default()

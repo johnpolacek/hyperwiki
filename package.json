@@ -15,7 +15,7 @@
     "check:tauri": "cargo check --manifest-path src-tauri/Cargo.toml",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
     "check:all": "pnpm run check && pnpm run check:tauri && pnpm run test:tauri && pnpm run smoke:api-adapter && pnpm run smoke:tauri-harness && pnpm run smoke:tauri-static-assets && pnpm run smoke:project-contract && pnpm run smoke:review-workflows && pnpm run smoke:mcp-transport",
-    "check": "tsc -b && node --check tests/api-adapter-smoke.mjs && node --check tests/tauri-harness-smoke.mjs && node --check tests/tauri-static-assets-smoke.mjs && node --check tests/tauri-import-planning-webdriver-smoke.mjs && node --check tests/mcp-transport-smoke.mjs",
+    "check": "tsc -b && node tests/new-project-upload-static-smoke.mjs && node --check tests/api-adapter-smoke.mjs && node --check tests/tauri-harness-smoke.mjs && node --check tests/tauri-static-assets-smoke.mjs && node --check tests/tauri-import-planning-webdriver-smoke.mjs && node --check tests/mcp-transport-smoke.mjs",
     "smoke:api-adapter": "node tests/api-adapter-smoke.mjs",
     "smoke:project-contract": "cargo test --manifest-path src-tauri/Cargo.toml project_contract_composes_agent_context_and_project_facts",
     "smoke:review-workflows": "cargo test --manifest-path src-tauri/Cargo.toml review",

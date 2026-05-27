@@ -57,6 +57,7 @@ fn run_init_cli(args: &[String]) {
             summary: summary.clone(),
             source_document: options.string("source_document").unwrap_or_default(),
             source_document_type: options.string("source_document_type").unwrap_or_default(),
+            source_documents: Vec::new(),
             source_facts: domain::projects::SourceFacts {
                 summary,
                 ..Default::default()

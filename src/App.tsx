@@ -45,6 +45,12 @@ type SidePanelMode = "terminal" | "modify" | "new-plan" | "agent-activity";
 type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
 type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 
+interface SourceDocumentInput {
+  name: string;
+  documentType: string;
+  content: string;
+}
+
 const DISABLE_TEXT_CORRECTION_PROPS = {
   autoCapitalize: "off",
   autoCorrect: "off",
@@ -1173,7 +1179,7 @@ function App() {
     setStatus(result.install?.ok === false ? result.install.message || "Worktree created; install failed." : "Worktree ready.");
   }
 
-  async function createProject(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
+  async function createProject(input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) {
     baseDataRequestId.current += 1;
     setStatus("Initializing project");
     appendImportLog(`Create request started title=${input.title}`);
@@ -1186,6 +1192,7 @@ function App() {
           summary: documentSummary(input.document),
           document: input.document,
           documentType: input.documentType,
+          sourceDocuments: input.sourceDocuments,
           initializeGit: input.initializeGit,
           agentLaunchCommand: agentLaunchCommand(layout),
         },
@@ -1641,7 +1648,7 @@ function WorkspacePane(props: {
   hasLoadedProjects: boolean;
   isExpanded: boolean;
   isLoading: boolean;
-  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answer: string) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
@@ -2352,7 +2359,7 @@ function NewProjectView({
   onCreateProject,
 }: {
   isFirstProject?: boolean;
-  onCreateProject: (input: { title: string; document: string; documentType: string; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
 }) {
   const [title, setTitle] = useState("");
   const [document, setDocument] = useState("");
@@ -2368,30 +2375,40 @@ function NewProjectView({
     setImportLog(readImportLog());
   }
 
-  async function handleFile(file: File | null) {
-    if (!file) return;
+  async function handleFiles(fileList: FileList | null) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
     clearImportLog();
     setImportLog([]);
     setIsSubmitting(true);
-    setStatus(`Reading ${file.name}...`);
-    logImport(`Reading ${file.name}`);
+    setStatus(files.length === 1 ? `Reading ${files[0].name}...` : `Reading ${files.length} files...`);
+    logImport(files.length === 1 ? `Reading ${files[0].name}` : `Reading ${files.length} selected files`);
     try {
-      const text = await file.text();
-      logImport(`Read ${text.length} bytes from ${file.name}`);
-      const nextType = file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown";
-      const nextTitle = title || file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
-      setDocument(text);
+      const sourceDocuments = await Promise.all(files.map(async (file) => {
+        const content = await file.text();
+        logImport(`Read ${content.length} bytes from ${file.name}`);
+        return {
+          name: file.name,
+          documentType: file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown",
+          content,
+        };
+      }));
+      const nextType = sourceDocuments.length === 1 ? sourceDocuments[0].documentType : "markdown";
+      const combinedDocument = combineSourceDocuments(sourceDocuments);
+      const nextTitle = title || files[0].name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+      setDocument(combinedDocument);
       setDocumentType(nextType);
       setTitle(nextTitle);
       await createProjectAndStartPlanning({
         title: nextTitle.trim(),
-        document: text.trim(),
+        document: combinedDocument.trim(),
         documentType: nextType,
+        sourceDocuments,
         initializeGit,
       });
     } catch (error) {
-      logImport("Hyperwiki import failed while reading the selected file.", error);
-      setStatus(error instanceof Error ? `Could not read import file: ${error.message}` : "Could not read the import file.");
+      logImport("Hyperwiki import failed while reading the selected file bundle.", error);
+      setStatus(error instanceof Error ? `Could not read import files: ${error.message}` : "Could not read the import files.");
     } finally {
       setIsSubmitting(false);
     }
@@ -2407,7 +2424,7 @@ function NewProjectView({
     });
   }
 
-  async function createProjectAndStartPlanning(input: { title: string; document: string; documentType: string; initializeGit: boolean }) {
+  async function createProjectAndStartPlanning(input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) {
     if (!input.title.trim() || !input.document.trim()) {
       setStatus("Add a project name and source brief before planning the MVP.");
       return;
@@ -2478,8 +2495,8 @@ function NewProjectView({
           <label className="group flex min-h-44 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
             <Upload aria-hidden="true" className="mb-5 size-11 text-primary transition-transform group-hover:-translate-y-0.5" />
             <span className="rounded-md bg-primary px-5 py-2.5 text-base font-bold text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.10),0_8px_22px_rgba(0,0,0,0.10)] transition-transform group-active:scale-[0.96]">Import Project Doc</span>
-            <small className="mt-3 text-base text-muted-foreground">Markdown or HTML</small>
-            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" onChange={(event) => void handleFile(event.target.files?.[0] || null)} />
+            <small className="mt-3 text-base text-muted-foreground">Markdown, MDX, or HTML</small>
+            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" multiple onChange={(event) => void handleFiles(event.target.files)} />
           </label>
 
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-sm font-bold uppercase text-muted-foreground" aria-hidden="true">
@@ -2577,6 +2594,13 @@ function documentSummary(document: string) {
     .filter(Boolean)
     .slice(0, 3)
     .join(" ");
+}
+
+function combineSourceDocuments(sourceDocuments: SourceDocumentInput[]) {
+  if (sourceDocuments.length === 1) return sourceDocuments[0].content;
+  return sourceDocuments
+    .map((document) => `# Imported file: ${document.name}\n\nSource type: ${document.documentType}\n\n${document.content}`)
+    .join("\n\n---\n\n");
 }
 
 function SettingsView({ activeProject, settings }: { activeProject: ProjectRecord | null; settings: SettingsResponse | null }) {
