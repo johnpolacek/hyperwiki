@@ -330,11 +330,6 @@ interface ImportPlanningStatus {
   qnaPath?: string | null;
 }
 
-interface ImportPlanningCreateResponse {
-  displayPath?: string;
-  wrote?: string[];
-}
-
 const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 
@@ -880,9 +875,6 @@ function App() {
         },
       });
       applyImportPlanningStatus(nextStatus);
-      if (!nextStatus.currentQuestion && nextStatus.status === "incomplete") {
-        await createImportedPlanFromProgress(activeProject);
-      }
     } else if (question.sessionId) {
       const response = [
         "Hyperwiki planning answer:",
@@ -912,25 +904,6 @@ function App() {
     setActivePlanningQuestion(null);
     setPlanningInterviewStatus(nextStatus.status === "complete" ? "idle" : "waiting_for_question");
     setPlanningActivity(nextStatus.nextAction);
-  }
-
-  async function createImportedPlanFromProgress(project: ProjectRecord) {
-    setStatus("Creating imported project plan");
-    const created = await hyperwikiApi.json<ImportPlanningCreateResponse>(withProjectQuery("/api/import-planning/create-plan", project), {
-      method: "POST",
-      body: {
-        planTitle: `${project.name} MVP Plan`,
-        answers: [],
-      },
-    });
-    appendImportLog(`Imported plan created path=${created.displayPath} wrote=${created.wrote?.length || 0}`);
-    setPlanningInterviewStatus("idle");
-    setActivePlanningQuestion(null);
-    setPlanningActivity("Generated MVP plan is ready.");
-    await loadProjectData(project);
-    const nextRoute: ViewRoute = { kind: "wiki", path: created.displayPath || "/wiki/plans/index.mdx" };
-    setRoute(nextRoute);
-    window.history.replaceState(null, "", urlForRoute(nextRoute, project));
   }
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {

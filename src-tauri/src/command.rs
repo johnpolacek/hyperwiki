@@ -1343,11 +1343,10 @@ mod tests {
         });
         assert!(clarify.ok);
         assert!(clarify.text.contains("\"ready\":false"));
-        assert!(clarify.text.contains("first-mode"));
+        assert!(clarify.text.contains("\"questions\":[]"));
         assert!(clarify
             .text
-            .contains("Pick the one lane this prototype has to prove first."));
-        assert!(clarify.text.contains("Generates narration from current location"));
+            .contains("questions are produced by the visible agent"));
 
         let status = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/status?project={}", project.id),
@@ -1360,7 +1359,7 @@ mod tests {
         let answer = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/answer?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"question\":{\"id\":\"first-mode\",\"label\":\"First Mode\",\"prompt\":\"Pick the one lane this prototype has to prove first.\",\"impact\":\"blocking\",\"rationale\":\"Scope lock.\"},\"answer\":\"Walking tours first.\"}".to_string()),
+            body: Some("{\"question\":{\"id\":\"agent-question\",\"label\":\"Agent Question\",\"prompt\":\"Which RouteChat slice should prove the product first?\",\"impact\":\"blocking\",\"rationale\":\"Asked after reading raw source.\"},\"answer\":\"Walking tours first.\"}".to_string()),
         });
         assert!(answer.ok, "{}", answer.text);
         assert!(answer.text.contains("\"answeredCount\":1"));
@@ -1379,39 +1378,15 @@ mod tests {
             body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
         });
         assert_eq!(missing_stack.status, 409);
-        assert!(missing_stack.text.contains("Import planning questions are not complete"));
+        assert!(missing_stack.text.contains("plans are created by the visible agent"));
 
         let create = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
             method: "POST".to_string(),
             body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"frontend-stack\",\"answer\":\"React, Vite, TypeScript, and Tailwind for the mobile web UI.\"},{\"id\":\"backend-runtime\",\"answer\":\"Client-first prototype with a small Node route handler only if provider proxying is required.\"},{\"id\":\"data-storage\",\"answer\":\"Browser local storage for demo route state; no database in the first milestone.\"},{\"id\":\"auth-users\",\"answer\":\"No accounts in the first demo.\"},{\"id\":\"services-integrations\",\"answer\":\"Mock route feed plus Gemini API integration; defer maps SDK billing setup.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"dev-commands\",\"answer\":\"pnpm install, pnpm dev, pnpm run build, pnpm run check, and GEMINI_API_KEY for provider calls.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
         });
-        assert!(create.ok, "{}", create.text);
-        let technical = fs::read_to_string(
-            root.join("wiki")
-                .join("plans")
-                .join("imported-project-plan")
-                .join("stage-01-prototype-foundation")
-                .join("unit-02-technical-foundation.mdx"),
-        )
-        .unwrap();
-        assert!(technical.contains("React, Vite, TypeScript, and Tailwind"));
-        assert!(technical.contains("Client-first prototype"));
-        assert!(technical.contains("Browser local storage"));
-        assert!(technical.contains("No accounts"));
-        assert!(technical.contains("Mock route feed plus Gemini API integration"));
-        assert!(technical.contains("pnpm run build"));
-        let unit = fs::read_to_string(
-            root.join("wiki")
-                .join("plans")
-                .join("imported-project-plan")
-                .join("stage-01-prototype-foundation")
-                .join("unit-03-core-demo-loop.mdx"),
-        )
-        .unwrap();
-        assert!(unit.contains("Verification"));
-        assert!(unit.contains("Completion Gate"));
-        assert!(unit.contains("Text plus audio playback"));
+        assert_eq!(create.status, 409);
+        assert!(create.text.contains("plans are created by the visible agent"));
     }
 
     #[test]
