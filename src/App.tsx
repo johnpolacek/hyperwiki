@@ -2784,6 +2784,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                 <SelectField label="Mono Font" value={editTheme.tokens.docs?.monoFont || "Space Mono, monospace"} onChange={(value) => setThemeDraft(updateThemeToken(updateThemeToken(editableTheme, "docs", "monoFont", value), "terminal", "font", value))} options={[["Space Mono, monospace", "Space Mono"], ["IBM Plex Mono, monospace", "IBM Plex Mono"], ["Fira Code, monospace", "Fira Code"], ["Roboto Mono, monospace", "Roboto Mono"]]} />
                 <SelectField label="Terminal Mode" value={editTheme.tokens.terminal?.mode || "dark"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "mode", value))} options={[["dark", "Dark"], ["light", "Light"], ["match", "Match UI"]]} />
               </div>
+              <ThemeFontSummary theme={editTheme} />
               <details className="mt-4">
                 <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">Advanced JSON</summary>
                 <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
@@ -3063,6 +3064,25 @@ function SelectField({ label, onChange, options, value }: { label: string; onCha
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
       </select>
     </label>
+  );
+}
+
+function ThemeFontSummary({ theme }: { theme: NormalizedTheme }) {
+  const fonts = [
+    ["Body", theme.tokens.docs?.serifFont],
+    ["Sidebar", theme.tokens.ui?.sidebarFont],
+    ["Mono", theme.tokens.docs?.monoFont],
+    ["Terminal", theme.tokens.terminal?.font],
+  ];
+  return (
+    <dl className="mt-4 grid gap-2 rounded-md border bg-background p-3 text-xs">
+      {fonts.map(([label, value]) => (
+        <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-3" key={label}>
+          <dt className="font-bold uppercase text-muted-foreground">{label}</dt>
+          <dd className="min-w-0 truncate font-normal text-foreground" style={{ fontFamily: value }}>{fontLabel(value)}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

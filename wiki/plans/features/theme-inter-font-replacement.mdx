@@ -17,9 +17,13 @@ wikiKind: "plan"
 </section>
 <section>
   <h2>Intent</h2>
-  <p>Built-in themes should no longer use Inter. Presets that previously selected Inter now use Rethink Sans, and both Rethink Sans and Figtree are bundled so theme tokens resolve to real local font faces instead of falling through to system UI.</p>
+  <p>Built-in themes should no longer use Inter. Presets that previously selected Inter now use Rethink Sans, Daybreak uses Figtree, and both Rethink Sans and Figtree are bundled so theme tokens resolve to real local font faces instead of falling through to system UI.</p>
 </section>
 <section>
   <h2>Deep Dive Result</h2>
   <p>The theme token path was already correct: settings presets normalize into <code>--docs-serif-font</code>, Tailwind v4 maps <code>--font-sans</code> to that CSS variable, and React surfaces inherit <code>font-family: var(--font-sans)</code>. The missing layer was font availability. Without local <code>@font-face</code> declarations, WebKit displayed the named token in Settings but rendered the system fallback.</p>
+</section>
+<section>
+  <h2>Follow-Up</h2>
+  <p>The Edit Theme controls now include a compact font summary so the active Body, Sidebar, Mono, and Terminal font names are visible while editing presets.</p>
 </section>
