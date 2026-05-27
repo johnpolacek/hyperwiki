@@ -848,7 +848,7 @@ function App() {
         transcript,
       };
     });
-    const question = extractLatestPlanningQuestion(next, sessionId);
+    const question = extractLatestPlanningQuestion(next, sessionId, answeredPlanningQuestionIds.current);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
         loggedPlanningQuestionIds.current.add(question.id);
@@ -4550,44 +4550,52 @@ function trimPlanningQuestionBuffer(text: string) {
   return text.length > 40000 ? text.slice(-40000) : text;
 }
 
-function extractLatestPlanningQuestion(text: string, sessionId: string): PlanningQuestion | null {
+function extractLatestPlanningQuestion(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set()): PlanningQuestion | null {
+  const candidates: PlanningQuestion[] = [];
   const blocks = [...text.matchAll(/```(?:json|hyperwiki-question)?\s*([\s\S]*?)```/gi)];
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
     const raw = blocks[index]?.[1]?.trim();
     if (!raw) continue;
     const parsed = parsePlanningQuestionJson(raw, sessionId);
-    if (parsed) return parsed;
+    if (parsed) candidates.push(parsed);
   }
   const rawObjects = extractRawPlanningQuestionObjects(text);
   for (let index = rawObjects.length - 1; index >= 0; index -= 1) {
     const parsed = parsePlanningQuestionJson(rawObjects[index], sessionId);
-    if (parsed) return parsed;
+    if (parsed) candidates.push(parsed);
   }
-  return null;
+  return candidates.find((question) => !answeredQuestionIds.has(question.id)) || null;
 }
 
 function extractRawPlanningQuestionObjects(text: string) {
   const objects: string[] = [];
-  const marker = "\"type\"";
+  const markerPattern = /"(?:type|question)"\s*:/g;
   let searchFrom = 0;
   while (searchFrom < text.length) {
-    const markerIndex = text.indexOf(marker, searchFrom);
-    if (markerIndex === -1) break;
+    markerPattern.lastIndex = searchFrom;
+    const match = markerPattern.exec(text);
+    if (!match) break;
+    const markerIndex = match.index;
     const start = text.lastIndexOf("{", markerIndex);
     if (start === -1) {
-      searchFrom = markerIndex + marker.length;
+      searchFrom = markerIndex + match[0].length;
       continue;
     }
     const end = findJsonObjectEnd(text, start);
     if (end === -1) {
-      searchFrom = markerIndex + marker.length;
+      searchFrom = markerIndex + match[0].length;
       continue;
     }
     const candidate = text.slice(start, end + 1);
-    if (candidate.includes("hyperwiki-question")) objects.push(candidate);
+    if (isPlanningQuestionObjectCandidate(candidate)) objects.push(candidate);
     searchFrom = end + 1;
   }
   return objects;
+}
+
+function isPlanningQuestionObjectCandidate(candidate: string) {
+  return candidate.includes("hyperwiki-question")
+    || (/"question"\s*:/.test(candidate) && (/"recommendedAnswer"\s*:/.test(candidate) || /"options"\s*:/.test(candidate)));
 }
 
 function findJsonObjectEnd(text: string, start: number) {
@@ -4638,9 +4646,9 @@ function parseLoosePlanningQuestion(raw: string, sessionId: string): PlanningQue
 }
 
 function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: string }, sessionId: string) {
-  if (value.type !== "hyperwiki-question") return null;
   const question = stringValue(value.question);
   if (!question) return null;
+  if (value.type && value.type !== "hyperwiki-question") return null;
   const recommendedAnswer = stringValue(value.recommendedAnswer);
   const reasoning = stringValue(value.reasoning);
   const options = Array.isArray(value.options)
