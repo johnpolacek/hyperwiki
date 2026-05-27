@@ -50,6 +50,7 @@ const DISABLE_TEXT_CORRECTION_PROPS = {
   autoCorrect: "off",
   spellCheck: false,
 } as const;
+const THEME_AUTOSAVE_DELAY_MS = 350;
 
 interface WikiPage {
   title: string;
@@ -2585,11 +2586,55 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
   const [agentDraft, setAgentDraft] = useState<{ soul: SettingsResponse["soul"]; memory: SettingsResponse["memory"] } | null>(null);
   const [agentsFile, setAgentsFile] = useState<{ path: string; content: string }>({ path: "", content: "" });
   const [status, setStatus] = useState("");
+  const currentDraftRef = useRef<SettingsResponse | null>(settings);
+  const themeEditorBaselineRef = useRef<SettingsResponse["theme"] | null>(settings?.theme || null);
+  const themeAutosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const themeAutosaveRequestRef = useRef(0);
 
   useEffect(() => {
     setDraft(settings);
     setThemeDraft(settings?.theme || null);
   }, [settings]);
+
+  useEffect(() => {
+    currentDraftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    if (mode !== "theme" || !draft || !themeDraft) return;
+    applyAppTheme(themeDraft);
+    if (themeJson(themeDraft) === themeJson(draft.theme)) return;
+
+    if (themeAutosaveTimerRef.current) clearTimeout(themeAutosaveTimerRef.current);
+    const requestId = ++themeAutosaveRequestRef.current;
+    setStatus("Saving theme...");
+
+    themeAutosaveTimerRef.current = setTimeout(async () => {
+      const currentDraft = currentDraftRef.current;
+      if (!currentDraft) return;
+      try {
+        const saved = await hyperwikiApi.json<SettingsResponse>("/api/settings", { method: "PUT", body: { ...currentDraft, theme: themeDraft } });
+        if (requestId !== themeAutosaveRequestRef.current) return;
+        applyAppTheme(saved.theme);
+        setDraft(saved);
+        setThemeDraft(saved.theme || null);
+        setStatus("Theme autosaved.");
+      } catch (error) {
+        if (requestId !== themeAutosaveRequestRef.current) return;
+        setStatus(error instanceof Error ? error.message : "Could not save theme.");
+      }
+    }, THEME_AUTOSAVE_DELAY_MS);
+
+    return () => {
+      if (themeAutosaveTimerRef.current) clearTimeout(themeAutosaveTimerRef.current);
+    };
+  }, [draft, mode, themeDraft]);
+
+  useEffect(() => {
+    return () => {
+      if (themeAutosaveTimerRef.current) clearTimeout(themeAutosaveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "agent" || !activeProject) return;
@@ -2611,14 +2656,14 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
     };
   }, [activeProject, draft?.memory, draft?.soul, mode]);
 
-  async function save(next: SettingsResponse) {
-    setStatus("Saving...");
+  async function save(next: SettingsResponse, messages: { saving?: string; saved?: string } = {}) {
+    setStatus(messages.saving || "Saving...");
     try {
       const saved = await hyperwikiApi.json<SettingsResponse>("/api/settings", { method: "PUT", body: next });
       applyAppTheme(saved.theme);
       setDraft(saved);
       setThemeDraft(saved.theme || null);
-      setStatus("Saved.");
+      setStatus(messages.saved || "Saved.");
       return saved;
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not save settings.");
@@ -2627,7 +2672,9 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
   }
 
   function openThemeEditor() {
-    setThemeDraft(structuredClone(draft?.theme || {}));
+    const baseline = structuredClone(draft?.theme || {});
+    themeEditorBaselineRef.current = baseline;
+    setThemeDraft(baseline);
     setMode("theme");
     setStatus("");
   }
@@ -2638,10 +2685,26 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
     setStatus("");
   }
 
-  async function saveTheme() {
-    if (!draft || !themeDraft) return;
-    const saved = await save({ ...draft, theme: themeDraft });
-    if (saved) setMode("overview");
+  async function revertTheme() {
+    if (!draft) return;
+    if (themeAutosaveTimerRef.current) clearTimeout(themeAutosaveTimerRef.current);
+    const baseline = structuredClone(themeEditorBaselineRef.current || draft.theme || {});
+    const requestId = ++themeAutosaveRequestRef.current;
+    setMode("overview");
+    setThemeDraft(baseline);
+    const saved = await save({ ...draft, theme: baseline }, { saving: "Reverting theme...", saved: "Theme reverted." });
+    if (!saved && requestId === themeAutosaveRequestRef.current) setMode("theme");
+  }
+
+  async function completeThemeEditor() {
+    if (!draft || !themeDraft || themeJson(themeDraft) === themeJson(draft.theme)) {
+      setMode("overview");
+      return;
+    }
+    if (themeAutosaveTimerRef.current) clearTimeout(themeAutosaveTimerRef.current);
+    const requestId = ++themeAutosaveRequestRef.current;
+    const saved = await save({ ...draft, theme: themeDraft }, { saving: "Saving theme...", saved: "Theme autosaved." });
+    if (saved && requestId === themeAutosaveRequestRef.current) setMode("overview");
   }
 
   async function saveAgentInstructions() {
@@ -2694,8 +2757,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
     return (
       <section className="min-h-0 overflow-auto bg-background">
         <SettingsPageHeader
-          actions={<><Button variant="outline" onClick={() => { setThemeDraft(draft.theme || null); setMode("overview"); }}>Cancel</Button><Button onClick={saveTheme}>Save Theme</Button></>}
-          description="Adjust a draft theme and preview it here. The workspace updates after Save."
+          actions={<><Button variant="outline" onClick={revertTheme}>Revert</Button><Button onClick={completeThemeEditor}>Done</Button></>}
+          description="Theme changes apply immediately and save automatically."
           fontFamily={editTheme.tokens.docs?.serifFont}
           title="Edit Theme"
         />
@@ -2908,7 +2971,7 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
     <section className="min-w-0 overflow-hidden rounded-md border bg-card p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
-        <span className="truncate text-xs text-muted-foreground">Choosing a preset resets custom edits.</span>
+        <span className="truncate text-xs text-muted-foreground">Choosing a preset applies and autosaves.</span>
       </div>
       <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1">
         {entries.map(([key, preset]) => {
@@ -3127,6 +3190,10 @@ function mergePreset(base: NormalizedTheme, patch: Partial<NormalizedTheme>): No
 
 function hasThemeOverrides(theme?: SettingsResponse["theme"]) {
   return Object.values(theme?.customTokens || {}).some((surface) => Object.keys(surface || {}).length > 0);
+}
+
+function themeJson(theme?: SettingsResponse["theme"] | null) {
+  return JSON.stringify(theme || {});
 }
 
 function selectThemePreset(theme: SettingsResponse["theme"], activePreset: string): SettingsResponse["theme"] {

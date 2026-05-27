@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-27 fix | settings theme autosave</h2>
+  <ul>
+    <li>Changed Settings theme editing so preset, mode, color, font, terminal, and valid advanced JSON changes apply to the app theme immediately and autosave through the existing settings endpoint.</li>
+    <li>Replaced the theme editor Cancel/Save Theme controls with Revert and Done; Revert restores the editor-open baseline and Done flushes pending autosave work before returning to Settings.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a live Vite source check against the running dev server.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-26 fix | modify plan docs-only boundary</h2>
   <ul>
     <li>Changed Modify Plan handoffs so the textarea request is wrapped in an explicit planning/wiki-only prompt instead of being sent directly to the agent.</li>

@@ -1,0 +1,30 @@
+---
+title: "Settings Theme Autosave"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Settings Theme Autosave</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact settings behavior fix</li>
+    <li>Current unit: complete</li>
+    <li>Next action: none.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a live Vite source check confirming the served module contains Revert, Done, and autosave copy instead of Save Theme.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Theme editing should feel direct. Choosing a preset or changing theme controls should update the running app immediately and save without requiring a separate Save Theme action.</p>
+</section>
+<section>
+  <h2>Unit 01 - Theme editor autosave</h2>
+  <ul>
+    <li>Apply theme drafts to the app shell as soon as they change.</li>
+    <li>Debounce writes to the existing global settings endpoint so rapid color and select changes do not spam persistence.</li>
+    <li>Keep a baseline from the moment the theme editor opens so Revert can restore that theme and save the restored value.</li>
+    <li>Remove the Save Theme action, rename Cancel to Revert, and provide Done as the non-saving exit that flushes pending autosave work before returning to Settings.</li>
+  </ul>
+</section>
