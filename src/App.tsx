@@ -1004,15 +1004,15 @@ function App() {
       await inFlight;
       return;
     }
-    const existingSessions = await loadSessionsForProject(project, projectScope);
-    const existingAgent = existingSessions.find(isAgentSession);
-    if (existingAgent?.command) {
-      appendImportLog(`Imported Q&A recovered existing agent project=${project.id} session=${existingAgent.id}`);
-      setActiveSessionId(existingAgent.id);
-      setStatus("Imported project Q&A is already running");
-      return;
-    }
     const run = (async () => {
+      const existingSessions = await loadSessionsForProject(project, projectScope);
+      const existingAgent = existingSessions.find(isAgentSession);
+      if (existingAgent?.command) {
+        appendImportLog(`Imported Q&A recovered existing agent project=${project.id} session=${existingAgent.id}`);
+        setActiveSessionId(existingAgent.id);
+        setStatus("Imported project Q&A is already running");
+        return;
+      }
       appendImportLog(`Imported Q&A start requested project=${project.id}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
@@ -4819,7 +4819,7 @@ async function waitForAgentPromptReady(sessionId: string) {
 
 function isAgentPromptReady(text: string) {
   const normalized = text.replace(/\s+/g, " ");
-  return /\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}");
+  return /\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}") || normalized.includes("›Implement {feature}");
 }
 
 async function sendResize(sessionId: string, cols: number, rows: number) {
