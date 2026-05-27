@@ -270,6 +270,22 @@ interface TerminalReplayResponse {
   bytes: number[];
 }
 
+interface AgentPromptResponse {
+  ok?: boolean;
+  requestId?: string;
+  requestedSessionId?: string;
+  scope?: string;
+  promptChars?: number;
+  pasteBytes?: number;
+  beforeReplaySeq?: number | null;
+  afterReplaySeq?: number | null;
+  live?: boolean;
+  session?: {
+    id?: string;
+    name?: string;
+  };
+}
+
 interface TerminalOutputEventPayload {
   sessionId: string;
   seq: number;
@@ -876,9 +892,10 @@ function App() {
     const question = activePlanningQuestion;
     const trimmed = answer.trim();
     if (!question || !trimmed) return;
+    const requestId = `planning-answer:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
     answeredPlanningQuestionIds.current.add(question.id);
     setPlanningInterviewStatus("answering");
-    appendImportLog(`Planning answer submitting session=${question.sessionId || "none"} question=${question.id} chars=${trimmed.length}`);
+    appendImportLog(`Planning answer submitting request=${requestId} session=${question.sessionId || "none"} question=${question.id} chars=${trimmed.length}`);
     if (activeProject && isIncompleteImportProject(activeProject)) {
       const nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
         method: "POST",
@@ -891,16 +908,19 @@ function App() {
       applyImportPlanningStatus(nextStatus);
       if (question.sessionId) {
         const prompt = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
-        appendImportLog(`Planning answer routing through agent prompt endpoint session=${question.sessionId} question=${question.id} chars=${prompt.length}`);
-        await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
+        appendImportLog(`Planning answer routing through agent prompt endpoint request=${requestId} session=${question.sessionId} question=${question.id} chars=${prompt.length}`);
+        const routed = await hyperwikiApi.json<AgentPromptResponse>(withProjectQuery("/api/agent/prompt", activeProject), {
           method: "POST",
           body: {
             prompt,
             currentPage: currentWikiPath,
+            requestId,
+            sessionId: question.sessionId,
             scope: terminalScope.scope,
           },
         });
-        appendImportLog(`Planning answer agent prompt endpoint ok session=${question.sessionId} question=${question.id}`);
+        appendImportLog(`Planning answer agent prompt endpoint ok request=${requestId} session=${question.sessionId} selected=${routed.session?.id || "none"} live=${routed.live ? "yes" : "no"} beforeSeq=${routed.beforeReplaySeq ?? "none"} afterSeq=${routed.afterReplaySeq ?? "none"} bytes=${routed.pasteBytes ?? "unknown"}`);
+        void probePlanningAnswerResponse(question.sessionId, question.id, requestId, routed.afterReplaySeq ?? 0);
       }
     } else if (question.sessionId) {
       const response = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
@@ -917,6 +937,40 @@ function App() {
     setActivePlanningQuestion((current) => current?.id === question.id ? null : current);
     setPlanningInterviewStatus((current) => current === "answering" ? "waiting_for_question" : current);
     setStatus("Planning answer sent");
+  }
+
+  async function probePlanningAnswerResponse(sessionId: string, answeredQuestionId: string, requestId: string, startingSeq = 0) {
+    const startedAt = Date.now();
+    let lastSeq = startingSeq;
+    let lastTail = "";
+    for (let attempt = 1; attempt <= 16; attempt += 1) {
+      await delay(500);
+      try {
+        const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
+        lastSeq = replay.seq || lastSeq;
+        const bytes = Uint8Array.from(replay.bytes || []);
+        const plain = terminalTextForParsing(terminalBytesToText(bytes));
+        lastTail = plain.slice(-500);
+        const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current);
+        appendImportLog(`Planning answer probe request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} unanswered=${diagnostics.question?.id || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
+        if (diagnostics.question && diagnostics.question.id !== answeredQuestionId) {
+          appendImportLog(`Planning answer probe found next question request=${requestId} session=${sessionId} id=${diagnostics.question.id}`);
+          if (!loggedPlanningQuestionIds.current.has(diagnostics.question.id)) {
+            loggedPlanningQuestionIds.current.add(diagnostics.question.id);
+          }
+          setPlanningInterviewStatus("question_ready");
+          setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === diagnostics.question?.id ? currentQuestion : diagnostics.question);
+          return;
+        }
+        if (plain.includes("/wiki/plans/mvp/") || plain.includes("wiki/plans/mvp/index.mdx")) {
+          appendImportLog(`Planning answer probe saw MVP plan path request=${requestId} session=${sessionId} seq=${replay.seq}`);
+          return;
+        }
+      } catch (error) {
+        appendImportLog(`Planning answer probe failed request=${requestId} attempt=${attempt} session=${sessionId}`, error);
+      }
+    }
+    appendImportLog(`Planning answer probe timed out request=${requestId} session=${sessionId} waitedMs=${Date.now() - startedAt} lastSeq=${lastSeq} tail=${JSON.stringify(lastTail.slice(-240))}`);
   }
 
   function applyImportPlanningStatus(nextStatus: ImportPlanningStatus) {
@@ -3774,13 +3828,16 @@ function HeadlessTerminalListener({
 
     async function attach() {
       try {
+        appendImportLog(`Headless terminal listener attach start session=${session.id}`);
         unlisten = await listenTerminalOutput(handleChunk);
         const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
         if (closed) return;
         const bytes = Uint8Array.from(replay.bytes || []);
+        appendImportLog(`Headless terminal listener replay session=${session.id} seq=${replay.seq} bytes=${bytes.length} buffered=${eventBuffer.length}`);
         if (bytes.length) onTerminalText(session.id, terminalTextForParsing(terminalBytesToText(bytes)));
         seenSeq = replay.seq || 0;
         eventBuffer.sort((left, right) => left.seq - right.seq).forEach(writeChunk);
+        appendImportLog(`Headless terminal listener attached session=${session.id} seenSeq=${seenSeq}`);
         eventBuffer = [];
       } catch (error) {
         appendImportLog(`Headless terminal listener failed session=${session.id}`, error);
@@ -4601,6 +4658,14 @@ function trimPlanningQuestionBuffer(text: string) {
 }
 
 function extractLatestPlanningQuestion(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set()): PlanningQuestion | null {
+  const diagnostics = planningQuestionExtractionDiagnostics(text, sessionId, answeredQuestionIds);
+  if (diagnostics.candidateIds.length && !diagnostics.question) {
+    appendImportLog(`Planning question candidates all answered session=${sessionId} candidates=${diagnostics.candidateIds.length} ids=${diagnostics.candidateIds.join(",")}`);
+  }
+  return diagnostics.question;
+}
+
+function planningQuestionExtractionDiagnostics(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set()) {
   const candidates: PlanningQuestion[] = [];
   const blocks = [...text.matchAll(/```(?:json|hyperwiki-question)?\s*([\s\S]*?)```/gi)];
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
@@ -4615,10 +4680,12 @@ function extractLatestPlanningQuestion(text: string, sessionId: string, answered
     if (parsed) candidates.push(parsed);
   }
   const unanswered = candidates.find((question) => !answeredQuestionIds.has(question.id)) || null;
-  if (candidates.length && !unanswered) {
-    appendImportLog(`Planning question candidates all answered session=${sessionId} candidates=${candidates.length} ids=${candidates.map((question) => question.id).join(",")}`);
-  }
-  return unanswered;
+  return {
+    candidateIds: candidates.map((question) => question.id),
+    codeBlocks: blocks.length,
+    question: unanswered,
+    rawObjects: rawObjects.length,
+  };
 }
 
 function extractRawPlanningQuestionObjects(text: string) {

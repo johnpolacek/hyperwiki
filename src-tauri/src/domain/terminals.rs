@@ -84,6 +84,13 @@ pub struct TerminalOutputResponse {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalWriteDiagnostics {
+    pub live: bool,
+    pub replay_seq: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TerminalWriteResponse {
     pub ok: bool,
 }
@@ -417,6 +424,14 @@ impl TerminalManager {
             seq: snapshot.seq,
             bytes: snapshot.bytes,
         })
+    }
+
+    pub fn diagnostics(&self, id: &str) -> TerminalWriteDiagnostics {
+        let replay_seq = self.sessions.get(id).map(|process| process.replay().seq);
+        TerminalWriteDiagnostics {
+            live: replay_seq.is_some(),
+            replay_seq,
+        }
     }
 
     pub fn close(&mut self, id: &str) -> Result<SessionRecord, String> {

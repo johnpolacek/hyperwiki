@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-27 fix | import Q&amp;A answer routing diagnostics</h2>
+  <ul>
+    <li>Changed imported-project planning answers to route through the exact live agent session that emitted the active question.</li>
+    <li>Added backend routing diagnostics and frontend replay/parser probe logs so a post-answer stall can be traced to session selection, terminal output, or question extraction.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>cargo test agent_prompt --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-27 implementation | multiple project doc import</h2>
   <ul>
     <li>Changed New Project upload to accept multiple Markdown, MDX, HTML, and HTM files and send an ordered <code>sourceDocuments</code> bundle during project creation.</li>

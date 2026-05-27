@@ -834,19 +834,43 @@ fn send_agent_prompt(
         return Err((400, "Prompt is required.".to_string()));
     }
     let scope = body["scope"].as_str().unwrap_or_default();
+    let requested_session_id = body["sessionId"].as_str().unwrap_or_default();
+    let request_id = body["requestId"].as_str().unwrap_or_default();
     let sessions = crate::domain::sessions::SessionRegistry::new(&project.root).list(None, false);
-    let Some(agent_session) = sessions.sessions.into_iter().rev().find(|session| {
-        (session.status == "active" || session.status == "detached")
-            && session.role == "agent"
-            && (scope.is_empty() || session.scope == scope)
-            && session
-                .command
-                .as_deref()
-                .map(str::trim)
-                .is_some_and(|command| !command.is_empty())
-    }) else {
+    let mut manager = terminal_manager()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    let agent_session = if requested_session_id.is_empty() {
+        sessions.sessions.into_iter().rev().find(|session| {
+            (session.status == "active" || session.status == "detached")
+                && session.role == "agent"
+                && (scope.is_empty() || session.scope == scope)
+                && session
+                    .command
+                    .as_deref()
+                    .map(str::trim)
+                    .is_some_and(|command| !command.is_empty())
+                && manager.diagnostics(&session.id).live
+        })
+    } else {
+        sessions.sessions.into_iter().find(|session| {
+            session.id == requested_session_id
+                && (session.status == "active" || session.status == "detached")
+                && session.role == "agent"
+                && session
+                    .command
+                    .as_deref()
+                    .map(str::trim)
+                    .is_some_and(|command| !command.is_empty())
+        })
+    };
+    let Some(agent_session) = agent_session else {
         return Err((409, "No active agent session is available.".to_string()));
     };
+    let before = manager.diagnostics(&agent_session.id);
+    if !requested_session_id.is_empty() && !before.live {
+        return Err((409, "Requested agent session is not live.".to_string()));
+    }
     let current_page = body["currentPage"]
         .as_str()
         .unwrap_or("/wiki/plans/index.mdx");
@@ -865,17 +889,37 @@ fn send_agent_prompt(
         "",
     ]
     .join("\n");
-    let mut manager = terminal_manager()
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
+    let paste = codex_paste_input(&message);
     manager
-        .write(&agent_session.id, &codex_paste_input(&message))
+        .write(&agent_session.id, &paste)
         .map_err(|error| (409, error))?;
     manager
         .write(&agent_session.id, "\r")
         .map_err(|error| (409, error))?;
+    let after = manager.diagnostics(&agent_session.id);
+    eprintln!(
+        "[hyperwiki] agent prompt routed request_id={} project_id={} requested_session={} selected_session={} scope={} prompt_chars={} paste_bytes={} before_seq={:?} after_seq={:?} live={}",
+        request_id,
+        project.id,
+        requested_session_id,
+        agent_session.id,
+        scope,
+        prompt.chars().count(),
+        paste.len() + 1,
+        before.replay_seq,
+        after.replay_seq,
+        after.live
+    );
     Ok(serde_json::json!({
         "ok": true,
+        "requestId": request_id,
+        "requestedSessionId": requested_session_id,
+        "scope": scope,
+        "promptChars": prompt.chars().count(),
+        "pasteBytes": paste.len() + 1,
+        "beforeReplaySeq": before.replay_seq,
+        "afterReplaySeq": after.replay_seq,
+        "live": after.live,
         "session": {
             "id": agent_session.id,
             "name": agent_session.name
@@ -1632,10 +1676,25 @@ mod tests {
             method: "POST".to_string(),
             body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
+        let explicitly_routed = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the exact thing\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"agent-command\",\"requestId\":\"test-answer-1\"}".to_string()),
+        });
+        let missing_requested = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the missing thing\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"missing-agent\",\"requestId\":\"test-answer-missing\"}".to_string()),
+        });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/agent-command".to_string(),
             method: "DELETE".to_string(),
             body: None,
+        });
+        let stale_requested = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the stale thing\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"agent-command\",\"requestId\":\"test-answer-stale\"}".to_string()),
         });
 
         std::env::set_current_dir(previous_dir).unwrap();
@@ -1648,7 +1707,15 @@ mod tests {
         assert!(start.ok);
         assert!(routed.ok);
         assert!(routed.text.contains("\"id\":\"agent-command\""));
+        assert!(explicitly_routed.ok);
+        assert!(explicitly_routed.text.contains("\"requestedSessionId\":\"agent-command\""));
+        assert!(explicitly_routed.text.contains("\"requestId\":\"test-answer-1\""));
+        assert!(explicitly_routed.text.contains("\"live\":true"));
+        assert!(!missing_requested.ok);
+        assert_eq!(missing_requested.status, 409);
         assert!(close.ok);
+        assert!(!stale_requested.ok);
+        assert_eq!(stale_requested.status, 409);
     }
 
     #[test]
