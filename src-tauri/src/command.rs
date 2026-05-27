@@ -1347,6 +1347,7 @@ mod tests {
         assert!(clarify
             .text
             .contains("Pick the one lane this prototype has to prove first."));
+        assert!(clarify.text.contains("Generates narration from current location"));
 
         let status = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/status?project={}", project.id),

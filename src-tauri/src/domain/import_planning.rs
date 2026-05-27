@@ -769,7 +769,7 @@ fn text_between_heading(html: &str, heading: &str) -> Option<String> {
 }
 
 fn list_items_after_heading(html: &str, heading: &str) -> Vec<String> {
-    text_between_heading(html, heading)
+    raw_between_heading(html, heading)
         .map(|section| {
             let mut items = Vec::new();
             let mut rest = section.as_str();
@@ -786,13 +786,21 @@ fn list_items_after_heading(html: &str, heading: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn raw_between_heading(html: &str, heading: &str) -> Option<String> {
+    raw_between(html, &format!("<h2>{heading}</h2>"), "</section>")
+}
+
 fn text_between(html: &str, start_marker: &str, end_marker: &str) -> Option<String> {
+    raw_between(html, start_marker, end_marker).map(|value| html_to_text(&value))
+}
+
+fn raw_between(html: &str, start_marker: &str, end_marker: &str) -> Option<String> {
     let start = html.find(start_marker)?;
     let after = &html[start + start_marker.len()..];
     let open_end = after.find('>').map(|index| index + 1).unwrap_or(0);
     let after = &after[open_end..];
     let end = after.find(end_marker)?;
-    Some(html_to_text(&after[..end]))
+    Some(after[..end].to_string())
 }
 
 fn html_to_text(html: &str) -> String {
