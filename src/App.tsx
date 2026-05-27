@@ -865,7 +865,7 @@ function App() {
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
         loggedPlanningQuestionIds.current.add(question.id);
-        appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length}`);
+        appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
       }
       setPlanningInterviewStatus("question_ready");
       setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
@@ -878,7 +878,7 @@ function App() {
     if (!question || !trimmed) return;
     answeredPlanningQuestionIds.current.add(question.id);
     setPlanningInterviewStatus("answering");
-    appendImportLog(`Planning answer submitting session=${question.sessionId} question=${question.id} chars=${trimmed.length}`);
+    appendImportLog(`Planning answer submitting session=${question.sessionId || "none"} question=${question.id} chars=${trimmed.length}`);
     if (activeProject && isIncompleteImportProject(activeProject)) {
       const nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
         method: "POST",
@@ -887,16 +887,17 @@ function App() {
           answer: trimmed,
         },
       });
+      appendImportLog(`Planning answer persisted project=${activeProject.id} question=${question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
       applyImportPlanningStatus(nextStatus);
-    } else if (question.sessionId) {
-      const response = [
-        "Hyperwiki planning answer:",
-        trimmed,
-        "",
-      ].join("\n");
-      await sendInput(question.sessionId, terminalPasteSubmitInput(response));
     }
-    appendImportLog(`Planning answer submitted session=${question.sessionId} question=${question.id}`);
+    if (question.sessionId) {
+      const response = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
+      await sendPasteSubmitInput(question.sessionId, response);
+      appendImportLog(`Planning answer sent to terminal session=${question.sessionId} question=${question.id} chars=${response.length}`);
+    } else {
+      appendImportLog(`Planning answer has no terminal session question=${question.id}`);
+    }
+    appendImportLog(`Planning answer submitted session=${question.sessionId || "none"} question=${question.id}`);
     setLastPlanningAnswer(trimmed);
     setPlanningActivity("Answer sent to the planning agent");
     setPlanningWorkstream((current) => [...current.slice(-8), "Answer sent to the planning agent"]);
@@ -4600,7 +4601,11 @@ function extractLatestPlanningQuestion(text: string, sessionId: string, answered
     const parsed = parsePlanningQuestionJson(rawObjects[index], sessionId);
     if (parsed) candidates.push(parsed);
   }
-  return candidates.find((question) => !answeredQuestionIds.has(question.id)) || null;
+  const unanswered = candidates.find((question) => !answeredQuestionIds.has(question.id)) || null;
+  if (candidates.length && !unanswered) {
+    appendImportLog(`Planning question candidates all answered session=${sessionId} candidates=${candidates.length} ids=${candidates.map((question) => question.id).join(",")}`);
+  }
+  return unanswered;
 }
 
 function extractRawPlanningQuestionObjects(text: string) {
@@ -4838,8 +4843,11 @@ async function sendInput(sessionId: string, input: string) {
   });
 }
 
-function terminalPasteSubmitInput(message: string) {
-  return `\x1b[200~${message}\x1b[201~\r`;
+async function sendPasteSubmitInput(sessionId: string, message: string) {
+  appendImportLog(`Terminal paste submit start session=${sessionId} chars=${message.length}`);
+  await sendInput(sessionId, `\x1b[200~${message}\x1b[201~`);
+  await sendInput(sessionId, "\r");
+  appendImportLog(`Terminal paste submit complete session=${sessionId}`);
 }
 
 async function waitForAgentPromptReady(sessionId: string) {
