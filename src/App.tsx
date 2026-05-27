@@ -2442,7 +2442,7 @@ function NewProjectView({
         logImport(`Read ${content.length} bytes from ${file.name}`);
         return {
           name: file.name,
-          documentType: file.name.toLowerCase().match(/\.html?$/) ? "html" : "markdown",
+          documentType: sourceDocumentTypeForFile(file.name),
           content,
         };
       }));
@@ -2548,8 +2548,8 @@ function NewProjectView({
           <label className="group flex min-h-44 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
             <Upload aria-hidden="true" className="mb-5 size-11 text-primary transition-transform group-hover:-translate-y-0.5" />
             <span className="rounded-md bg-primary px-5 py-2.5 text-base font-bold text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.10),0_8px_22px_rgba(0,0,0,0.10)] transition-transform group-active:scale-[0.96]">Import Project Doc</span>
-            <small className="mt-3 text-base text-muted-foreground">Markdown, MDX, or HTML</small>
-            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.mdx,.html,.htm,text/markdown,text/html,text/plain" multiple onChange={(event) => void handleFiles(event.target.files)} />
+            <small className="mt-3 text-base text-muted-foreground">Markdown, HTML, or text files</small>
+            <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,.txt,.text,.csv,.tsv,.json,.yaml,.yml,text/*,application/json,application/x-yaml" multiple onChange={(event) => void handleFiles(event.target.files)} />
           </label>
 
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-sm font-bold uppercase text-muted-foreground" aria-hidden="true">
@@ -2654,6 +2654,13 @@ function combineSourceDocuments(sourceDocuments: SourceDocumentInput[]) {
   return sourceDocuments
     .map((document) => `# Imported file: ${document.name}\n\nSource type: ${document.documentType}\n\n${document.content}`)
     .join("\n\n---\n\n");
+}
+
+function sourceDocumentTypeForFile(name: string) {
+  const lower = name.toLowerCase();
+  if (/\.html?$/.test(lower)) return "html";
+  if (/\.(json|ya?ml|csv|tsv|txt|text)$/.test(lower)) return "text";
+  return "markdown";
 }
 
 function SettingsView({ activeProject, settings }: { activeProject: ProjectRecord | null; settings: SettingsResponse | null }) {
