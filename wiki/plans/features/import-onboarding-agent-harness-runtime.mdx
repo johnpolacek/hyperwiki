@@ -1,0 +1,114 @@
+---
+title: "Import Onboarding Agent Harness Runtime"
+description: "Evaluate an open-harness or deepagents-style runtime for imported-project Q&A, virtual files, structured events, and human-input continuation."
+wikiKind: "plan"
+---
+
+<h1>Import Onboarding Agent Harness Runtime</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: candidate architecture plan</li>
+    <li>Candidate: 5 - Agent harness runtime inspired by open-harness and LangChain deepagents</li>
+    <li>Goal: manage import onboarding through a structured harness with virtual filesystem staging, session bridging, streaming events, and explicit human-input pause or resume points.</li>
+    <li>Next action: compare this candidate against direct Codex attachment, the backend state machine, sidecar service, and engine-first runtime before implementation selection.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Use an agent harness pattern for imported-project onboarding instead of letting the model conversation, React state, and filesystem writes blur together. The harness owns the loop: prepare context, call the agent, validate structured outputs, pause for a human answer, resume with that answer, and commit approved artifacts to the real wiki.</p>
+  <p>This candidate is narrower than building a full Hyperwiki run engine, but more structured than attaching directly to Codex app-server. It borrows the useful parts of open-harness and deepagents: virtual filesystem staging, session bridging, structured event streams, and model output separated from execution decisions.</p>
+</section>
+<section>
+  <h2>Architecture</h2>
+  <ul>
+    <li>Add an <code>ImportOnboardingHarness</code> boundary in the Tauri backend or a small local service. The first implementation can be Rust-native, TypeScript sidecar, or a thin wrapper around an existing harness library if dependency and packaging checks are acceptable.</li>
+    <li>The harness exposes a workflow with explicit nodes for context loading, question generation, answer wait, answer recording, plan generation, artifact validation, and completion.</li>
+    <li>Keep Codex as the preferred generation provider behind a harness adapter. The harness should not assume Codex is the only possible model runtime.</li>
+    <li>Use a virtual filesystem or staged artifact store for generated plan drafts before writing to the real project <code>wiki/</code>.</li>
+    <li>Stream normalized workflow events to React. React renders state and submits answers; it does not drive the loop or parse raw model output.</li>
+    <li>Persist harness checkpoints under ignored runtime state such as <code>.hyperwiki/state/import-onboarding/</code>, while durable decisions and accepted artifacts remain in project wiki files.</li>
+  </ul>
+</section>
+<section>
+  <h2>Harness Contract</h2>
+  <ul>
+    <li><code>Workflow</code> defines the import-onboarding graph and the allowed transitions between steps.</li>
+    <li><code>Checkpoint</code> stores the current node, provider conversation handle, pending question, accepted answers, staged artifacts, and validation status.</li>
+    <li><code>VirtualFile</code> represents generated or modified wiki artifacts before they are validated and committed to disk.</li>
+    <li><code>HumanInputRequest</code> represents a durable question with prompt, options, freeform allowance, source evidence, status, and answer ID.</li>
+    <li><code>Event</code> represents progress, model deltas, pending input, artifact staging, validation, errors, cancellation, and completion.</li>
+    <li><code>CommitPolicy</code> decides when staged virtual files can be written to the real wiki and which validation must pass first.</li>
+  </ul>
+</section>
+<section>
+  <h2>Import Onboarding Flow</h2>
+  <ul>
+    <li>Import starts or resumes the harness workflow for the selected project.</li>
+    <li>The harness builds a compact source-grounded context pack and calls Codex to produce the next decision question or final plan artifacts.</li>
+    <li>Question output is parsed into a <code>HumanInputRequest</code>. If invalid, the harness repairs or retries without involving React in raw parsing.</li>
+    <li>The harness pauses at the human-input node and emits a question-ready event.</li>
+    <li>React submits the answer by input request ID. The harness validates that the answer targets the current checkpoint, records it, and resumes the workflow.</li>
+    <li>Final generated plans are first written as virtual files. The harness validates filenames, MDX shape, links, source grounding, and required plan fields before committing to <code>wiki/</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Virtual Filesystem</h2>
+  <ul>
+    <li>Stage generated files in a virtual filesystem so the model can propose multiple wiki artifacts without immediately mutating the project.</li>
+    <li>Represent each staged file with path, content, source step, model/provider metadata, validation errors, and commit status.</li>
+    <li>Allow deterministic validators to inspect the staged artifact set before writes: frontmatter exists, MDX is parseable, links resolve, required plan sections exist, and no unexpected paths are touched.</li>
+    <li>Commit accepted artifacts atomically where possible, or use a clear partial-failure state that can be retried without losing the staged output.</li>
+  </ul>
+</section>
+<section>
+  <h2>Session Bridging</h2>
+  <ul>
+    <li>Make human questions explicit continuation points rather than hoping a live agent prompt remains attached to the correct UI state.</li>
+    <li>Persist the pending input request before displaying it, so reloads and reconnects can restore the exact question.</li>
+    <li>Reject stale answers when the checkpoint, input request ID, or run token does not match the current workflow state.</li>
+    <li>Support same-thread continuation when Codex thread reuse is fast and coherent, but allow fresh-turn continuation when it produces better follow-up latency or reliability.</li>
+    <li>Keep resume robustness secondary to fast first question and fast follow-up question, but avoid any design that corrupts state on reload.</li>
+  </ul>
+</section>
+<section>
+  <h2>Structured Data Flow</h2>
+  <ul>
+    <li>Prefer provider-native structured output, JSON schema, or tool-call style outputs for questions and staged artifacts.</li>
+    <li>Use harness-level validators and repair loops before exposing a question or committing an artifact.</li>
+    <li>Keep model text as one input to the harness, not as the source of truth for workflow state.</li>
+    <li>Emit early progress and partial deltas when useful, but only transition the UI on validated structured events.</li>
+  </ul>
+</section>
+<section>
+  <h2>Tradeoffs</h2>
+  <ul>
+    <li>Benefits: clear pause and resume model, safer artifact staging, less frontend orchestration, better structure than direct Codex attachment, and less broad platform work than a full engine-first runtime.</li>
+    <li>Costs: requires choosing, vendoring, or implementing a harness layer; may add TypeScript or Python runtime complexity if an external harness is adopted; and still needs a Codex provider adapter.</li>
+    <li>Risk: an external harness may not fit Tauri packaging, local filesystem trust boundaries, or Codex CLI integration cleanly enough to justify the dependency.</li>
+    <li>Mitigation: prototype the harness contract locally with one import-onboarding workflow before committing to an external library or generalized harness abstraction.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Fresh import starts a harness workflow and emits immediate progress.</li>
+    <li>First and follow-up questions are represented as durable <code>HumanInputRequest</code> objects and survive a UI reload.</li>
+    <li>Answer submission resumes only the matching checkpoint and rejects stale answers.</li>
+    <li>Malformed question output triggers a harness repair or retry path instead of a frontend stall.</li>
+    <li>Generated plan drafts are staged as virtual files and validated before touching the real project wiki.</li>
+    <li>Committed plan files are actual MDX wiki files, with links and required sections checked after write.</li>
+    <li>Latency measurements cover import start to first progress, first question, answer to follow-up question, and plan artifact staging.</li>
+    <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, harness unit tests, checkpoint resume tests, and an import-onboarding virtual-file commit smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Best end-user UX remains the primary criterion, followed by simpler implementation when UX is comparable.</li>
+    <li>Codex remains the preferred generator for final project plan docs.</li>
+    <li>The harness should commit real wiki files only after deterministic validation, not simply because the model said generation is complete.</li>
+    <li>This candidate is most attractive if artifact safety and human-input bridging matter more than minimizing new runtime concepts.</li>
+  </ul>
+</section>
