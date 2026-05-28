@@ -28,12 +28,14 @@ wikiKind: "plan"
   <ul>
     <li>The Tauri backend starts <code>codex app-server --listen stdio://</code> with Codex 5.5 low-thinking overrides.</li>
     <li>One Codex app-server thread is retained per imported project for the current app runtime.</li>
-    <li>App-server failure falls back to the existing terminal fresh-turn path so imports remain usable while the new transport is hardened.</li>
+    <li>The app-server payload uses stable protocol fields only; <code>runtimeWorkspaceRoots</code> is intentionally omitted because Codex rejects it without experimental API capability.</li>
+    <li>App-server failure is surfaced in the import UI instead of silently starting a fresh terminal turn.</li>
   </ul>
 </section>
 <section>
   <h2>Verification</h2>
   <ul>
+    <li><code>pnpm run smoke:codex-app-server</code> passed.</li>
     <li><code>pnpm run check</code> passed.</li>
     <li><code>pnpm run check:tauri</code> passed.</li>
     <li>Manual follow-up: fresh-import RouteChat and confirm each answer advances on the same app-server thread without a new visible Codex TUI.</li>

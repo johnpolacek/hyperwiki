@@ -11,6 +11,7 @@ wikiKind: "page"
   <ul>
     <li>Changed imported-project Planning Q&amp;A to use a persistent Codex app-server JSON-RPC thread before falling back to terminal prompt injection.</li>
     <li>Kept Codex 5.5 low-thinking overrides on the new transport and restored one-question-at-a-time import prompts.</li>
+    <li>Follow-up: removed experimental app-server fields from the import-turn payload and stopped silently falling back to fresh terminal sessions when app-server fails.</li>
     <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
   </ul>
 </article>

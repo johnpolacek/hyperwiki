@@ -1129,13 +1129,13 @@ function App() {
         appendImportLog(`Imported Q&A app-server turn complete project=${project.id} request=${requestId} thread=${turn.threadId} turn=${turn.turnId} chars=${turn.text.length} firstDeltaMs=${turn.firstDeltaMs ?? "none"} elapsedMs=${turn.elapsedMs} events=${turn.events}`);
         await handleImportPlanningTurnText(project, turn.threadId || "codex-app-server", requestId, turn.text, answeredQuestionId);
       } catch (error) {
-        appendImportLog(`Imported Q&A app-server turn failed; falling back to terminal project=${project.id} request=${requestId}`, error);
-        const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { commandOverride: importAgentLaunchCommand(loaded.layout), forceNew: true, requestId });
-        activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: session.id };
-        appendImportLog(`Imported Q&A fallback prompt sent project=${project.id} request=${requestId} session=${session.id}`);
-        setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
-        setActiveSessionId(session.id);
-        void monitorImportPlanningTurn(project, session.id, requestId, answeredQuestionId);
+        activeImportPlanningTurn.current = null;
+        const message = error instanceof Error ? error.message : String(error);
+        appendImportLog(`Imported Q&A app-server turn failed project=${project.id} request=${requestId} error=${message}`, error);
+        setPlanningInterviewStatus("idle");
+        setPlanningActivity(`Codex app-server import turn failed: ${message}`);
+        setPlanningWorkstream((current) => [...current.slice(-8), `Codex app-server import turn failed: ${message}`]);
+        setStatus("Imported project Q&A app-server failed");
       }
     })();
     importedPlanningRuns.current.set(key, run);
@@ -1169,7 +1169,7 @@ function App() {
     }
     const plain = terminalTextForParsing(text);
     const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
-    appendImportLog(`Imported Q&A app-server extraction project=${project.id} request=${requestId} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(plain.slice(-180))}`);
+    appendImportLog(`Imported Q&A app-server extraction project=${project.id} request=${requestId} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.join(",") || "none"} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(plain.slice(-180))}`);
     const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
     if (nextQuestions.length) {
       activeImportPlanningTurn.current = null;
@@ -1225,7 +1225,7 @@ function App() {
         const plain = terminalTextForParsing(terminalBytesToText(bytes));
         lastTail = plain.slice(-500);
         const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
-        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
+        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.join(",") || "none"} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
         const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
         if (nextQuestions.length) {
           appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);

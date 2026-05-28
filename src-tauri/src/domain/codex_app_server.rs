@@ -93,7 +93,6 @@ pub fn run_import_planning_turn(
             "text_elements": []
         }],
         "cwd": project.root,
-        "runtimeWorkspaceRoots": [project.root],
         "model": "gpt-5.5",
         "effort": "low",
         "approvalPolicy": "never",
@@ -177,7 +176,6 @@ fn ensure_import_thread(
     let request_id = server.next_request_id();
     let params = json!({
         "cwd": project.root,
-        "runtimeWorkspaceRoots": [project.root],
         "model": "gpt-5.5",
         "config": {
             "model_reasoning_effort": "low",

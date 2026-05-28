@@ -276,7 +276,7 @@ fn write_import_state_page(root: &Path, entries: &[ImportPlanningAnswer]) -> Res
     );
     content.push_str(&format!("<li>Answered decisions: {}</li>\n", entries.len()));
     content.push_str("<li>Readiness: continue Q&amp;A until the agent either asks the next blocking question or creates the MVP plan.</li>\n");
-    content.push_str("<li>Next recommended action: ask only the next unresolved blocking decision, batching independent decisions when safe.</li>\n");
+    content.push_str("<li>Next recommended action: ask only the next unresolved blocking decision.</li>\n");
     if let Some(latest) = latest {
         content.push_str(&format!(
             "<li>Latest answer: <code>{}</code> - {}</li>\n",
