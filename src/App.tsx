@@ -270,22 +270,6 @@ interface TerminalReplayResponse {
   bytes: number[];
 }
 
-interface AgentPromptResponse {
-  ok?: boolean;
-  requestId?: string;
-  requestedSessionId?: string;
-  scope?: string;
-  promptChars?: number;
-  pasteBytes?: number;
-  beforeReplaySeq?: number | null;
-  afterReplaySeq?: number | null;
-  live?: boolean;
-  session?: {
-    id?: string;
-    name?: string;
-  };
-}
-
 interface TerminalOutputEventPayload {
   sessionId: string;
   seq: number;
@@ -295,6 +279,7 @@ interface TerminalOutputEventPayload {
 interface PlanningQuestion {
   id: string;
   sessionId: string;
+  requestId?: string;
   question: string;
   recommendedAnswer: string;
   reasoning: string;
@@ -386,6 +371,7 @@ function App() {
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
+  const activeImportPlanningTurn = useRef<{ projectId: string; requestId: string; sessionId: string } | null>(null);
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
   const loggedPlanningQuestionIds = useRef(new Set<string>());
@@ -794,15 +780,24 @@ function App() {
     return nextSessions;
   }
 
-  async function ensureAgentSessionForProject(project: ProjectRecord | null, projectLayout: LayoutResponse | null, scope = terminalScope, knownSessions = sessions) {
+  async function ensureAgentSessionForProject(
+    project: ProjectRecord | null,
+    projectLayout: LayoutResponse | null,
+    scope = terminalScope,
+    knownSessions = sessions,
+    options: { forceNew?: boolean } = {},
+  ) {
     if (!project) {
       throw new Error("Project not found for agent planning.");
     }
     const existing = knownSessions.find(isAgentSession);
-    if (existing?.command) {
+    if (existing?.command && !options.forceNew) {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length}`);
       setActiveSessionId(existing.id);
       return existing;
+    }
+    if (existing?.command && options.forceNew) {
+      appendImportLog(`ensureAgentSession starting fresh agent project=${project.id} previous=${existing.id} known=${knownSessions.length}`);
     }
     const command = agentLaunchCommand(projectLayout);
     if (!command) {
@@ -877,11 +872,16 @@ function App() {
         transcript,
       };
     });
-    const question = extractLatestPlanningQuestion(next, sessionId, answeredPlanningQuestionIds.current);
+    const activeImportTurn = activeImportPlanningTurn.current;
+    if (activeImportTurn && activeImportTurn.sessionId !== sessionId) {
+      return;
+    }
+    const expectedRequestId = activeImportTurn?.sessionId === sessionId ? activeImportTurn.requestId : "";
+    const question = extractLatestPlanningQuestion(next, sessionId, answeredPlanningQuestionIds.current, expectedRequestId);
     if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
       if (!loggedPlanningQuestionIds.current.has(question.id)) {
         loggedPlanningQuestionIds.current.add(question.id);
-        appendImportLog(`Planning question extracted session=${sessionId} id=${question.id} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
+        appendImportLog(`Planning question extracted session=${sessionId} request=${question.requestId || "none"} expected=${expectedRequestId || "none"} id=${question.id} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
       }
       setPlanningInterviewStatus("question_ready");
       setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
@@ -906,22 +906,7 @@ function App() {
       });
       appendImportLog(`Planning answer persisted project=${activeProject.id} question=${question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
       applyImportPlanningStatus(nextStatus);
-      if (question.sessionId) {
-        const prompt = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
-        appendImportLog(`Planning answer routing through agent prompt endpoint request=${requestId} session=${question.sessionId} question=${question.id} chars=${prompt.length}`);
-        const routed = await hyperwikiApi.json<AgentPromptResponse>(withProjectQuery("/api/agent/prompt", activeProject), {
-          method: "POST",
-          body: {
-            prompt,
-            currentPage: currentWikiPath,
-            requestId,
-            sessionId: question.sessionId,
-            scope: terminalScope.scope,
-          },
-        });
-        appendImportLog(`Planning answer agent prompt endpoint ok request=${requestId} session=${question.sessionId} selected=${routed.session?.id || "none"} live=${routed.live ? "yes" : "no"} beforeSeq=${routed.beforeReplaySeq ?? "none"} afterSeq=${routed.afterReplaySeq ?? "none"} bytes=${routed.pasteBytes ?? "unknown"}`);
-        void probePlanningAnswerResponse(question.sessionId, question.id, requestId, routed.afterReplaySeq ?? 0);
-      }
+      void startImportPlanningTurn(activeProject, "answer", trimmed, question.id);
     } else if (question.sessionId) {
       const response = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
       await sendPasteSubmitInput(question.sessionId, response);
@@ -939,40 +924,6 @@ function App() {
     setStatus("Planning answer sent");
   }
 
-  async function probePlanningAnswerResponse(sessionId: string, answeredQuestionId: string, requestId: string, startingSeq = 0) {
-    const startedAt = Date.now();
-    let lastSeq = startingSeq;
-    let lastTail = "";
-    for (let attempt = 1; attempt <= 16; attempt += 1) {
-      await delay(500);
-      try {
-        const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
-        lastSeq = replay.seq || lastSeq;
-        const bytes = Uint8Array.from(replay.bytes || []);
-        const plain = terminalTextForParsing(terminalBytesToText(bytes));
-        lastTail = plain.slice(-500);
-        const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current);
-        appendImportLog(`Planning answer probe request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} unanswered=${diagnostics.question?.id || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
-        if (diagnostics.question && diagnostics.question.id !== answeredQuestionId) {
-          appendImportLog(`Planning answer probe found next question request=${requestId} session=${sessionId} id=${diagnostics.question.id}`);
-          if (!loggedPlanningQuestionIds.current.has(diagnostics.question.id)) {
-            loggedPlanningQuestionIds.current.add(diagnostics.question.id);
-          }
-          setPlanningInterviewStatus("question_ready");
-          setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === diagnostics.question?.id ? currentQuestion : diagnostics.question);
-          return;
-        }
-        if (plain.includes("/wiki/plans/mvp/") || plain.includes("wiki/plans/mvp/index.mdx")) {
-          appendImportLog(`Planning answer probe saw MVP plan path request=${requestId} session=${sessionId} seq=${replay.seq}`);
-          return;
-        }
-      } catch (error) {
-        appendImportLog(`Planning answer probe failed request=${requestId} attempt=${attempt} session=${sessionId}`, error);
-      }
-    }
-    appendImportLog(`Planning answer probe timed out request=${requestId} session=${sessionId} waitedMs=${Date.now() - startedAt} lastSeq=${lastSeq} tail=${JSON.stringify(lastTail.slice(-240))}`);
-  }
-
   function applyImportPlanningStatus(nextStatus: ImportPlanningStatus) {
     setActiveProject((current) => current ? { ...current, importPlanning: nextStatus } : current);
     setProjects((current) => updateProjectImportPlanning(current, activeProject?.id || "", nextStatus));
@@ -987,8 +938,8 @@ function App() {
     setPlanningActivity(nextStatus.nextAction);
   }
 
-  async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions) {
-    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions);
+  async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, options: { forceNew?: boolean; requestId?: string } = {}) {
+    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { forceNew: options.forceNew });
     const ready = await waitForAgentPromptReady(session.id);
     appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
     let lastError: unknown;
@@ -1000,6 +951,8 @@ function App() {
           body: {
             prompt,
             currentPage,
+            requestId: options.requestId || "",
+            sessionId: session.id,
             scope: scope.scope,
           },
         });
@@ -1072,12 +1025,9 @@ function App() {
 
   async function planImportedProject(project: ProjectRecord) {
     const key = `${project.id}:import-qna`;
-    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
-    const projectScope = scopeForRoute(projectRoute);
     if (importedPlanningCompletedKeys.current.has(key)) {
-      appendImportLog(`Imported Q&A start ignored because prompt was already sent project=${project.id}`);
-      setStatus("Imported project Q&A is already running");
-      return;
+      appendImportLog(`Imported Q&A start allowed as retry despite previous turn project=${project.id}`);
+      importedPlanningCompletedKeys.current.delete(key);
     }
     const inFlight = importedPlanningRuns.current.get(key);
     if (inFlight) {
@@ -1085,49 +1035,115 @@ function App() {
       await inFlight;
       return;
     }
+    try {
+      await startImportPlanningTurn(project, "initial");
+    } catch (error) {
+      appendImportLog(`Imported Q&A start failed project=${project.id}`, error);
+      throw error;
+    }
+  }
+
+  async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry", answer = "", answeredQuestionId = "") {
+    const key = `${project.id}:import-qna`;
+    const inFlight = importedPlanningRuns.current.get(key);
+    if (inFlight) {
+      appendImportLog(`Imported Q&A turn joined in-flight run project=${project.id} reason=${reason}`);
+      await inFlight;
+      return;
+    }
+    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+    const projectScope = scopeForRoute(projectRoute);
+    const requestId = `import-turn:${reason}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
     const run = (async () => {
       const existingSessions = await loadSessionsForProject(project, projectScope);
-      const existingAgent = existingSessions.find(isAgentSession);
-      if (existingAgent?.command) {
-        appendImportLog(`Imported Q&A recovered existing agent project=${project.id} session=${existingAgent.id}`);
-        setActiveSessionId(existingAgent.id);
-        setStatus("Imported project Q&A is already running");
-        return;
-      }
-      appendImportLog(`Imported Q&A start requested project=${project.id}`);
+      appendImportLog(`Imported Q&A turn start project=${project.id} request=${requestId} reason=${reason} previousSessions=${existingSessions.length} answerChars=${answer.length}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
       setPlanningWorkstream(["Starting the planning agent"]);
       openImportedPlanningWorkspace(project, projectRoute);
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
-      const refreshedAgent = nextSessions.find(isAgentSession);
-      if (refreshedAgent?.command) {
-        appendImportLog(`Imported Q&A found agent after refresh project=${project.id} session=${refreshedAgent.id}`);
-        setActiveSessionId(refreshedAgent.id);
-        setStatus("Imported project Q&A is already running");
-        return;
-      }
-      appendImportLog(`Imported Q&A sending prompt project=${project.id} scope=${projectScope.scope} sessions=${nextSessions.length}`);
-      const session = await sendAgentPromptToProject(project, importedProjectPlanningPrompt(project), "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions);
-      appendImportLog(`Imported Q&A prompt sent session=${session.id}`);
-      importedPlanningCompletedKeys.current.add(key);
+      const prompt = importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
+      appendImportLog(`Imported Q&A sending turn prompt project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
+      const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { forceNew: true, requestId });
+      activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: session.id };
+      appendImportLog(`Imported Q&A turn prompt sent project=${project.id} request=${requestId} session=${session.id}`);
       setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
       setActiveSessionId(session.id);
       setPlanningInterviewStatus("waiting_for_question");
-      setPlanningActivity((current) => current || "Planning prompt sent; waiting for the first structured question");
-      setPlanningWorkstream((current) => current.length ? current : ["Planning prompt sent; waiting for the first structured question"]);
+      setPlanningActivity("Planning prompt sent; waiting for the next structured question");
+      setPlanningWorkstream(["Planning prompt sent; waiting for the next structured question"]);
       setStatus("Imported project Q&A started");
+      void monitorImportPlanningTurn(project, session.id, requestId, answeredQuestionId);
     })();
     importedPlanningRuns.current.set(key, run);
     try {
       await run;
     } catch (error) {
-      appendImportLog(`Imported Q&A start failed project=${project.id}`, error);
+      appendImportLog(`Imported Q&A turn failed project=${project.id} request=${requestId}`, error);
       throw error;
     } finally {
       importedPlanningRuns.current.delete(key);
     }
+  }
+
+  async function monitorImportPlanningTurn(project: ProjectRecord, sessionId: string, requestId: string, answeredQuestionId = "") {
+    const startedAt = Date.now();
+    let lastSeq = 0;
+    let lastTail = "";
+    for (let attempt = 1; attempt <= 180; attempt += 1) {
+      await delay(500);
+      if (activeImportPlanningTurn.current?.requestId !== requestId) {
+        appendImportLog(`Imported Q&A turn monitor superseded project=${project.id} request=${requestId}`);
+        return;
+      }
+      try {
+        const [replayResult, wikiResult, projectsResult] = await Promise.allSettled([
+          hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`),
+          hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
+          hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", project)),
+        ]);
+        const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
+        if (wikiResult.status === "fulfilled") setWikiPages(pages);
+        if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
+        const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
+        if (planning.generatedPlanPaths.length > 0) {
+          appendImportLog(`Imported Q&A turn plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
+          activeImportPlanningTurn.current = null;
+          importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
+          setPlanningInterviewStatus("idle");
+          setPlanningActivity("Generated MVP plan is ready.");
+          setPlanningWorkstream(["Generated MVP plan is ready."]);
+          return;
+        }
+        if (replayResult.status !== "fulfilled") {
+          appendImportLog(`Imported Q&A turn replay failed project=${project.id} request=${requestId} attempt=${attempt}`, replayResult.reason);
+          continue;
+        }
+        const replay = replayResult.value;
+        lastSeq = replay.seq || lastSeq;
+        const bytes = Uint8Array.from(replay.bytes || []);
+        const plain = terminalTextForParsing(terminalBytesToText(bytes));
+        lastTail = plain.slice(-500);
+        const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
+        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.question?.id || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
+        if (diagnostics.question && diagnostics.question.id !== answeredQuestionId) {
+          appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} id=${diagnostics.question.id}`);
+          setPlanningInterviewStatus("question_ready");
+          setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === diagnostics.question?.id ? currentQuestion : diagnostics.question);
+          setPlanningActivity("Next planning question is ready.");
+          return;
+        }
+      } catch (error) {
+        appendImportLog(`Imported Q&A turn monitor failed project=${project.id} request=${requestId} attempt=${attempt}`, error);
+      }
+    }
+    appendImportLog(`Imported Q&A turn timed out project=${project.id} request=${requestId} session=${sessionId} waitedMs=${Date.now() - startedAt} lastSeq=${lastSeq} tail=${JSON.stringify(lastTail.slice(-240))}`);
+    if (activeImportPlanningTurn.current?.requestId === requestId) activeImportPlanningTurn.current = null;
+    setPlanningInterviewStatus("idle");
+    setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry with a fresh agent turn.");
+    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn timed out; retry is available."]);
+    setStatus("Imported project Q&A timed out");
   }
 
   function resumeImportPlanning() {
@@ -2168,7 +2184,6 @@ function ImportedPlanningQAView({
   const otherAnswerRef = useRef<HTMLTextAreaElement | null>(null);
 
   async function start() {
-    if (hasStarted) return;
     appendImportLog(`Imported Q&A view start clicked project=${activeProject?.id || "none"}`);
     setIsStarting(true);
     try {
@@ -2311,9 +2326,9 @@ function ImportedPlanningQAView({
           </div>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || hasStarted || !activeProject || status !== "idle"} onClick={start} type="button">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject || status !== "idle"} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-            {isStarting ? "Starting Q&A" : hasStarted || status !== "idle" ? "Q&A Running" : "Start Q&A"}
+            {isStarting ? "Starting Q&A" : status !== "idle" ? "Q&A Running" : hasStarted ? "Retry Q&A" : "Start Q&A"}
           </Button>
         </div>
       </section>
@@ -4463,7 +4478,7 @@ function agentLaunchCommand(layout: LayoutResponse | null) {
   return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
 
-function importedProjectPlanningPrompt(project: ProjectRecord) {
+function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string, latestAnswer = "", answeredQuestionId = "") {
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
@@ -4472,6 +4487,11 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "",
     "Goal:",
     "Run a fresh source-grounded planning interview for this imported project, then create the first MVP plan docs only after the user has answered enough questions.",
+    "",
+    "Current import-planning turn:",
+    `- requestId: ${requestId}`,
+    latestAnswer ? `- Latest answer: ${latestAnswer}` : "- Latest answer: none yet; ask the first blocking question.",
+    answeredQuestionId ? `- Answered question id: ${answeredQuestionId}` : "- Answered question id: none.",
     "",
     "Source context:",
     "- Read wiki/index.mdx first.",
@@ -4482,11 +4502,12 @@ function importedProjectPlanningPrompt(project: ProjectRecord) {
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
-    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    `- The JSON object's requestId must be exactly \"${requestId}\".`,
     "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
-    "- After receiving `Hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
+    "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
     "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
     "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
@@ -4657,15 +4678,15 @@ function trimPlanningQuestionBuffer(text: string) {
   return text.length > 40000 ? text.slice(-40000) : text;
 }
 
-function extractLatestPlanningQuestion(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set()): PlanningQuestion | null {
-  const diagnostics = planningQuestionExtractionDiagnostics(text, sessionId, answeredQuestionIds);
+function extractLatestPlanningQuestion(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set(), expectedRequestId = ""): PlanningQuestion | null {
+  const diagnostics = planningQuestionExtractionDiagnostics(text, sessionId, answeredQuestionIds, expectedRequestId);
   if (diagnostics.candidateIds.length && !diagnostics.question) {
-    appendImportLog(`Planning question candidates all answered session=${sessionId} candidates=${diagnostics.candidateIds.length} ids=${diagnostics.candidateIds.join(",")}`);
+    appendImportLog(`Planning question candidates unavailable session=${sessionId} expected=${expectedRequestId || "none"} candidates=${diagnostics.candidateIds.length} ids=${diagnostics.candidateIds.join(",")} ignoredRequests=${diagnostics.ignoredRequestIds.join(",") || "none"}`);
   }
   return diagnostics.question;
 }
 
-function planningQuestionExtractionDiagnostics(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set()) {
+function planningQuestionExtractionDiagnostics(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set(), expectedRequestId = "") {
   const candidates: PlanningQuestion[] = [];
   const blocks = [...text.matchAll(/```(?:json|hyperwiki-question)?\s*([\s\S]*?)```/gi)];
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
@@ -4679,10 +4700,17 @@ function planningQuestionExtractionDiagnostics(text: string, sessionId: string, 
     const parsed = parsePlanningQuestionJson(rawObjects[index], sessionId);
     if (parsed) candidates.push(parsed);
   }
-  const unanswered = candidates.find((question) => !answeredQuestionIds.has(question.id)) || null;
+  const requestMatched = expectedRequestId
+    ? candidates.filter((question) => !question.requestId || question.requestId === expectedRequestId)
+    : candidates;
+  const ignoredRequestIds = expectedRequestId
+    ? candidates.map((question) => question.requestId || "none").filter((requestId) => requestId !== "none" && requestId !== expectedRequestId)
+    : [];
+  const unanswered = requestMatched.find((question) => !answeredQuestionIds.has(question.id)) || null;
   return {
     candidateIds: candidates.map((question) => question.id),
     codeBlocks: blocks.length,
+    ignoredRequestIds,
     question: unanswered,
     rawObjects: rawObjects.length,
   };
@@ -4760,29 +4788,32 @@ function parseLoosePlanningQuestion(raw: string, sessionId: string): PlanningQue
   if (!raw.includes("hyperwiki-question")) return null;
   const question = looseJsonStringField(raw, "question");
   if (!question) return null;
+  const requestId = looseJsonStringField(raw, "requestId");
   const recommendedAnswer = looseJsonStringField(raw, "recommendedAnswer");
   const reasoning = looseJsonStringField(raw, "reasoning");
   const options = looseJsonArrayField(raw, "options");
-  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options);
+  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId);
 }
 
 function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: string }, sessionId: string) {
   const question = stringValue(value.question);
   if (!question) return null;
   if (value.type && value.type !== "hyperwiki-question") return null;
+  const requestId = stringValue(value.requestId);
   const recommendedAnswer = stringValue(value.recommendedAnswer);
   const reasoning = stringValue(value.reasoning);
   const options = Array.isArray(value.options)
     ? value.options.map(stringValue).filter(Boolean).slice(0, 7)
     : [];
-  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options);
+  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId);
 }
 
-function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: string[]) {
+function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: string[], requestId = "") {
   const normalizedOptions = options.length || !recommendedAnswer ? options : [recommendedAnswer];
   return {
     id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions),
     sessionId,
+    requestId,
     question,
     recommendedAnswer,
     reasoning,

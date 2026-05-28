@@ -1,0 +1,23 @@
+---
+title: "Import Q&A Fresh Turns"
+description: "Make imported project planning Q&A progress through request-scoped fresh agent turns."
+wikiKind: "plan"
+---
+
+<h1>Import Q&amp;A Fresh Turns</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Completed unit: Unit 01 - Fresh Agent Turn Pipeline</li>
+    <li>Verification: <code>pnpm run check</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Unit 01 - Fresh Agent Turn Pipeline</h2>
+  <p>Imported-project planning now starts a fresh request-scoped agent turn for the initial question and every answered question. The UI parses questions against the active turn request id, ignores stale candidates, monitors replay and wiki state for completion, and exposes a retry path instead of leaving the project stuck waiting forever.</p>
+  <h3>Verification</h3>
+  <ul>
+    <li><code>pnpm run check</code></li>
+  </ul>
+</section>

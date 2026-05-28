@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-27 fix | import Q&amp;A fresh turns</h2>
+  <ul>
+    <li>Changed imported-project planning so the first question and every answered question start a fresh request-scoped agent turn.</li>
+    <li>Changed question parsing to track active turn request ids, ignore stale candidates, remove prompt-text plan path completion, and expose timeout retry state.</li>
+    <li>Verified with <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-27 fix | import Q&amp;A answer routing diagnostics</h2>
   <ul>
     <li>Changed imported-project planning answers to route through the exact live agent session that emitted the active question.</li>
