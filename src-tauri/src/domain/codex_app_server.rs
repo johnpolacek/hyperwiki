@@ -333,6 +333,14 @@ pub fn run_import_planning_turn(
         prompt.chars().count()
     );
     server.send(turn_request_id, "turn/start", params)?;
+    update_run_snapshot(
+        run_id,
+        CodexTurnSnapshot {
+            phase: "turn_requested".to_string(),
+            elapsed_ms: start.elapsed().as_millis(),
+            ..empty_snapshot("turn_requested")
+        },
+    );
     let result =
         server.wait_for_turn(&thread_id, before_index, Duration::from_secs(120), run_id)?;
     let elapsed_ms = start.elapsed().as_millis();
@@ -715,7 +723,7 @@ impl AppServer {
                 return Err((504, "Codex app-server turn timed out.".to_string()));
             }
             let elapsed = started_at.elapsed();
-            if events == 0 && elapsed >= Duration::from_secs(10) {
+            if events == 0 && elapsed >= Duration::from_secs(30) {
                 update_run_snapshot(
                     run_id,
                     turn_snapshot(
@@ -726,12 +734,12 @@ impl AppServer {
                         last_event_ms,
                         elapsed.as_millis(),
                         &turn_id,
-                        Some("Codex app-server did not emit a turn event within 10 seconds."),
+                        Some("Codex app-server did not emit a turn event within 30 seconds."),
                     ),
                 );
                 return Err((
                     504,
-                    "Codex app-server did not emit a turn event within 10 seconds.".to_string(),
+                    "Codex app-server did not emit a turn event within 30 seconds.".to_string(),
                 ));
             }
             if first_delta_ms.is_none() && elapsed >= Duration::from_secs(25) {

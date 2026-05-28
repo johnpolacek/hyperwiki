@@ -376,7 +376,7 @@ interface CodexImportTurnStatusResponse {
   error?: string | null;
 }
 
-type ImportPlanningProtocolPhase = "starting" | "thread_ready" | "turn_started" | "streaming" | "question_ready" | "schema_mismatch" | "stalled" | "complete" | "failed";
+type ImportPlanningProtocolPhase = "starting" | "thread_ready" | "turn_requested" | "turn_started" | "streaming" | "question_ready" | "schema_mismatch" | "stalled" | "complete" | "failed";
 type PlanningInterviewStatus = "idle" | "starting" | "waiting_for_question" | "streaming" | "schema_mismatch" | "stalled" | "failed" | "question_ready" | "answering";
 
 interface CodexImportTurnSnapshot {
@@ -1312,7 +1312,7 @@ function App() {
   }
 
   function applyImportTurnSnapshot(snapshot: CodexImportTurnSnapshot) {
-    const phase = snapshot.phase === "thread_ready" || snapshot.phase === "turn_started" ? "waiting_for_question" : snapshot.phase === "streaming" ? "streaming" : planningInterviewStatus;
+    const phase = snapshot.phase === "thread_ready" || snapshot.phase === "turn_requested" || snapshot.phase === "turn_started" ? "waiting_for_question" : snapshot.phase === "streaming" ? "streaming" : planningInterviewStatus;
     if (phase === "waiting_for_question" || phase === "streaming") setPlanningInterviewStatus(phase);
     const label = importTurnSnapshotLabel(snapshot);
     if (label) setPlanningActivity(label);
@@ -4767,6 +4767,8 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
   switch (snapshot.phase) {
     case "thread_ready":
       return "Codex thread is ready.";
+    case "turn_requested":
+      return "Codex turn requested; waiting for the first app-server event.";
     case "turn_started":
       return "Codex import-planning turn started.";
     case "streaming":
