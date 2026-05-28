@@ -368,8 +368,40 @@ interface CodexImportTurnStatusResponse {
   ok: boolean;
   runId: string;
   status: "running" | "complete" | "failed" | string;
+  phase?: ImportPlanningProtocolPhase | string;
+  snapshot?: CodexImportTurnSnapshot | null;
+  question?: PlanningQuestion | null;
+  retryable?: boolean;
   response?: CodexImportTurnResponse | null;
   error?: string | null;
+}
+
+type ImportPlanningProtocolPhase = "starting" | "thread_ready" | "turn_started" | "streaming" | "question_ready" | "schema_mismatch" | "stalled" | "complete" | "failed";
+type PlanningInterviewStatus = "idle" | "starting" | "waiting_for_question" | "streaming" | "schema_mismatch" | "stalled" | "failed" | "question_ready" | "answering";
+
+interface CodexImportTurnSnapshot {
+  phase: ImportPlanningProtocolPhase | string;
+  text: string;
+  textTail: string;
+  events: number;
+  firstDeltaMs?: number | null;
+  lastEventMs?: number | null;
+  elapsedMs: number;
+  turnId: string;
+  schemaError?: string | null;
+  candidateCount: number;
+}
+
+class ImportPlanningProtocolError extends Error {
+  phase: "schema_mismatch" | "stalled" | "failed";
+  tail: string;
+
+  constructor(phase: "schema_mismatch" | "stalled" | "failed", message: string, tail = "") {
+    super(message);
+    this.name = "ImportPlanningProtocolError";
+    this.phase = phase;
+    this.tail = tail;
+  }
 }
 
 const defaultWikiPath = "/wiki/plans/index.mdx";
@@ -397,7 +429,7 @@ function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
   const [activePlanningQuestions, setActivePlanningQuestions] = useState<PlanningQuestion[]>([]);
-  const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
+  const [planningInterviewStatus, setPlanningInterviewStatus] = useState<PlanningInterviewStatus>("idle");
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
   const [planningActivity, setPlanningActivity] = useState("");
   const [planningWorkstream, setPlanningWorkstream] = useState<string[]>([]);
@@ -527,7 +559,7 @@ function App() {
       setPlanningActivity(activeProject.importPlanning.nextAction);
       return;
     }
-    if (!["starting", "waiting_for_question", "answering"].includes(planningInterviewStatus)) return;
+    if (!["starting", "waiting_for_question", "streaming", "answering"].includes(planningInterviewStatus)) return;
     let cancelled = false;
     const project = activeProject;
     const poll = async () => {
@@ -1211,10 +1243,17 @@ function App() {
         activeImportPlanningTurn.current = null;
         const message = error instanceof Error ? error.message : String(error);
         appendImportLog(`Imported Q&A app-server turn failed project=${project.id} request=${requestId} error=${message}`, error);
-        setPlanningInterviewStatus("idle");
-        setPlanningActivity(`Codex app-server import turn failed: ${message}`);
-        setPlanningWorkstream((current) => [...current.slice(-8), `Codex app-server import turn failed: ${message}`]);
-        setStatus("Imported project Q&A app-server failed");
+        if (error instanceof ImportPlanningProtocolError) {
+          setPlanningInterviewStatus(error.phase);
+          setPlanningActivity(message);
+          setPlanningWorkstream((current) => [...current.slice(-6), message, ...(error.tail ? [`Last output: ${error.tail.slice(-360)}`] : [])]);
+          setStatus(error.phase === "stalled" ? "Imported project Q&A stalled" : "Imported project Q&A needs retry");
+        } else {
+          setPlanningInterviewStatus("idle");
+          setPlanningActivity(`Codex app-server import turn failed: ${message}`);
+          setPlanningWorkstream((current) => [...current.slice(-8), `Codex app-server import turn failed: ${message}`]);
+          setStatus("Imported project Q&A app-server failed");
+        }
       }
     })();
     importedPlanningRuns.current.set(key, run);
@@ -1240,9 +1279,50 @@ function App() {
         appendImportLog(`Imported Q&A app-server status project=${project.id} request=${requestId} run=${runId} attempt=${attempt} status=${status.status} elapsedMs=${Date.now() - startedAt}`);
       }
       if (status.status === "complete" && status.response) return status.response;
-      if (status.status === "failed") throw new Error(status.error || "Codex app-server import turn failed.");
+      if (status.status === "failed") {
+        const phase = status.phase === "stalled" ? "stalled" : "failed";
+        throw new ImportPlanningProtocolError(phase, status.error || "Codex app-server import turn failed.", status.snapshot?.textTail || "");
+      }
+      if (status.snapshot) {
+        applyImportTurnSnapshot(status.snapshot);
+        const plain = terminalTextForParsing(status.snapshot.text || status.snapshot.textTail || "");
+        const diagnostics = planningQuestionExtractionDiagnostics(plain, "codex-app-server", answeredPlanningQuestionIds.current, requestId);
+        if (diagnostics.questions.length) {
+          appendImportLog(`Imported Q&A app-server partial question ready project=${project.id} request=${requestId} ids=${diagnostics.questions.map((question) => question.id).join(",")} batch=${diagnostics.questions.length}`);
+          return {
+            ok: true,
+            transport: "codex-app-server",
+            projectId: project.id,
+            requestId,
+            threadId: "codex-app-server",
+            turnId: status.snapshot.turnId || "partial",
+            text: plain,
+            firstDeltaMs: status.snapshot.firstDeltaMs ?? null,
+            elapsedMs: status.snapshot.elapsedMs,
+            planDetected: false,
+            events: status.snapshot.events,
+          };
+        }
+        if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
+          throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid Hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
+        }
+      }
     }
     throw new Error("Codex app-server import turn timed out.");
+  }
+
+  function applyImportTurnSnapshot(snapshot: CodexImportTurnSnapshot) {
+    const phase = snapshot.phase === "thread_ready" || snapshot.phase === "turn_started" ? "waiting_for_question" : snapshot.phase === "streaming" ? "streaming" : planningInterviewStatus;
+    if (phase === "waiting_for_question" || phase === "streaming") setPlanningInterviewStatus(phase);
+    const label = importTurnSnapshotLabel(snapshot);
+    if (label) setPlanningActivity(label);
+    const lines = [
+      label,
+      snapshot.events ? `App-server events: ${snapshot.events}` : "",
+      snapshot.firstDeltaMs ? `First assistant text: ${snapshot.firstDeltaMs}ms` : "",
+      snapshot.candidateCount ? `Structured candidates seen: ${snapshot.candidateCount}` : "",
+    ].filter(Boolean);
+    if (lines.length) setPlanningWorkstream(lines);
   }
 
   async function handleImportPlanningTurnText(project: ProjectRecord, sessionId: string, requestId: string, text: string, answeredQuestionId = "") {
@@ -1998,7 +2078,7 @@ function WorkspacePane(props: {
   pendingImportProject: ProjectRecord | null;
   isImportPlanningView: boolean;
   canResumeImportPlanning: boolean;
-  planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
+  planningInterviewStatus: PlanningInterviewStatus;
   planningQuestions: PlanningQuestion[];
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
@@ -2373,7 +2453,7 @@ function ImportedPlanningQAView({
   onAnswer: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onStart: () => Promise<void>;
   questions: PlanningQuestion[];
-  status: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
+  status: PlanningInterviewStatus;
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
@@ -2429,7 +2509,10 @@ function ImportedPlanningQAView({
 
   const canSubmitBatch = questions.length > 1 && questions.every((question) => answerForQuestion(question)) && !isAnswering;
   const title = "Planning Q&A";
-  const waitingLabel = lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
+  const waitingLabel = status === "streaming"
+    ? "Checking Codex output..."
+    : lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
+  const isRetryableFailure = status === "stalled" || status === "schema_mismatch" || status === "failed";
   const description = "Answer questions and make important decisions to create your project.";
 
   return (
@@ -2550,7 +2633,7 @@ function ImportedPlanningQAView({
             ) : null}
           </div>
         ) : null}
-        {!questions.length && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
+        {!questions.length && (status === "starting" || status === "waiting_for_question" || status === "streaming" || status === "answering" || isStarting) ? (
           <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
@@ -2565,10 +2648,23 @@ function ImportedPlanningQAView({
             </div>
           </div>
         ) : null}
+        {!questions.length && isRetryableFailure ? (
+          <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
+            <div className="grid gap-1">
+              <h2 className="m-0 text-base font-semibold text-foreground">{status === "stalled" ? "Codex stalled" : status === "schema_mismatch" ? "Invalid planning question" : "Codex turn failed"}</h2>
+              <p className="m-0 leading-6">{activity || "The import-planning turn did not produce a usable structured question."}</p>
+            </div>
+            {workstream.length ? (
+              <div className="max-h-64 overflow-auto rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 text-secondary-foreground shadow-inner">
+                {workstream.map((line, index) => <p className="m-0 whitespace-pre-wrap" key={`${index}:${line}`}>{line}</p>)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject || status !== "idle"} onClick={start} type="button">
+          <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject || !["idle", "stalled", "schema_mismatch", "failed"].includes(status)} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-            {isStarting ? "Starting Q&A" : status !== "idle" ? "Q&A Running" : hasStarted ? "Retry Q&A" : "Start Q&A"}
+            {isStarting ? "Starting Q&A" : isRetryableFailure || hasStarted ? "Retry Q&A" : status !== "idle" ? "Q&A Running" : "Start Q&A"}
           </Button>
         </div>
       </section>
@@ -4667,6 +4763,21 @@ function importCompletionLandingPath(workspace: WorkspaceResponse | null, genera
   return generatedPlanPaths.find((path) => path.endsWith("/index.mdx")) || generatedPlanPaths[0] || "/wiki/plans/index.mdx";
 }
 
+function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
+  switch (snapshot.phase) {
+    case "thread_ready":
+      return "Codex thread is ready.";
+    case "turn_started":
+      return "Codex import-planning turn started.";
+    case "streaming":
+      return "Receiving Codex output and checking for a structured question.";
+    case "stalled":
+      return snapshot.schemaError || "Codex app-server stalled before producing a usable question.";
+    default:
+      return snapshot.phase ? `Codex import-planning phase: ${snapshot.phase}` : "";
+  }
+}
+
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
   return importedPlanningState(route, pages).isIntake;
 }
@@ -4732,19 +4843,21 @@ function importAgentLaunchCommand(layout: LayoutResponse | null) {
 
 function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
   return [
-    "You are generating Hyperwiki import-planning interview questions.",
+    "You are generating the next Hyperwiki import-planning interview question.",
     "Do not use tools. Do not read files. Use only the inline source context in this prompt.",
     "",
     "Goal:",
-    "Generate a compact AI-authored question script for the imported project. Hyperwiki will ask these one at a time in the UI, so do not ask the user to answer the whole batch at once.",
+    "Generate exactly one source-grounded blocking planning question for the imported project. Hyperwiki will ask it in the UI.",
     "",
     "Output exactly one fenced JSON block. No prose after the block.",
     "The JSON object must have:",
-    "- type: \"hyperwiki-question-batch\"",
+    "- type: \"hyperwiki-question\"",
     `- requestId: \"${requestId}\"`,
-    "- questions: 5 to 8 blocking planning questions in the order they should be answered",
+    "- question",
+    "- recommendedAnswer",
+    "- reasoning",
+    "- options",
     "",
-    "Each question must include question, recommendedAnswer, reasoning, and options.",
     "Options may be strings or objects with label and description. Put the recommended option first.",
     "Ask only decisions that affect MVP scope, UX, technical shape, verification, privacy, or plan sequencing.",
     "Prefer source-specific questions over generic startup questions.",

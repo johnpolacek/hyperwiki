@@ -1,0 +1,45 @@
+---
+title: "Stronger Import Q&A Protocol"
+description: "Make Codex app-server import Q&A observable, retryable, and bounded."
+wikiKind: "plan"
+---
+
+<h1>Stronger Import Q&amp;A Protocol</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective reliability plan</li>
+    <li>Completed unit: Unit 01 - Observable app-server turns</li>
+    <li>Goal: imported-project Q&amp;A must produce a question or a retryable failure, never an indefinite waiting state.</li>
+  </ul>
+</section>
+<section>
+  <h2>Research Spike</h2>
+  <ul>
+    <li>OpenHarness uses typed streamed agent events; Hyperwiki should expose app-server phases instead of hiding work behind a spinner.</li>
+    <li>Pydantic AI treats structured output validation as app-owned and retry-budgeted; Hyperwiki should classify malformed or mismatched question JSON separately from runtime failure.</li>
+    <li>LangGraph frames agent workflows as explicit state transitions with recoverable errors stored in state; Hyperwiki should model import Q&amp;A as a small state machine.</li>
+    <li>OpenHands keeps repository-scoped instructions visible to the agent; Hyperwiki should keep imported source context explicit and bounded.</li>
+    <li>Cline separates planning state language from action state language; Hyperwiki should tell the user whether Codex is starting, streaming, stalled, or invalid.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Contract</h2>
+  <ul>
+    <li>Codex app-server import turns expose running snapshots with phase, elapsed time, event counts, assistant text tail, and schema diagnostics.</li>
+    <li>The React intake parses partial assistant text while polling; a valid question can appear before the full turn completes.</li>
+    <li>No useful signal becomes a bounded stalled state; invalid structured output becomes a bounded schema-mismatch state.</li>
+    <li>The first import question prompt requests exactly one <code>hyperwiki-question</code> object with the exact request id.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run check:tauri</code></li>
+    <li><code>pnpm run build:frontend</code></li>
+    <li><code>pnpm run smoke:codex-app-server</code></li>
+    <li>Manual RouteChat import confirms the first question or retryable failure appears within 60 seconds.</li>
+  </ul>
+</section>

@@ -13,10 +13,14 @@ assert.ok(source.includes("sourceDocuments"), "New Project create payload should
 assert.ok(source.includes("startImportPlanningTurn(activeProject, \"answer\""), "Import Q&A answers should start a fresh agent turn");
 assert.ok(source.includes("/api/import-planning/turn"), "Import Q&A turns should use the Codex app-server import endpoint");
 assert.ok(source.includes("/api/import-planning/turn-status"), "Import Q&A should poll app-server turns without blocking the app shell");
+assert.ok(source.includes("CodexImportTurnSnapshot"), "Import Q&A should consume app-server running snapshots");
+assert.ok(source.includes("schema_mismatch"), "Import Q&A should expose retryable schema mismatch states");
+assert.ok(source.includes("status.snapshot"), "Import Q&A should parse partial app-server snapshots before turn completion");
 assert.ok(!source.includes("forceNew: true, requestId"), "Import Q&A turns should not force fresh terminal sessions");
 assert.ok(source.includes("model_reasoning_effort=\"low\""), "Import Q&A agent turns should force low thinking effort");
 assert.ok(source.includes("wiki/sources/import-state.mdx"), "Import Q&A intermediate prompts should use compact planning state");
-assert.ok(source.includes("emit one JSON object containing type \\\"hyperwiki-question\\\""), "Import Q&A prompts should ask one question at a time");
+assert.ok(source.includes("Generate exactly one source-grounded blocking planning question"), "Import Q&A prompts should ask one question at a time");
+assert.ok(!source.includes("hyperwiki-question-batch\\\"\",\n    `- requestId"), "Initial Import Q&A should not depend on a question script batch");
 assert.ok(!source.includes("Planning answer probe saw MVP plan path"), "Import Q&A should not treat prompt text MVP paths as completion");
 assert.ok(source.includes("planningQuestionOptionFromValue"), "Import Q&A should normalize structured option objects before rendering");
 assert.ok(source.includes("option.description"), "Import Q&A should render option descriptions inside their parent choice");

@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-28 plan | stronger import Q&amp;A protocol</h2>
+  <ul>
+    <li>Added a corrective plan to make Codex app-server import Q&amp;A observable, bounded, and retryable.</li>
+    <li>Captured research-spike takeaways from OpenHarness, Pydantic AI, LangGraph, OpenHands, and Cline.</li>
+    <li>Implemented running app-server snapshots, partial question parsing, retryable stalled/schema-mismatch UI states, and one-question initial prompts.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-28 fix | codex app-server import Q&amp;A</h2>
   <ul>
     <li>Changed imported-project Planning Q&amp;A to use a persistent Codex app-server JSON-RPC thread before falling back to terminal prompt injection.</li>

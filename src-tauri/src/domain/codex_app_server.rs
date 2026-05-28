@@ -51,8 +51,27 @@ pub struct CodexTurnStatusResponse {
     pub ok: bool,
     pub run_id: String,
     pub status: String,
+    pub phase: String,
+    pub snapshot: Option<CodexTurnSnapshot>,
+    pub question: Option<Value>,
+    pub retryable: bool,
     pub response: Option<CodexTurnResponse>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexTurnSnapshot {
+    pub phase: String,
+    pub text: String,
+    pub text_tail: String,
+    pub events: usize,
+    pub first_delta_ms: Option<u128>,
+    pub last_event_ms: Option<u128>,
+    pub elapsed_ms: u128,
+    pub turn_id: String,
+    pub schema_error: Option<String>,
+    pub candidate_count: usize,
 }
 
 #[derive(Debug)]
@@ -81,7 +100,7 @@ struct TurnRunRegistry {
 
 #[derive(Debug)]
 enum TurnRunState {
-    Running,
+    Running(CodexTurnSnapshot),
     Complete(CodexTurnResponse),
     Failed(String),
 }
@@ -119,7 +138,10 @@ pub fn start_import_planning_turn(
         .lock()
         .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?
         .by_id
-        .insert(run_id.clone(), TurnRunState::Running);
+        .insert(
+            run_id.clone(),
+            TurnRunState::Running(empty_snapshot("starting")),
+        );
     let run_id_for_thread = run_id.clone();
     let project_id = project.id.clone();
     let request_for_thread = CodexTurnRequest {
@@ -127,10 +149,13 @@ pub fn start_import_planning_turn(
         ..request
     };
     thread::spawn(move || {
-        let result = run_import_planning_turn(&project, request_for_thread);
+        let result = run_import_planning_turn(&project, &run_id_for_thread, request_for_thread);
+        if result.is_err() {
+            reset_app_server();
+        }
         if let Ok(mut runs) = turn_runs().lock() {
             runs.by_id.insert(
-                run_id_for_thread,
+                run_id_for_thread.clone(),
                 match result {
                     Ok(response) => TurnRunState::Complete(response),
                     Err((_, error)) => TurnRunState::Failed(error),
@@ -149,7 +174,10 @@ pub fn start_import_planning_turn(
 
 pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusResponse, (u16, String)> {
     if run_id.trim().is_empty() {
-        return Err((400, "Import planning turn status requires a run id.".to_string()));
+        return Err((
+            400,
+            "Import planning turn status requires a run id.".to_string(),
+        ));
     }
     let runs = turn_runs()
         .lock()
@@ -157,20 +185,87 @@ pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusRespon
     let Some(state) = runs.by_id.get(run_id) else {
         return Err((404, "Import planning turn run not found.".to_string()));
     };
-    let (status, response, error) = match state {
-        TurnRunState::Running => ("running".to_string(), None, None),
-        TurnRunState::Complete(response) => {
-            ("complete".to_string(), Some(response.clone()), None)
-        }
-        TurnRunState::Failed(error) => ("failed".to_string(), None, Some(error.clone())),
+    let (status, phase, snapshot, response, error, retryable) = match state {
+        TurnRunState::Running(snapshot) => (
+            "running".to_string(),
+            snapshot.phase.clone(),
+            Some(snapshot.clone()),
+            None,
+            None,
+            false,
+        ),
+        TurnRunState::Complete(response) => (
+            "complete".to_string(),
+            "complete".to_string(),
+            None,
+            Some(response.clone()),
+            None,
+            false,
+        ),
+        TurnRunState::Failed(error) => (
+            "failed".to_string(),
+            if is_stall_error(error) {
+                "stalled".to_string()
+            } else {
+                "failed".to_string()
+            },
+            None,
+            None,
+            Some(error.clone()),
+            true,
+        ),
     };
     Ok(CodexTurnStatusResponse {
         ok: error.is_none(),
         run_id: run_id.to_string(),
         status,
+        phase,
+        snapshot,
+        question: None,
+        retryable,
         response,
         error,
     })
+}
+
+fn is_stall_error(error: &str) -> bool {
+    let lower = error.to_lowercase();
+    lower.contains("timed out") || lower.contains("did not emit")
+}
+
+fn empty_snapshot(phase: &str) -> CodexTurnSnapshot {
+    CodexTurnSnapshot {
+        phase: phase.to_string(),
+        text: String::new(),
+        text_tail: String::new(),
+        events: 0,
+        first_delta_ms: None,
+        last_event_ms: None,
+        elapsed_ms: 0,
+        turn_id: String::new(),
+        schema_error: None,
+        candidate_count: 0,
+    }
+}
+
+fn update_run_snapshot(run_id: &str, snapshot: CodexTurnSnapshot) {
+    if let Ok(mut runs) = turn_runs().lock() {
+        if matches!(runs.by_id.get(run_id), Some(TurnRunState::Running(_))) {
+            runs.by_id
+                .insert(run_id.to_string(), TurnRunState::Running(snapshot));
+        }
+    }
+}
+
+fn reset_app_server() {
+    if let Ok(mut server_guard) = app_server().lock() {
+        if let Some(mut server) = server_guard.take() {
+            let _ = server.child.kill();
+        }
+    }
+    if let Ok(mut threads) = import_threads().lock() {
+        threads.by_project.clear();
+    }
 }
 
 fn monotonic_id() -> u128 {
@@ -185,6 +280,7 @@ fn monotonic_id() -> u128 {
 
 pub fn run_import_planning_turn(
     project: &crate::domain::projects::ProjectRecord,
+    run_id: &str,
     request: CodexTurnRequest,
 ) -> Result<CodexTurnResponse, (u16, String)> {
     let prompt = request.prompt.trim();
@@ -197,6 +293,13 @@ pub fn run_import_planning_turn(
         .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
     let server = ensure_app_server(&mut server_guard)?;
     let thread_id = ensure_import_thread(server, project)?;
+    update_run_snapshot(
+        run_id,
+        CodexTurnSnapshot {
+            phase: "thread_ready".to_string(),
+            ..empty_snapshot("thread_ready")
+        },
+    );
     let request_id = if request.request_id.trim().is_empty() {
         format!("import-turn:{}", start.elapsed().as_nanos())
     } else {
@@ -230,7 +333,8 @@ pub fn run_import_planning_turn(
         prompt.chars().count()
     );
     server.send(turn_request_id, "turn/start", params)?;
-    let result = server.wait_for_turn(&thread_id, before_index, Duration::from_secs(180))?;
+    let result =
+        server.wait_for_turn(&thread_id, before_index, Duration::from_secs(120), run_id)?;
     let elapsed_ms = start.elapsed().as_millis();
     eprintln!(
         "[hyperwiki] codex app-server turn complete project_id={} request_id={} thread_id={} turn_id={} chars={} first_delta_ms={:?} elapsed_ms={} events={}",
@@ -491,6 +595,7 @@ impl AppServer {
         thread_id: &str,
         before_index: usize,
         timeout: Duration,
+        run_id: &str,
     ) -> Result<TurnResult, (u16, String)> {
         let started_at = Instant::now();
         let deadline = started_at + timeout;
@@ -502,6 +607,7 @@ impl AppServer {
         let mut text = String::new();
         let mut turn_id = String::new();
         let mut first_delta_ms = None;
+        let mut last_event_ms = None;
         let mut events = 0usize;
         loop {
             for value in state.lines.iter().skip(seen) {
@@ -512,6 +618,7 @@ impl AppServer {
                     continue;
                 }
                 events += 1;
+                last_event_ms = Some(started_at.elapsed().as_millis());
                 if let Some(id) = params["turnId"].as_str() {
                     if turn_id.is_empty() {
                         turn_id = id.to_string();
@@ -519,6 +626,19 @@ impl AppServer {
                 }
                 match method {
                     "turn/started" => {
+                        update_run_snapshot(
+                            run_id,
+                            turn_snapshot(
+                                "turn_started",
+                                &text,
+                                events,
+                                first_delta_ms,
+                                last_event_ms,
+                                started_at.elapsed().as_millis(),
+                                &turn_id,
+                                None,
+                            ),
+                        );
                         if let Some(id) = params["turn"]["id"]
                             .as_str()
                             .or_else(|| params["turnId"].as_str())
@@ -533,6 +653,19 @@ impl AppServer {
                         if let Some(delta) = params["delta"].as_str() {
                             text.push_str(delta);
                         }
+                        update_run_snapshot(
+                            run_id,
+                            turn_snapshot(
+                                "streaming",
+                                &text,
+                                events,
+                                first_delta_ms,
+                                last_event_ms,
+                                started_at.elapsed().as_millis(),
+                                &turn_id,
+                                None,
+                            ),
+                        );
                     }
                     "item/completed" => {
                         if params["item"]["type"].as_str() == Some("agentMessage") {
@@ -540,6 +673,19 @@ impl AppServer {
                                 text = full_text.to_string();
                             }
                         }
+                        update_run_snapshot(
+                            run_id,
+                            turn_snapshot(
+                                "streaming",
+                                &text,
+                                events,
+                                first_delta_ms,
+                                last_event_ms,
+                                started_at.elapsed().as_millis(),
+                                &turn_id,
+                                None,
+                            ),
+                        );
                     }
                     "error" => {
                         return Err((
@@ -568,6 +714,45 @@ impl AppServer {
             if now >= deadline {
                 return Err((504, "Codex app-server turn timed out.".to_string()));
             }
+            let elapsed = started_at.elapsed();
+            if events == 0 && elapsed >= Duration::from_secs(10) {
+                update_run_snapshot(
+                    run_id,
+                    turn_snapshot(
+                        "stalled",
+                        &text,
+                        events,
+                        first_delta_ms,
+                        last_event_ms,
+                        elapsed.as_millis(),
+                        &turn_id,
+                        Some("Codex app-server did not emit a turn event within 10 seconds."),
+                    ),
+                );
+                return Err((
+                    504,
+                    "Codex app-server did not emit a turn event within 10 seconds.".to_string(),
+                ));
+            }
+            if first_delta_ms.is_none() && elapsed >= Duration::from_secs(25) {
+                update_run_snapshot(
+                    run_id,
+                    turn_snapshot(
+                        "stalled",
+                        &text,
+                        events,
+                        first_delta_ms,
+                        last_event_ms,
+                        elapsed.as_millis(),
+                        &turn_id,
+                        Some("Codex app-server did not emit assistant text within 25 seconds."),
+                    ),
+                );
+                return Err((
+                    504,
+                    "Codex app-server did not emit assistant text within 25 seconds.".to_string(),
+                ));
+            }
             let wait = deadline
                 .saturating_duration_since(now)
                 .min(Duration::from_millis(250));
@@ -576,6 +761,38 @@ impl AppServer {
                 .map_err(|_| (500, "Codex app-server condvar wait failed.".to_string()))?;
             state = next_state;
         }
+    }
+}
+
+fn turn_snapshot(
+    phase: &str,
+    text: &str,
+    events: usize,
+    first_delta_ms: Option<u128>,
+    last_event_ms: Option<u128>,
+    elapsed_ms: u128,
+    turn_id: &str,
+    schema_error: Option<&str>,
+) -> CodexTurnSnapshot {
+    let text_tail = text
+        .chars()
+        .rev()
+        .take(1200)
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>();
+    CodexTurnSnapshot {
+        phase: phase.to_string(),
+        text: text.to_string(),
+        text_tail,
+        events,
+        first_delta_ms,
+        last_event_ms,
+        elapsed_ms,
+        turn_id: turn_id.to_string(),
+        schema_error: schema_error.map(str::to_string),
+        candidate_count: text.matches("hyperwiki-question").count(),
     }
 }
 
