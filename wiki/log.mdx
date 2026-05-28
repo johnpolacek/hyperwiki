@@ -13,7 +13,8 @@ wikiKind: "page"
     <li>Kept Codex 5.5 low-thinking overrides on the new transport and restored one-question-at-a-time import prompts.</li>
     <li>Follow-up: removed experimental app-server fields from the import-turn payload and stopped silently falling back to fresh terminal sessions when app-server fails.</li>
     <li>Follow-up: moved app-server import turns to background jobs with status polling so a long Codex turn cannot freeze the Tauri app shell.</li>
-    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+    <li>Follow-up: changed the first import turn to generate a compact AI-authored question script from inline source context, then reveal scripted questions locally so normal answers no longer restart Codex.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
   </ul>
 </article>
 <article>

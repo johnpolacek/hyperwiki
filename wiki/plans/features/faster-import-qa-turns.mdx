@@ -10,15 +10,16 @@ wikiKind: "plan"
   <ul>
     <li>Status: complete</li>
     <li>Completed unit: Unit 01 - Low-Latency Import Interview</li>
-    <li>Verification: <code>pnpm run check</code> and <code>cargo test import_planning --manifest-path src-tauri/Cargo.toml</code>.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
   </ul>
 </section>
 <section>
   <h2>Unit 01 - Low-Latency Import Interview</h2>
-  <p>Imported-project Q&amp;A turns now force Codex 5.5 low thinking, use a compact import state page for intermediate turns, skip skill loading outside the first and final turns, and support batched independent questions.</p>
+  <p>Imported-project Q&amp;A turns now force Codex 5.5 low thinking, use compact source context for the first AI-authored interview script, reveal that script one question at a time in the app, and reserve slower full Codex planning turns for final plan handoff or exhausted-script follow-up.</p>
   <h3>Verification</h3>
   <ul>
     <li><code>pnpm run check</code></li>
-    <li><code>cargo test import_planning --manifest-path src-tauri/Cargo.toml</code></li>
+    <li><code>pnpm run check:tauri</code></li>
+    <li><code>pnpm run build:frontend</code></li>
   </ul>
 </section>

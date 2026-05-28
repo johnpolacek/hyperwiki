@@ -414,6 +414,7 @@ function App() {
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
   const activeImportPlanningTurn = useRef<{ projectId: string; requestId: string; sessionId: string } | null>(null);
+  const importQuestionScripts = useRef(new Map<string, PlanningQuestion[]>());
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
   const loggedPlanningQuestionIds = useRef(new Set<string>());
@@ -895,6 +896,28 @@ function App() {
     setActivePlanningQuestion(nextQuestions[0] || null);
   }
 
+  function stageImportQuestionScript(project: ProjectRecord, questions: PlanningQuestion[]) {
+    const scriptedQuestions = questions.filter((question) => !answeredPlanningQuestionIds.current.has(question.id));
+    importQuestionScripts.current.set(project.id, scriptedQuestions);
+    appendImportLog(`Imported Q&A script staged project=${project.id} questions=${scriptedQuestions.length} ids=${scriptedQuestions.map((question) => question.id).join(",") || "none"}`);
+    return revealNextImportScriptQuestion(project);
+  }
+
+  function revealNextImportScriptQuestion(project: ProjectRecord) {
+    const questions = importQuestionScripts.current.get(project.id) || [];
+    const nextQuestions = questions.filter((question) => !answeredPlanningQuestionIds.current.has(question.id));
+    importQuestionScripts.current.set(project.id, nextQuestions);
+    const nextQuestion = nextQuestions[0] || null;
+    if (!nextQuestion) return false;
+    appendImportLog(`Imported Q&A script question ready project=${project.id} remaining=${nextQuestions.length} id=${nextQuestion.id}`);
+    setPlanningInterviewStatus("question_ready");
+    setPlanningQuestions([nextQuestion]);
+    setPlanningActivity("Next planning question is ready.");
+    setPlanningWorkstream((current) => [...current.slice(-8), `Scripted question ready (${nextQuestions.length} remaining)`]);
+    setStatus("Imported project Q&A question ready");
+    return true;
+  }
+
   function clearPlanningQuestions() {
     setActivePlanningQuestions([]);
     setActivePlanningQuestion(null);
@@ -969,7 +992,10 @@ function App() {
       }
       if (!nextStatus) return;
       applyImportPlanningStatus(nextStatus);
-      void startImportPlanningTurn(activeProject, "answer", answerSummary, first.question.id);
+      if (!revealNextImportScriptQuestion(activeProject)) {
+        appendImportLog(`Imported Q&A script exhausted project=${activeProject.id}; handing off to Codex for next turn or final plan`);
+        void startImportPlanningTurn(activeProject, "answer", answerSummary, first.question.id);
+      }
     } else if (first.question.sessionId) {
       const response = `Hyperwiki planning answer: ${answerSummary}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
       await sendPasteSubmitInput(first.question.sessionId, response);
@@ -1106,8 +1132,38 @@ function App() {
     }
   }
 
+  async function loadImportPlanningSourceContext(project: ProjectRecord) {
+    const sourcePaths = [
+      "/wiki/sources/import-state.mdx",
+      "/wiki/sources/import-qna.mdx",
+      "/wiki/sources/import.mdx",
+      "/wiki/sources/prd.mdx",
+      "/wiki/sources/technical-brief.mdx",
+      "/wiki/sources/design-brief.mdx",
+      "/wiki/plans/index.mdx",
+    ];
+    const settled = await Promise.allSettled(sourcePaths.map(async (path) => {
+      const source = await hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(path)}`, project));
+      return { path, markdown: source.markdown || source.source || "" };
+    }));
+    const chunks: string[] = [];
+    for (const result of settled) {
+      if (result.status !== "fulfilled") continue;
+      const markdown = result.value.markdown.replace(/\s+\n/g, "\n").trim();
+      if (!markdown) continue;
+      chunks.push(`## ${result.value.path}\n${markdown.slice(0, 3600)}`);
+    }
+    const context = chunks.join("\n\n---\n\n").slice(0, 18000);
+    appendImportLog(`Imported Q&A source context loaded project=${project.id} sources=${chunks.length} chars=${context.length}`);
+    return context;
+  }
+
   async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry", answer = "", answeredQuestionId = "") {
     const key = `${project.id}:import-qna`;
+    if ((reason === "initial" || reason === "retry") && revealNextImportScriptQuestion(project)) {
+      appendImportLog(`Imported Q&A start reused staged script project=${project.id} reason=${reason}`);
+      return;
+    }
     const inFlight = importedPlanningRuns.current.get(key);
     if (inFlight) {
       appendImportLog(`Imported Q&A turn joined in-flight run project=${project.id} reason=${reason}`);
@@ -1124,14 +1180,19 @@ function App() {
       setPlanningActivity("Starting the planning agent");
       setPlanningWorkstream(["Starting the planning agent"]);
       openImportedPlanningWorkspace(project, projectRoute);
-      const loaded = await loadProjectData(project);
+      await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
-      const prompt = importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
+      const sourceContext = reason === "initial" || reason === "retry" ? await loadImportPlanningSourceContext(project) : "";
+      const prompt = reason === "initial" || reason === "retry"
+        ? importedProjectQuestionScriptPrompt(project, requestId, sourceContext)
+        : importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
       appendImportLog(`Imported Q&A sending app-server turn project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
       activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: "codex-app-server" };
       setPlanningInterviewStatus("waiting_for_question");
-      setPlanningActivity("Planning agent is working on the next question");
-      setPlanningWorkstream(["Codex app-server turn started", "Waiting for the next structured question"]);
+      setPlanningActivity(reason === "initial" || reason === "retry" ? "Codex is generating the planning question script" : "Planning agent is working on the next question");
+      setPlanningWorkstream(reason === "initial" || reason === "retry"
+        ? ["Codex app-server script turn started", "Using inline source context", "Waiting for the first structured question"]
+        : ["Codex app-server turn started", "Waiting for the next structured question"]);
       setStatus("Imported project Q&A started");
       try {
         const started = await hyperwikiApi.json<CodexImportTurnStartResponse>(withProjectQuery("/api/import-planning/turn", project), {
@@ -1209,6 +1270,10 @@ function App() {
     if (nextQuestions.length) {
       activeImportPlanningTurn.current = null;
       appendImportLog(`Imported Q&A app-server question ready project=${project.id} request=${requestId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
+      if (requestId.includes(":initial:") && nextQuestions.length > 1) {
+        stageImportQuestionScript(project, nextQuestions);
+        return;
+      }
       setPlanningInterviewStatus("question_ready");
       setPlanningQuestions(nextQuestions);
       setPlanningActivity("Next planning question is ready.");
@@ -4665,6 +4730,35 @@ function importAgentLaunchCommand(layout: LayoutResponse | null) {
   return `${withoutExistingModel} -m gpt-5.5 -c 'model_reasoning_effort="low"' -c 'plan_mode_reasoning_effort="low"'`;
 }
 
+function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
+  return [
+    "You are generating Hyperwiki import-planning interview questions.",
+    "Do not use tools. Do not read files. Use only the inline source context in this prompt.",
+    "",
+    "Goal:",
+    "Generate a compact AI-authored question script for the imported project. Hyperwiki will ask these one at a time in the UI, so do not ask the user to answer the whole batch at once.",
+    "",
+    "Output exactly one fenced JSON block. No prose after the block.",
+    "The JSON object must have:",
+    "- type: \"hyperwiki-question-batch\"",
+    `- requestId: \"${requestId}\"`,
+    "- questions: 5 to 8 blocking planning questions in the order they should be answered",
+    "",
+    "Each question must include question, recommendedAnswer, reasoning, and options.",
+    "Options may be strings or objects with label and description. Put the recommended option first.",
+    "Ask only decisions that affect MVP scope, UX, technical shape, verification, privacy, or plan sequencing.",
+    "Prefer source-specific questions over generic startup questions.",
+    "Do not include placeholder keys like label or description as visible options.",
+    "Stop after the JSON block.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+    "",
+    "Inline source context:",
+    sourceContext.trim() || "No source context was available. Ask source-grounded discovery questions and name unknowns.",
+  ].join("\n");
+}
+
 function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string, latestAnswer = "", answeredQuestionId = "") {
   const isInitialTurn = !latestAnswer.trim();
   if (!isInitialTurn) {
@@ -5043,14 +5137,20 @@ function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: s
 function planningQuestionOptionFromValue(value: unknown): PlanningQuestionOption | null {
   if (typeof value === "string") {
     const label = value.trim();
+    if (isOptionPlaceholderLabel(label)) return null;
     return label ? { label } : null;
   }
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const label = stringValue(record.label) || stringValue(record.value) || stringValue(record.title);
+  if (isOptionPlaceholderLabel(label)) return null;
   if (!label) return null;
   const description = stringValue(record.description) || stringValue(record.detail) || stringValue(record.reasoning);
   return description ? { label, description } : { label };
+}
+
+function isOptionPlaceholderLabel(label: string) {
+  return /^(?:label|description)$/i.test(label.trim());
 }
 
 function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: PlanningQuestionOption[], requestId = "", batchId = "", batchIndex = 0) {
