@@ -637,7 +637,14 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 current_page: String::new(),
                 request_id: String::new(),
             });
-        return match crate::domain::codex_app_server::run_import_planning_turn(&project, body) {
+        return match crate::domain::codex_app_server::start_import_planning_turn(project, body) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-planning/turn-status") {
+        let run_id = query_param(&request.path, "runId").unwrap_or_default();
+        return match crate::domain::codex_app_server::import_planning_turn_status(&run_id) {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };

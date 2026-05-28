@@ -35,6 +35,26 @@ pub struct CodexTurnResponse {
     pub events: usize,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexTurnStartResponse {
+    pub ok: bool,
+    pub run_id: String,
+    pub status: String,
+    pub project_id: String,
+    pub request_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexTurnStatusResponse {
+    pub ok: bool,
+    pub run_id: String,
+    pub status: String,
+    pub response: Option<CodexTurnResponse>,
+    pub error: Option<String>,
+}
+
 #[derive(Debug)]
 struct AppServer {
     child: Child,
@@ -54,6 +74,18 @@ struct ImportThreadRegistry {
     by_project: HashMap<String, String>,
 }
 
+#[derive(Debug, Default)]
+struct TurnRunRegistry {
+    by_id: HashMap<String, TurnRunState>,
+}
+
+#[derive(Debug)]
+enum TurnRunState {
+    Running,
+    Complete(CodexTurnResponse),
+    Failed(String),
+}
+
 fn app_server() -> &'static Mutex<Option<AppServer>> {
     static SERVER: OnceLock<Mutex<Option<AppServer>>> = OnceLock::new();
     SERVER.get_or_init(|| Mutex::new(None))
@@ -62,6 +94,93 @@ fn app_server() -> &'static Mutex<Option<AppServer>> {
 fn import_threads() -> &'static Mutex<ImportThreadRegistry> {
     static THREADS: OnceLock<Mutex<ImportThreadRegistry>> = OnceLock::new();
     THREADS.get_or_init(|| Mutex::new(ImportThreadRegistry::default()))
+}
+
+fn turn_runs() -> &'static Mutex<TurnRunRegistry> {
+    static RUNS: OnceLock<Mutex<TurnRunRegistry>> = OnceLock::new();
+    RUNS.get_or_init(|| Mutex::new(TurnRunRegistry::default()))
+}
+
+pub fn start_import_planning_turn(
+    project: crate::domain::projects::ProjectRecord,
+    request: CodexTurnRequest,
+) -> Result<CodexTurnStartResponse, (u16, String)> {
+    let prompt = request.prompt.trim();
+    if prompt.is_empty() {
+        return Err((400, "Prompt is required.".to_string()));
+    }
+    let request_id = if request.request_id.trim().is_empty() {
+        format!("import-turn:{}", monotonic_id())
+    } else {
+        request.request_id.clone()
+    };
+    let run_id = format!("codex-import-turn:{}:{}", project.id, monotonic_id());
+    turn_runs()
+        .lock()
+        .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?
+        .by_id
+        .insert(run_id.clone(), TurnRunState::Running);
+    let run_id_for_thread = run_id.clone();
+    let project_id = project.id.clone();
+    let request_for_thread = CodexTurnRequest {
+        request_id: request_id.clone(),
+        ..request
+    };
+    thread::spawn(move || {
+        let result = run_import_planning_turn(&project, request_for_thread);
+        if let Ok(mut runs) = turn_runs().lock() {
+            runs.by_id.insert(
+                run_id_for_thread,
+                match result {
+                    Ok(response) => TurnRunState::Complete(response),
+                    Err((_, error)) => TurnRunState::Failed(error),
+                },
+            );
+        }
+    });
+    Ok(CodexTurnStartResponse {
+        ok: true,
+        run_id,
+        status: "running".to_string(),
+        project_id,
+        request_id,
+    })
+}
+
+pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusResponse, (u16, String)> {
+    if run_id.trim().is_empty() {
+        return Err((400, "Import planning turn status requires a run id.".to_string()));
+    }
+    let runs = turn_runs()
+        .lock()
+        .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?;
+    let Some(state) = runs.by_id.get(run_id) else {
+        return Err((404, "Import planning turn run not found.".to_string()));
+    };
+    let (status, response, error) = match state {
+        TurnRunState::Running => ("running".to_string(), None, None),
+        TurnRunState::Complete(response) => {
+            ("complete".to_string(), Some(response.clone()), None)
+        }
+        TurnRunState::Failed(error) => ("failed".to_string(), None, Some(error.clone())),
+    };
+    Ok(CodexTurnStatusResponse {
+        ok: error.is_none(),
+        run_id: run_id.to_string(),
+        status,
+        response,
+        error,
+    })
+}
+
+fn monotonic_id() -> u128 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let counter = NEXT.fetch_add(1, Ordering::SeqCst);
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    (millis * 1000) + u128::from(counter)
 }
 
 pub fn run_import_planning_turn(

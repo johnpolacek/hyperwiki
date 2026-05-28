@@ -12,6 +12,7 @@ assert.ok(input.includes(".txt") && input.includes("text/*"), "New Project file 
 assert.ok(source.includes("sourceDocuments"), "New Project create payload should include sourceDocuments");
 assert.ok(source.includes("startImportPlanningTurn(activeProject, \"answer\""), "Import Q&A answers should start a fresh agent turn");
 assert.ok(source.includes("/api/import-planning/turn"), "Import Q&A turns should use the Codex app-server import endpoint");
+assert.ok(source.includes("/api/import-planning/turn-status"), "Import Q&A should poll app-server turns without blocking the app shell");
 assert.ok(!source.includes("forceNew: true, requestId"), "Import Q&A turns should not force fresh terminal sessions");
 assert.ok(source.includes("model_reasoning_effort=\"low\""), "Import Q&A agent turns should force low thinking effort");
 assert.ok(source.includes("wiki/sources/import-state.mdx"), "Import Q&A intermediate prompts should use compact planning state");

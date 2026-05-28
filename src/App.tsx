@@ -356,6 +356,22 @@ interface CodexImportTurnResponse {
   events: number;
 }
 
+interface CodexImportTurnStartResponse {
+  ok: boolean;
+  runId: string;
+  status: "running" | string;
+  projectId: string;
+  requestId: string;
+}
+
+interface CodexImportTurnStatusResponse {
+  ok: boolean;
+  runId: string;
+  status: "running" | "complete" | "failed" | string;
+  response?: CodexImportTurnResponse | null;
+  error?: string | null;
+}
+
 const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 
@@ -1118,7 +1134,7 @@ function App() {
       setPlanningWorkstream(["Codex app-server turn started", "Waiting for the next structured question"]);
       setStatus("Imported project Q&A started");
       try {
-        const turn = await hyperwikiApi.json<CodexImportTurnResponse>(withProjectQuery("/api/import-planning/turn", project), {
+        const started = await hyperwikiApi.json<CodexImportTurnStartResponse>(withProjectQuery("/api/import-planning/turn", project), {
           method: "POST",
           body: {
             prompt,
@@ -1126,6 +1142,8 @@ function App() {
             requestId,
           },
         });
+        appendImportLog(`Imported Q&A app-server turn accepted project=${project.id} request=${requestId} run=${started.runId}`);
+        const turn = await waitForImportPlanningTurn(project, started.runId, requestId);
         appendImportLog(`Imported Q&A app-server turn complete project=${project.id} request=${requestId} thread=${turn.threadId} turn=${turn.turnId} chars=${turn.text.length} firstDeltaMs=${turn.firstDeltaMs ?? "none"} elapsedMs=${turn.elapsedMs} events=${turn.events}`);
         await handleImportPlanningTurnText(project, turn.threadId || "codex-app-server", requestId, turn.text, answeredQuestionId);
       } catch (error) {
@@ -1147,6 +1165,23 @@ function App() {
     } finally {
       importedPlanningRuns.current.delete(key);
     }
+  }
+
+  async function waitForImportPlanningTurn(project: ProjectRecord, runId: string, requestId: string) {
+    const startedAt = Date.now();
+    for (let attempt = 1; attempt <= 360; attempt += 1) {
+      await delay(500);
+      if (activeImportPlanningTurn.current?.requestId !== requestId) {
+        throw new Error("Import planning turn was superseded.");
+      }
+      const status = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-status?runId=${encodeURIComponent(runId)}`, project));
+      if (attempt === 1 || attempt % 10 === 0 || status.status !== "running") {
+        appendImportLog(`Imported Q&A app-server status project=${project.id} request=${requestId} run=${runId} attempt=${attempt} status=${status.status} elapsedMs=${Date.now() - startedAt}`);
+      }
+      if (status.status === "complete" && status.response) return status.response;
+      if (status.status === "failed") throw new Error(status.error || "Codex app-server import turn failed.");
+    }
+    throw new Error("Codex app-server import turn timed out.");
   }
 
   async function handleImportPlanningTurnText(project: ProjectRecord, sessionId: string, requestId: string, text: string, answeredQuestionId = "") {
