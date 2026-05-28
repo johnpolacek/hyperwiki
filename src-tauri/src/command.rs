@@ -791,7 +791,7 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     let query = path.split_once('?')?.1;
     query.split('&').find_map(|pair| {
         let (left, right) = pair.split_once('=')?;
-        (left == key).then(|| right.to_string())
+        (left == key).then(|| percent_decode_path_segment(right).unwrap_or_else(|| right.to_string()))
     })
 }
 
