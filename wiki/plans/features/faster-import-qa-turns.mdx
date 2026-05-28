@@ -1,0 +1,24 @@
+---
+title: "Faster Import Q&A Turns"
+description: "Reduce imported-project planning latency with low-thinking launches, compact state, short prompts, and batched decisions."
+wikiKind: "plan"
+---
+
+<h1>Faster Import Q&amp;A Turns</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Completed unit: Unit 01 - Low-Latency Import Interview</li>
+    <li>Verification: <code>pnpm run check</code> and <code>cargo test import_planning --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Unit 01 - Low-Latency Import Interview</h2>
+  <p>Imported-project Q&amp;A turns now force Codex 5.5 low thinking, use a compact import state page for intermediate turns, skip skill loading outside the first and final turns, and support batched independent questions.</p>
+  <h3>Verification</h3>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>cargo test import_planning --manifest-path src-tauri/Cargo.toml</code></li>
+  </ul>
+</section>

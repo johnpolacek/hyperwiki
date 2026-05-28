@@ -280,6 +280,7 @@ interface PlanningQuestion {
   id: string;
   sessionId: string;
   requestId?: string;
+  batchId?: string;
   question: string;
   recommendedAnswer: string;
   reasoning: string;
@@ -289,6 +290,11 @@ interface PlanningQuestion {
 interface PlanningQuestionOption {
   label: string;
   description?: string;
+}
+
+interface PlanningQuestionAnswer {
+  question: PlanningQuestion;
+  answer: string;
 }
 
 interface ReviewWorkflow {
@@ -360,6 +366,7 @@ function App() {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
+  const [activePlanningQuestions, setActivePlanningQuestions] = useState<PlanningQuestion[]>([]);
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<"idle" | "starting" | "waiting_for_question" | "question_ready" | "answering">("idle");
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
   const [planningActivity, setPlanningActivity] = useState("");
@@ -484,7 +491,7 @@ function App() {
   useEffect(() => {
     if (!activeProject || !isImportedPlanningActive) return;
     if (!activePlanningQuestion && activeProject.importPlanning?.status === "incomplete" && activeProject.importPlanning.currentQuestion) {
-      setActivePlanningQuestion(importPlanningQuestionToPlanningQuestion(activeProject.importPlanning.currentQuestion));
+      setPlanningQuestions([importPlanningQuestionToPlanningQuestion(activeProject.importPlanning.currentQuestion)]);
       setPlanningInterviewStatus("question_ready");
       setPlanningActivity(activeProject.importPlanning.nextAction);
       return;
@@ -516,7 +523,7 @@ function App() {
       if (!completed) return;
       appendImportLog(`Imported Q&A completion detected project=${project.id} generatedPlanCount=${planning.generatedPlanPaths.length}`);
       importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
-      setActivePlanningQuestion(null);
+      clearPlanningQuestions();
       setPlanningInterviewStatus("idle");
       setPlanningActivity("Generated MVP plan is ready.");
       setPlanningWorkstream(["Generated MVP plan is ready."]);
@@ -790,7 +797,7 @@ function App() {
     projectLayout: LayoutResponse | null,
     scope = terminalScope,
     knownSessions = sessions,
-    options: { forceNew?: boolean } = {},
+    options: { commandOverride?: string; forceNew?: boolean } = {},
   ) {
     if (!project) {
       throw new Error("Project not found for agent planning.");
@@ -804,7 +811,7 @@ function App() {
     if (existing?.command && options.forceNew) {
       appendImportLog(`ensureAgentSession starting fresh agent project=${project.id} previous=${existing.id} known=${knownSessions.length}`);
     }
-    const command = agentLaunchCommand(projectLayout);
+    const command = options.commandOverride || agentLaunchCommand(projectLayout);
     if (!command) {
       throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
     }
@@ -852,6 +859,17 @@ function App() {
     setAgentRun((current) => current?.id === runId ? { ...current, ...update } : current);
   }
 
+  function setPlanningQuestions(questions: PlanningQuestion[]) {
+    const nextQuestions = questions.filter((question) => !answeredPlanningQuestionIds.current.has(question.id));
+    setActivePlanningQuestions(nextQuestions);
+    setActivePlanningQuestion(nextQuestions[0] || null);
+  }
+
+  function clearPlanningQuestions() {
+    setActivePlanningQuestions([]);
+    setActivePlanningQuestion(null);
+  }
+
   const handleTerminalText = useCallback((sessionId: string, text: string) => {
     if (!text) return;
     const current = planningQuestionBuffers.current.get(sessionId) || "";
@@ -882,49 +900,59 @@ function App() {
       return;
     }
     const expectedRequestId = activeImportTurn?.sessionId === sessionId ? activeImportTurn.requestId : "";
-    const question = extractLatestPlanningQuestion(next, sessionId, answeredPlanningQuestionIds.current, expectedRequestId);
-    if (question && !answeredPlanningQuestionIds.current.has(question.id)) {
-      if (!loggedPlanningQuestionIds.current.has(question.id)) {
+    const questions = extractLatestPlanningQuestions(next, sessionId, answeredPlanningQuestionIds.current, expectedRequestId);
+    if (questions.length) {
+      for (const question of questions) {
+        if (loggedPlanningQuestionIds.current.has(question.id)) continue;
         loggedPlanningQuestionIds.current.add(question.id);
-        appendImportLog(`Planning question extracted session=${sessionId} request=${question.requestId || "none"} expected=${expectedRequestId || "none"} id=${question.id} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
+        appendImportLog(`Planning question extracted session=${sessionId} request=${question.requestId || "none"} expected=${expectedRequestId || "none"} id=${question.id} batch=${questions.length} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
       }
       setPlanningInterviewStatus("question_ready");
-      setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === question.id ? currentQuestion : question);
+      setPlanningQuestions(questions);
     }
   }, []);
 
-  async function answerPlanningQuestion(answer: string) {
-    const question = activePlanningQuestion;
-    const trimmed = answer.trim();
-    if (!question || !trimmed) return;
+  async function answerPlanningQuestion(answers: PlanningQuestionAnswer[]) {
+    const trimmedAnswers = answers
+      .map((item) => ({ question: item.question, answer: item.answer.trim() }))
+      .filter((item) => item.answer);
+    if (!trimmedAnswers.length || !activeProject) return;
+    const first = trimmedAnswers[0];
+    const answerSummary = trimmedAnswers.map((item) => `${item.question.question}: ${item.answer}`).join("\n");
     const requestId = `planning-answer:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-    answeredPlanningQuestionIds.current.add(question.id);
+    for (const item of trimmedAnswers) {
+      answeredPlanningQuestionIds.current.add(item.question.id);
+    }
     setPlanningInterviewStatus("answering");
-    appendImportLog(`Planning answer submitting request=${requestId} session=${question.sessionId || "none"} question=${question.id} chars=${trimmed.length}`);
+    appendImportLog(`Planning answer submitting request=${requestId} session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length} chars=${answerSummary.length}`);
     if (activeProject && isIncompleteImportProject(activeProject)) {
-      const nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
-        method: "POST",
-        body: {
-          question: planningQuestionToImportQuestion(question),
-          answer: trimmed,
-        },
-      });
-      appendImportLog(`Planning answer persisted project=${activeProject.id} question=${question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
+      let nextStatus: ImportPlanningStatus | null = null;
+      for (const item of trimmedAnswers) {
+        nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
+          method: "POST",
+          body: {
+            question: planningQuestionToImportQuestion(item.question),
+            answer: item.answer,
+          },
+        });
+        appendImportLog(`Planning answer persisted project=${activeProject.id} question=${item.question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
+      }
+      if (!nextStatus) return;
       applyImportPlanningStatus(nextStatus);
-      void startImportPlanningTurn(activeProject, "answer", trimmed, question.id);
-    } else if (question.sessionId) {
-      const response = `Hyperwiki planning answer: ${trimmed}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
-      await sendPasteSubmitInput(question.sessionId, response);
-      appendImportLog(`Planning answer sent to terminal session=${question.sessionId} question=${question.id} chars=${response.length}`);
+      void startImportPlanningTurn(activeProject, "answer", answerSummary, first.question.id);
+    } else if (first.question.sessionId) {
+      const response = `Hyperwiki planning answer: ${answerSummary}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
+      await sendPasteSubmitInput(first.question.sessionId, response);
+      appendImportLog(`Planning answer sent to terminal session=${first.question.sessionId} questions=${trimmedAnswers.length} chars=${response.length}`);
     }
-    if (!question.sessionId) {
-      appendImportLog(`Planning answer has no terminal session question=${question.id}`);
+    if (!first.question.sessionId) {
+      appendImportLog(`Planning answer has no terminal session questions=${trimmedAnswers.length}`);
     }
-    appendImportLog(`Planning answer submitted session=${question.sessionId || "none"} question=${question.id}`);
-    setLastPlanningAnswer(trimmed);
+    appendImportLog(`Planning answer submitted session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length}`);
+    setLastPlanningAnswer(answerSummary);
     setPlanningActivity("Answer sent to the planning agent");
     setPlanningWorkstream((current) => [...current.slice(-8), "Answer sent to the planning agent"]);
-    setActivePlanningQuestion((current) => current?.id === question.id ? null : current);
+    clearPlanningQuestions();
     setPlanningInterviewStatus((current) => current === "answering" ? "waiting_for_question" : current);
     setStatus("Planning answer sent");
   }
@@ -933,18 +961,18 @@ function App() {
     setActiveProject((current) => current ? { ...current, importPlanning: nextStatus } : current);
     setProjects((current) => updateProjectImportPlanning(current, activeProject?.id || "", nextStatus));
     if (nextStatus.currentQuestion) {
-      setActivePlanningQuestion(importPlanningQuestionToPlanningQuestion(nextStatus.currentQuestion));
+      setPlanningQuestions([importPlanningQuestionToPlanningQuestion(nextStatus.currentQuestion)]);
       setPlanningInterviewStatus("question_ready");
       setPlanningActivity(nextStatus.nextAction);
       return;
     }
-    setActivePlanningQuestion(null);
+    clearPlanningQuestions();
     setPlanningInterviewStatus(nextStatus.status === "complete" ? "idle" : "waiting_for_question");
     setPlanningActivity(nextStatus.nextAction);
   }
 
-  async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, options: { forceNew?: boolean; requestId?: string } = {}) {
-    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { forceNew: options.forceNew });
+  async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, options: { commandOverride?: string; forceNew?: boolean; requestId?: string } = {}) {
+    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { commandOverride: options.commandOverride, forceNew: options.forceNew });
     const ready = await waitForAgentPromptReady(session.id);
     appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
     let lastError: unknown;
@@ -1070,7 +1098,7 @@ function App() {
       const nextSessions = await loadSessionsForProject(project, projectScope);
       const prompt = importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
       appendImportLog(`Imported Q&A sending turn prompt project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
-      const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { forceNew: true, requestId });
+      const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { commandOverride: importAgentLaunchCommand(loaded.layout), forceNew: true, requestId });
       activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: session.id };
       appendImportLog(`Imported Q&A turn prompt sent project=${project.id} request=${requestId} session=${session.id}`);
       setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
@@ -1131,11 +1159,12 @@ function App() {
         const plain = terminalTextForParsing(terminalBytesToText(bytes));
         lastTail = plain.slice(-500);
         const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
-        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.question?.id || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
-        if (diagnostics.question && diagnostics.question.id !== answeredQuestionId) {
-          appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} id=${diagnostics.question.id}`);
+        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
+        const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
+        if (nextQuestions.length) {
+          appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
           setPlanningInterviewStatus("question_ready");
-          setActivePlanningQuestion((currentQuestion) => currentQuestion?.id === diagnostics.question?.id ? currentQuestion : diagnostics.question);
+          setPlanningQuestions(nextQuestions);
           setPlanningActivity("Next planning question is ready.");
           return;
         }
@@ -1455,7 +1484,7 @@ function App() {
           isImportPlanningView={isImportPlanningView}
           canResumeImportPlanning={canResumeImportPlanning}
           planningInterviewStatus={planningInterviewStatus}
-          planningQuestion={activePlanningQuestion}
+          planningQuestions={activePlanningQuestions}
           projectGroups={projectGroups}
           reviewWorkflows={reviewWorkflows}
           route={route}
@@ -1788,7 +1817,7 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onNavigate: (route: ViewRoute) => void;
-  onAnswerPlanningQuestion: (answer: string) => Promise<void>;
+  onAnswerPlanningQuestion: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
@@ -1804,7 +1833,7 @@ function WorkspacePane(props: {
   isImportPlanningView: boolean;
   canResumeImportPlanning: boolean;
   planningInterviewStatus: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
-  planningQuestion: PlanningQuestion | null;
+  planningQuestions: PlanningQuestion[];
   projectGroups: ProjectGroup[];
   reviewWorkflows: ReviewWorkflow[];
   route: ViewRoute;
@@ -1843,7 +1872,7 @@ function WorkspacePane(props: {
         lastAnswer={props.lastPlanningAnswer}
         onAnswer={props.onAnswerPlanningQuestion}
         onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
-        question={props.planningQuestion}
+        questions={props.planningQuestions}
         status={props.planningInterviewStatus}
       />
     );
@@ -2168,23 +2197,23 @@ function ImportedPlanningQAView({
   lastAnswer,
   onAnswer,
   onStart,
-  question,
+  questions,
   status,
 }: {
   activeProject: ProjectRecord | null;
   activity: string;
   workstream: string[];
   lastAnswer: string;
-  onAnswer: (answer: string) => Promise<void>;
+  onAnswer: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onStart: () => Promise<void>;
-  question: PlanningQuestion | null;
+  questions: PlanningQuestion[];
   status: "idle" | "starting" | "waiting_for_question" | "question_ready" | "answering";
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [selectedOption, setSelectedOption] = useState("");
-  const [otherAnswer, setOtherAnswer] = useState("");
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [otherAnswers, setOtherAnswers] = useState<Record<string, string>>({});
   const hasStartedRef = useRef("");
   const otherAnswerRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -2208,24 +2237,31 @@ function ImportedPlanningQAView({
   }, [activeProject?.id]);
 
   useEffect(() => {
-    setSelectedOption("");
-    setOtherAnswer("");
-  }, [question?.id]);
+    setSelectedOptions({});
+    setOtherAnswers({});
+  }, [questions.map((question) => question.id).join("|")]);
 
-  async function submitAnswer(answer: string) {
-    const trimmed = answer.trim();
-    if (!trimmed) return;
+  function answerForQuestion(question: PlanningQuestion) {
+    const selected = selectedOptions[question.id] || "";
+    return selected === "__other__" ? (otherAnswers[question.id] || "").trim() : selected.trim();
+  }
+
+  async function submitAnswers(nextAnswers: PlanningQuestionAnswer[]) {
+    const trimmed = nextAnswers
+      .map((item) => ({ question: item.question, answer: item.answer.trim() }))
+      .filter((item) => item.answer);
+    if (!trimmed.length) return;
     setIsAnswering(true);
     try {
       await onAnswer(trimmed);
-      setSelectedOption("");
-      setOtherAnswer("");
+      setSelectedOptions({});
+      setOtherAnswers({});
     } finally {
       setIsAnswering(false);
     }
   }
 
-  const canSubmitOther = Boolean(otherAnswer.trim()) && !isAnswering;
+  const canSubmitBatch = questions.length > 1 && questions.every((question) => answerForQuestion(question)) && !isAnswering;
   const title = "Planning Q&A";
   const waitingLabel = lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
   const description = "Answer questions and make important decisions to create your project.";
@@ -2238,87 +2274,117 @@ function ImportedPlanningQAView({
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{title}</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">{description}</p>
         </div>
-        {question ? (
-          <div className="grid gap-4 rounded-md border bg-background p-4">
-            <div className="grid gap-2">
-              <h2 className="font-ui m-0 text-xl font-semibold leading-snug">{question.question}</h2>
-              {question.recommendedAnswer ? (
-                <p className="m-0 rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
-                  <span className="font-semibold">Recommended:</span> {question.recommendedAnswer}
-                </p>
-              ) : null}
-              {question.reasoning ? <p className="m-0 text-sm leading-6 text-muted-foreground">{question.reasoning}</p> : null}
-            </div>
-            {question.options.length ? (
-              <div className="grid gap-2">
-                {question.options.map((option, index) => {
-                  const selected = selectedOption === option.label;
-                  return (
+        {questions.length ? (
+          <div className="grid gap-4">
+            {questions.length > 1 ? (
+              <p className="m-0 rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
+                Answer these related decisions together so the next planning turn can move faster.
+              </p>
+            ) : null}
+            {questions.map((question, questionIndex) => (
+              <div className="grid gap-4 rounded-md border bg-background p-4" key={question.id}>
+                <div className="grid gap-2">
+                  <h2 className="font-ui m-0 text-xl font-semibold leading-snug">{question.question}</h2>
+                  {question.recommendedAnswer ? (
+                    <p className="m-0 rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
+                      <span className="font-semibold">Recommended:</span> {question.recommendedAnswer}
+                    </p>
+                  ) : null}
+                  {question.reasoning ? <p className="m-0 text-sm leading-6 text-muted-foreground">{question.reasoning}</p> : null}
+                </div>
+                {question.options.length ? (
+                  <div className="grid gap-2">
+                    {question.options.map((option, index) => {
+                      const selected = selectedOptions[question.id] === option.label;
+                      return (
+                        <button
+                          className={cn(
+                            "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
+                            selected && "border-primary bg-secondary text-secondary-foreground",
+                          )}
+                          disabled={isAnswering}
+                          key={`${question.id}:${index}:${option.label}`}
+                          onClick={() => {
+                            setSelectedOptions((current) => ({ ...current, [question.id]: option.label }));
+                            if (questions.length === 1) {
+                              void submitAnswers([{ question, answer: option.label }]);
+                            }
+                          }}
+                          type="button"
+                        >
+                          <span className="grid gap-1">
+                            <span>{option.label}</span>
+                            {option.description ? <span className="text-xs leading-5 text-muted-foreground">{option.description}</span> : null}
+                          </span>
+                          {index === 0 ? <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">recommended</span> : null}
+                        </button>
+                      );
+                    })}
                     <button
                       className={cn(
-                        "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
-                        selected && "border-primary bg-secondary text-secondary-foreground",
+                        "flex min-h-11 items-center justify-between gap-3 rounded-md border border-dashed bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
+                        selectedOptions[question.id] === "__other__" && "border-primary bg-secondary text-secondary-foreground",
                       )}
                       disabled={isAnswering}
-                      key={`${question.id}:${index}:${option.label}`}
                       onClick={() => {
-                        setSelectedOption(option.label);
-                        void submitAnswer(option.label);
+                        setSelectedOptions((current) => ({ ...current, [question.id]: "__other__" }));
+                        if (questions.length === 1) window.setTimeout(() => otherAnswerRef.current?.focus(), 0);
                       }}
                       type="button"
                     >
-                      <span className="grid gap-1">
-                        <span>{option.label}</span>
-                        {option.description ? <span className="text-xs leading-5 text-muted-foreground">{option.description}</span> : null}
-                      </span>
-                      {index === 0 ? <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">recommended</span> : null}
+                      <span>None of the above</span>
+                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">add note</span>
                     </button>
-                  );
-                })}
-                <button
-                  className={cn(
-                    "flex min-h-11 items-center justify-between gap-3 rounded-md border border-dashed bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
-                    selectedOption === "__other__" && "border-primary bg-secondary text-secondary-foreground",
-                  )}
-                  disabled={isAnswering}
-                  onClick={() => {
-                    setSelectedOption("__other__");
-                    window.setTimeout(() => otherAnswerRef.current?.focus(), 0);
+                  </div>
+                ) : null}
+                <form
+                  className="grid gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const answer = otherAnswers[question.id] || "";
+                    if (questions.length === 1) void submitAnswers([{ question, answer }]);
                   }}
+                >
+                  <label className="text-sm font-semibold" htmlFor={`planning-other-answer-${question.id}`}>Other</label>
+                  <textarea
+                    {...DISABLE_TEXT_CORRECTION_PROPS}
+                    className="min-h-24 rounded-md border bg-card px-3 py-2 text-sm leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    id={`planning-other-answer-${question.id}`}
+                    onChange={(event) => {
+                      setSelectedOptions((current) => ({ ...current, [question.id]: "__other__" }));
+                      setOtherAnswers((current) => ({ ...current, [question.id]: event.target.value }));
+                    }}
+                    placeholder="None of the above. Use this instead..."
+                    ref={questionIndex === 0 ? otherAnswerRef : undefined}
+                    value={otherAnswers[question.id] || ""}
+                  />
+                  {questions.length === 1 ? (
+                    <div className="flex justify-end">
+                      <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={!answerForQuestion(question) || isAnswering} type="submit">
+                        {isAnswering ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : null}
+                        Send Other
+                      </Button>
+                    </div>
+                  ) : null}
+                </form>
+              </div>
+            ))}
+            {questions.length > 1 ? (
+              <div className="flex justify-end">
+                <Button
+                  className="min-h-10 active:scale-[0.96] transition-transform"
+                  disabled={!canSubmitBatch}
+                  onClick={() => void submitAnswers(questions.map((question) => ({ question, answer: answerForQuestion(question) })))}
                   type="button"
                 >
-                  <span>None of the above</span>
-                  <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">add note</span>
-                </button>
-              </div>
-            ) : null}
-            <form
-              className="grid gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void submitAnswer(otherAnswer);
-              }}
-            >
-              <label className="text-sm font-semibold" htmlFor="planning-other-answer">Other</label>
-              <textarea
-                {...DISABLE_TEXT_CORRECTION_PROPS}
-                className="min-h-24 rounded-md border bg-card px-3 py-2 text-sm leading-6 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                id="planning-other-answer"
-                onChange={(event) => setOtherAnswer(event.target.value)}
-                placeholder="None of the above. Use this instead..."
-                ref={otherAnswerRef}
-                value={otherAnswer}
-              />
-              <div className="flex justify-end">
-                <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={!canSubmitOther} type="submit">
                   {isAnswering ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : null}
-                  Send Other
+                  Send Answers
                 </Button>
               </div>
-            </form>
+            ) : null}
           </div>
         ) : null}
-        {!question && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
+        {!questions.length && (status === "starting" || status === "waiting_for_question" || status === "answering" || isStarting) ? (
           <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
@@ -4486,7 +4552,50 @@ function agentLaunchCommand(layout: LayoutResponse | null) {
   return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
 
+function importAgentLaunchCommand(layout: LayoutResponse | null) {
+  const command = agentLaunchCommand(layout);
+  if (!/^\s*(?:[\w./-]+\/)?codex(?:\s|$)/.test(command)) return command;
+  const withoutExistingModel = command
+    .replace(/\s+-m\s+\S+/g, "")
+    .replace(/\s+--model\s+\S+/g, "")
+    .replace(/\s+-c\s+['"]?model_reasoning_effort=[^'"\s]+['"]?/g, "")
+    .replace(/\s+-c\s+['"]?plan_mode_reasoning_effort=[^'"\s]+['"]?/g, "")
+    .trim();
+  return `${withoutExistingModel} -m gpt-5.5 -c 'model_reasoning_effort="low"' -c 'plan_mode_reasoning_effort="low"'`;
+}
+
 function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string, latestAnswer = "", answeredQuestionId = "") {
+  const isInitialTurn = !latestAnswer.trim();
+  if (!isInitialTurn) {
+    return [
+      "You are working inside this newly imported Hyperwiki project.",
+      "Plan mode only: do not implement product code from this prompt.",
+      "",
+      "Fast import-planning turn:",
+      `- requestId: ${requestId}`,
+      `- Latest answer: ${latestAnswer}`,
+      answeredQuestionId ? `- Answered question id: ${answeredQuestionId}` : "- Answered question id: none.",
+      "",
+      "Read only wiki/sources/import-state.mdx and wiki/sources/import-qna.mdx first.",
+      "Use wiki/sources/import.mdx or source briefs only if the compact state is insufficient for the next decision.",
+      "",
+      "Output rules:",
+      "- If one branching decision remains, emit one JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
+      "- If 2-4 independent decisions remain, emit one JSON object with type \"hyperwiki-question-batch\", requestId, and questions[].",
+      "- Each batch question must include question, recommendedAnswer, reasoning, and options.",
+      "- Options may be strings or objects with label and description. Put the recommended option first.",
+      `- Every emitted object must use requestId exactly \"${requestId}\".`,
+      "- Keep prose before and after JSON to one short sentence or less.",
+      "- Stop after emitting the question or batch.",
+      "",
+      "Final-plan rule:",
+      "- If no blocking unknowns remain, create the MVP plan now. For that final write only, use $hyperwiki and $grill-with-docs, read the full source context, and follow the plan/stage/unit file contract.",
+      "- Preserve separate files under wiki/plans/mvp/ and update wiki/plans/index.mdx, wiki/log.mdx, and source briefs only as durable context requires.",
+      "",
+      `Imported project: ${project.name}`,
+      `Project root: ${project.root}`,
+    ].join("\n");
+  }
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
@@ -4510,10 +4619,11 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
-    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    "- For every user-facing question, emit either one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options, or one JSON object containing type \"hyperwiki-question-batch\", requestId, and questions[]. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
     `- The JSON object's requestId must be exactly \"${requestId}\".`,
     "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
+    "- Batch 2-4 independent remaining decisions when answering them together will not change the next question.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
     "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
@@ -4686,12 +4796,12 @@ function trimPlanningQuestionBuffer(text: string) {
   return text.length > 40000 ? text.slice(-40000) : text;
 }
 
-function extractLatestPlanningQuestion(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set(), expectedRequestId = ""): PlanningQuestion | null {
+function extractLatestPlanningQuestions(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set(), expectedRequestId = ""): PlanningQuestion[] {
   const diagnostics = planningQuestionExtractionDiagnostics(text, sessionId, answeredQuestionIds, expectedRequestId);
-  if (diagnostics.candidateIds.length && !diagnostics.question) {
+  if (diagnostics.candidateIds.length && !diagnostics.questions.length) {
     appendImportLog(`Planning question candidates unavailable session=${sessionId} expected=${expectedRequestId || "none"} candidates=${diagnostics.candidateIds.length} ids=${diagnostics.candidateIds.join(",")} ignoredRequests=${diagnostics.ignoredRequestIds.join(",") || "none"}`);
   }
-  return diagnostics.question;
+  return diagnostics.questions;
 }
 
 function planningQuestionExtractionDiagnostics(text: string, sessionId: string, answeredQuestionIds: Set<string> = new Set(), expectedRequestId = "") {
@@ -4700,13 +4810,11 @@ function planningQuestionExtractionDiagnostics(text: string, sessionId: string, 
   for (let index = blocks.length - 1; index >= 0; index -= 1) {
     const raw = blocks[index]?.[1]?.trim();
     if (!raw) continue;
-    const parsed = parsePlanningQuestionJson(raw, sessionId);
-    if (parsed) candidates.push(parsed);
+    candidates.push(...parsePlanningQuestionJson(raw, sessionId));
   }
   const rawObjects = extractRawPlanningQuestionObjects(text);
   for (let index = rawObjects.length - 1; index >= 0; index -= 1) {
-    const parsed = parsePlanningQuestionJson(rawObjects[index], sessionId);
-    if (parsed) candidates.push(parsed);
+    candidates.push(...parsePlanningQuestionJson(rawObjects[index], sessionId));
   }
   const requestMatched = expectedRequestId
     ? candidates.filter((question) => !question.requestId || question.requestId === expectedRequestId)
@@ -4714,14 +4822,21 @@ function planningQuestionExtractionDiagnostics(text: string, sessionId: string, 
   const ignoredRequestIds = expectedRequestId
     ? candidates.map((question) => question.requestId || "none").filter((requestId) => requestId !== "none" && requestId !== expectedRequestId)
     : [];
-  const unanswered = requestMatched.find((question) => !answeredQuestionIds.has(question.id)) || null;
+  const questions = firstQuestionGroup(requestMatched.filter((question) => !answeredQuestionIds.has(question.id)));
   return {
     candidateIds: candidates.map((question) => question.id),
     codeBlocks: blocks.length,
     ignoredRequestIds,
-    question: unanswered,
+    questions,
     rawObjects: rawObjects.length,
   };
+}
+
+function firstQuestionGroup(questions: PlanningQuestion[]) {
+  if (!questions.length) return [];
+  const first = questions[0];
+  if (!first.batchId) return [first];
+  return questions.filter((question) => question.batchId === first.batchId);
 }
 
 function extractRawPlanningQuestionObjects(text: string) {
@@ -4783,37 +4898,48 @@ function findJsonObjectEnd(text: string, start: number) {
   return -1;
 }
 
-function parsePlanningQuestionJson(raw: string, sessionId: string): PlanningQuestion | null {
+function parsePlanningQuestionJson(raw: string, sessionId: string): PlanningQuestion[] {
   try {
-    const value = JSON.parse(raw) as Partial<PlanningQuestion> & { type?: string };
-    return planningQuestionFromValue(value, sessionId);
+    const value = JSON.parse(raw) as Partial<PlanningQuestion> & { type?: string; questions?: unknown[] };
+    if (value.type === "hyperwiki-question-batch" && Array.isArray(value.questions)) {
+      const requestId = stringValue(value.requestId);
+      const batchId = `planning-batch:${Math.abs(stableHash(`${sessionId}\n${requestId}\n${raw}`))}`;
+      const parsedQuestions: PlanningQuestion[] = [];
+      value.questions.forEach((question, index) => {
+        const parsed = planningQuestionFromValue(question as Partial<PlanningQuestion> & { type?: string }, sessionId, requestId, batchId, index);
+        if (parsed) parsedQuestions.push(parsed);
+      });
+      return parsedQuestions;
+    }
+    const question = planningQuestionFromValue(value, sessionId);
+    return question ? [question] : [];
   } catch {
     return parseLoosePlanningQuestion(raw, sessionId);
   }
 }
 
-function parseLoosePlanningQuestion(raw: string, sessionId: string): PlanningQuestion | null {
-  if (!raw.includes("hyperwiki-question")) return null;
+function parseLoosePlanningQuestion(raw: string, sessionId: string): PlanningQuestion[] {
+  if (!raw.includes("hyperwiki-question")) return [];
   const question = looseJsonStringField(raw, "question");
-  if (!question) return null;
+  if (!question) return [];
   const requestId = looseJsonStringField(raw, "requestId");
   const recommendedAnswer = looseJsonStringField(raw, "recommendedAnswer");
   const reasoning = looseJsonStringField(raw, "reasoning");
   const options = looseJsonArrayField(raw, "options");
-  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId);
+  return [normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId)];
 }
 
-function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: string }, sessionId: string) {
+function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: string }, sessionId: string, inheritedRequestId = "", batchId = "", batchIndex = 0) {
   const question = stringValue(value.question);
   if (!question) return null;
   if (value.type && value.type !== "hyperwiki-question") return null;
-  const requestId = stringValue(value.requestId);
+  const requestId = stringValue(value.requestId) || inheritedRequestId;
   const recommendedAnswer = stringValue(value.recommendedAnswer);
   const reasoning = stringValue(value.reasoning);
   const options = Array.isArray(value.options)
     ? value.options.map(planningQuestionOptionFromValue).filter((option): option is PlanningQuestionOption => Boolean(option)).slice(0, 7)
     : [];
-  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId);
+  return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId, batchId, batchIndex);
 }
 
 function planningQuestionOptionFromValue(value: unknown): PlanningQuestionOption | null {
@@ -4829,12 +4955,13 @@ function planningQuestionOptionFromValue(value: unknown): PlanningQuestionOption
   return description ? { label, description } : { label };
 }
 
-function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: PlanningQuestionOption[], requestId = "") {
+function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: PlanningQuestionOption[], requestId = "", batchId = "", batchIndex = 0) {
   const normalizedOptions = options.length || !recommendedAnswer ? options : [{ label: recommendedAnswer }];
   return {
-    id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions.map((option) => option.description ? `${option.label}: ${option.description}` : option.label)),
+    id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions.map((option) => option.description ? `${option.label}: ${option.description}` : option.label), batchId ? String(batchIndex) : ""),
     sessionId,
     requestId,
+    batchId,
     question,
     recommendedAnswer,
     reasoning,
@@ -4987,12 +5114,17 @@ function stringValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function stableQuestionId(sessionId: string, question: string, recommendedAnswer: string, options: string[]) {
-  const input = `${question}\n${recommendedAnswer}\n${options.join("\n")}`;
+function stableHash(input: string) {
   let hash = 0;
   for (let index = 0; index < input.length; index += 1) {
     hash = Math.imul(31, hash) + input.charCodeAt(index) | 0;
   }
+  return hash;
+}
+
+function stableQuestionId(sessionId: string, question: string, recommendedAnswer: string, options: string[], suffix = "") {
+  const input = `${question}\n${recommendedAnswer}\n${options.join("\n")}\n${suffix}`;
+  const hash = stableHash(input);
   return `planning-question:${Math.abs(hash)}`;
 }
 

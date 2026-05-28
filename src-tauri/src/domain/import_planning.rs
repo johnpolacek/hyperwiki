@@ -144,6 +144,7 @@ pub fn record_import_planning_answer(
     }
     let content = import_qna_page(&existing, &question, answer, &entries);
     fs::write(&path, content).map_err(|error| (500, error.to_string()))?;
+    write_import_state_page(root, &entries).map_err(|error| (500, error))?;
     Ok(import_planning_status(root))
 }
 
@@ -264,6 +265,37 @@ fn import_qna_page(
     content
 }
 
+fn write_import_state_page(root: &Path, entries: &[ImportPlanningAnswer]) -> Result<(), String> {
+    let path = root.join("wiki").join("sources").join("import-state.mdx");
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let latest = entries.last();
+    let mut content = String::from(
+        "---\ntitle: \"Import Planning State\"\ndescription: \"Compact state for fast imported-project planning turns.\"\nwikiKind: \"source\"\n---\n\n<h1>Import Planning State</h1>\n<section><h2>Summary</h2>\n<ul>\n",
+    );
+    content.push_str(&format!("<li>Answered decisions: {}</li>\n", entries.len()));
+    content.push_str("<li>Readiness: continue Q&amp;A until the agent either asks the next blocking question or creates the MVP plan.</li>\n");
+    content.push_str("<li>Next recommended action: ask only the next unresolved blocking decision, batching independent decisions when safe.</li>\n");
+    if let Some(latest) = latest {
+        content.push_str(&format!(
+            "<li>Latest answer: <code>{}</code> - {}</li>\n",
+            escape_html(&latest.id),
+            escape_html(&latest.answer)
+        ));
+    }
+    content.push_str("</ul>\n</section>\n<section><h2>Decisions</h2>\n<ul>\n");
+    for entry in entries {
+        content.push_str(&format!(
+            "<li><code>{}</code>: {}</li>\n",
+            escape_html(&entry.id),
+            escape_html(&entry.answer)
+        ));
+    }
+    content.push_str("</ul>\n</section>\n<section><h2>Open Unknowns</h2>\n<p>The visible planning agent owns unresolved blocker detection. Do not invent certainty; ask another question or write unknowns into the generated MVP plan.</p>\n</section>\n");
+    fs::write(path, content).map_err(|error| error.to_string())
+}
+
 fn strip_import_answer_comments(content: &str) -> String {
     content
         .lines()
@@ -360,8 +392,12 @@ mod tests {
         assert_eq!(status.answered_count, 1);
         let qna = fs::read_to_string(root.join("wiki").join("sources").join("import-qna.mdx"))
             .unwrap();
+        let state =
+            fs::read_to_string(root.join("wiki").join("sources").join("import-state.mdx")).unwrap();
         assert!(qna.contains("Walking tours first."));
         assert!(qna.contains("hyperwiki-import-answer"));
+        assert!(state.contains("Import Planning State"));
+        assert!(state.contains("Walking tours first."));
         assert_eq!(read_progress_answers(&root).len(), 1);
     }
 }
