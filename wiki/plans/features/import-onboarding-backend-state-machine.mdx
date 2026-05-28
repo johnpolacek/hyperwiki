@@ -1,0 +1,85 @@
+---
+title: "Import Onboarding Backend State Machine"
+description: "Move imported-project Q&A orchestration from React into the Rust backend with a Codex adapter and typed onboarding state."
+wikiKind: "plan"
+---
+
+<h1>Import Onboarding Backend State Machine</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: candidate architecture plan</li>
+    <li>Candidate: 1 - Rust-owned Codex adapter plus backend import-onboarding state machine</li>
+    <li>Goal: imported-project Q&amp;A should not stall, and first and follow-up questions should appear quickly with visible progress.</li>
+    <li>Next action: compare this candidate against the other architecture candidates before implementation selection.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Move imported-project onboarding orchestration out of React and into the Tauri Rust backend. React should render state, submit answers, and show progress. Rust should own Codex lifecycle, onboarding state, retries, timing, question extraction, answer recording, plan detection, and recovery.</p>
+  <p>This plan does not require a rigid universal pattern for all Hyperwiki agent work. It captures the best implementation path for the current import onboarding failure while keeping room to test transport and state persistence details for the best user experience.</p>
+</section>
+<section>
+  <h2>Architecture</h2>
+  <ul>
+    <li>Add a backend <code>ImportOnboardingManager</code> that owns one onboarding session per imported project.</li>
+    <li>Add an <code>ImportOnboardingStateMachine</code> with states for idle, starting, loading context, running Codex, streaming, question ready, answer recording, plan generation, plan ready, retryable failure, and cancelled.</li>
+    <li>Refactor the current Codex app-server import code into a reusable <code>CodexAdapter</code> boundary with health, thread, turn stream, and cancel operations.</li>
+    <li>Keep persistent <code>codex app-server --listen stdio://</code> as the default transport because best end-user UX is preferred over minimal implementation size.</li>
+    <li>Allow an internal experiment path for <code>codex exec --json --output-schema</code> only if it proves faster or more reliable for question turns.</li>
+    <li>Persist active onboarding state under ignored runtime state such as <code>.hyperwiki/state/import-onboarding/</code>, while keeping durable user decisions in <code>wiki/sources/import-qna.mdx</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Backend Contract</h2>
+  <ul>
+    <li>Expose backend-owned start, answer, retry, cancel, and status operations for import onboarding.</li>
+    <li>Emit typed onboarding events for state, progress, question ready, plan ready, retryable failure, and cancellation.</li>
+    <li>Remove React-owned request refs, staged scripts, app-server polling, partial-output parsing, retry decisions, and plan-completion inference.</li>
+    <li>Treat slow Codex thinking as a visible progress state, not a hard failure. The current 25-second no-assistant-text failure should be replaced by a longer protocol watchdog and a bounded total-turn timeout.</li>
+    <li>Keep Codex responsible for final MVP plan generation. Rust validates generated wiki files before marking onboarding complete.</li>
+  </ul>
+</section>
+<section>
+  <h2>Flow</h2>
+  <ul>
+    <li>Start: Rust loads compact import context, opens or resumes a Codex thread, and asks for one source-grounded onboarding question.</li>
+    <li>Question: Rust streams Codex events, extracts and validates one structured question, persists the state snapshot, and notifies React.</li>
+    <li>Answer: React submits the selected or freeform answer to Rust. Rust records it in <code>wiki/sources/import-qna.mdx</code> and starts the next backend-owned Codex turn.</li>
+    <li>Continue: Codex either emits the next question or writes the MVP plan docs when blocking unknowns are resolved.</li>
+    <li>Complete: Rust detects and validates actual plan files under <code>wiki/plans/</code> before transitioning to plan ready.</li>
+  </ul>
+</section>
+<section>
+  <h2>UX Requirements</h2>
+  <ul>
+    <li>The UI should show immediate progress after import onboarding starts.</li>
+    <li>First and follow-up questions should appear quickly when Codex is healthy.</li>
+    <li>Slow output should show specific status such as starting Codex, loading context, waiting for first assistant output, parsing question, recording answer, or generating MVP plan.</li>
+    <li>Failures should be retryable and specific, not a generic stalled state.</li>
+    <li>App reload during onboarding should show the backend session state instead of restarting blindly.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Fresh import starts backend-owned onboarding and emits progress without React polling the app-server turn directly.</li>
+    <li>A first question appears and can be answered from the import UI.</li>
+    <li>Answer submission persists durable Q&amp;A and triggers the next backend-owned Codex turn.</li>
+    <li>No false stall occurs solely because Codex has not emitted assistant text within 25 seconds.</li>
+    <li>Malformed question output becomes a retryable failure with useful diagnostics.</li>
+    <li>Generated plan completion is based on actual wiki files, not assistant text.</li>
+    <li>Cancel and retry paths leave backend state consistent.</li>
+    <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and a focused import-onboarding smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Best end-user UX is the primary design driver; simpler implementation is secondary.</li>
+    <li>Codex-generated final plan docs remain preferred over deterministic Rust plan generation.</li>
+    <li>Resume robustness is useful, but no-stall behavior and fast questions are the primary success bar.</li>
+    <li>Structured streaming, progressive context, and artifact-contract validation remain separate comparison dimensions that may be combined with this candidate later.</li>
+  </ul>
+</section>
