@@ -1,0 +1,41 @@
+---
+title: "Codex App Server Import Q&A"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Codex App Server Import Q&amp;A</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run check:tauri</code></li>
+  </ul>
+</section>
+<section>
+  <h2>Implemented Behavior</h2>
+  <ul>
+    <li>Imported-project Planning Q&amp;A now uses a persistent Codex app-server JSON-RPC thread as its primary control plane.</li>
+    <li>The visible terminal remains available for manual sessions and as a fallback, but normal import answers no longer start a new Codex TUI per question.</li>
+    <li>Question extraction reads completed app-server assistant text and keeps request-id filtering, stale-question filtering, and generated-plan detection.</li>
+    <li>Import prompts returned to one-question-at-a-time behavior; batch parsing remains tolerant for older output.</li>
+  </ul>
+</section>
+<section>
+  <h2>Runtime Contract</h2>
+  <ul>
+    <li>The Tauri backend starts <code>codex app-server --listen stdio://</code> with Codex 5.5 low-thinking overrides.</li>
+    <li>One Codex app-server thread is retained per imported project for the current app runtime.</li>
+    <li>App-server failure falls back to the existing terminal fresh-turn path so imports remain usable while the new transport is hardened.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>pnpm run check:tauri</code> passed.</li>
+    <li>Manual follow-up: fresh-import RouteChat and confirm each answer advances on the same app-server thread without a new visible Codex TUI.</li>
+  </ul>
+</section>

@@ -186,7 +186,7 @@ pub fn create_import_plan(
     ))
 }
 
-fn has_generated_plan_pages(root: &Path) -> bool {
+pub fn has_generated_plan_pages(root: &Path) -> bool {
     let plans = root.join("wiki").join("plans");
     has_generated_plan_page(&plans, &plans)
 }

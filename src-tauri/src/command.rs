@@ -621,6 +621,27 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err((status, error)) => error_response(status, error),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for import planning turn.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::codex_app_server::CodexTurnRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::codex_app_server::CodexTurnRequest {
+                prompt: String::new(),
+                current_page: String::new(),
+                request_id: String::new(),
+            });
+        return match crate::domain::codex_app_server::run_import_planning_turn(&project, body) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/review-workflows") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)

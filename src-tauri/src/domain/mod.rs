@@ -1,4 +1,5 @@
 pub mod app_shell;
+pub mod codex_app_server;
 pub mod git;
 pub mod import_planning;
 pub mod mcp;

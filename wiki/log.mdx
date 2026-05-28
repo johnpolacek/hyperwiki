@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-28 fix | codex app-server import Q&amp;A</h2>
+  <ul>
+    <li>Changed imported-project Planning Q&amp;A to use a persistent Codex app-server JSON-RPC thread before falling back to terminal prompt injection.</li>
+    <li>Kept Codex 5.5 low-thinking overrides on the new transport and restored one-question-at-a-time import prompts.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-28 fix | faster import Q&amp;A turns</h2>
   <ul>
     <li>Changed imported-project planning turns to force Codex 5.5 low thinking and use compact state for intermediate Q&amp;A prompts.</li>

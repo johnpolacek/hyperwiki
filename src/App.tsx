@@ -342,6 +342,20 @@ interface ImportPlanningStatus {
   qnaPath?: string | null;
 }
 
+interface CodexImportTurnResponse {
+  ok: boolean;
+  transport: "codex-app-server" | string;
+  projectId: string;
+  requestId: string;
+  threadId: string;
+  turnId: string;
+  text: string;
+  firstDeltaMs?: number | null;
+  elapsedMs: number;
+  planDetected: boolean;
+  events: number;
+}
+
 const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 
@@ -1097,17 +1111,32 @@ function App() {
       const loaded = await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
       const prompt = importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
-      appendImportLog(`Imported Q&A sending turn prompt project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
-      const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { commandOverride: importAgentLaunchCommand(loaded.layout), forceNew: true, requestId });
-      activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: session.id };
-      appendImportLog(`Imported Q&A turn prompt sent project=${project.id} request=${requestId} session=${session.id}`);
-      setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
-      setActiveSessionId(session.id);
+      appendImportLog(`Imported Q&A sending app-server turn project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
+      activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: "codex-app-server" };
       setPlanningInterviewStatus("waiting_for_question");
-      setPlanningActivity("Planning prompt sent; waiting for the next structured question");
-      setPlanningWorkstream(["Planning prompt sent; waiting for the next structured question"]);
+      setPlanningActivity("Planning agent is working on the next question");
+      setPlanningWorkstream(["Codex app-server turn started", "Waiting for the next structured question"]);
       setStatus("Imported project Q&A started");
-      void monitorImportPlanningTurn(project, session.id, requestId, answeredQuestionId);
+      try {
+        const turn = await hyperwikiApi.json<CodexImportTurnResponse>(withProjectQuery("/api/import-planning/turn", project), {
+          method: "POST",
+          body: {
+            prompt,
+            currentPage: "/wiki/plans/index.mdx",
+            requestId,
+          },
+        });
+        appendImportLog(`Imported Q&A app-server turn complete project=${project.id} request=${requestId} thread=${turn.threadId} turn=${turn.turnId} chars=${turn.text.length} firstDeltaMs=${turn.firstDeltaMs ?? "none"} elapsedMs=${turn.elapsedMs} events=${turn.events}`);
+        await handleImportPlanningTurnText(project, turn.threadId || "codex-app-server", requestId, turn.text, answeredQuestionId);
+      } catch (error) {
+        appendImportLog(`Imported Q&A app-server turn failed; falling back to terminal project=${project.id} request=${requestId}`, error);
+        const session = await sendAgentPromptToProject(project, prompt, "/wiki/plans/index.mdx", projectScope, loaded.layout, nextSessions, { commandOverride: importAgentLaunchCommand(loaded.layout), forceNew: true, requestId });
+        activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: session.id };
+        appendImportLog(`Imported Q&A fallback prompt sent project=${project.id} request=${requestId} session=${session.id}`);
+        setSessions((current) => current.some((item) => item.id === session.id) ? current : [...current, session]);
+        setActiveSessionId(session.id);
+        void monitorImportPlanningTurn(project, session.id, requestId, answeredQuestionId);
+      }
     })();
     importedPlanningRuns.current.set(key, run);
     try {
@@ -1118,6 +1147,43 @@ function App() {
     } finally {
       importedPlanningRuns.current.delete(key);
     }
+  }
+
+  async function handleImportPlanningTurnText(project: ProjectRecord, sessionId: string, requestId: string, text: string, answeredQuestionId = "") {
+    const [wikiResult, projectsResult] = await Promise.allSettled([
+      hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
+      hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", project)),
+    ]);
+    const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
+    if (wikiResult.status === "fulfilled") setWikiPages(pages);
+    if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
+    const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
+    if (planning.generatedPlanPaths.length > 0) {
+      appendImportLog(`Imported Q&A app-server plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
+      activeImportPlanningTurn.current = null;
+      importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
+      setPlanningInterviewStatus("idle");
+      setPlanningActivity("Generated MVP plan is ready.");
+      setPlanningWorkstream(["Generated MVP plan is ready."]);
+      return;
+    }
+    const plain = terminalTextForParsing(text);
+    const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
+    appendImportLog(`Imported Q&A app-server extraction project=${project.id} request=${requestId} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.length} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(plain.slice(-180))}`);
+    const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
+    if (nextQuestions.length) {
+      activeImportPlanningTurn.current = null;
+      appendImportLog(`Imported Q&A app-server question ready project=${project.id} request=${requestId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
+      setPlanningInterviewStatus("question_ready");
+      setPlanningQuestions(nextQuestions);
+      setPlanningActivity("Next planning question is ready.");
+      return;
+    }
+    activeImportPlanningTurn.current = null;
+    setPlanningInterviewStatus("idle");
+    setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry.");
+    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question."]);
+    setStatus("Imported project Q&A needs retry");
   }
 
   async function monitorImportPlanningTurn(project: ProjectRecord, sessionId: string, requestId: string, answeredQuestionId = "") {
@@ -4580,13 +4646,11 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
       "Use wiki/sources/import.mdx or source briefs only if the compact state is insufficient for the next decision.",
       "",
       "Output rules:",
-      "- If one branching decision remains, emit one JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
-      "- If 2-4 independent decisions remain, emit one JSON object with type \"hyperwiki-question-batch\", requestId, and questions[].",
-      "- Each batch question must include question, recommendedAnswer, reasoning, and options.",
+      "- If a branching decision remains, emit one JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
       "- Options may be strings or objects with label and description. Put the recommended option first.",
       `- Every emitted object must use requestId exactly \"${requestId}\".`,
       "- Keep prose before and after JSON to one short sentence or less.",
-      "- Stop after emitting the question or batch.",
+      "- Stop after emitting the question.",
       "",
       "Final-plan rule:",
       "- If no blocking unknowns remain, create the MVP plan now. For that final write only, use $hyperwiki and $grill-with-docs, read the full source context, and follow the plan/stage/unit file contract.",
@@ -4619,11 +4683,10 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
     "",
     "Planning requirements:",
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
-    "- For every user-facing question, emit either one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options, or one JSON object containing type \"hyperwiki-question-batch\", requestId, and questions[]. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
+    "- For every user-facing question, emit one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
     `- The JSON object's requestId must be exactly \"${requestId}\".`,
     "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
-    "- Batch 2-4 independent remaining decisions when answering them together will not change the next question.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
     "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
