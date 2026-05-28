@@ -13,5 +13,7 @@ assert.ok(source.includes("sourceDocuments"), "New Project create payload should
 assert.ok(source.includes("startImportPlanningTurn(activeProject, \"answer\""), "Import Q&A answers should start a fresh agent turn");
 assert.ok(source.includes("forceNew: true, requestId"), "Import Q&A turns should force a fresh request-scoped agent session");
 assert.ok(!source.includes("Planning answer probe saw MVP plan path"), "Import Q&A should not treat prompt text MVP paths as completion");
+assert.ok(source.includes("planningQuestionOptionFromValue"), "Import Q&A should normalize structured option objects before rendering");
+assert.ok(source.includes("option.description"), "Import Q&A should render option descriptions inside their parent choice");
 
 console.log("new project upload static smoke passed");

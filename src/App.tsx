@@ -283,7 +283,12 @@ interface PlanningQuestion {
   question: string;
   recommendedAnswer: string;
   reasoning: string;
-  options: string[];
+  options: PlanningQuestionOption[];
+}
+
+interface PlanningQuestionOption {
+  label: string;
+  description?: string;
 }
 
 interface ReviewWorkflow {
@@ -2247,22 +2252,25 @@ function ImportedPlanningQAView({
             {question.options.length ? (
               <div className="grid gap-2">
                 {question.options.map((option, index) => {
-                  const selected = selectedOption === option;
+                  const selected = selectedOption === option.label;
                   return (
                     <button
                       className={cn(
-                        "flex min-h-11 items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
+                        "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border bg-card px-3 py-2 text-left text-sm leading-5 transition-colors hover:bg-secondary",
                         selected && "border-primary bg-secondary text-secondary-foreground",
                       )}
                       disabled={isAnswering}
-                      key={`${question.id}:${index}:${option}`}
+                      key={`${question.id}:${index}:${option.label}`}
                       onClick={() => {
-                        setSelectedOption(option);
-                        void submitAnswer(option);
+                        setSelectedOption(option.label);
+                        void submitAnswer(option.label);
                       }}
                       type="button"
                     >
-                      <span>{option}</span>
+                      <span className="grid gap-1">
+                        <span>{option.label}</span>
+                        {option.description ? <span className="text-xs leading-5 text-muted-foreground">{option.description}</span> : null}
+                      </span>
                       {index === 0 ? <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">recommended</span> : null}
                     </button>
                   );
@@ -4803,15 +4811,28 @@ function planningQuestionFromValue(value: Partial<PlanningQuestion> & { type?: s
   const recommendedAnswer = stringValue(value.recommendedAnswer);
   const reasoning = stringValue(value.reasoning);
   const options = Array.isArray(value.options)
-    ? value.options.map(stringValue).filter(Boolean).slice(0, 7)
+    ? value.options.map(planningQuestionOptionFromValue).filter((option): option is PlanningQuestionOption => Boolean(option)).slice(0, 7)
     : [];
   return normalizePlanningQuestion(sessionId, question, recommendedAnswer, reasoning, options, requestId);
 }
 
-function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: string[], requestId = "") {
-  const normalizedOptions = options.length || !recommendedAnswer ? options : [recommendedAnswer];
+function planningQuestionOptionFromValue(value: unknown): PlanningQuestionOption | null {
+  if (typeof value === "string") {
+    const label = value.trim();
+    return label ? { label } : null;
+  }
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const label = stringValue(record.label) || stringValue(record.value) || stringValue(record.title);
+  if (!label) return null;
+  const description = stringValue(record.description) || stringValue(record.detail) || stringValue(record.reasoning);
+  return description ? { label, description } : { label };
+}
+
+function normalizePlanningQuestion(sessionId: string, question: string, recommendedAnswer: string, reasoning: string, options: PlanningQuestionOption[], requestId = "") {
+  const normalizedOptions = options.length || !recommendedAnswer ? options : [{ label: recommendedAnswer }];
   return {
-    id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions),
+    id: stableQuestionId(sessionId, question, recommendedAnswer, normalizedOptions.map((option) => option.description ? `${option.label}: ${option.description}` : option.label)),
     sessionId,
     requestId,
     question,
@@ -4917,12 +4938,40 @@ function looseJsonStringField(raw: string, field: string) {
   return match?.[1] ? unescapeLooseJsonString(match[1]) : "";
 }
 
-function looseJsonArrayField(raw: string, field: string) {
+function looseJsonArrayField(raw: string, field: string): PlanningQuestionOption[] {
   const match = raw.match(new RegExp(`"${field}"\\s*:\\s*\\[([\\s\\S]*?)\\]`));
   if (!match?.[1]) return [];
+  try {
+    const parsed = JSON.parse(`[${match[1]}]`) as unknown[];
+    return parsed
+      .map(planningQuestionOptionFromValue)
+      .filter((option): option is PlanningQuestionOption => Boolean(option))
+      .slice(0, 7);
+  } catch {
+    const objectOptions: PlanningQuestionOption[] = [];
+    let searchFrom = 0;
+    while (searchFrom < match[1].length) {
+      const start = match[1].indexOf("{", searchFrom);
+      if (start === -1) break;
+      const end = findJsonObjectEnd(match[1], start);
+      if (end === -1) break;
+      try {
+        const option = planningQuestionOptionFromValue(JSON.parse(match[1].slice(start, end + 1)));
+        if (option) objectOptions.push(option);
+      } catch {
+        const rawOption = match[1].slice(start, end + 1);
+        const label = looseJsonStringField(rawOption, "label");
+        const description = looseJsonStringField(rawOption, "description");
+        if (label) objectOptions.push(description ? { label, description } : { label });
+      }
+      searchFrom = end + 1;
+    }
+    if (objectOptions.length) return objectOptions.slice(0, 7);
+  }
   return [...match[1].matchAll(/"([\s\S]*?)"\s*,?/g)]
     .map((item) => unescapeLooseJsonString(item[1] || ""))
-    .filter(Boolean)
+    .filter((value) => value && value !== "label" && value !== "description")
+    .map((label) => ({ label }))
     .slice(0, 7);
 }
 
