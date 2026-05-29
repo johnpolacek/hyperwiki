@@ -1349,7 +1349,7 @@ function App() {
     return context;
   }
 
-  async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry", answer = "", answeredQuestionId = "") {
+  async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry" | "repair", answer = "", answeredQuestionId = "") {
     const key = `${project.id}:import-qna`;
     if ((reason === "initial" || reason === "retry") && revealNextImportScriptQuestion(project)) {
       appendImportLog(`Imported Q&A start reused staged script project=${project.id} reason=${reason}`);
@@ -1377,13 +1377,19 @@ function App() {
       const sourceContext = reason === "initial" || reason === "retry" ? await loadImportPlanningSourceContext(project) : "";
       const prompt = reason === "initial" || reason === "retry"
         ? importedProjectQuestionScriptPrompt(project, requestId, sourceContext)
-        : importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
+        : reason === "repair"
+          ? importedProjectPlanningRepairPrompt(project, requestId, answer, answeredQuestionId)
+          : importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
       appendImportLog(`Imported Q&A sending app-server turn project=${project.id} request=${requestId} scope=${projectScope.scope} sessions=${nextSessions.length}`);
       activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: "codex-app-server" };
       setPlanningInterviewStatus("waiting_for_question");
-      setPlanningActivity(reason === "initial" || reason === "retry" ? "Codex is generating the planning question script" : "Planning agent is working on the next question");
+      setPlanningActivity(reason === "initial" || reason === "retry"
+        ? "Codex is generating the planning question script"
+        : reason === "repair" ? "Planning agent is repairing the previous incomplete turn" : "Planning agent is working on the next question");
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, reason === "initial" || reason === "retry"
         ? ["Codex app-server script turn started", "Using inline source context", "Waiting for the first structured question"]
+        : reason === "repair"
+          ? ["Codex app-server repair turn started", "Previous turn produced no question or plan files", "Waiting for a generated plan or one structured question"]
         : ["Codex app-server turn started", "Waiting for the next structured question"]));
       setStatus("Imported project Q&A started");
       try {
@@ -1566,10 +1572,24 @@ function App() {
       setPlanningActivity("Next planning question is ready.");
       return;
     }
+    if (shouldAutoRepairImportPlanningDrift(requestId, plain)) {
+      clearActiveImportPlanningTurn(requestId);
+      appendImportLog(`Imported Q&A app-server repair queued project=${project.id} request=${requestId} tail=${JSON.stringify(plain.slice(-240))}`);
+      setPlanningInterviewStatus("waiting_for_question");
+      setPlanningActivity("Planning agent finished without a question or plan; running one repair turn.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+        "Planning turn completed without a parseable question or generated plan.",
+        "Starting one repair turn to create the plan or ask the next question.",
+      ]));
+      window.setTimeout(() => {
+        void startImportPlanningTurn(project, "repair", plain.slice(-1200), answeredQuestionId);
+      }, 0);
+      return;
+    }
     clearActiveImportPlanningTurn(requestId);
     setPlanningInterviewStatus("idle");
-    setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry.");
-    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question."]);
+    setPlanningActivity("Planning agent did not produce a question or validated plan. Use Start Q&A to retry.");
+    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question or generated plan."]);
     setStatus("Imported project Q&A needs retry");
   }
 
@@ -4996,6 +5016,15 @@ function shouldUseLocalImportQuestionFallback(requestId: string, snapshot: Codex
   return waitedAfterText && (completedAssistantMessage || usedCommands || driftedTowardPlanWrite || snapshot.elapsedMs >= 20000);
 }
 
+function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
+  if (!requestId.includes(":answer:")) return false;
+  if (!text.trim()) return false;
+  const compact = text.replace(/\s+/g, " ").trim();
+  const futureWork = /(?:i(?:'m| am| will)|we(?:'re| are| will)|going to|next(?:,| i| we)?).{0,140}(?:create|write|update|generate|produce).{0,140}(?:mvp|plan|wiki|brief|source|artifact|file)/i.test(compact);
+  const docsOnlyPlanIntent = /(?:create|write|update|generate).{0,120}(?:mvp plan|plan files|durable briefs|wiki indexes|source briefs|docs-only)/i.test(compact);
+  return futureWork || docsOnlyPlanIntent || compact.length > 0;
+}
+
 function localImportQuestionFallbackTurn(project: ProjectRecord, requestId: string, snapshot: CodexImportTurnSnapshot): CodexImportTurnResponse {
   const text = localImportQuestionFallbackText(project, requestId);
   return {
@@ -5179,8 +5208,9 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
       "- Stop after emitting the question.",
       "",
       "Final-plan rule:",
-      "- If no blocking unknowns remain, create the MVP plan now. For that final write only, use $hyperwiki and $grill-with-docs, read the full source context, and follow the plan/stage/unit file contract.",
+      "- If no blocking unknowns remain, create the MVP plan files now before your final response. For that final write only, use $hyperwiki and $grill-with-docs, read the full source context, and follow the plan/stage/unit file contract.",
       "- Preserve separate files under wiki/plans/mvp/ and update wiki/plans/index.mdx, wiki/log.mdx, and source briefs only as durable context requires.",
+      "- Do not finish with future-tense procedural prose like \"I am going to create the plan.\" Either write the plan files now or emit the next hyperwiki-question JSON object.",
       "",
       `Imported project: ${project.name}`,
       `Project root: ${project.root}`,
@@ -5230,6 +5260,42 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
     "- Replace the import intake copy with the created MVP plan state once the plan exists.",
     "- Update wiki/log.mdx and source briefs only when the interview creates durable project context.",
     "- Keep all durable project knowledge under wiki/.",
+    "- Do not finish with future-tense procedural prose like \"I am going to create the plan.\" Either write the plan files now or emit the next hyperwiki-question JSON object.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+  ].join("\n");
+}
+
+function importedProjectPlanningRepairPrompt(project: ProjectRecord, requestId: string, previousOutput = "", answeredQuestionId = "") {
+  return [
+    "Use $hyperwiki and $grill-with-docs.",
+    "",
+    "You are repairing an incomplete Hyperwiki import-planning turn.",
+    "Plan mode only: do not implement product code from this prompt.",
+    "",
+    "The previous turn completed without a parseable hyperwiki-question and without validated generated plan files.",
+    "Do not summarize what you will do. Do one of these two actions now:",
+    "",
+    "A. If no blocking unknowns remain, create the MVP plan files now under wiki/plans/mvp/, update wiki/plans/index.mdx, and update durable source briefs or wiki/log.mdx only when needed.",
+    "B. If a blocking unknown remains, output exactly one fenced JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
+    "",
+    "Strict output rules:",
+    `- Any emitted question must use requestId exactly \"${requestId}\".`,
+    "- Do not emit future-tense procedural prose such as \"I am going to update\" or \"I will create\".",
+    "- If you cannot safely write the plan files, ask the next blocking question instead.",
+    "- Stop immediately after the plan files are written or after the JSON question block.",
+    answeredQuestionId ? `- The answered question id was ${answeredQuestionId}.` : "- No answered question id was supplied.",
+    "",
+    "Context to read first:",
+    "- wiki/index.mdx",
+    "- wiki/sources/import.mdx",
+    "- wiki/sources/import-qna.mdx",
+    "- wiki/sources/import-state.mdx when present",
+    "- wiki/sources/prd.mdx, wiki/sources/technical-brief.mdx, and wiki/sources/design-brief.mdx when present",
+    "",
+    "Previous incomplete assistant output:",
+    previousOutput.trim().slice(-1200) || "No previous output was captured.",
     "",
     `Imported project: ${project.name}`,
     `Project root: ${project.root}`,

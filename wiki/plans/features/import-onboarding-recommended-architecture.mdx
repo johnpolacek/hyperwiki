@@ -26,6 +26,7 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: if <code>codex app-server</code> accepts an import-planning turn but emits no first thread event within the bounded first-event window, the backend now resets the silent app-server attempt and completes the same run through <code>codex exec --json</code> instead of leaving the UI in a long waiting state.</li>
     <li>Unit 04 complete on 2026-05-29: generated import plan files are discovered as staged artifact records under ignored runtime state, deterministic validators check MDX frontmatter, plan kind, titles, stage/unit shape, source grounding, and unit verification guidance, and import status reports <code>complete</code> only after validation passes. Reload-discovered and delayed-completion plans now go through the same validation status path.</li>
     <li>Unit 05 complete on 2026-05-29: the import-planning view no longer mounts the headless terminal listener or the obsolete React turn monitor, active backend run snapshots drive the visible phase badge, and users can cancel a running backend import turn from the Q&amp;A view.</li>
+    <li>Corrective follow-up on 2026-05-29: answer turns that drift into future-tense plan-writing prose without producing either plan artifacts or a structured question now queue one strict repair turn instead of leaving the intake in a dead retry state.</li>
   </ul>
 </section>
 <section>

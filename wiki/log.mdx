@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding answer-turn drift repair</h2>
+  <ul>
+    <li>Added a bounded repair turn when an answer follow-up completes with future-tense plan-writing prose but no parseable planning question and no generated plan artifacts.</li>
+    <li>Tightened import-planning prompts so Codex must either write the MVP plan files immediately or emit exactly one <code>hyperwiki-question</code> JSON object instead of narrating intended wiki updates.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 implementation | import onboarding Unit 05</h2>
   <ul>
     <li>Removed the obsolete React-owned import turn monitor and stopped mounting the headless terminal listener on the imported-project planning intake route.</li>

@@ -45,5 +45,9 @@ assert.match(app, /importPlanArtifactsAreComplete/);
 assert.match(app, /activeImportPlanningRun/);
 assert.match(app, /Cancel Run/);
 assert.doesNotMatch(app, /monitorImportPlanningTurn/);
+assert.match(app, /shouldAutoRepairImportPlanningDrift/);
+assert.match(app, /importedProjectPlanningRepairPrompt/);
+assert.match(app, /reason: "initial" \| "answer" \| "retry" \| "repair"/);
+assert.match(app, /without a parseable question or generated plan/);
 
 console.log("import onboarding manager static smoke passed");
