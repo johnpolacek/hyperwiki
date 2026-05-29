@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding post-answer no-text fallback</h2>
+  <ul>
+    <li>Added a fast local follow-up question when a post-answer Codex turn enters exec JSON fallback but produces no assistant text inside the bounded window.</li>
+    <li>Cancelled the slow backend run before showing the local follow-up so import onboarding does not wait for the full exec fallback timeout.</li>
+    <li>Deduped repeated backend snapshot lines in the Planning Q&amp;A activity stream so the same <code>thread.started</code> and <code>turn.started</code> events do not keep repainting.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding answer-turn drift repair</h2>
   <ul>
     <li>Added a bounded repair turn when an answer follow-up completes with future-tense plan-writing prose but no parseable planning question and no generated plan artifacts.</li>

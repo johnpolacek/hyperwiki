@@ -523,6 +523,7 @@ function App() {
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
   const activeImportPlanningTurn = useRef<{ projectId: string; requestId: string; runId?: string; sessionId: string } | null>(null);
+  const importTurnSnapshotLineKeys = useRef(new Set<string>());
   const importQuestionScripts = useRef(new Map<string, PlanningQuestion[]>());
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
@@ -1323,6 +1324,18 @@ function App() {
     }
   }
 
+  async function cancelImportPlanningRun(project: ProjectRecord, runId: string, reason: string) {
+    try {
+      const cancelled = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-cancel?runId=${encodeURIComponent(runId)}`, project), {
+        method: "POST",
+      });
+      if (cancelled.run) setActiveImportPlanningRun(cancelled.run);
+      appendImportLog(`Imported Q&A backend run cancelled project=${project.id} run=${runId} reason=${reason}`);
+    } catch (error) {
+      appendImportLog(`Imported Q&A backend run cancel failed project=${project.id} run=${runId} reason=${reason}`, error);
+    }
+  }
+
   async function loadImportPlanningSourceContext(project: ProjectRecord) {
     const sourcePaths = [
       "/wiki/sources/import-state.mdx",
@@ -1370,6 +1383,7 @@ function App() {
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
       setActiveImportPlanningRun(null);
+      importTurnSnapshotLineKeys.current.clear();
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Starting the planning agent"]));
       openImportedPlanningWorkspace(project, projectRoute);
       await loadProjectData(project);
@@ -1489,6 +1503,11 @@ function App() {
           appendImportLog(`Imported Q&A local first-question fallback project=${project.id} request=${requestId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
           return localImportQuestionFallbackTurn(project, requestId, status.snapshot);
         }
+        if (shouldUseLocalImportAnswerNoTextFallback(requestId, status.snapshot)) {
+          appendImportLog(`Imported Q&A local answer fallback project=${project.id} request=${requestId} run=${runId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
+          await cancelImportPlanningRun(project, runId, "post-answer no-text fallback");
+          return localImportAnswerFollowupFallbackTurn(project, requestId, status.snapshot);
+        }
         if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
           throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid Hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
         }
@@ -1520,7 +1539,13 @@ function App() {
       snapshot.candidateCount ? `Structured candidates seen: ${snapshot.candidateCount}` : "",
       snapshot.textTail ? `assistant: ${compactPlanningActivityText(snapshot.textTail, 360)}` : "",
     ].filter(Boolean);
-    if (lines.length) setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, lines));
+    const freshLines = lines.filter((line) => {
+      const key = `${snapshot.phase}:${line}`;
+      if (importTurnSnapshotLineKeys.current.has(key)) return false;
+      importTurnSnapshotLineKeys.current.add(key);
+      return true;
+    });
+    if (freshLines.length) setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, freshLines));
   }
 
   async function handleImportPlanningTurnText(project: ProjectRecord, sessionId: string, requestId: string, text: string, answeredQuestionId = "") {
@@ -5016,6 +5041,13 @@ function shouldUseLocalImportQuestionFallback(requestId: string, snapshot: Codex
   return waitedAfterText && (completedAssistantMessage || usedCommands || driftedTowardPlanWrite || snapshot.elapsedMs >= 20000);
 }
 
+function shouldUseLocalImportAnswerNoTextFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
+  if (!requestId.includes(":answer:")) return false;
+  if (snapshot.firstDeltaMs) return false;
+  if (!["exec_json_fallback", "turn_started", "waiting_for_assistant", "waiting_for_first_event"].includes(snapshot.phase)) return false;
+  return snapshot.elapsedMs >= 18000;
+}
+
 function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
   if (!requestId.includes(":answer:")) return false;
   if (!text.trim()) return false;
@@ -5034,6 +5066,24 @@ function localImportQuestionFallbackTurn(project: ProjectRecord, requestId: stri
     requestId,
     threadId: "hyperwiki-local-question-fallback",
     turnId: snapshot.turnId || "local-question-fallback",
+    text,
+    firstDeltaMs: snapshot.firstDeltaMs ?? null,
+    elapsedMs: snapshot.elapsedMs,
+    planDetected: false,
+    events: snapshot.events,
+    metrics: snapshot.metrics,
+  };
+}
+
+function localImportAnswerFollowupFallbackTurn(project: ProjectRecord, requestId: string, snapshot: CodexImportTurnSnapshot): CodexImportTurnResponse {
+  const text = localImportAnswerFollowupFallbackText(project, requestId);
+  return {
+    ok: true,
+    transport: "hyperwiki-local-answer-fallback",
+    projectId: project.id,
+    requestId,
+    threadId: "hyperwiki-local-answer-fallback",
+    turnId: snapshot.turnId || "local-answer-fallback",
     text,
     firstDeltaMs: snapshot.firstDeltaMs ?? null,
     elapsedMs: snapshot.elapsedMs,
@@ -5066,6 +5116,35 @@ function localImportQuestionFallbackText(project: ProjectRecord, requestId: stri
       {
         label: "Pause for source review",
         description: "Do not create the MVP plan yet; inspect imported source context and ask a more specific question next.",
+      },
+    ],
+  };
+  return `\`\`\`json\n${JSON.stringify(question, null, 2)}\n\`\`\``;
+}
+
+function localImportAnswerFollowupFallbackText(project: ProjectRecord, requestId: string) {
+  const question = {
+    type: "hyperwiki-question",
+    requestId,
+    question: `What technical baseline should the MVP plan assume for ${project.name}?`,
+    recommendedAnswer: "Local browser app with simple local persistence.",
+    reasoning: "Codex did not produce assistant text quickly after the previous answer, so Hyperwiki is asking the next implementation-shaping decision locally to keep onboarding moving.",
+    options: [
+      {
+        label: "Local browser app with simple local persistence",
+        description: "Plan a small client-first MVP using local storage or an equivalent lightweight local data layer.",
+      },
+      {
+        label: "Full-stack app with backend API",
+        description: "Plan frontend, backend routes, server-side persistence, and local preview commands from the first unit.",
+      },
+      {
+        label: "Static prototype with no persistence",
+        description: "Plan the fastest inspectable UX slice and defer saved state until a later unit.",
+      },
+      {
+        label: "Ask one more source-specific question",
+        description: "Do not write the plan yet; use the imported brief and Q&A to ask a narrower follow-up.",
       },
     ],
   };
