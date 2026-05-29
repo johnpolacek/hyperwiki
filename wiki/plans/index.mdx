@@ -8,11 +8,11 @@ wikiKind: "plan"
 <section className="summary">
   <h2>Summary</h2>
   <ul>
-    <li>Status: ready for merge</li>
-    <li>Shape: completed maintenance plan</li>
-    <li>Current plan: none</li>
-    <li>Current unit: none</li>
-    <li>Next action: merge <code>frontend-rewrite</code> to <code>main</code> after final user approval; pushing still requires approval.</li>
+    <li>Status: active planning</li>
+    <li>Shape: architecture decision plan</li>
+    <li>Current plan: <a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a></li>
+    <li>Current unit: Unit 01 - Codex adapter baseline and latency instrumentation</li>
+    <li>Next action: implement the Rust-owned onboarding manager and Codex adapter spike; pushing still requires approval.</li>
   </ul>
 </section>
 <section>
@@ -22,6 +22,7 @@ wikiKind: "plan"
 <section>
   <h2>Active Plans</h2>
   <ul>
+    <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a> is the go-forward implementation plan: Candidate 1 as the base, Candidate 5 concepts folded in, and Candidate 3 as the transport experiment path.</li>
     <li><a href="/wiki/plans/features/import-onboarding-backend-state-machine.mdx">Import Onboarding Backend State Machine</a> captures Candidate 1 for refactoring imported-project Q&amp;A into a Rust-owned Codex adapter and backend state machine.</li>
     <li><a href="/wiki/plans/features/import-onboarding-sidecar-service.mdx">Import Onboarding Sidecar Service</a> captures Candidate 2 for moving imported-project Q&amp;A into a separate local engine service with run IDs and event streaming.</li>
     <li><a href="/wiki/plans/features/import-onboarding-direct-codex-attachment.mdx">Import Onboarding Direct Codex Attachment</a> captures Candidate 3 for attaching directly to persistent Codex app-server or daemon sessions through a minimal Hyperwiki wrapper.</li>
