@@ -23,6 +23,7 @@ wikiKind: "plan"
     <li>Unit 01 timing sample: app-server initialized at 118ms, thread ready at 419ms, first event at 421ms, first delta at 3585ms, complete at 3898ms; <code>codex exec --json</code> first event at 276ms, first assistant item at 2218ms, complete at 2243ms.</li>
     <li>Unit 02 complete on 2026-05-29: import onboarding turns now have backend-owned session and run records, typed <code>import-onboarding://event</code> emissions, duplicate request joining, status snapshots with session/run metadata, retry command, and cancel command.</li>
     <li>Unit 03 complete on 2026-05-29: parsed planning questions are checkpointed as durable human-input requests under ignored runtime state, import status can restore the pending question, answer submissions include request IDs, and stale request/question combinations are rejected before Q&amp;A is written.</li>
+    <li>Corrective follow-up on 2026-05-29: if <code>codex app-server</code> accepts an import-planning turn but emits no first thread event within the bounded first-event window, the backend now resets the silent app-server attempt and completes the same run through <code>codex exec --json</code> instead of leaving the UI in a long waiting state.</li>
   </ul>
 </section>
 <section>

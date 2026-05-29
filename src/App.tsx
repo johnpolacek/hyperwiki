@@ -383,7 +383,20 @@ interface CodexImportTurnStatusResponse {
   error?: string | null;
 }
 
-type ImportPlanningProtocolPhase = "starting" | "thread_ready" | "turn_requested" | "turn_started" | "streaming" | "question_ready" | "schema_mismatch" | "stalled" | "complete" | "failed";
+type ImportPlanningProtocolPhase =
+  | "starting"
+  | "thread_ready"
+  | "turn_requested"
+  | "turn_started"
+  | "waiting_for_first_event"
+  | "waiting_for_assistant"
+  | "exec_json_fallback"
+  | "streaming"
+  | "question_ready"
+  | "schema_mismatch"
+  | "stalled"
+  | "complete"
+  | "failed";
 type PlanningInterviewStatus = "idle" | "starting" | "waiting_for_question" | "streaming" | "schema_mismatch" | "stalled" | "failed" | "question_ready" | "answering";
 
 interface CodexImportTurnSnapshot {
@@ -1388,7 +1401,15 @@ function App() {
   }
 
   function applyImportTurnSnapshot(snapshot: CodexImportTurnSnapshot) {
-    const phase = snapshot.phase === "thread_ready" || snapshot.phase === "turn_requested" || snapshot.phase === "turn_started" ? "waiting_for_question" : snapshot.phase === "streaming" ? "streaming" : planningInterviewStatus;
+    const isWaitingPhase = [
+      "thread_ready",
+      "turn_requested",
+      "turn_started",
+      "waiting_for_first_event",
+      "waiting_for_assistant",
+      "exec_json_fallback",
+    ].includes(snapshot.phase);
+    const phase = isWaitingPhase ? "waiting_for_question" : snapshot.phase === "streaming" ? "streaming" : planningInterviewStatus;
     if (phase === "waiting_for_question" || phase === "streaming") setPlanningInterviewStatus(phase);
     const label = importTurnSnapshotLabel(snapshot);
     if (label) setPlanningActivity(label);
@@ -4851,6 +4872,8 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
       return "Codex is still preparing the first app-server event.";
     case "waiting_for_assistant":
       return "Codex is still working; waiting for assistant text.";
+    case "exec_json_fallback":
+      return "Codex app-server was quiet; trying codex exec JSON.";
     case "streaming":
       return "Receiving Codex output and checking for a structured question.";
     case "stalled":

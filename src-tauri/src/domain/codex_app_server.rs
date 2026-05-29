@@ -5,7 +5,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Condvar, Mutex, OnceLock};
+use std::sync::{mpsc, Arc, Condvar, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::Emitter;
@@ -182,6 +182,13 @@ enum CodexAdapterEvent {
     Other,
 }
 
+const APP_SERVER_TURN_TIMEOUT: Duration = Duration::from_secs(120);
+const APP_SERVER_FIRST_EVENT_PROGRESS_AFTER: Duration = Duration::from_secs(3);
+const APP_SERVER_FIRST_EVENT_FALLBACK_AFTER: Duration = Duration::from_secs(10);
+const EXEC_JSON_TURN_TIMEOUT: Duration = Duration::from_secs(120);
+const FIRST_EVENT_TIMEOUT_MESSAGE: &str =
+    "Codex app-server accepted the turn but did not emit a first event.";
+
 fn app_server() -> &'static Mutex<Option<AppServer>> {
     static SERVER: OnceLock<Mutex<Option<AppServer>>> = OnceLock::new();
     SERVER.get_or_init(|| Mutex::new(None))
@@ -218,7 +225,11 @@ pub fn start_import_planning_turn(
     emit_onboarding_event(
         app.as_ref(),
         &run_record,
-        if duplicate { "run_joined" } else { "run_started" },
+        if duplicate {
+            "run_joined"
+        } else {
+            "run_started"
+        },
         "starting",
         if duplicate {
             "Import onboarding joined an active Codex run."
@@ -472,9 +483,10 @@ fn start_run_record(
         updated_at_ms: now,
         error: None,
     };
-    registry
-        .by_id
-        .insert(run_id.to_string(), TurnRunState::Running(empty_snapshot("starting")));
+    registry.by_id.insert(
+        run_id.to_string(),
+        TurnRunState::Running(empty_snapshot("starting")),
+    );
     registry
         .runs_by_id
         .insert(run_id.to_string(), run_record.clone());
@@ -666,106 +678,141 @@ pub fn run_import_planning_turn(
         return Err((400, "Prompt is required.".to_string()));
     }
     let start = Instant::now();
-    let mut server_guard = app_server()
-        .lock()
-        .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
-    let server = ensure_app_server(&mut server_guard)?;
-    let provider_ready_ms = Some(start.elapsed().as_millis());
-    let thread_id = ensure_import_thread(server, project)?;
-    let thread_ready_ms = Some(start.elapsed().as_millis());
-    update_run_snapshot(
-        run_id,
-        CodexTurnSnapshot {
-            phase: "thread_ready".to_string(),
-            metrics: CodexAdapterMetrics {
-                provider_ready_ms,
-                thread_ready_ms,
-                elapsed_ms: start.elapsed().as_millis(),
-                ..CodexAdapterMetrics::default()
-            },
-            ..empty_snapshot("thread_ready")
-        },
-    );
-    if let Some(record) = run_record(run_id) {
-        emit_onboarding_event(
-            app.as_ref(),
-            &record,
-            "provider_ready",
-            "thread_ready",
-            "Codex provider and import thread are ready.",
-        );
-    }
     let request_id = if request.request_id.trim().is_empty() {
         format!("import-turn:{}", start.elapsed().as_nanos())
     } else {
         request.request_id.clone()
     };
-    let before_index = server.line_count();
-    let turn_request_id = server.next_request_id();
-    let params = json!({
-        "threadId": thread_id,
-        "input": [{
-            "type": "text",
-            "text": prompt,
-            "text_elements": []
-        }],
-        "cwd": project.root,
-        "model": "gpt-5.5",
-        "effort": "low",
-        "approvalPolicy": "never",
-        "sandboxPolicy": { "type": "dangerFullAccess" },
-        "responsesapiClientMetadata": {
-            "hyperwiki_request_id": request_id,
-            "hyperwiki_project_id": project.id.clone(),
-            "hyperwiki_surface": "import-planning"
-        }
-    });
-    eprintln!(
-        "[hyperwiki] codex app-server turn start project_id={} request_id={} thread_id={} prompt_chars={}",
-        project.id,
-        request_id,
-        thread_id,
-        prompt.chars().count()
-    );
-    server.send(turn_request_id, "turn/start", params)?;
-    let turn_requested_ms = Some(start.elapsed().as_millis());
-    update_run_snapshot(
-        run_id,
-        CodexTurnSnapshot {
-            phase: "turn_requested".to_string(),
-            elapsed_ms: start.elapsed().as_millis(),
-            metrics: CodexAdapterMetrics {
-                provider_ready_ms,
-                thread_ready_ms,
-                turn_requested_ms,
-                elapsed_ms: start.elapsed().as_millis(),
-                ..CodexAdapterMetrics::default()
+
+    let app_server_attempt = {
+        let mut server_guard = app_server()
+            .lock()
+            .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
+        let server = ensure_app_server(&mut server_guard)?;
+        let provider_ready_ms = Some(start.elapsed().as_millis());
+        let thread_id = ensure_import_thread(server, project)?;
+        let thread_ready_ms = Some(start.elapsed().as_millis());
+        update_run_snapshot(
+            run_id,
+            CodexTurnSnapshot {
+                phase: "thread_ready".to_string(),
+                metrics: CodexAdapterMetrics {
+                    provider_ready_ms,
+                    thread_ready_ms,
+                    elapsed_ms: start.elapsed().as_millis(),
+                    ..CodexAdapterMetrics::default()
+                },
+                ..empty_snapshot("thread_ready")
             },
-            ..empty_snapshot("turn_requested")
-        },
-    );
-    if let Some(record) = run_record(run_id) {
-        emit_onboarding_event(
-            app.as_ref(),
-            &record,
-            "run_progress",
-            "turn_requested",
-            "Codex turn requested.",
         );
-    }
-    let timing_marks = CodexAdapterTimingMarks {
-        provider_ready_ms,
-        thread_ready_ms,
-        turn_requested_ms,
+        if let Some(record) = run_record(run_id) {
+            emit_onboarding_event(
+                app.as_ref(),
+                &record,
+                "provider_ready",
+                "thread_ready",
+                "Codex provider and import thread are ready.",
+            );
+        }
+        let before_index = server.line_count();
+        let turn_request_id = server.next_request_id();
+        let params = json!({
+            "threadId": thread_id,
+            "input": [{
+                "type": "text",
+                "text": prompt,
+                "text_elements": []
+            }],
+            "cwd": project.root,
+            "model": "gpt-5.5",
+            "effort": "low",
+            "approvalPolicy": "never",
+            "sandboxPolicy": { "type": "dangerFullAccess" },
+            "responsesapiClientMetadata": {
+                "hyperwiki_request_id": request_id,
+                "hyperwiki_project_id": project.id.clone(),
+                "hyperwiki_surface": "import-planning"
+            }
+        });
+        eprintln!(
+            "[hyperwiki] codex app-server turn start project_id={} request_id={} thread_id={} prompt_chars={}",
+            project.id,
+            request_id,
+            thread_id,
+            prompt.chars().count()
+        );
+        server.send(turn_request_id, "turn/start", params)?;
+        let turn_requested_ms = Some(start.elapsed().as_millis());
+        update_run_snapshot(
+            run_id,
+            CodexTurnSnapshot {
+                phase: "turn_requested".to_string(),
+                elapsed_ms: start.elapsed().as_millis(),
+                metrics: CodexAdapterMetrics {
+                    provider_ready_ms,
+                    thread_ready_ms,
+                    turn_requested_ms,
+                    elapsed_ms: start.elapsed().as_millis(),
+                    ..CodexAdapterMetrics::default()
+                },
+                ..empty_snapshot("turn_requested")
+            },
+        );
+        if let Some(record) = run_record(run_id) {
+            emit_onboarding_event(
+                app.as_ref(),
+                &record,
+                "run_progress",
+                "turn_requested",
+                "Codex turn requested.",
+            );
+        }
+        let timing_marks = CodexAdapterTimingMarks {
+            provider_ready_ms,
+            thread_ready_ms,
+            turn_requested_ms,
+        };
+        let result = server.wait_for_turn(
+            &thread_id,
+            before_index,
+            APP_SERVER_TURN_TIMEOUT,
+            run_id,
+            timing_marks,
+            app.as_ref(),
+        );
+        (
+            thread_id,
+            provider_ready_ms,
+            thread_ready_ms,
+            turn_requested_ms,
+            result,
+        )
     };
-    let result = server.wait_for_turn(
-        &thread_id,
-        before_index,
-        Duration::from_secs(120),
-        run_id,
-        timing_marks,
-        app.as_ref(),
-    )?;
+
+    let (thread_id, provider_ready_ms, thread_ready_ms, turn_requested_ms, result) =
+        app_server_attempt;
+    let result = match result {
+        Ok(result) => result,
+        Err((_, error)) if is_first_event_timeout_error(&error) => {
+            eprintln!(
+                "[hyperwiki] codex app-server first event timeout; falling back to exec json project_id={} request_id={} thread_id={} elapsed_ms={}",
+                project.id,
+                request_id,
+                thread_id,
+                start.elapsed().as_millis()
+            );
+            reset_app_server();
+            return run_exec_json_turn(
+                project,
+                run_id,
+                &request_id,
+                prompt,
+                app.as_ref(),
+                Some(&error),
+            );
+        }
+        Err(error) => return Err(error),
+    };
     let elapsed_ms = start.elapsed().as_millis();
     let metrics = CodexAdapterMetrics {
         provider_ready_ms,
@@ -806,6 +853,294 @@ pub fn run_import_planning_turn(
         events: result.events,
         metrics,
     })
+}
+
+fn is_first_event_timeout_error(error: &str) -> bool {
+    error.contains(FIRST_EVENT_TIMEOUT_MESSAGE)
+}
+
+fn run_exec_json_turn(
+    project: &crate::domain::projects::ProjectRecord,
+    run_id: &str,
+    request_id: &str,
+    prompt: &str,
+    app: Option<&tauri::AppHandle>,
+    fallback_reason: Option<&str>,
+) -> Result<CodexTurnResponse, (u16, String)> {
+    let start = Instant::now();
+    let timing_marks = CodexAdapterTimingMarks {
+        provider_ready_ms: Some(0),
+        thread_ready_ms: None,
+        turn_requested_ms: Some(0),
+    };
+    update_run_snapshot(
+        run_id,
+        turn_snapshot(
+            "exec_json_fallback",
+            "",
+            0,
+            None,
+            None,
+            None,
+            0,
+            "codex-exec-json",
+            fallback_reason,
+            timing_marks,
+        ),
+    );
+    if let Some(record) = run_record(run_id) {
+        emit_onboarding_event(
+            app,
+            &record,
+            "run_progress",
+            "exec_json_fallback",
+            "Codex app-server was quiet; trying codex exec JSON.",
+        );
+    }
+
+    let mut child = Command::new("codex")
+        .args([
+            "exec",
+            "--json",
+            "--model",
+            "gpt-5.5",
+            "--skip-git-repo-check",
+            "--",
+            prompt,
+        ])
+        .current_dir(&project.root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .map_err(|error| {
+            (
+                502,
+                format!("Failed to start codex exec JSON fallback: {error}"),
+            )
+        })?;
+    let stdout = child.stdout.take().ok_or_else(|| {
+        (
+            502,
+            "Failed to capture codex exec JSON fallback output.".to_string(),
+        )
+    })?;
+    let (tx, rx) = mpsc::channel::<Result<Value, String>>();
+    thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(line) if line.trim().is_empty() => {}
+                Ok(line) => {
+                    let parsed = serde_json::from_str::<Value>(&line).map_err(|error| {
+                        format!("Failed to parse codex exec JSON event: {error}; line={line}")
+                    });
+                    if tx.send(parsed).is_err() {
+                        break;
+                    }
+                }
+                Err(error) => {
+                    let _ = tx.send(Err(format!(
+                        "Failed to read codex exec JSON fallback output: {error}"
+                    )));
+                    break;
+                }
+            }
+        }
+    });
+
+    let deadline = start + EXEC_JSON_TURN_TIMEOUT;
+    let mut thread_id = "codex-exec-json".to_string();
+    let mut turn_id = "codex-exec-json".to_string();
+    let mut text = String::new();
+    let mut first_event_ms = None;
+    let mut first_delta_ms = None;
+    let mut events = 0usize;
+
+    loop {
+        if is_run_cancelled(run_id) {
+            let _ = child.kill();
+            return Err((499, "Import onboarding run cancelled.".to_string()));
+        }
+        let now = Instant::now();
+        if now >= deadline {
+            let _ = child.kill();
+            return Err((504, "Codex exec JSON fallback timed out.".to_string()));
+        }
+        let wait = deadline
+            .saturating_duration_since(now)
+            .min(Duration::from_millis(250));
+        match rx.recv_timeout(wait) {
+            Ok(Ok(value)) => {
+                events += 1;
+                let elapsed_ms = start.elapsed().as_millis();
+                if first_event_ms.is_none() {
+                    first_event_ms = Some(elapsed_ms);
+                }
+                let last_event_ms = Some(elapsed_ms);
+                match value["type"].as_str().unwrap_or_default() {
+                    "thread.started" => {
+                        if let Some(id) = value["thread_id"].as_str() {
+                            thread_id = id.to_string();
+                        }
+                    }
+                    "turn.started" => {
+                        if let Some(id) = value["turn_id"].as_str() {
+                            turn_id = id.to_string();
+                        }
+                        update_run_snapshot(
+                            run_id,
+                            turn_snapshot(
+                                "turn_started",
+                                &text,
+                                events,
+                                first_event_ms,
+                                first_delta_ms,
+                                last_event_ms,
+                                elapsed_ms,
+                                &turn_id,
+                                None,
+                                timing_marks,
+                            ),
+                        );
+                    }
+                    "item.completed" if value["item"]["type"].as_str() == Some("agent_message") => {
+                        text = exec_agent_message_text(&value["item"]);
+                        if first_delta_ms.is_none() {
+                            first_delta_ms = Some(elapsed_ms);
+                        }
+                        update_run_snapshot(
+                            run_id,
+                            turn_snapshot(
+                                "streaming",
+                                &text,
+                                events,
+                                first_event_ms,
+                                first_delta_ms,
+                                last_event_ms,
+                                elapsed_ms,
+                                &turn_id,
+                                None,
+                                timing_marks,
+                            ),
+                        );
+                        if let Some(record) = run_record(run_id) {
+                            emit_onboarding_event(
+                                app,
+                                &record,
+                                "assistant_delta",
+                                "streaming",
+                                "Codex exec JSON produced assistant text.",
+                            );
+                        }
+                    }
+                    "turn.completed" => {
+                        let elapsed_ms = start.elapsed().as_millis();
+                        let metrics = CodexAdapterMetrics {
+                            provider_ready_ms: Some(0),
+                            thread_ready_ms: None,
+                            turn_requested_ms: Some(0),
+                            first_event_ms,
+                            first_delta_ms,
+                            completed_ms: Some(elapsed_ms),
+                            elapsed_ms,
+                            events,
+                        };
+                        eprintln!(
+                            "[hyperwiki] codex exec json fallback complete project_id={} request_id={} thread_id={} turn_id={} chars={} first_event_ms={:?} first_delta_ms={:?} elapsed_ms={} events={}",
+                            project.id,
+                            request_id,
+                            thread_id,
+                            turn_id,
+                            text.chars().count(),
+                            first_event_ms,
+                            first_delta_ms,
+                            elapsed_ms,
+                            events
+                        );
+                        let _ = child.kill();
+                        return Ok(CodexTurnResponse {
+                            ok: true,
+                            transport: "codex-exec-json".to_string(),
+                            project_id: project.id.clone(),
+                            request_id: request_id.to_string(),
+                            thread_id,
+                            turn_id,
+                            text,
+                            first_delta_ms,
+                            elapsed_ms,
+                            plan_detected: crate::domain::import_planning::has_generated_plan_pages(
+                                &project.root,
+                            ),
+                            events,
+                            metrics,
+                        });
+                    }
+                    "error" => {
+                        let _ = child.kill();
+                        return Err((
+                            502,
+                            format!("Codex exec JSON fallback failed: {}", value["message"]),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Err(error)) => {
+                let _ = child.kill();
+                return Err((502, error));
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|error| (500, format!("Failed to poll codex exec JSON: {error}")))?
+                {
+                    if text.trim().is_empty() {
+                        return Err((
+                            502,
+                            format!(
+                                "Codex exec JSON fallback exited before assistant text: {status}"
+                            ),
+                        ));
+                    }
+                    return Err((
+                        502,
+                        format!("Codex exec JSON fallback exited before turn completion: {status}"),
+                    ));
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                if let Some(status) = child
+                    .try_wait()
+                    .map_err(|error| (500, format!("Failed to poll codex exec JSON: {error}")))?
+                {
+                    return Err((
+                        502,
+                        format!("Codex exec JSON fallback exited before turn completion: {status}"),
+                    ));
+                }
+                let _ = child.kill();
+                return Err((
+                    502,
+                    "Codex exec JSON fallback output closed before turn completion.".to_string(),
+                ));
+            }
+        }
+    }
+}
+
+fn exec_agent_message_text(item: &Value) -> String {
+    if let Some(text) = item["text"].as_str() {
+        return text.to_string();
+    }
+    if let Some(content) = item["content"].as_array() {
+        return content
+            .iter()
+            .filter_map(|part| part["text"].as_str())
+            .collect::<Vec<_>>()
+            .join("");
+    }
+    String::new()
 }
 
 fn ensure_app_server(
@@ -1158,7 +1493,9 @@ impl AppServer {
                     CodexAdapterEvent::Error { message } => {
                         return Err((502, format!("Codex app-server turn failed: {message}")));
                     }
-                    CodexAdapterEvent::TurnCompleted { turn_id: completed_turn_id } => {
+                    CodexAdapterEvent::TurnCompleted {
+                        turn_id: completed_turn_id,
+                    } => {
                         if turn_id.is_empty() {
                             turn_id = completed_turn_id;
                         }
@@ -1179,9 +1516,36 @@ impl AppServer {
             }
             let elapsed = started_at.elapsed();
             let elapsed_ms = elapsed.as_millis();
+            if events == 0 && elapsed >= APP_SERVER_FIRST_EVENT_FALLBACK_AFTER {
+                update_run_snapshot(
+                    run_id,
+                    turn_snapshot(
+                        "exec_json_fallback",
+                        &text,
+                        events,
+                        first_event_ms,
+                        first_delta_ms,
+                        last_event_ms,
+                        elapsed_ms,
+                        &turn_id,
+                        Some(FIRST_EVENT_TIMEOUT_MESSAGE),
+                        timing_marks,
+                    ),
+                );
+                if let Some(record) = run_record(run_id) {
+                    emit_onboarding_event(
+                        app,
+                        &record,
+                        "run_progress",
+                        "exec_json_fallback",
+                        "Codex app-server was quiet; trying codex exec JSON.",
+                    );
+                }
+                return Err((504, FIRST_EVENT_TIMEOUT_MESSAGE.to_string()));
+            }
             if events == 0
-                && elapsed >= Duration::from_secs(30)
-                && elapsed_ms.saturating_sub(last_waiting_snapshot_ms) >= 5_000
+                && elapsed >= APP_SERVER_FIRST_EVENT_PROGRESS_AFTER
+                && elapsed_ms.saturating_sub(last_waiting_snapshot_ms) >= 2_000
             {
                 last_waiting_snapshot_ms = elapsed_ms;
                 update_run_snapshot(
@@ -1278,7 +1642,10 @@ fn normalize_turn_event(value: &Value, thread_id: &str) -> Option<CodexAdapterEv
         }),
         "item/completed" if params["item"]["type"].as_str() == Some("agentMessage") => {
             Some(CodexAdapterEvent::AgentMessageCompleted {
-                text: params["item"]["text"].as_str().unwrap_or_default().to_string(),
+                text: params["item"]["text"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
             })
         }
         "error" => Some(CodexAdapterEvent::Error {

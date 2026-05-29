@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding first-event fallback</h2>
+  <ul>
+    <li>Changed import onboarding so an accepted but silent <code>codex app-server</code> turn falls back to <code>codex exec --json</code> after a short first-event window.</li>
+    <li>Added backend run snapshots and UI copy for the <code>exec_json_fallback</code> phase so the user sees transport recovery instead of an indefinite first-event wait.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, <code>pnpm run smoke:import-onboarding-manager</code>, and <code>HYPERWIKI_CODEX_ADAPTER_SMOKE_TRANSPORTS=exec pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 implementation | import onboarding Unit 03</h2>
   <ul>
     <li>Added durable human-input checkpoints for imported-project planning questions under ignored <code>.hyperwiki/state/import-onboarding/</code> runtime state.</li>

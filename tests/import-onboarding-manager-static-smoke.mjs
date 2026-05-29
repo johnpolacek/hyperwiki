@@ -16,6 +16,10 @@ for (const symbol of [
   "retry_import_planning_turn",
   "cancel_import_planning_turn",
   "import-onboarding://event",
+  "APP_SERVER_FIRST_EVENT_FALLBACK_AFTER",
+  "run_exec_json_turn",
+  "codex-exec-json",
+  "exec_json_fallback",
 ]) {
   assert.match(codex, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing ${symbol}`);
 }
