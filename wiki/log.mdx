@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding active-turn race</h2>
+  <ul>
+    <li>Changed import-planning polling to keep following the backend run ID when the frontend active-turn ref is stale, instead of failing the turn as superseded.</li>
+    <li>Changed active-turn cleanup to clear only the matching request, preventing older import flows from clearing a newer active turn.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding exec fallback completion</h2>
   <ul>
     <li>Changed <code>codex exec --json</code> fallback to recover when assistant text arrives but <code>turn.completed</code> never follows, returning the last assistant message after an idle window instead of timing out the import turn.</li>

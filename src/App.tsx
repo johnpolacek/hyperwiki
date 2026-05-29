@@ -501,7 +501,7 @@ function App() {
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
-  const activeImportPlanningTurn = useRef<{ projectId: string; requestId: string; sessionId: string } | null>(null);
+  const activeImportPlanningTurn = useRef<{ projectId: string; requestId: string; runId?: string; sessionId: string } | null>(null);
   const importQuestionScripts = useRef(new Map<string, PlanningQuestion[]>());
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
@@ -978,10 +978,16 @@ function App() {
     setAgentRun((current) => current?.id === runId ? { ...current, ...update } : current);
   }
 
+  function clearActiveImportPlanningTurn(requestId: string) {
+    if (activeImportPlanningTurn.current?.requestId === requestId) {
+      activeImportPlanningTurn.current = null;
+    }
+  }
+
   async function checkpointImportPlanningQuestion(project: ProjectRecord, question: PlanningQuestion) {
     const requestId = question.requestId || question.id;
     const activeTurn = activeImportPlanningTurn.current;
-    const activeTurnRunId = activeTurn && activeTurn.requestId === question.requestId ? activeTurn.sessionId : "";
+    const activeTurnRunId = activeTurn && activeTurn.requestId === question.requestId ? activeTurn.runId || "" : "";
     const status = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/question", project), {
       method: "POST",
       body: {
@@ -1336,12 +1342,13 @@ function App() {
             requestId,
           },
         });
+        activeImportPlanningTurn.current = { projectId: project.id, requestId, runId: started.runId, sessionId: "codex-app-server" };
         appendImportLog(`Imported Q&A app-server turn accepted project=${project.id} request=${requestId} run=${started.runId}`);
         const turn = await waitForImportPlanningTurn(project, started.runId, requestId);
         appendImportLog(`Imported Q&A app-server turn complete project=${project.id} request=${requestId} thread=${turn.threadId} turn=${turn.turnId} chars=${turn.text.length} firstDeltaMs=${turn.firstDeltaMs ?? "none"} elapsedMs=${turn.elapsedMs} events=${turn.events}`);
         await handleImportPlanningTurnText(project, turn.threadId || "codex-app-server", requestId, turn.text, answeredQuestionId);
       } catch (error) {
-        activeImportPlanningTurn.current = null;
+        clearActiveImportPlanningTurn(requestId);
         const message = error instanceof Error ? error.message : String(error);
         appendImportLog(`Imported Q&A app-server turn failed project=${project.id} request=${requestId} error=${message}`, error);
         if (error instanceof ImportPlanningProtocolError) {
@@ -1370,10 +1377,13 @@ function App() {
 
   async function waitForImportPlanningTurn(project: ProjectRecord, runId: string, requestId: string) {
     const startedAt = Date.now();
+    let loggedActiveMismatch = false;
     for (let attempt = 1; attempt <= 360; attempt += 1) {
       await delay(500);
-      if (activeImportPlanningTurn.current?.requestId !== requestId) {
-        throw new Error("Import planning turn was superseded.");
+      const activeTurn = activeImportPlanningTurn.current;
+      if (activeTurn && activeTurn.projectId === project.id && activeTurn.requestId !== requestId && !loggedActiveMismatch) {
+        loggedActiveMismatch = true;
+        appendImportLog(`Imported Q&A continuing backend run despite active ref mismatch project=${project.id} request=${requestId} active=${activeTurn.requestId} run=${runId}`);
       }
       const status = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-status?runId=${encodeURIComponent(runId)}`, project));
       if (attempt === 1 || attempt % 10 === 0 || status.status !== "running") {
@@ -1449,7 +1459,7 @@ function App() {
     const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
     if (planning.generatedPlanPaths.length > 0) {
       appendImportLog(`Imported Q&A app-server plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
-      activeImportPlanningTurn.current = null;
+      clearActiveImportPlanningTurn(requestId);
       importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
       setPlanningInterviewStatus("idle");
       setPlanningActivity("Generated MVP plan is ready.");
@@ -1461,7 +1471,7 @@ function App() {
     appendImportLog(`Imported Q&A app-server extraction project=${project.id} request=${requestId} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.join(",") || "none"} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(plain.slice(-180))}`);
     const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
     if (nextQuestions.length) {
-      activeImportPlanningTurn.current = null;
+      clearActiveImportPlanningTurn(requestId);
       appendImportLog(`Imported Q&A app-server question ready project=${project.id} request=${requestId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
       if (requestId.includes(":initial:") && nextQuestions.length > 1) {
         stageImportQuestionScript(project, nextQuestions);
@@ -1472,7 +1482,7 @@ function App() {
       setPlanningActivity("Next planning question is ready.");
       return;
     }
-    activeImportPlanningTurn.current = null;
+    clearActiveImportPlanningTurn(requestId);
     setPlanningInterviewStatus("idle");
     setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry.");
     setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question."]);
@@ -1501,7 +1511,7 @@ function App() {
         const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
         if (planning.generatedPlanPaths.length > 0) {
           appendImportLog(`Imported Q&A turn plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
-          activeImportPlanningTurn.current = null;
+          clearActiveImportPlanningTurn(requestId);
           importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
           setPlanningInterviewStatus("idle");
           setPlanningActivity("Generated MVP plan is ready.");
@@ -1532,7 +1542,7 @@ function App() {
       }
     }
     appendImportLog(`Imported Q&A turn timed out project=${project.id} request=${requestId} session=${sessionId} waitedMs=${Date.now() - startedAt} lastSeq=${lastSeq} tail=${JSON.stringify(lastTail.slice(-240))}`);
-    if (activeImportPlanningTurn.current?.requestId === requestId) activeImportPlanningTurn.current = null;
+    clearActiveImportPlanningTurn(requestId);
     setPlanningInterviewStatus("idle");
     setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry with a fresh agent turn.");
     setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn timed out; retry is available."]);
