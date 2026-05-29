@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding repair no-text fallback</h2>
+  <ul>
+    <li>Extended the fast no-text local follow-up fallback to repair turns, not only direct answer turns.</li>
+    <li>Changed the backend-run cancel reason and diagnostics to treat answer and repair turn stalls as the same follow-up no-text failure class.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding post-answer no-text fallback</h2>
   <ul>
     <li>Added a fast local follow-up question when a post-answer Codex turn enters exec JSON fallback but produces no assistant text inside the bounded window.</li>

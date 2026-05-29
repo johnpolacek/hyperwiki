@@ -1503,9 +1503,9 @@ function App() {
           appendImportLog(`Imported Q&A local first-question fallback project=${project.id} request=${requestId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
           return localImportQuestionFallbackTurn(project, requestId, status.snapshot);
         }
-        if (shouldUseLocalImportAnswerNoTextFallback(requestId, status.snapshot)) {
-          appendImportLog(`Imported Q&A local answer fallback project=${project.id} request=${requestId} run=${runId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
-          await cancelImportPlanningRun(project, runId, "post-answer no-text fallback");
+        if (shouldUseLocalImportFollowupNoTextFallback(requestId, status.snapshot)) {
+          appendImportLog(`Imported Q&A local follow-up fallback project=${project.id} request=${requestId} run=${runId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
+          await cancelImportPlanningRun(project, runId, "follow-up no-text fallback");
           return localImportAnswerFollowupFallbackTurn(project, requestId, status.snapshot);
         }
         if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
@@ -5041,8 +5041,8 @@ function shouldUseLocalImportQuestionFallback(requestId: string, snapshot: Codex
   return waitedAfterText && (completedAssistantMessage || usedCommands || driftedTowardPlanWrite || snapshot.elapsedMs >= 20000);
 }
 
-function shouldUseLocalImportAnswerNoTextFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
-  if (!requestId.includes(":answer:")) return false;
+function shouldUseLocalImportFollowupNoTextFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
+  if (!requestId.includes(":answer:") && !requestId.includes(":repair:")) return false;
   if (snapshot.firstDeltaMs) return false;
   if (!["exec_json_fallback", "turn_started", "waiting_for_assistant", "waiting_for_first_event"].includes(snapshot.phase)) return false;
   return snapshot.elapsedMs >= 18000;
