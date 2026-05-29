@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 implementation | import onboarding Unit 02</h2>
+  <ul>
+    <li>Added backend-owned import onboarding session and run records around Codex import-planning turns.</li>
+    <li>Added typed <code>import-onboarding://event</code> emissions, duplicate request joining, session/run metadata in status responses, and explicit retry and cancel command routes.</li>
+    <li>Added a static smoke for the manager surface and wired it into <code>pnpm run check</code>.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 implementation | import onboarding Unit 01</h2>
   <ul>
     <li>Implemented the Codex adapter baseline for import onboarding with normalized app-server events and timing metrics on turn snapshots and responses.</li>

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
+use tauri::Emitter;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,9 +42,11 @@ pub struct CodexTurnResponse {
 pub struct CodexTurnStartResponse {
     pub ok: bool,
     pub run_id: String,
+    pub session_id: String,
     pub status: String,
     pub project_id: String,
     pub request_id: String,
+    pub run: Option<ImportOnboardingRunRecord>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -51,8 +54,11 @@ pub struct CodexTurnStartResponse {
 pub struct CodexTurnStatusResponse {
     pub ok: bool,
     pub run_id: String,
+    pub session_id: String,
     pub status: String,
     pub phase: String,
+    pub session: Option<ImportOnboardingSessionRecord>,
+    pub run: Option<ImportOnboardingRunRecord>,
     pub snapshot: Option<CodexTurnSnapshot>,
     pub question: Option<Value>,
     pub retryable: bool,
@@ -89,6 +95,47 @@ pub struct CodexAdapterMetrics {
     pub events: usize,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportOnboardingSessionRecord {
+    pub project_id: String,
+    pub session_id: String,
+    pub status: String,
+    pub phase: String,
+    pub current_run_id: Option<String>,
+    pub created_at_ms: u128,
+    pub updated_at_ms: u128,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportOnboardingRunRecord {
+    pub project_id: String,
+    pub session_id: String,
+    pub run_id: String,
+    pub request_id: String,
+    pub status: String,
+    pub phase: String,
+    pub retryable: bool,
+    pub started_at_ms: u128,
+    pub updated_at_ms: u128,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportOnboardingEvent {
+    pub kind: String,
+    pub seq: u64,
+    pub timestamp_ms: u128,
+    pub project_id: String,
+    pub session_id: String,
+    pub run_id: String,
+    pub request_id: String,
+    pub phase: String,
+    pub message: String,
+}
+
 #[derive(Debug)]
 struct AppServer {
     child: Child,
@@ -111,6 +158,10 @@ struct ImportThreadRegistry {
 #[derive(Debug, Default)]
 struct TurnRunRegistry {
     by_id: HashMap<String, TurnRunState>,
+    sessions_by_project: HashMap<String, ImportOnboardingSessionRecord>,
+    runs_by_id: HashMap<String, ImportOnboardingRunRecord>,
+    events: VecDeque<ImportOnboardingEvent>,
+    next_event_seq: u64,
 }
 
 #[derive(Debug)]
@@ -118,6 +169,7 @@ enum TurnRunState {
     Running(CodexTurnSnapshot),
     Complete(CodexTurnResponse),
     Failed(String),
+    Cancelled(String),
 }
 
 #[derive(Debug, Clone)]
@@ -148,6 +200,7 @@ fn turn_runs() -> &'static Mutex<TurnRunRegistry> {
 pub fn start_import_planning_turn(
     project: crate::domain::projects::ProjectRecord,
     request: CodexTurnRequest,
+    app: Option<tauri::AppHandle>,
 ) -> Result<CodexTurnStartResponse, (u16, String)> {
     let prompt = request.prompt.trim();
     if prompt.is_empty() {
@@ -158,43 +211,73 @@ pub fn start_import_planning_turn(
     } else {
         request.request_id.clone()
     };
-    let run_id = format!("codex-import-turn:{}:{}", project.id, monotonic_id());
-    turn_runs()
-        .lock()
-        .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?
-        .by_id
-        .insert(
-            run_id.clone(),
-            TurnRunState::Running(empty_snapshot("starting")),
-        );
-    let run_id_for_thread = run_id.clone();
     let project_id = project.id.clone();
+    let run_id = format!("codex-import-turn:{}:{}", project.id, monotonic_id());
+    let (session_id, run_record, duplicate) = start_run_record(&project.id, &run_id, &request_id)?;
+    let run_id = run_record.run_id.clone();
+    emit_onboarding_event(
+        app.as_ref(),
+        &run_record,
+        if duplicate { "run_joined" } else { "run_started" },
+        "starting",
+        if duplicate {
+            "Import onboarding joined an active Codex run."
+        } else {
+            "Import onboarding Codex run started."
+        },
+    );
+    if duplicate {
+        return Ok(CodexTurnStartResponse {
+            ok: true,
+            run_id,
+            session_id,
+            status: "running".to_string(),
+            project_id,
+            request_id,
+            run: Some(run_record),
+        });
+    }
+    let run_id_for_thread = run_id.clone();
     let request_for_thread = CodexTurnRequest {
         request_id: request_id.clone(),
         ..request
     };
     thread::spawn(move || {
-        let result = run_import_planning_turn(&project, &run_id_for_thread, request_for_thread);
+        let result = run_import_planning_turn(
+            &project,
+            &run_id_for_thread,
+            request_for_thread,
+            app.clone(),
+        );
         if result.is_err() {
             reset_app_server();
         }
-        if let Ok(mut runs) = turn_runs().lock() {
-            runs.by_id.insert(
-                run_id_for_thread.clone(),
-                match result {
-                    Ok(response) => TurnRunState::Complete(response),
-                    Err((_, error)) => TurnRunState::Failed(error),
-                },
-            );
+        match result {
+            Ok(response) => {
+                let _ = complete_run_record(&run_id_for_thread, response, app.as_ref());
+            }
+            Err((_, error)) => {
+                let _ = fail_run_record(&run_id_for_thread, error, app.as_ref());
+            }
         }
     });
     Ok(CodexTurnStartResponse {
         ok: true,
         run_id,
+        session_id,
         status: "running".to_string(),
         project_id,
         request_id,
+        run: Some(run_record),
     })
+}
+
+pub fn retry_import_planning_turn(
+    project: crate::domain::projects::ProjectRecord,
+    request: CodexTurnRequest,
+    app: Option<tauri::AppHandle>,
+) -> Result<CodexTurnStartResponse, (u16, String)> {
+    start_import_planning_turn(project, request, app)
 }
 
 pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusResponse, (u16, String)> {
@@ -210,6 +293,15 @@ pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusRespon
     let Some(state) = runs.by_id.get(run_id) else {
         return Err((404, "Import planning turn run not found.".to_string()));
     };
+    let run = runs.runs_by_id.get(run_id).cloned();
+    let session_id = run
+        .as_ref()
+        .map(|record| record.session_id.clone())
+        .unwrap_or_default();
+    let session = run
+        .as_ref()
+        .and_then(|record| runs.sessions_by_project.get(&record.project_id))
+        .cloned();
     let (status, phase, snapshot, response, error, retryable) = match state {
         TurnRunState::Running(snapshot) => (
             "running".to_string(),
@@ -239,18 +331,68 @@ pub fn import_planning_turn_status(run_id: &str) -> Result<CodexTurnStatusRespon
             Some(error.clone()),
             true,
         ),
+        TurnRunState::Cancelled(error) => (
+            "cancelled".to_string(),
+            "cancelled".to_string(),
+            None,
+            None,
+            Some(error.clone()),
+            true,
+        ),
     };
     Ok(CodexTurnStatusResponse {
         ok: error.is_none(),
         run_id: run_id.to_string(),
+        session_id,
         status,
         phase,
+        session,
+        run,
         snapshot,
         question: None,
         retryable,
         response,
         error,
     })
+}
+
+pub fn cancel_import_planning_turn(
+    run_id: &str,
+    app: Option<tauri::AppHandle>,
+) -> Result<CodexTurnStatusResponse, (u16, String)> {
+    if run_id.trim().is_empty() {
+        return Err((400, "Cancel requires a run id.".to_string()));
+    }
+    let record = {
+        let mut registry = turn_runs()
+            .lock()
+            .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?;
+        let record = {
+            let Some(run) = registry.runs_by_id.get_mut(run_id) else {
+                return Err((404, "Import planning turn run not found.".to_string()));
+            };
+            run.status = "cancelled".to_string();
+            run.phase = "cancelled".to_string();
+            run.retryable = true;
+            run.error = Some("Import onboarding run cancelled.".to_string());
+            run.updated_at_ms = unix_time_ms();
+            run.clone()
+        };
+        registry.by_id.insert(
+            run_id.to_string(),
+            TurnRunState::Cancelled("Import onboarding run cancelled.".to_string()),
+        );
+        update_session_from_run(&mut registry, &record);
+        record
+    };
+    emit_onboarding_event(
+        app.as_ref(),
+        &record,
+        "run_cancelled",
+        "cancelled",
+        "Import onboarding run cancelled.",
+    );
+    import_planning_turn_status(run_id)
 }
 
 fn is_stall_error(error: &str) -> bool {
@@ -277,10 +419,219 @@ fn empty_snapshot(phase: &str) -> CodexTurnSnapshot {
 fn update_run_snapshot(run_id: &str, snapshot: CodexTurnSnapshot) {
     if let Ok(mut runs) = turn_runs().lock() {
         if matches!(runs.by_id.get(run_id), Some(TurnRunState::Running(_))) {
+            let phase = snapshot.phase.clone();
             runs.by_id
                 .insert(run_id.to_string(), TurnRunState::Running(snapshot));
+            if let Some(run) = runs.runs_by_id.get_mut(run_id) {
+                run.phase = phase;
+                run.updated_at_ms = unix_time_ms();
+                let record = run.clone();
+                update_session_from_run(&mut runs, &record);
+            }
         }
     }
+}
+
+fn start_run_record(
+    project_id: &str,
+    run_id: &str,
+    request_id: &str,
+) -> Result<(String, ImportOnboardingRunRecord, bool), (u16, String)> {
+    let now = unix_time_ms();
+    let mut registry = turn_runs()
+        .lock()
+        .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?;
+    if let Some(existing) = registry.runs_by_id.values().find(|run| {
+        run.project_id == project_id && run.request_id == request_id && run.status == "running"
+    }) {
+        return Ok((existing.session_id.clone(), existing.clone(), true));
+    }
+    let session_id = registry
+        .sessions_by_project
+        .entry(project_id.to_string())
+        .or_insert_with(|| ImportOnboardingSessionRecord {
+            project_id: project_id.to_string(),
+            session_id: format!("import-onboarding:{}:{}", project_id, monotonic_id()),
+            status: "running".to_string(),
+            phase: "starting".to_string(),
+            current_run_id: Some(run_id.to_string()),
+            created_at_ms: now,
+            updated_at_ms: now,
+        })
+        .session_id
+        .clone();
+    let run_record = ImportOnboardingRunRecord {
+        project_id: project_id.to_string(),
+        session_id: session_id.clone(),
+        run_id: run_id.to_string(),
+        request_id: request_id.to_string(),
+        status: "running".to_string(),
+        phase: "starting".to_string(),
+        retryable: false,
+        started_at_ms: now,
+        updated_at_ms: now,
+        error: None,
+    };
+    registry
+        .by_id
+        .insert(run_id.to_string(), TurnRunState::Running(empty_snapshot("starting")));
+    registry
+        .runs_by_id
+        .insert(run_id.to_string(), run_record.clone());
+    if let Some(session) = registry.sessions_by_project.get_mut(project_id) {
+        session.status = "running".to_string();
+        session.phase = "starting".to_string();
+        session.current_run_id = Some(run_id.to_string());
+        session.updated_at_ms = now;
+    }
+    Ok((session_id, run_record, false))
+}
+
+fn complete_run_record(
+    run_id: &str,
+    response: CodexTurnResponse,
+    app: Option<&tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    let record = {
+        let mut registry = turn_runs()
+            .lock()
+            .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?;
+        if matches!(registry.by_id.get(run_id), Some(TurnRunState::Cancelled(_))) {
+            return Ok(());
+        }
+        registry
+            .by_id
+            .insert(run_id.to_string(), TurnRunState::Complete(response));
+        let Some(run) = registry.runs_by_id.get_mut(run_id) else {
+            return Ok(());
+        };
+        run.status = "complete".to_string();
+        run.phase = "complete".to_string();
+        run.retryable = false;
+        run.error = None;
+        run.updated_at_ms = unix_time_ms();
+        let record = run.clone();
+        update_session_from_run(&mut registry, &record);
+        record
+    };
+    emit_onboarding_event(
+        app,
+        &record,
+        "run_completed",
+        "complete",
+        "Import onboarding Codex run completed.",
+    );
+    Ok(())
+}
+
+fn fail_run_record(
+    run_id: &str,
+    error: String,
+    app: Option<&tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    let phase = if is_stall_error(&error) {
+        "stalled"
+    } else if error.to_lowercase().contains("cancel") {
+        "cancelled"
+    } else {
+        "failed"
+    };
+    let record = {
+        let mut registry = turn_runs()
+            .lock()
+            .map_err(|_| (500, "Codex turn run registry lock is poisoned.".to_string()))?;
+        if matches!(registry.by_id.get(run_id), Some(TurnRunState::Cancelled(_))) {
+            return Ok(());
+        }
+        registry
+            .by_id
+            .insert(run_id.to_string(), TurnRunState::Failed(error.clone()));
+        let Some(run) = registry.runs_by_id.get_mut(run_id) else {
+            return Ok(());
+        };
+        run.status = "failed".to_string();
+        run.phase = phase.to_string();
+        run.retryable = true;
+        run.error = Some(error);
+        run.updated_at_ms = unix_time_ms();
+        let record = run.clone();
+        update_session_from_run(&mut registry, &record);
+        record
+    };
+    emit_onboarding_event(
+        app,
+        &record,
+        "run_failed",
+        phase,
+        "Import onboarding Codex run failed.",
+    );
+    Ok(())
+}
+
+fn update_session_from_run(registry: &mut TurnRunRegistry, run: &ImportOnboardingRunRecord) {
+    if let Some(session) = registry.sessions_by_project.get_mut(&run.project_id) {
+        session.status = run.status.clone();
+        session.phase = run.phase.clone();
+        session.current_run_id = Some(run.run_id.clone());
+        session.updated_at_ms = unix_time_ms();
+    }
+}
+
+fn emit_onboarding_event(
+    app: Option<&tauri::AppHandle>,
+    run: &ImportOnboardingRunRecord,
+    kind: &str,
+    phase: &str,
+    message: &str,
+) {
+    let event = {
+        let mut registry = match turn_runs().lock() {
+            Ok(registry) => registry,
+            Err(_) => return,
+        };
+        registry.next_event_seq = registry.next_event_seq.saturating_add(1);
+        let event = ImportOnboardingEvent {
+            kind: kind.to_string(),
+            seq: registry.next_event_seq,
+            timestamp_ms: unix_time_ms(),
+            project_id: run.project_id.clone(),
+            session_id: run.session_id.clone(),
+            run_id: run.run_id.clone(),
+            request_id: run.request_id.clone(),
+            phase: phase.to_string(),
+            message: message.to_string(),
+        };
+        registry.events.push_back(event.clone());
+        while registry.events.len() > 200 {
+            registry.events.pop_front();
+        }
+        event
+    };
+    if let Some(app) = app {
+        let _ = app.emit("import-onboarding://event", event);
+    }
+}
+
+fn run_record(run_id: &str) -> Option<ImportOnboardingRunRecord> {
+    turn_runs()
+        .lock()
+        .ok()
+        .and_then(|registry| registry.runs_by_id.get(run_id).cloned())
+}
+
+fn is_run_cancelled(run_id: &str) -> bool {
+    turn_runs()
+        .lock()
+        .ok()
+        .map(|registry| matches!(registry.by_id.get(run_id), Some(TurnRunState::Cancelled(_))))
+        .unwrap_or(false)
+}
+
+fn unix_time_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0)
 }
 
 fn reset_app_server() {
@@ -308,6 +659,7 @@ pub fn run_import_planning_turn(
     project: &crate::domain::projects::ProjectRecord,
     run_id: &str,
     request: CodexTurnRequest,
+    app: Option<tauri::AppHandle>,
 ) -> Result<CodexTurnResponse, (u16, String)> {
     let prompt = request.prompt.trim();
     if prompt.is_empty() {
@@ -334,6 +686,15 @@ pub fn run_import_planning_turn(
             ..empty_snapshot("thread_ready")
         },
     );
+    if let Some(record) = run_record(run_id) {
+        emit_onboarding_event(
+            app.as_ref(),
+            &record,
+            "provider_ready",
+            "thread_ready",
+            "Codex provider and import thread are ready.",
+        );
+    }
     let request_id = if request.request_id.trim().is_empty() {
         format!("import-turn:{}", start.elapsed().as_nanos())
     } else {
@@ -383,6 +744,15 @@ pub fn run_import_planning_turn(
             ..empty_snapshot("turn_requested")
         },
     );
+    if let Some(record) = run_record(run_id) {
+        emit_onboarding_event(
+            app.as_ref(),
+            &record,
+            "run_progress",
+            "turn_requested",
+            "Codex turn requested.",
+        );
+    }
     let timing_marks = CodexAdapterTimingMarks {
         provider_ready_ms,
         thread_ready_ms,
@@ -394,6 +764,7 @@ pub fn run_import_planning_turn(
         Duration::from_secs(120),
         run_id,
         timing_marks,
+        app.as_ref(),
     )?;
     let elapsed_ms = start.elapsed().as_millis();
     let metrics = CodexAdapterMetrics {
@@ -672,6 +1043,7 @@ impl AppServer {
         timeout: Duration,
         run_id: &str,
         timing_marks: CodexAdapterTimingMarks,
+        app: Option<&tauri::AppHandle>,
     ) -> Result<TurnResult, (u16, String)> {
         let started_at = Instant::now();
         let deadline = started_at + timeout;
@@ -689,6 +1061,9 @@ impl AppServer {
         let mut last_waiting_snapshot_ms = 0u128;
         loop {
             for value in state.lines.iter().skip(seen) {
+                if is_run_cancelled(run_id) {
+                    return Err((499, "Import onboarding run cancelled.".to_string()));
+                }
                 seen += 1;
                 let Some(event) = normalize_turn_event(value, thread_id) else {
                     continue;
@@ -719,8 +1094,18 @@ impl AppServer {
                                 timing_marks,
                             ),
                         );
+                        if let Some(record) = run_record(run_id) {
+                            emit_onboarding_event(
+                                app,
+                                &record,
+                                "run_progress",
+                                "turn_started",
+                                "Codex import-planning turn started.",
+                            );
+                        }
                     }
                     CodexAdapterEvent::AssistantDelta { delta } => {
+                        let is_first_delta = first_delta_ms.is_none();
                         if first_delta_ms.is_none() {
                             first_delta_ms = Some(started_at.elapsed().as_millis());
                         }
@@ -740,6 +1125,17 @@ impl AppServer {
                                 timing_marks,
                             ),
                         );
+                        if is_first_delta {
+                            if let Some(record) = run_record(run_id) {
+                                emit_onboarding_event(
+                                    app,
+                                    &record,
+                                    "assistant_delta",
+                                    "streaming",
+                                    "Codex assistant text is streaming.",
+                                );
+                            }
+                        }
                     }
                     CodexAdapterEvent::AgentMessageCompleted { text: full_text } => {
                         text = full_text;
@@ -803,6 +1199,15 @@ impl AppServer {
                         timing_marks,
                     ),
                 );
+                if let Some(record) = run_record(run_id) {
+                    emit_onboarding_event(
+                        app,
+                        &record,
+                        "run_progress",
+                        "waiting_for_first_event",
+                        "Codex is still preparing the first app-server event.",
+                    );
+                }
             }
             if events > 0
                 && first_delta_ms.is_none()
@@ -825,6 +1230,15 @@ impl AppServer {
                         timing_marks,
                     ),
                 );
+                if let Some(record) = run_record(run_id) {
+                    emit_onboarding_event(
+                        app,
+                        &record,
+                        "run_progress",
+                        "waiting_for_assistant",
+                        "Codex is still working; waiting for assistant text.",
+                    );
+                }
             }
             let wait = deadline
                 .saturating_duration_since(now)

@@ -621,6 +621,34 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err((status, error)) => error_response(status, error),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn-retry") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for import planning retry.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::codex_app_server::CodexTurnRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::codex_app_server::CodexTurnRequest {
+                prompt: String::new(),
+                current_page: String::new(),
+                request_id: String::new(),
+            });
+        return match crate::domain::codex_app_server::retry_import_planning_turn(project, body, app) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn-cancel") {
+        let run_id = query_param(&request.path, "runId").unwrap_or_default();
+        return match crate::domain::codex_app_server::cancel_import_planning_turn(&run_id, app) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "POST" && request.path.starts_with("/api/import-planning/turn") {
         let project = resolve_request_project(&request.path).or_else(current_project_record);
         let Some(project) = project else {
@@ -637,7 +665,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 current_page: String::new(),
                 request_id: String::new(),
             });
-        return match crate::domain::codex_app_server::start_import_planning_turn(project, body) {
+        return match crate::domain::codex_app_server::start_import_planning_turn(project, body, app) {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };

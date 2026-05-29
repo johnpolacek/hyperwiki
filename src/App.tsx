@@ -360,16 +360,21 @@ interface CodexImportTurnResponse {
 interface CodexImportTurnStartResponse {
   ok: boolean;
   runId: string;
+  sessionId?: string;
   status: "running" | string;
   projectId: string;
   requestId: string;
+  run?: ImportOnboardingRunRecord | null;
 }
 
 interface CodexImportTurnStatusResponse {
   ok: boolean;
   runId: string;
+  sessionId?: string;
   status: "running" | "complete" | "failed" | string;
   phase?: ImportPlanningProtocolPhase | string;
+  session?: ImportOnboardingSessionRecord | null;
+  run?: ImportOnboardingRunRecord | null;
   snapshot?: CodexImportTurnSnapshot | null;
   question?: PlanningQuestion | null;
   retryable?: boolean;
@@ -403,6 +408,29 @@ interface CodexAdapterMetrics {
   completedMs?: number | null;
   elapsedMs?: number;
   events?: number;
+}
+
+interface ImportOnboardingSessionRecord {
+  projectId: string;
+  sessionId: string;
+  status: string;
+  phase: string;
+  currentRunId?: string | null;
+  createdAtMs: number;
+  updatedAtMs: number;
+}
+
+interface ImportOnboardingRunRecord {
+  projectId: string;
+  sessionId: string;
+  runId: string;
+  requestId: string;
+  status: string;
+  phase: string;
+  retryable: boolean;
+  startedAtMs: number;
+  updatedAtMs: number;
+  error?: string | null;
 }
 
 class ImportPlanningProtocolError extends Error {
