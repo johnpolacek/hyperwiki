@@ -54,5 +54,8 @@ assert.match(app, /localImportAnswerFollowupFallbackTurn/);
 assert.match(app, /cancelImportPlanningRun/);
 assert.match(app, /importTurnSnapshotLineKeys/);
 assert.match(app, /requestId\.includes\(":answer:"\) && !requestId\.includes\(":repair:"\)/);
+assert.match(app, /importPlanningWorkstreamLimit = 1000/);
+assert.match(app, /const showActivityPane = !isRetryableFailure/);
+assert.match(app, /questions\.length \? "Planning activity" : waitingLabel/);
 
 console.log("import onboarding manager static smoke passed");

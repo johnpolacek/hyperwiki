@@ -29,6 +29,7 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: answer turns that drift into future-tense plan-writing prose without producing either plan artifacts or a structured question now queue one strict repair turn instead of leaving the intake in a dead retry state.</li>
     <li>Corrective follow-up on 2026-05-29: post-answer turns that enter exec JSON fallback but produce no assistant text now cancel the slow backend run and show a local technical-baseline follow-up question before the full exec timeout.</li>
     <li>Corrective follow-up on 2026-05-29: repair turns now share the same fast no-text local follow-up fallback as answer turns, preventing a second long wait after the repair turn enters exec JSON fallback.</li>
+    <li>Corrective follow-up on 2026-05-29: the Q&amp;A activity pane now stays visible with active questions and keeps a larger cumulative workstream so users can inspect the between-question Codex/run output instead of losing the terminal-like history.</li>
   </ul>
 </section>
 <section>

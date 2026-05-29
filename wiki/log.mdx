@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding cumulative activity</h2>
+  <ul>
+    <li>Changed the imported Planning Q&amp;A activity pane to remain visible alongside active questions when prior run output exists.</li>
+    <li>Raised the import-planning workstream retention from a short rolling tail to a larger session log and stopped replacing the log on normal completion.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding repair no-text fallback</h2>
   <ul>
     <li>Extended the fast no-text local follow-up fallback to repair turns, not only direct answer turns.</li>

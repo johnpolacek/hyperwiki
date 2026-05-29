@@ -482,6 +482,7 @@ class ImportPlanningProtocolError extends Error {
 
 const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
+const importPlanningWorkstreamLimit = 1000;
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -675,7 +676,7 @@ function App() {
       clearPlanningQuestions();
       setPlanningInterviewStatus("idle");
       setPlanningActivity("Generated MVP plan is ready.");
-      setPlanningWorkstream(["Generated MVP plan is ready."]);
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Generated MVP plan is ready."]));
       setStatus("Imported project plan created");
       const nextPath = importCompletionLandingPath(
         workspaceResult.status === "fulfilled" ? workspaceResult.value : null,
@@ -1067,7 +1068,7 @@ function App() {
     setPlanningInterviewStatus("question_ready");
     void setImportPlanningQuestions(project, [nextQuestion]);
     setPlanningActivity("Next planning question is ready.");
-    setPlanningWorkstream((current) => [...current.slice(-8), `Scripted question ready (${nextQuestions.length} remaining)`]);
+    setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [`Scripted question ready (${nextQuestions.length} remaining)`]));
     setStatus("Imported project Q&A question ready");
     return true;
   }
@@ -1435,12 +1436,12 @@ function App() {
         if (error instanceof ImportPlanningProtocolError) {
           setPlanningInterviewStatus(error.phase);
           setPlanningActivity(message);
-          setPlanningWorkstream((current) => [...current.slice(-6), message, ...(error.tail ? [`Last output: ${error.tail.slice(-360)}`] : [])]);
+          setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [message, ...(error.tail ? [`Last output: ${error.tail.slice(-360)}`] : [])]));
           setStatus(error.phase === "stalled" ? "Imported project Q&A stalled" : "Imported project Q&A needs retry");
         } else {
           setPlanningInterviewStatus("idle");
           setPlanningActivity(`Codex app-server import turn failed: ${message}`);
-          setPlanningWorkstream((current) => [...current.slice(-8), `Codex app-server import turn failed: ${message}`]);
+          setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [`Codex app-server import turn failed: ${message}`]));
           setStatus("Imported project Q&A app-server failed");
         }
       }
@@ -1578,7 +1579,7 @@ function App() {
       importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
       setPlanningInterviewStatus("idle");
       setPlanningActivity("Generated MVP plan is ready.");
-      setPlanningWorkstream(["Generated MVP plan is ready."]);
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Generated MVP plan is ready."]));
       return;
     }
     const plain = terminalTextForParsing(text);
@@ -1614,7 +1615,7 @@ function App() {
     clearActiveImportPlanningTurn(requestId);
     setPlanningInterviewStatus("idle");
     setPlanningActivity("Planning agent did not produce a question or validated plan. Use Start Q&A to retry.");
-    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question or generated plan."]);
+    setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Planning turn completed without a parseable question or generated plan."]));
     setStatus("Imported project Q&A needs retry");
   }
 
@@ -2722,10 +2723,10 @@ function ImportedPlanningQAView({
   const waitingLabel = status === "streaming"
     ? "Checking Codex output..."
     : lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
+  const activityLabel = questions.length ? "Planning activity" : waitingLabel;
   const isRetryableFailure = status === "stalled" || status === "schema_mismatch" || status === "failed";
   const isRunning = Boolean(activeRun && activeRun.status === "running") || ["starting", "waiting_for_question", "streaming", "answering"].includes(status) || isStarting;
-  const showActivityPane = !questions.length
-    && !isRetryableFailure
+  const showActivityPane = !isRetryableFailure
     && (status === "starting" || status === "waiting_for_question" || status === "streaming" || status === "answering" || isStarting || Boolean(activity) || workstream.length > 0);
   const description = "Answer questions and make important decisions to create your project.";
 
@@ -2851,8 +2852,8 @@ function ImportedPlanningQAView({
           <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-                <span className="truncate">{waitingLabel}</span>
+                {!questions.length || isRunning ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
+                <span className="truncate">{activityLabel}</span>
               </div>
               {activeRun ? (
                 <span className="shrink-0 rounded-md bg-secondary px-2 py-1 font-mono text-[11px] text-secondary-foreground">
@@ -5151,7 +5152,7 @@ function localImportAnswerFollowupFallbackText(project: ProjectRecord, requestId
   return `\`\`\`json\n${JSON.stringify(question, null, 2)}\n\`\`\``;
 }
 
-function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = 18) {
+function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = importPlanningWorkstreamLimit) {
   const next = [...current];
   for (const line of nextLines) {
     const normalized = line.trim();
@@ -5784,7 +5785,7 @@ function appendAgentTranscript(current: string, chunk: string) {
 }
 
 function planningWorkstreamLines(text: string, options: { limit?: number; maxLineLength?: number } = {}) {
-  const limit = options.limit ?? 18;
+  const limit = options.limit ?? importPlanningWorkstreamLimit;
   const maxLineLength = options.maxLineLength ?? 220;
   return terminalTextForParsing(text)
     .split("\n")
