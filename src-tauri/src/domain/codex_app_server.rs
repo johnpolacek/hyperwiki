@@ -187,6 +187,7 @@ const APP_SERVER_TURN_TIMEOUT: Duration = Duration::from_secs(120);
 const APP_SERVER_FIRST_EVENT_PROGRESS_AFTER: Duration = Duration::from_secs(3);
 const APP_SERVER_FIRST_EVENT_FALLBACK_AFTER: Duration = Duration::from_secs(10);
 const EXEC_JSON_TURN_TIMEOUT: Duration = Duration::from_secs(120);
+const EXEC_JSON_ASSISTANT_IDLE_COMPLETE_AFTER: Duration = Duration::from_secs(12);
 const FIRST_EVENT_TIMEOUT_MESSAGE: &str =
     "Codex app-server accepted the turn but did not emit a first event.";
 
@@ -907,6 +908,8 @@ fn run_exec_json_turn(
             "--json",
             "--model",
             "gpt-5.5",
+            "--sandbox",
+            "danger-full-access",
             "--skip-git-repo-check",
             "--",
             prompt,
@@ -960,6 +963,7 @@ fn run_exec_json_turn(
     let mut first_delta_ms = None;
     let mut events = 0usize;
     let mut event_log = Vec::<String>::new();
+    let mut last_event_at = start;
 
     loop {
         if is_run_cancelled(run_id) {
@@ -969,6 +973,20 @@ fn run_exec_json_turn(
         let now = Instant::now();
         if now >= deadline {
             let _ = child.kill();
+            if !text.trim().is_empty() {
+                return Ok(exec_json_response(
+                    project,
+                    request_id,
+                    &thread_id,
+                    &turn_id,
+                    text,
+                    first_event_ms,
+                    first_delta_ms,
+                    start,
+                    events,
+                    "timeout_after_assistant_text",
+                ));
+            }
             return Err((504, "Codex exec JSON fallback timed out.".to_string()));
         }
         let wait = deadline
@@ -977,6 +995,7 @@ fn run_exec_json_turn(
         match rx.recv_timeout(wait) {
             Ok(Ok(value)) => {
                 events += 1;
+                last_event_at = Instant::now();
                 let elapsed_ms = start.elapsed().as_millis();
                 if first_event_ms.is_none() {
                     first_event_ms = Some(elapsed_ms);
@@ -1042,46 +1061,19 @@ fn run_exec_json_turn(
                         }
                     }
                     "turn.completed" => {
-                        let elapsed_ms = start.elapsed().as_millis();
-                        let metrics = CodexAdapterMetrics {
-                            provider_ready_ms: Some(0),
-                            thread_ready_ms: None,
-                            turn_requested_ms: Some(0),
-                            first_event_ms,
-                            first_delta_ms,
-                            completed_ms: Some(elapsed_ms),
-                            elapsed_ms,
-                            events,
-                        };
-                        eprintln!(
-                            "[hyperwiki] codex exec json fallback complete project_id={} request_id={} thread_id={} turn_id={} chars={} first_event_ms={:?} first_delta_ms={:?} elapsed_ms={} events={}",
-                            project.id,
-                            request_id,
-                            thread_id,
-                            turn_id,
-                            text.chars().count(),
-                            first_event_ms,
-                            first_delta_ms,
-                            elapsed_ms,
-                            events
-                        );
                         let _ = child.kill();
-                        return Ok(CodexTurnResponse {
-                            ok: true,
-                            transport: "codex-exec-json".to_string(),
-                            project_id: project.id.clone(),
-                            request_id: request_id.to_string(),
-                            thread_id,
-                            turn_id,
+                        return Ok(exec_json_response(
+                            project,
+                            request_id,
+                            &thread_id,
+                            &turn_id,
                             text,
+                            first_event_ms,
                             first_delta_ms,
-                            elapsed_ms,
-                            plan_detected: crate::domain::import_planning::has_generated_plan_pages(
-                                &project.root,
-                            ),
+                            start,
                             events,
-                            metrics,
-                        });
+                            "turn_completed",
+                        ));
                     }
                     "error" => {
                         let _ = child.kill();
@@ -1098,6 +1090,23 @@ fn run_exec_json_turn(
                 return Err((502, error));
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
+                if !text.trim().is_empty()
+                    && last_event_at.elapsed() >= EXEC_JSON_ASSISTANT_IDLE_COMPLETE_AFTER
+                {
+                    let _ = child.kill();
+                    return Ok(exec_json_response(
+                        project,
+                        request_id,
+                        &thread_id,
+                        &turn_id,
+                        text,
+                        first_event_ms,
+                        first_delta_ms,
+                        start,
+                        events,
+                        "assistant_idle",
+                    ));
+                }
                 if let Some(status) = child
                     .try_wait()
                     .map_err(|error| (500, format!("Failed to poll codex exec JSON: {error}")))?
@@ -1110,9 +1119,21 @@ fn run_exec_json_turn(
                             ),
                         ));
                     }
-                    return Err((
-                        502,
-                        format!("Codex exec JSON fallback exited before turn completion: {status}"),
+                    eprintln!(
+                        "[hyperwiki] codex exec json fallback exited after assistant text project_id={} request_id={} status={}",
+                        project.id, request_id, status
+                    );
+                    return Ok(exec_json_response(
+                        project,
+                        request_id,
+                        &thread_id,
+                        &turn_id,
+                        text,
+                        first_event_ms,
+                        first_delta_ms,
+                        start,
+                        events,
+                        "process_exited_after_assistant_text",
                     ));
                 }
             }
@@ -1121,6 +1142,24 @@ fn run_exec_json_turn(
                     .try_wait()
                     .map_err(|error| (500, format!("Failed to poll codex exec JSON: {error}")))?
                 {
+                    if !text.trim().is_empty() {
+                        eprintln!(
+                            "[hyperwiki] codex exec json fallback output closed after assistant text project_id={} request_id={} status={}",
+                            project.id, request_id, status
+                        );
+                        return Ok(exec_json_response(
+                            project,
+                            request_id,
+                            &thread_id,
+                            &turn_id,
+                            text,
+                            first_event_ms,
+                            first_delta_ms,
+                            start,
+                            events,
+                            "output_closed_after_assistant_text",
+                        ));
+                    }
                     return Err((
                         502,
                         format!("Codex exec JSON fallback exited before turn completion: {status}"),
@@ -1148,6 +1187,58 @@ fn exec_agent_message_text(item: &Value) -> String {
             .join("");
     }
     String::new()
+}
+
+fn exec_json_response(
+    project: &crate::domain::projects::ProjectRecord,
+    request_id: &str,
+    thread_id: &str,
+    turn_id: &str,
+    text: String,
+    first_event_ms: Option<u128>,
+    first_delta_ms: Option<u128>,
+    start: Instant,
+    events: usize,
+    completion_reason: &str,
+) -> CodexTurnResponse {
+    let elapsed_ms = start.elapsed().as_millis();
+    let metrics = CodexAdapterMetrics {
+        provider_ready_ms: Some(0),
+        thread_ready_ms: None,
+        turn_requested_ms: Some(0),
+        first_event_ms,
+        first_delta_ms,
+        completed_ms: Some(elapsed_ms),
+        elapsed_ms,
+        events,
+    };
+    eprintln!(
+        "[hyperwiki] codex exec json fallback complete project_id={} request_id={} thread_id={} turn_id={} reason={} chars={} first_event_ms={:?} first_delta_ms={:?} elapsed_ms={} events={}",
+        project.id,
+        request_id,
+        thread_id,
+        turn_id,
+        completion_reason,
+        text.chars().count(),
+        first_event_ms,
+        first_delta_ms,
+        elapsed_ms,
+        events
+    );
+    CodexTurnResponse {
+        ok: true,
+        transport: "codex-exec-json".to_string(),
+        project_id: project.id.clone(),
+        request_id: request_id.to_string(),
+        thread_id: thread_id.to_string(),
+        turn_id: turn_id.to_string(),
+        text,
+        first_delta_ms,
+        elapsed_ms,
+        plan_detected: crate::domain::import_planning::has_generated_plan_pages(&project.root),
+        events,
+        metrics,
+    }
 }
 
 fn ensure_app_server(

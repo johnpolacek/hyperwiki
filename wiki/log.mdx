@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding exec fallback completion</h2>
+  <ul>
+    <li>Changed <code>codex exec --json</code> fallback to recover when assistant text arrives but <code>turn.completed</code> never follows, returning the last assistant message after an idle window instead of timing out the import turn.</li>
+    <li>Aligned exec fallback sandboxing with the app-server adapter and surfaced the assistant text tail in the visible Q&amp;A activity stream.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>HYPERWIKI_CODEX_ADAPTER_SMOKE_TRANSPORTS=exec pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding activity visibility</h2>
   <ul>
     <li>Added readable Codex transport event summaries to import-planning turn snapshots so the intake UI can show which app-server or exec JSON events arrived.</li>

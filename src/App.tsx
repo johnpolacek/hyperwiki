@@ -1433,6 +1433,7 @@ function App() {
       ...eventLines,
       snapshot.firstDeltaMs ? `First assistant text: ${snapshot.firstDeltaMs}ms` : "",
       snapshot.candidateCount ? `Structured candidates seen: ${snapshot.candidateCount}` : "",
+      snapshot.textTail ? `assistant: ${compactPlanningActivityText(snapshot.textTail, 360)}` : "",
     ].filter(Boolean);
     if (lines.length) setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, lines));
   }
@@ -4909,6 +4910,12 @@ function appendPlanningWorkstreamLines(current: string[], nextLines: string[], l
     next.push(normalized);
   }
   return next.slice(-limit);
+}
+
+function compactPlanningActivityText(text: string, maxChars: number) {
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (compact.length <= maxChars) return compact;
+  return `${compact.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
