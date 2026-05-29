@@ -33,6 +33,7 @@ pub struct CodexTurnResponse {
     pub elapsed_ms: u128,
     pub plan_detected: bool,
     pub events: usize,
+    pub metrics: CodexAdapterMetrics,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -72,6 +73,20 @@ pub struct CodexTurnSnapshot {
     pub turn_id: String,
     pub schema_error: Option<String>,
     pub candidate_count: usize,
+    pub metrics: CodexAdapterMetrics,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexAdapterMetrics {
+    pub provider_ready_ms: Option<u128>,
+    pub thread_ready_ms: Option<u128>,
+    pub turn_requested_ms: Option<u128>,
+    pub first_event_ms: Option<u128>,
+    pub first_delta_ms: Option<u128>,
+    pub completed_ms: Option<u128>,
+    pub elapsed_ms: u128,
+    pub events: usize,
 }
 
 #[derive(Debug)]
@@ -103,6 +118,16 @@ enum TurnRunState {
     Running(CodexTurnSnapshot),
     Complete(CodexTurnResponse),
     Failed(String),
+}
+
+#[derive(Debug, Clone)]
+enum CodexAdapterEvent {
+    TurnStarted { turn_id: String },
+    AssistantDelta { delta: String },
+    AgentMessageCompleted { text: String },
+    TurnCompleted { turn_id: String },
+    Error { message: String },
+    Other,
 }
 
 fn app_server() -> &'static Mutex<Option<AppServer>> {
@@ -245,6 +270,7 @@ fn empty_snapshot(phase: &str) -> CodexTurnSnapshot {
         turn_id: String::new(),
         schema_error: None,
         candidate_count: 0,
+        metrics: CodexAdapterMetrics::default(),
     }
 }
 
@@ -292,11 +318,19 @@ pub fn run_import_planning_turn(
         .lock()
         .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
     let server = ensure_app_server(&mut server_guard)?;
+    let provider_ready_ms = Some(start.elapsed().as_millis());
     let thread_id = ensure_import_thread(server, project)?;
+    let thread_ready_ms = Some(start.elapsed().as_millis());
     update_run_snapshot(
         run_id,
         CodexTurnSnapshot {
             phase: "thread_ready".to_string(),
+            metrics: CodexAdapterMetrics {
+                provider_ready_ms,
+                thread_ready_ms,
+                elapsed_ms: start.elapsed().as_millis(),
+                ..CodexAdapterMetrics::default()
+            },
             ..empty_snapshot("thread_ready")
         },
     );
@@ -333,24 +367,56 @@ pub fn run_import_planning_turn(
         prompt.chars().count()
     );
     server.send(turn_request_id, "turn/start", params)?;
+    let turn_requested_ms = Some(start.elapsed().as_millis());
     update_run_snapshot(
         run_id,
         CodexTurnSnapshot {
             phase: "turn_requested".to_string(),
             elapsed_ms: start.elapsed().as_millis(),
+            metrics: CodexAdapterMetrics {
+                provider_ready_ms,
+                thread_ready_ms,
+                turn_requested_ms,
+                elapsed_ms: start.elapsed().as_millis(),
+                ..CodexAdapterMetrics::default()
+            },
             ..empty_snapshot("turn_requested")
         },
     );
-    let result =
-        server.wait_for_turn(&thread_id, before_index, Duration::from_secs(120), run_id)?;
+    let timing_marks = CodexAdapterTimingMarks {
+        provider_ready_ms,
+        thread_ready_ms,
+        turn_requested_ms,
+    };
+    let result = server.wait_for_turn(
+        &thread_id,
+        before_index,
+        Duration::from_secs(120),
+        run_id,
+        timing_marks,
+    )?;
     let elapsed_ms = start.elapsed().as_millis();
+    let metrics = CodexAdapterMetrics {
+        provider_ready_ms,
+        thread_ready_ms,
+        turn_requested_ms,
+        first_event_ms: result.first_event_ms,
+        first_delta_ms: result.first_delta_ms,
+        completed_ms: Some(elapsed_ms),
+        elapsed_ms,
+        events: result.events,
+    };
     eprintln!(
-        "[hyperwiki] codex app-server turn complete project_id={} request_id={} thread_id={} turn_id={} chars={} first_delta_ms={:?} elapsed_ms={} events={}",
+        "[hyperwiki] codex app-server turn complete project_id={} request_id={} thread_id={} turn_id={} chars={} provider_ready_ms={:?} thread_ready_ms={:?} turn_requested_ms={:?} first_event_ms={:?} first_delta_ms={:?} elapsed_ms={} events={}",
         project.id,
         request_id,
         thread_id,
         result.turn_id,
         result.text.chars().count(),
+        provider_ready_ms,
+        thread_ready_ms,
+        turn_requested_ms,
+        result.first_event_ms,
         result.first_delta_ms,
         elapsed_ms,
         result.events
@@ -367,6 +433,7 @@ pub fn run_import_planning_turn(
         elapsed_ms,
         plan_detected: crate::domain::import_planning::has_generated_plan_pages(&project.root),
         events: result.events,
+        metrics,
     })
 }
 
@@ -604,6 +671,7 @@ impl AppServer {
         before_index: usize,
         timeout: Duration,
         run_id: &str,
+        timing_marks: CodexAdapterTimingMarks,
     ) -> Result<TurnResult, (u16, String)> {
         let started_at = Instant::now();
         let deadline = started_at + timeout;
@@ -614,108 +682,99 @@ impl AppServer {
         let mut seen = before_index;
         let mut text = String::new();
         let mut turn_id = String::new();
+        let mut first_event_ms = None;
         let mut first_delta_ms = None;
         let mut last_event_ms = None;
         let mut events = 0usize;
+        let mut last_waiting_snapshot_ms = 0u128;
         loop {
             for value in state.lines.iter().skip(seen) {
                 seen += 1;
-                let method = value["method"].as_str().unwrap_or_default();
-                let params = &value["params"];
-                if params["threadId"].as_str() != Some(thread_id) {
+                let Some(event) = normalize_turn_event(value, thread_id) else {
                     continue;
-                }
+                };
                 events += 1;
-                last_event_ms = Some(started_at.elapsed().as_millis());
-                if let Some(id) = params["turnId"].as_str() {
-                    if turn_id.is_empty() {
-                        turn_id = id.to_string();
-                    }
+                let event_elapsed_ms = started_at.elapsed().as_millis();
+                if first_event_ms.is_none() {
+                    first_event_ms = Some(event_elapsed_ms);
                 }
-                match method {
-                    "turn/started" => {
+                last_event_ms = Some(event_elapsed_ms);
+                match event {
+                    CodexAdapterEvent::TurnStarted { turn_id: id } => {
+                        if turn_id.is_empty() {
+                            turn_id = id;
+                        }
                         update_run_snapshot(
                             run_id,
                             turn_snapshot(
                                 "turn_started",
                                 &text,
                                 events,
+                                first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
                                 started_at.elapsed().as_millis(),
                                 &turn_id,
                                 None,
+                                timing_marks,
                             ),
                         );
-                        if let Some(id) = params["turn"]["id"]
-                            .as_str()
-                            .or_else(|| params["turnId"].as_str())
-                        {
-                            turn_id = id.to_string();
-                        }
                     }
-                    "item/agentMessage/delta" => {
+                    CodexAdapterEvent::AssistantDelta { delta } => {
                         if first_delta_ms.is_none() {
                             first_delta_ms = Some(started_at.elapsed().as_millis());
                         }
-                        if let Some(delta) = params["delta"].as_str() {
-                            text.push_str(delta);
-                        }
+                        text.push_str(&delta);
                         update_run_snapshot(
                             run_id,
                             turn_snapshot(
                                 "streaming",
                                 &text,
                                 events,
+                                first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
                                 started_at.elapsed().as_millis(),
                                 &turn_id,
                                 None,
+                                timing_marks,
                             ),
                         );
                     }
-                    "item/completed" => {
-                        if params["item"]["type"].as_str() == Some("agentMessage") {
-                            if let Some(full_text) = params["item"]["text"].as_str() {
-                                text = full_text.to_string();
-                            }
-                        }
+                    CodexAdapterEvent::AgentMessageCompleted { text: full_text } => {
+                        text = full_text;
                         update_run_snapshot(
                             run_id,
                             turn_snapshot(
                                 "streaming",
                                 &text,
                                 events,
+                                first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
                                 started_at.elapsed().as_millis(),
                                 &turn_id,
                                 None,
+                                timing_marks,
                             ),
                         );
                     }
-                    "error" => {
-                        return Err((
-                            502,
-                            format!("Codex app-server turn failed: {}", params["error"]),
-                        ));
+                    CodexAdapterEvent::Error { message } => {
+                        return Err((502, format!("Codex app-server turn failed: {message}")));
                     }
-                    "turn/completed" => {
+                    CodexAdapterEvent::TurnCompleted { turn_id: completed_turn_id } => {
                         if turn_id.is_empty() {
-                            turn_id = params["turn"]["id"]
-                                .as_str()
-                                .unwrap_or_default()
-                                .to_string();
+                            turn_id = completed_turn_id;
                         }
                         return Ok(TurnResult {
                             turn_id,
                             text,
+                            first_event_ms,
                             first_delta_ms,
                             events,
                         });
                     }
-                    _ => {}
+                    CodexAdapterEvent::Other => {}
                 }
             }
             let now = Instant::now();
@@ -723,43 +782,49 @@ impl AppServer {
                 return Err((504, "Codex app-server turn timed out.".to_string()));
             }
             let elapsed = started_at.elapsed();
-            if events == 0 && elapsed >= Duration::from_secs(30) {
+            let elapsed_ms = elapsed.as_millis();
+            if events == 0
+                && elapsed >= Duration::from_secs(30)
+                && elapsed_ms.saturating_sub(last_waiting_snapshot_ms) >= 5_000
+            {
+                last_waiting_snapshot_ms = elapsed_ms;
                 update_run_snapshot(
                     run_id,
                     turn_snapshot(
-                        "stalled",
+                        "waiting_for_first_event",
                         &text,
                         events,
+                        first_event_ms,
                         first_delta_ms,
                         last_event_ms,
-                        elapsed.as_millis(),
+                        elapsed_ms,
                         &turn_id,
-                        Some("Codex app-server did not emit a turn event within 30 seconds."),
+                        None,
+                        timing_marks,
                     ),
                 );
-                return Err((
-                    504,
-                    "Codex app-server did not emit a turn event within 30 seconds.".to_string(),
-                ));
             }
-            if first_delta_ms.is_none() && elapsed >= Duration::from_secs(25) {
+            if events > 0
+                && first_delta_ms.is_none()
+                && elapsed >= Duration::from_secs(25)
+                && elapsed_ms.saturating_sub(last_waiting_snapshot_ms) >= 5_000
+            {
+                last_waiting_snapshot_ms = elapsed_ms;
                 update_run_snapshot(
                     run_id,
                     turn_snapshot(
-                        "stalled",
+                        "waiting_for_assistant",
                         &text,
                         events,
+                        first_event_ms,
                         first_delta_ms,
                         last_event_ms,
-                        elapsed.as_millis(),
+                        elapsed_ms,
                         &turn_id,
-                        Some("Codex app-server did not emit assistant text within 25 seconds."),
+                        None,
+                        timing_marks,
                     ),
                 );
-                return Err((
-                    504,
-                    "Codex app-server did not emit assistant text within 25 seconds.".to_string(),
-                ));
             }
             let wait = deadline
                 .saturating_duration_since(now)
@@ -772,15 +837,61 @@ impl AppServer {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+struct CodexAdapterTimingMarks {
+    provider_ready_ms: Option<u128>,
+    thread_ready_ms: Option<u128>,
+    turn_requested_ms: Option<u128>,
+}
+
+fn normalize_turn_event(value: &Value, thread_id: &str) -> Option<CodexAdapterEvent> {
+    let method = value["method"].as_str().unwrap_or_default();
+    let params = &value["params"];
+    if params["threadId"].as_str() != Some(thread_id) {
+        return None;
+    }
+    let fallback_turn_id = params["turnId"].as_str().unwrap_or_default().to_string();
+    match method {
+        "turn/started" => {
+            let turn_id = params["turn"]["id"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or(fallback_turn_id);
+            Some(CodexAdapterEvent::TurnStarted { turn_id })
+        }
+        "item/agentMessage/delta" => Some(CodexAdapterEvent::AssistantDelta {
+            delta: params["delta"].as_str().unwrap_or_default().to_string(),
+        }),
+        "item/completed" if params["item"]["type"].as_str() == Some("agentMessage") => {
+            Some(CodexAdapterEvent::AgentMessageCompleted {
+                text: params["item"]["text"].as_str().unwrap_or_default().to_string(),
+            })
+        }
+        "error" => Some(CodexAdapterEvent::Error {
+            message: params["error"].to_string(),
+        }),
+        "turn/completed" => {
+            let turn_id = params["turn"]["id"]
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or(fallback_turn_id);
+            Some(CodexAdapterEvent::TurnCompleted { turn_id })
+        }
+        _ => Some(CodexAdapterEvent::Other),
+    }
+}
+
 fn turn_snapshot(
     phase: &str,
     text: &str,
     events: usize,
+    first_event_ms: Option<u128>,
     first_delta_ms: Option<u128>,
     last_event_ms: Option<u128>,
     elapsed_ms: u128,
     turn_id: &str,
     schema_error: Option<&str>,
+    timing_marks: CodexAdapterTimingMarks,
 ) -> CodexTurnSnapshot {
     let text_tail = text
         .chars()
@@ -801,6 +912,16 @@ fn turn_snapshot(
         turn_id: turn_id.to_string(),
         schema_error: schema_error.map(str::to_string),
         candidate_count: text.matches("hyperwiki-question").count(),
+        metrics: CodexAdapterMetrics {
+            provider_ready_ms: timing_marks.provider_ready_ms,
+            thread_ready_ms: timing_marks.thread_ready_ms,
+            turn_requested_ms: timing_marks.turn_requested_ms,
+            first_event_ms,
+            first_delta_ms,
+            completed_ms: None,
+            elapsed_ms,
+            events,
+        },
     }
 }
 
@@ -808,6 +929,7 @@ fn turn_snapshot(
 struct TurnResult {
     turn_id: String,
     text: String,
+    first_event_ms: Option<u128>,
     first_delta_ms: Option<u128>,
     events: usize,
 }

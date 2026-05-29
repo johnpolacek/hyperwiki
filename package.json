@@ -21,6 +21,7 @@
     "smoke:project-contract": "cargo test --manifest-path src-tauri/Cargo.toml project_contract_composes_agent_context_and_project_facts",
     "smoke:review-workflows": "cargo test --manifest-path src-tauri/Cargo.toml review",
     "smoke:mcp-transport": "node tests/mcp-transport-smoke.mjs",
+    "smoke:codex-adapter": "node tests/codex-adapter-latency-smoke.mjs",
     "smoke:codex-app-server": "node tests/codex-app-server-protocol-smoke.mjs",
     "smoke:tauri-harness": "node tests/tauri-harness-smoke.mjs",
     "smoke:tauri-webdriver": "node tests/tauri-import-planning-webdriver-smoke.mjs",

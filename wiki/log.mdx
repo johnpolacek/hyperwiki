@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 implementation | import onboarding Unit 01</h2>
+  <ul>
+    <li>Implemented the Codex adapter baseline for import onboarding with normalized app-server events and timing metrics on turn snapshots and responses.</li>
+    <li>Added <code>pnpm run smoke:codex-adapter</code> to compare persistent <code>codex app-server</code> with <code>codex exec --json</code> on the same prompt fixture.</li>
+    <li>Changed the previous 25-second no-assistant-text failure into a visible waiting phase until the total turn deadline, so quiet-but-alive Codex turns no longer become immediate stalled states.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, <code>pnpm run smoke:codex-adapter</code>, and <code>pnpm run smoke:codex-app-server</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-28 plan | stronger import Q&amp;A protocol</h2>
   <ul>
     <li>Added a corrective plan to make Codex app-server import Q&amp;A observable, bounded, and retryable.</li>

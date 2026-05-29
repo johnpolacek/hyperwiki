@@ -354,6 +354,7 @@ interface CodexImportTurnResponse {
   elapsedMs: number;
   planDetected: boolean;
   events: number;
+  metrics?: CodexAdapterMetrics;
 }
 
 interface CodexImportTurnStartResponse {
@@ -390,6 +391,18 @@ interface CodexImportTurnSnapshot {
   turnId: string;
   schemaError?: string | null;
   candidateCount: number;
+  metrics?: CodexAdapterMetrics;
+}
+
+interface CodexAdapterMetrics {
+  providerReadyMs?: number | null;
+  threadReadyMs?: number | null;
+  turnRequestedMs?: number | null;
+  firstEventMs?: number | null;
+  firstDeltaMs?: number | null;
+  completedMs?: number | null;
+  elapsedMs?: number;
+  events?: number;
 }
 
 class ImportPlanningProtocolError extends Error {
@@ -4771,6 +4784,10 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
       return "Codex turn requested; waiting for the first app-server event.";
     case "turn_started":
       return "Codex import-planning turn started.";
+    case "waiting_for_first_event":
+      return "Codex is still preparing the first app-server event.";
+    case "waiting_for_assistant":
+      return "Codex is still working; waiting for assistant text.";
     case "streaming":
       return "Receiving Codex output and checking for a structured question.";
     case "stalled":
