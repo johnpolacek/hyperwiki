@@ -294,10 +294,23 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         else {
             return error_response(404, "Project not found for import planning.");
         };
-        return json_response(
-            200,
-            &crate::domain::import_planning::import_planning_status(&project.root),
-        );
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::import_planning::HumanInputCheckpointRequest>(body)
+                    .ok()
+            });
+        let Some(parsed) = parsed else {
+            return error_response(400, "Invalid import planning question checkpoint.");
+        };
+        return match crate::domain::import_planning::record_human_input_request(
+            &project.root,
+            parsed,
+        ) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
     }
     if request.method == "POST" && request.path.starts_with("/api/import-planning/answer") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
@@ -314,6 +327,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .unwrap_or(crate::domain::import_planning::ImportPlanningProgressRequest {
                 question: None,
                 answer: String::new(),
+                request_id: String::new(),
             });
         return match crate::domain::import_planning::record_import_planning_answer(
             &project.root,

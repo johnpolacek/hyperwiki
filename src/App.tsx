@@ -338,6 +338,7 @@ interface ImportPlanningStatus {
   status: "notImported" | "incomplete" | "complete";
   answeredCount: number;
   currentQuestion?: ImportPlanningQuestion | null;
+  currentRequestId?: string | null;
   nextAction: string;
   qnaPath?: string | null;
 }
@@ -963,6 +964,35 @@ function App() {
     setAgentRun((current) => current?.id === runId ? { ...current, ...update } : current);
   }
 
+  async function checkpointImportPlanningQuestion(project: ProjectRecord, question: PlanningQuestion) {
+    const requestId = question.requestId || question.id;
+    const activeTurn = activeImportPlanningTurn.current;
+    const activeTurnRunId = activeTurn && activeTurn.requestId === question.requestId ? activeTurn.sessionId : "";
+    const status = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/question", project), {
+      method: "POST",
+      body: {
+        requestId,
+        sessionId: question.sessionId || "",
+        runId: activeTurnRunId,
+        question: planningQuestionToImportQuestion(question),
+      },
+    });
+    applyImportPlanningStatus(status);
+    appendImportLog(`Imported Q&A checkpointed human input project=${project.id} request=${requestId} question=${question.id}`);
+  }
+
+  async function setImportPlanningQuestions(project: ProjectRecord, questions: PlanningQuestion[]) {
+    const nextQuestions = questions.filter((question) => !answeredPlanningQuestionIds.current.has(question.id));
+    if (nextQuestions[0]) {
+      try {
+        await checkpointImportPlanningQuestion(project, nextQuestions[0]);
+      } catch (error) {
+        appendImportLog(`Imported Q&A checkpoint failed project=${project.id} question=${nextQuestions[0].id}`, error);
+      }
+    }
+    setPlanningQuestions(nextQuestions);
+  }
+
   function setPlanningQuestions(questions: PlanningQuestion[]) {
     const nextQuestions = questions.filter((question) => !answeredPlanningQuestionIds.current.has(question.id));
     setActivePlanningQuestions(nextQuestions);
@@ -984,7 +1014,7 @@ function App() {
     if (!nextQuestion) return false;
     appendImportLog(`Imported Q&A script question ready project=${project.id} remaining=${nextQuestions.length} id=${nextQuestion.id}`);
     setPlanningInterviewStatus("question_ready");
-    setPlanningQuestions([nextQuestion]);
+    void setImportPlanningQuestions(project, [nextQuestion]);
     setPlanningActivity("Next planning question is ready.");
     setPlanningWorkstream((current) => [...current.slice(-8), `Scripted question ready (${nextQuestions.length} remaining)`]);
     setStatus("Imported project Q&A question ready");
@@ -1034,7 +1064,11 @@ function App() {
         appendImportLog(`Planning question extracted session=${sessionId} request=${question.requestId || "none"} expected=${expectedRequestId || "none"} id=${question.id} batch=${questions.length} options=${question.options.length} chars=${question.question.length} recommended=${question.recommendedAnswer ? "yes" : "no"}`);
       }
       setPlanningInterviewStatus("question_ready");
-      setPlanningQuestions(questions);
+      if (activeProject && isIncompleteImportProject(activeProject)) {
+        void setImportPlanningQuestions(activeProject, questions);
+      } else {
+        setPlanningQuestions(questions);
+      }
     }
   }, []);
 
@@ -1059,6 +1093,7 @@ function App() {
           body: {
             question: planningQuestionToImportQuestion(item.question),
             answer: item.answer,
+            requestId: item.question.requestId || item.question.id,
           },
         });
         appendImportLog(`Planning answer persisted project=${activeProject.id} question=${item.question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
@@ -1396,7 +1431,7 @@ function App() {
         return;
       }
       setPlanningInterviewStatus("question_ready");
-      setPlanningQuestions(nextQuestions);
+      await setImportPlanningQuestions(project, nextQuestions);
       setPlanningActivity("Next planning question is ready.");
       return;
     }
@@ -1451,7 +1486,7 @@ function App() {
         if (nextQuestions.length) {
           appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
           setPlanningInterviewStatus("question_ready");
-          setPlanningQuestions(nextQuestions);
+          await setImportPlanningQuestions(project, nextQuestions);
           setPlanningActivity("Next planning question is ready.");
           return;
         }
@@ -4841,6 +4876,7 @@ function importPlanningQuestionToPlanningQuestion(question: ImportPlanningQuesti
   return {
     id: question.id,
     sessionId: "",
+    requestId: question.id,
     question: question.prompt,
     recommendedAnswer: "",
     reasoning: question.rationale,

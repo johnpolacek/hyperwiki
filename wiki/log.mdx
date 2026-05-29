@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 implementation | import onboarding Unit 03</h2>
+  <ul>
+    <li>Added durable human-input checkpoints for imported-project planning questions under ignored <code>.hyperwiki/state/import-onboarding/</code> runtime state.</li>
+    <li>Changed import planning status to restore a pending checkpointed question and answer submissions to include request IDs.</li>
+    <li>Changed answer persistence to reject stale request/question combinations before writing <code>wiki/sources/import-qna.mdx</code>.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code>, <code>pnpm run check</code>, <code>pnpm run smoke:import-onboarding-manager</code>, and <code>pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 implementation | import onboarding Unit 02</h2>
   <ul>
     <li>Added backend-owned import onboarding session and run records around Codex import-planning turns.</li>

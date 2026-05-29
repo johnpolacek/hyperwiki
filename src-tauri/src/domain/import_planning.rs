@@ -32,6 +32,19 @@ pub struct ImportPlanningProgressRequest {
     pub question: Option<ImportPlanningQuestion>,
     #[serde(default)]
     pub answer: String,
+    #[serde(default)]
+    pub request_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HumanInputCheckpointRequest {
+    pub request_id: String,
+    pub question: ImportPlanningQuestion,
+    #[serde(default)]
+    pub session_id: String,
+    #[serde(default)]
+    pub run_id: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -58,6 +71,7 @@ pub struct ImportPlanningStatus {
     pub status: String,
     pub answered_count: usize,
     pub current_question: Option<ImportPlanningQuestion>,
+    pub current_request_id: Option<String>,
     pub next_action: String,
     pub qna_path: Option<String>,
 }
@@ -91,6 +105,7 @@ pub fn import_planning_status(root: impl AsRef<Path>) -> ImportPlanningStatus {
             status: "notImported".to_string(),
             answered_count: 0,
             current_question: None,
+            current_request_id: None,
             next_action: "Create or import a project brief.".to_string(),
             qna_path: None,
         };
@@ -100,17 +115,37 @@ pub fn import_planning_status(root: impl AsRef<Path>) -> ImportPlanningStatus {
             status: "complete".to_string(),
             answered_count: read_progress_answers(root).len(),
             current_question: None,
+            current_request_id: None,
             next_action: "Continue from the generated implementation plan.".to_string(),
             qna_path: Some("wiki/sources/import-qna.mdx".to_string()),
         };
     }
+    let current_request = read_human_input_request(root);
     ImportPlanningStatus {
         status: "incomplete".to_string(),
         answered_count: read_progress_answers(root).len(),
-        current_question: None,
+        current_question: current_request.as_ref().map(|request| request.question.clone()),
+        current_request_id: current_request.map(|request| request.request_id),
         next_action: "Resume import planning Q&A before creating implementation stages.".to_string(),
         qna_path: Some("wiki/sources/import-qna.mdx".to_string()),
     }
+}
+
+pub fn record_human_input_request(
+    root: impl AsRef<Path>,
+    request: HumanInputCheckpointRequest,
+) -> Result<ImportPlanningStatus, (u16, String)> {
+    let root = root.as_ref();
+    if request.request_id.trim().is_empty() {
+        return Err((400, "Human input request id is required.".to_string()));
+    }
+    let path = human_input_request_path(root);
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| (500, error.to_string()))?;
+    }
+    let content = human_input_request_page(&request);
+    fs::write(&path, content).map_err(|error| (500, error.to_string()))?;
+    Ok(import_planning_status(root))
 }
 
 pub fn record_import_planning_answer(
@@ -124,6 +159,16 @@ pub fn record_import_planning_answer(
             "Import planning progress requires the question being answered.".to_string(),
         )
     })?;
+    if let Some(pending) = read_human_input_request(root) {
+        let request_id_matches = request.request_id.trim().is_empty()
+            || request.request_id.trim() == pending.request_id;
+        if !request_id_matches || question.id != pending.question.id {
+            return Err((
+                409,
+                "Import planning answer targets a stale question. Reload the current question and try again.".to_string(),
+            ));
+        }
+    }
     let answer = request.answer.trim();
     if answer.is_empty() {
         return Err((400, "Import planning answer is required.".to_string()));
@@ -145,6 +190,7 @@ pub fn record_import_planning_answer(
     let content = import_qna_page(&existing, &question, answer, &entries);
     fs::write(&path, content).map_err(|error| (500, error.to_string()))?;
     write_import_state_page(root, &entries).map_err(|error| (500, error))?;
+    clear_human_input_request(root);
     Ok(import_planning_status(root))
 }
 
@@ -228,6 +274,27 @@ fn read_progress_answers(root: &Path) -> Vec<ImportPlanningAnswer> {
         .filter_map(|json| serde_json::from_str::<ImportPlanningAnswer>(json).ok())
         .filter(|answer| !answer.answer.trim().is_empty())
         .collect()
+}
+
+fn human_input_request_path(root: &Path) -> std::path::PathBuf {
+    root.join(".hyperwiki")
+        .join("state")
+        .join("import-onboarding")
+        .join("human-input-request.json")
+}
+
+fn read_human_input_request(root: &Path) -> Option<HumanInputCheckpointRequest> {
+    fs::read_to_string(human_input_request_path(root))
+        .ok()
+        .and_then(|content| serde_json::from_str::<HumanInputCheckpointRequest>(&content).ok())
+}
+
+fn clear_human_input_request(root: &Path) {
+    let _ = fs::remove_file(human_input_request_path(root));
+}
+
+fn human_input_request_page(request: &HumanInputCheckpointRequest) -> String {
+    serde_json::to_string_pretty(request).unwrap_or_else(|_| "{}".to_string())
 }
 
 fn import_qna_page(
@@ -384,6 +451,7 @@ mod tests {
             ImportPlanningProgressRequest {
                 question: Some(question),
                 answer: "Walking tours first.".to_string(),
+                request_id: String::new(),
             },
         )
         .unwrap();
@@ -399,5 +467,56 @@ mod tests {
         assert!(state.contains("Import Planning State"));
         assert!(state.contains("Walking tours first."));
         assert_eq!(read_progress_answers(&root).len(), 1);
+    }
+
+    #[test]
+    fn human_input_checkpoint_rejects_stale_answer() {
+        let root = temp_root("human-input");
+        make_imported_project(&root);
+        let question = ImportPlanningQuestion {
+            id: "agent-question".to_string(),
+            label: "Agent Question".to_string(),
+            prompt: "Which source-specific slice should come first?".to_string(),
+            impact: "blocking".to_string(),
+            rationale: "Asked by the visible import-planning agent.".to_string(),
+        };
+
+        let status = record_human_input_request(
+            &root,
+            HumanInputCheckpointRequest {
+                request_id: "request-current".to_string(),
+                question: question.clone(),
+                session_id: "session".to_string(),
+                run_id: "run".to_string(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(status.current_request_id.as_deref(), Some("request-current"));
+        assert_eq!(
+            status.current_question.as_ref().map(|question| question.id.as_str()),
+            Some("agent-question")
+        );
+        let stale = record_import_planning_answer(
+            &root,
+            ImportPlanningProgressRequest {
+                question: Some(question.clone()),
+                answer: "Walking tours first.".to_string(),
+                request_id: "request-stale".to_string(),
+            },
+        );
+        assert_eq!(stale.unwrap_err().0, 409);
+
+        let accepted = record_import_planning_answer(
+            &root,
+            ImportPlanningProgressRequest {
+                question: Some(question),
+                answer: "Walking tours first.".to_string(),
+                request_id: "request-current".to_string(),
+            },
+        )
+        .unwrap();
+        assert!(accepted.current_request_id.is_none());
+        assert!(read_human_input_request(&root).is_none());
     }
 }
