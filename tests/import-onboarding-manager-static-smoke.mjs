@@ -42,5 +42,8 @@ assert.match(importPlanning, /validate_import_plan_artifacts/);
 assert.match(importPlanning, /staged-artifacts\.json/);
 assert.match(app, /artifactValidation/);
 assert.match(app, /importPlanArtifactsAreComplete/);
+assert.match(app, /activeImportPlanningRun/);
+assert.match(app, /Cancel Run/);
+assert.doesNotMatch(app, /monitorImportPlanningTurn/);
 
 console.log("import onboarding manager static smoke passed");

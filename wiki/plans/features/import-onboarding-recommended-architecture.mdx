@@ -10,10 +10,10 @@ wikiKind: "plan"
   <ul>
     <li>Status: recommended</li>
     <li>Shape: go-forward architecture plan</li>
-    <li>Current unit: Unit 05 - Frontend simplification and UX polish</li>
+    <li>Current unit: Unit 05 complete - frontend simplification and UX polish</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
-    <li>Next action: remove remaining React-owned Codex protocol code, render backend snapshots/events as the source of truth, and expose retry/cancel controls.</li>
+    <li>Next action: dogfood a fresh import and inspect whether the backend activity stream now gives enough between-question visibility without the terminal listener.</li>
   </ul>
 </section>
 <section>
@@ -25,6 +25,7 @@ wikiKind: "plan"
     <li>Unit 03 complete on 2026-05-29: parsed planning questions are checkpointed as durable human-input requests under ignored runtime state, import status can restore the pending question, answer submissions include request IDs, and stale request/question combinations are rejected before Q&amp;A is written.</li>
     <li>Corrective follow-up on 2026-05-29: if <code>codex app-server</code> accepts an import-planning turn but emits no first thread event within the bounded first-event window, the backend now resets the silent app-server attempt and completes the same run through <code>codex exec --json</code> instead of leaving the UI in a long waiting state.</li>
     <li>Unit 04 complete on 2026-05-29: generated import plan files are discovered as staged artifact records under ignored runtime state, deterministic validators check MDX frontmatter, plan kind, titles, stage/unit shape, source grounding, and unit verification guidance, and import status reports <code>complete</code> only after validation passes. Reload-discovered and delayed-completion plans now go through the same validation status path.</li>
+    <li>Unit 05 complete on 2026-05-29: the import-planning view no longer mounts the headless terminal listener or the obsolete React turn monitor, active backend run snapshots drive the visible phase badge, and users can cancel a running backend import turn from the Q&amp;A view.</li>
   </ul>
 </section>
 <section>
@@ -180,7 +181,7 @@ wikiKind: "plan"
     <li>Unit 02 - Backend state machine and events: add <code>ImportOnboardingManager</code>, session/run records, phase transitions, snapshot command, start/retry/cancel commands, and typed Tauri events.</li>
     <li>Unit 03 - Durable human-input bridge: add <code>HumanInputRequest</code>, checkpoint persistence, answer-by-ID routing, stale-answer rejection, durable Q&amp;A writes, and reload recovery for a pending question.</li>
     <li>Unit 04 - Artifact staging and validation: add staged artifact records, validators for MDX/frontmatter/links/required sections/source grounding, repair-loop prompt, and commit policy for real wiki writes.</li>
-    <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy.</li>
+    <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy. Complete on 2026-05-29.</li>
   </ul>
 </section>
 <section>
@@ -190,7 +191,7 @@ wikiKind: "plan"
     <li>Unit 02 is complete when a fresh import reaches <code>waiting_for_answer</code> through backend state alone and duplicate start attempts return the same active run.</li>
     <li>Unit 03 is complete when reloading during a pending question restores the same request ID and stale answer submissions are rejected without starting Codex.</li>
     <li>Unit 04 is complete when malformed or incomplete generated plans stay staged, validation errors are visible to the repair loop, and valid artifacts are committed to actual wiki files.</li>
-    <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events.</li>
+    <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events. Implemented by binding the import Q&amp;A view to backend run status, showing the run phase in the activity panel, exposing cancel, and removing the old terminal-replay monitor from the import-planning route.</li>
   </ul>
 </section>
 <section>

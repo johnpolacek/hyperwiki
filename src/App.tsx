@@ -392,7 +392,7 @@ interface CodexImportTurnStatusResponse {
   ok: boolean;
   runId: string;
   sessionId?: string;
-  status: "running" | "complete" | "failed" | string;
+  status: "running" | "complete" | "failed" | "cancelled" | string;
   phase?: ImportPlanningProtocolPhase | string;
   session?: ImportOnboardingSessionRecord | null;
   run?: ImportOnboardingRunRecord | null;
@@ -509,6 +509,7 @@ function App() {
   const [lastPlanningAnswer, setLastPlanningAnswer] = useState("");
   const [planningActivity, setPlanningActivity] = useState("");
   const [planningWorkstream, setPlanningWorkstream] = useState<string[]>([]);
+  const [activeImportPlanningRun, setActiveImportPlanningRun] = useState<ImportOnboardingRunRecord | null>(null);
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -1010,6 +1011,7 @@ function App() {
     if (activeImportPlanningTurn.current?.requestId === requestId) {
       activeImportPlanningTurn.current = null;
     }
+    setActiveImportPlanningRun((current) => current?.requestId === requestId ? null : current);
   }
 
   async function checkpointImportPlanningQuestion(project: ProjectRecord, question: PlanningQuestion) {
@@ -1299,6 +1301,28 @@ function App() {
     }
   }
 
+  async function cancelActiveImportPlanningTurn() {
+    const activeTurn = activeImportPlanningTurn.current;
+    const runId = activeTurn?.runId || activeImportPlanningRun?.runId || "";
+    if (!activeProject || !runId) return;
+    appendImportLog(`Imported Q&A cancel requested project=${activeProject.id} run=${runId}`);
+    try {
+      const cancelled = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-cancel?runId=${encodeURIComponent(runId)}`, activeProject), {
+        method: "POST",
+      });
+      if (cancelled.run) setActiveImportPlanningRun(cancelled.run);
+      if (activeTurn?.requestId) clearActiveImportPlanningTurn(activeTurn.requestId);
+      setPlanningInterviewStatus("idle");
+      setPlanningActivity(cancelled.error || "Import Q&A cancelled.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [cancelled.error || "Import Q&A cancelled."]));
+      setStatus("Imported project Q&A cancelled");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      appendImportLog(`Imported Q&A cancel failed project=${activeProject.id} run=${runId} error=${message}`, error);
+      setPlanningActivity(`Cancel failed: ${message}`);
+    }
+  }
+
   async function loadImportPlanningSourceContext(project: ProjectRecord) {
     const sourcePaths = [
       "/wiki/sources/import-state.mdx",
@@ -1345,6 +1369,7 @@ function App() {
       appendImportLog(`Imported Q&A turn start project=${project.id} request=${requestId} reason=${reason} previousSessions=${existingSessions.length} answerChars=${answer.length}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
+      setActiveImportPlanningRun(null);
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Starting the planning agent"]));
       openImportedPlanningWorkspace(project, projectRoute);
       await loadProjectData(project);
@@ -1371,6 +1396,7 @@ function App() {
           },
         });
         activeImportPlanningTurn.current = { projectId: project.id, requestId, runId: started.runId, sessionId: "codex-app-server" };
+        setActiveImportPlanningRun(started.run || null);
         appendImportLog(`Imported Q&A app-server turn accepted project=${project.id} request=${requestId} run=${started.runId}`);
         const turn = await waitForImportPlanningTurn(project, started.runId, requestId);
         appendImportLog(`Imported Q&A app-server turn complete project=${project.id} request=${requestId} thread=${turn.threadId} turn=${turn.turnId} chars=${turn.text.length} firstDeltaMs=${turn.firstDeltaMs ?? "none"} elapsedMs=${turn.elapsedMs} events=${turn.events}`);
@@ -1379,6 +1405,13 @@ function App() {
         clearActiveImportPlanningTurn(requestId);
         const message = error instanceof Error ? error.message : String(error);
         appendImportLog(`Imported Q&A app-server turn failed project=${project.id} request=${requestId} error=${message}`, error);
+        if (message.toLowerCase().includes("cancelled")) {
+          setPlanningInterviewStatus("idle");
+          setPlanningActivity("Import Q&A cancelled.");
+          setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Import Q&A cancelled."]));
+          setStatus("Imported project Q&A cancelled");
+          return;
+        }
         if (error instanceof ImportPlanningProtocolError) {
           setPlanningInterviewStatus(error.phase);
           setPlanningActivity(message);
@@ -1414,10 +1447,14 @@ function App() {
         appendImportLog(`Imported Q&A continuing backend run despite active ref mismatch project=${project.id} request=${requestId} active=${activeTurn.requestId} run=${runId}`);
       }
       const status = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-status?runId=${encodeURIComponent(runId)}`, project));
+      if (status.run) setActiveImportPlanningRun(status.run);
       if (attempt === 1 || attempt % 10 === 0 || status.status !== "running") {
         appendImportLog(`Imported Q&A app-server status project=${project.id} request=${requestId} run=${runId} attempt=${attempt} status=${status.status} elapsedMs=${Date.now() - startedAt}`);
       }
       if (status.status === "complete" && status.response) return status.response;
+      if (status.status === "cancelled") {
+        throw new Error(status.error || "Import onboarding run cancelled.");
+      }
       if (status.status === "failed") {
         const phase = status.phase === "stalled" ? "stalled" : "failed";
         throw new ImportPlanningProtocolError(phase, status.error || "Codex app-server import turn failed.", status.snapshot?.textTail || "");
@@ -1534,81 +1571,6 @@ function App() {
     setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry.");
     setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn completed without a parseable question."]);
     setStatus("Imported project Q&A needs retry");
-  }
-
-  async function monitorImportPlanningTurn(project: ProjectRecord, sessionId: string, requestId: string, answeredQuestionId = "") {
-    const startedAt = Date.now();
-    let lastSeq = 0;
-    let lastTail = "";
-    for (let attempt = 1; attempt <= 180; attempt += 1) {
-      await delay(500);
-      if (activeImportPlanningTurn.current?.requestId !== requestId) {
-        appendImportLog(`Imported Q&A turn monitor superseded project=${project.id} request=${requestId}`);
-        return;
-      }
-      try {
-        const [replayResult, wikiResult, projectsResult] = await Promise.allSettled([
-          hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`),
-          hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
-          hyperwikiApi.json<ProjectListResponse>(withProjectQuery("/api/projects", project)),
-        ]);
-        const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
-        if (wikiResult.status === "fulfilled") setWikiPages(pages);
-        if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
-        const latestProject = projectsResult.status === "fulfilled"
-          ? findActiveProject(projectsResult.value, unavailableProjectIds, {
-            projectSlug: project.projectSlug,
-            worktreeSlug: project.worktreeSlug,
-          }) || project
-          : project;
-        const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
-        if (latestProject.importPlanning?.status === "needsRepair") {
-          appendImportLog(`Imported Q&A turn plan validation failed project=${project.id} request=${requestId} errors=${latestProject.importPlanning.artifactValidation?.errors.length || 0}`);
-          clearActiveImportPlanningTurn(requestId);
-          setPlanningInterviewStatus("failed");
-          setPlanningActivity(latestProject.importPlanning.nextAction);
-          setPlanningWorkstream(importArtifactValidationLines(latestProject.importPlanning));
-          setStatus("Imported project plan needs repair");
-          return;
-        }
-        if (importPlanArtifactsAreComplete(latestProject, planning.generatedPlanPaths)) {
-          appendImportLog(`Imported Q&A turn plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
-          clearActiveImportPlanningTurn(requestId);
-          importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
-          setPlanningInterviewStatus("idle");
-          setPlanningActivity("Generated MVP plan is ready.");
-          setPlanningWorkstream(["Generated MVP plan is ready."]);
-          return;
-        }
-        if (replayResult.status !== "fulfilled") {
-          appendImportLog(`Imported Q&A turn replay failed project=${project.id} request=${requestId} attempt=${attempt}`, replayResult.reason);
-          continue;
-        }
-        const replay = replayResult.value;
-        lastSeq = replay.seq || lastSeq;
-        const bytes = Uint8Array.from(replay.bytes || []);
-        const plain = terminalTextForParsing(terminalBytesToText(bytes));
-        lastTail = plain.slice(-500);
-        const diagnostics = planningQuestionExtractionDiagnostics(plain, sessionId, answeredPlanningQuestionIds.current, requestId);
-        appendImportLog(`Imported Q&A turn probe project=${project.id} request=${requestId} attempt=${attempt} session=${sessionId} seq=${replay.seq} bytes=${bytes.length} blocks=${diagnostics.codeBlocks} rawObjects=${diagnostics.rawObjects} candidates=${diagnostics.candidateIds.length} ignored=${diagnostics.ignoredRequestIds.join(",") || "none"} unanswered=${diagnostics.questions.map((question) => question.id).join(",") || "none"} tail=${JSON.stringify(lastTail.slice(-180))}`);
-        const nextQuestions = diagnostics.questions.filter((question) => question.id !== answeredQuestionId);
-        if (nextQuestions.length) {
-          appendImportLog(`Imported Q&A turn question ready project=${project.id} request=${requestId} session=${sessionId} ids=${nextQuestions.map((question) => question.id).join(",")} batch=${nextQuestions.length}`);
-          setPlanningInterviewStatus("question_ready");
-          await setImportPlanningQuestions(project, nextQuestions);
-          setPlanningActivity("Next planning question is ready.");
-          return;
-        }
-      } catch (error) {
-        appendImportLog(`Imported Q&A turn monitor failed project=${project.id} request=${requestId} attempt=${attempt}`, error);
-      }
-    }
-    appendImportLog(`Imported Q&A turn timed out project=${project.id} request=${requestId} session=${sessionId} waitedMs=${Date.now() - startedAt} lastSeq=${lastSeq} tail=${JSON.stringify(lastTail.slice(-240))}`);
-    clearActiveImportPlanningTurn(requestId);
-    setPlanningInterviewStatus("idle");
-    setPlanningActivity("Planning agent did not produce the next question. Use Start Q&A to retry with a fresh agent turn.");
-    setPlanningWorkstream((current) => [...current.slice(-8), "Planning turn timed out; retry is available."]);
-    setStatus("Imported project Q&A timed out");
   }
 
   function resumeImportPlanning() {
@@ -1899,6 +1861,8 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
+          activeImportPlanningRun={activeImportPlanningRun}
+          onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
           onPlanImportedProject={planImportedProject}
           onResumeImportPlanning={resumeImportPlanning}
           onRemoveProject={removeProject}
@@ -1927,9 +1891,7 @@ function App() {
           wikiPages={wikiPages}
           activePlanState={activePlanState}
         />
-        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? (
-          <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
-        ) : sidePanelMode === "agent-activity" ? (
+        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? null : sidePanelMode === "agent-activity" ? (
           <>
             <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
             <AgentActivityPane agentRun={agentRun} onShowTerminal={() => setSidePanelMode("terminal")} />
@@ -2243,10 +2205,12 @@ function SidebarPageButton({
 function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
   activeProject: ProjectRecord | null;
+  activeImportPlanningRun: ImportOnboardingRunRecord | null;
   hasLoadedProjects: boolean;
   isExpanded: boolean;
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onCancelImportPlanningTurn: () => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
@@ -2298,10 +2262,12 @@ function WorkspacePane(props: {
     return (
       <ImportedPlanningQAView
         activeProject={props.activeProject}
+        activeRun={props.activeImportPlanningRun}
         activity={props.planningActivity}
         workstream={props.planningWorkstream}
         lastAnswer={props.lastPlanningAnswer}
         onAnswer={props.onAnswerPlanningQuestion}
+        onCancelRun={props.onCancelImportPlanningTurn}
         onStart={() => props.activeProject ? props.onPlanImportedProject(props.activeProject) : Promise.resolve()}
         questions={props.planningQuestions}
         status={props.planningInterviewStatus}
@@ -2623,25 +2589,30 @@ function PlanCreationView({
 
 function ImportedPlanningQAView({
   activeProject,
+  activeRun,
   activity,
   workstream,
   lastAnswer,
   onAnswer,
+  onCancelRun,
   onStart,
   questions,
   status,
 }: {
   activeProject: ProjectRecord | null;
+  activeRun: ImportOnboardingRunRecord | null;
   activity: string;
   workstream: string[];
   lastAnswer: string;
   onAnswer: (answers: PlanningQuestionAnswer[]) => Promise<void>;
+  onCancelRun: () => Promise<void>;
   onStart: () => Promise<void>;
   questions: PlanningQuestion[];
   status: PlanningInterviewStatus;
 }) {
   const [isStarting, setIsStarting] = useState(false);
   const [isAnswering, setIsAnswering] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [otherAnswers, setOtherAnswers] = useState<Record<string, string>>({});
@@ -2692,12 +2663,22 @@ function ImportedPlanningQAView({
     }
   }
 
+  async function cancelRun() {
+    setIsCancelling(true);
+    try {
+      await onCancelRun();
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
   const canSubmitBatch = questions.length > 1 && questions.every((question) => answerForQuestion(question)) && !isAnswering;
   const title = "Planning Q&A";
   const waitingLabel = status === "streaming"
     ? "Checking Codex output..."
     : lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
   const isRetryableFailure = status === "stalled" || status === "schema_mismatch" || status === "failed";
+  const isRunning = Boolean(activeRun && activeRun.status === "running") || ["starting", "waiting_for_question", "streaming", "answering"].includes(status) || isStarting;
   const showActivityPane = !questions.length
     && !isRetryableFailure
     && (status === "starting" || status === "waiting_for_question" || status === "streaming" || status === "answering" || isStarting || Boolean(activity) || workstream.length > 0);
@@ -2823,9 +2804,16 @@ function ImportedPlanningQAView({
         ) : null}
         {showActivityPane ? (
           <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-              <span>{waitingLabel}</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                <span className="truncate">{waitingLabel}</span>
+              </div>
+              {activeRun ? (
+                <span className="shrink-0 rounded-md bg-secondary px-2 py-1 font-mono text-[11px] text-secondary-foreground">
+                  {activeRun.phase}
+                </span>
+              ) : null}
             </div>
             <div className="max-h-72 min-h-44 overflow-auto rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 text-secondary-foreground shadow-inner">
               {workstream.length ? (
@@ -2850,6 +2838,12 @@ function ImportedPlanningQAView({
           </div>
         ) : null}
         <div className="flex flex-wrap justify-end gap-2">
+          {isRunning && activeRun?.runId ? (
+            <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isCancelling} variant="outline" onClick={() => void cancelRun()} type="button">
+              {isCancelling ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : null}
+              Cancel Run
+            </Button>
+          ) : null}
           <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject || !["idle", "stalled", "schema_mismatch", "failed"].includes(status)} onClick={start} type="button">
             {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
             {isStarting ? "Starting Q&A" : isRetryableFailure || hasStarted ? "Retry Q&A" : status !== "idle" ? "Q&A Running" : "Start Q&A"}

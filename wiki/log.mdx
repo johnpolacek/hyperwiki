@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 implementation | import onboarding Unit 05</h2>
+  <ul>
+    <li>Removed the obsolete React-owned import turn monitor and stopped mounting the headless terminal listener on the imported-project planning intake route.</li>
+    <li>Changed the Planning Q&amp;A view to render active backend run snapshots, including the current run phase, as the visible progress source between questions.</li>
+    <li>Added a cancel control wired to the backend import-planning cancel route so a running onboarding turn can be stopped without reloading the app.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 implementation | import onboarding Unit 04</h2>
   <ul>
     <li>Added staged import artifact records under ignored <code>.hyperwiki/state/import-onboarding/staged-artifacts.json</code> for generated plan files discovered under <code>wiki/plans/</code>.</li>
