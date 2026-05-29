@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding first-question recovery</h2>
+  <ul>
+    <li>Hardened the imported-project first-question prompt so Codex is explicitly forbidden from command, file, wiki, or plan-writing behavior in the question-script turn.</li>
+    <li>Added a local first-question fallback when the initial/retry turn produces assistant text, command events, or plan-writing drift without a parseable <code>hyperwiki-question</code>.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding active-turn race</h2>
   <ul>
     <li>Changed import-planning polling to keep following the backend run ID when the frontend active-turn ref is stale, instead of failing the turn as superseded.</li>

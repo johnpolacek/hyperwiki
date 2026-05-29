@@ -1414,6 +1414,10 @@ function App() {
             events: status.snapshot.events,
           };
         }
+        if (shouldUseLocalImportQuestionFallback(requestId, status.snapshot)) {
+          appendImportLog(`Imported Q&A local first-question fallback project=${project.id} request=${requestId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
+          return localImportQuestionFallbackTurn(project, requestId, status.snapshot);
+        }
         if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
           throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid Hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
         }
@@ -4912,6 +4916,64 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
   }
 }
 
+function shouldUseLocalImportQuestionFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
+  if (!requestId.includes(":initial:") && !requestId.includes(":retry:")) return false;
+  if (!snapshot.firstDeltaMs) return false;
+  const eventLog = snapshot.eventLog || [];
+  const completedAssistantMessage = eventLog.some((line) => /agent message|assistant message complete/i.test(line));
+  const usedCommands = eventLog.some((line) => /command_execution|exec_command/i.test(line));
+  const driftedTowardPlanWrite = /(?:write|create|update|generate).{0,80}(?:mvp|plan|wiki|planning tree|source briefs)/i.test(snapshot.textTail || snapshot.text || "");
+  const waitedAfterText = snapshot.elapsedMs >= (snapshot.firstDeltaMs || 0) + 3000;
+  return waitedAfterText && (completedAssistantMessage || usedCommands || driftedTowardPlanWrite || snapshot.elapsedMs >= 20000);
+}
+
+function localImportQuestionFallbackTurn(project: ProjectRecord, requestId: string, snapshot: CodexImportTurnSnapshot): CodexImportTurnResponse {
+  const text = localImportQuestionFallbackText(project, requestId);
+  return {
+    ok: true,
+    transport: "hyperwiki-local-question-fallback",
+    projectId: project.id,
+    requestId,
+    threadId: "hyperwiki-local-question-fallback",
+    turnId: snapshot.turnId || "local-question-fallback",
+    text,
+    firstDeltaMs: snapshot.firstDeltaMs ?? null,
+    elapsedMs: snapshot.elapsedMs,
+    planDetected: false,
+    events: snapshot.events,
+    metrics: snapshot.metrics,
+  };
+}
+
+function localImportQuestionFallbackText(project: ProjectRecord, requestId: string) {
+  const question = {
+    type: "hyperwiki-question",
+    requestId,
+    question: `Before Hyperwiki writes the MVP plan for ${project.name}, what should the first implementation target optimize for?`,
+    recommendedAnswer: "Small end-to-end MVP first.",
+    reasoning: "The import agent tried to move toward plan writing before producing a valid onboarding question, so Hyperwiki is asking a safe scope-setting decision to keep the plan grounded in your intent.",
+    options: [
+      {
+        label: "Small end-to-end MVP first",
+        description: "Plan the thinnest usable flow that proves the core product experience before adding breadth.",
+      },
+      {
+        label: "UX prototype first",
+        description: "Prioritize screens, interaction flow, and user-facing polish before deeper implementation.",
+      },
+      {
+        label: "Technical foundation first",
+        description: "Prioritize architecture, data model, integration seams, and verification before UI breadth.",
+      },
+      {
+        label: "Pause for source review",
+        description: "Do not create the MVP plan yet; inspect imported source context and ask a more specific question next.",
+      },
+    ],
+  };
+  return `\`\`\`json\n${JSON.stringify(question, null, 2)}\n\`\`\``;
+}
+
 function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = 18) {
   const next = [...current];
   for (const line of nextLines) {
@@ -4995,7 +5057,9 @@ function importAgentLaunchCommand(layout: LayoutResponse | null) {
 function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
   return [
     "You are generating the next Hyperwiki import-planning interview question.",
-    "Do not use tools. Do not read files. Use only the inline source context in this prompt.",
+    "Questionnaire-only response. Do not use tools. Do not run commands. Do not read files. Do not write plans. Do not update wiki files.",
+    "Use only the inline source context in this prompt.",
+    "If you are about to say you will write files, create the MVP plan, update wiki indexes, inspect the repo, or run commands, stop and output the JSON question instead.",
     "",
     "Goal:",
     "Generate exactly one source-grounded blocking planning question for the imported project. Hyperwiki will ask it in the UI.",
