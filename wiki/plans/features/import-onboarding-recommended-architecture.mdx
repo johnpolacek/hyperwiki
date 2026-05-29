@@ -23,17 +23,24 @@ wikiKind: "plan"
   <p>Defer the separate sidecar service and full engine-first runtime. They are promising if Hyperwiki later needs multi-client background agents, reusable run inspection, or a broader workflow engine, but they add too much packaging and lifecycle cost for the immediate onboarding UX fix.</p>
 </section>
 <section>
-  <h2>Source Projects</h2>
+  <h2>Applied References</h2>
   <ul>
-    <li><a href="https://github.com/openai/codex">OpenAI Codex CLI</a>: local coding-agent runtime and the current provider boundary for Hyperwiki import onboarding. Local investigation also covered <code>codex app-server</code>, JSON-RPC schemas, <code>codex exec --json</code>, and structured-output possibilities.</li>
-    <li><a href="https://github.com/janhq/jan">Jan</a> and <a href="https://www.jan.ai/docs">Jan docs</a>: reference for local-first AI UX, streaming responses, and making progress visible before a full structured payload is complete.</li>
-    <li><a href="https://github.com/anomalyco/opencode">opencode</a>: reference for persistent coding-agent sessions, multi-provider architecture, MCP integration, event/session boundaries, and background work that is not merely a one-off CLI invocation.</li>
-    <li><a href="https://github.com/frumu-ai/tandem">Tandem</a>, the local download at <code>/Users/johnpolacek/Downloads/tandem-main</code>, and <a href="https://docs.tandem.ac/creating-and-running-workflows-and-missions/">Tandem Engine docs</a>: reference for engine-owned runs, HTTP/SSE runtime surfaces, run inspection, checkpoints, questions, approvals, and sidecar lifecycle management.</li>
-    <li><a href="https://open-harness.github.io/open-harness/">Open Harness</a>: reference for harness-agnostic agent workflows, typed state, provider swapping across Claude Code, Codex, and OpenCode, plus record/replay evaluation of agent runs.</li>
-    <li><a href="https://github.com/langchain-ai/deepagents">LangChain deepagents</a>: reference for agent harnesses with filesystem backends, context management, persistence/checkpointing, subagents, skills, and human-in-the-loop controls.</li>
-    <li><a href="https://arxiv.org/abs/2506.01056">MCP-Zero</a>: reference for reducing context overhead through proactive toolchain construction and selecting from large tool pools without loading everything into the prompt.</li>
-    <li><a href="https://arxiv.org/abs/2505.03275">RAG-MCP</a> and related ToolRAG-style work: reference for mitigating prompt bloat by retrieving relevant tools or context instead of front-loading every possible tool and rule.</li>
-    <li><a href="https://usewire.io/blog/progressive-tool-loading-mcp-context-pattern/">Progressive tool loading</a>: reference pattern for deferring tool definitions and context until the agent needs them.</li>
+    <li><a href="https://github.com/openai/codex">OpenAI Codex CLI</a> is the implementation dependency, not just inspiration. The first unit should wrap the existing <code>codex app-server</code> integration behind a Rust adapter, compare it with <code>codex exec --json</code>, and record real latency and stream-health evidence before picking the default transport.</li>
+    <li><a href="https://github.com/langchain-ai/deepagents">LangChain deepagents</a> applies to the harness concepts Hyperwiki should copy without adopting the framework: durable checkpoints, human-in-the-loop pause points, filesystem-backed intermediate state, and separating model text from execution decisions.</li>
+    <li><a href="https://open-harness.github.io/open-harness/">Open Harness</a> applies narrowly to evaluation discipline: record enough structured run data to compare transports and prompt variants against the same import fixture. Hyperwiki should not add a harness dependency in the first implementation.</li>
+    <li><a href="https://github.com/anomalyco/opencode">opencode</a> applies to event normalization and session ownership: the UI should subscribe to a persistent stream of typed events from an agent runtime boundary instead of managing a one-off CLI exchange.</li>
+    <li><a href="https://github.com/frumu-ai/tandem">Tandem</a> and the local download at <code>/Users/johnpolacek/Downloads/tandem-main</code> apply to run lifecycle language: session IDs, run IDs, checkpoints, questions, cancellation, and run inspection. Hyperwiki should borrow those runtime concepts inside the Tauri backend, not split to a Tandem-style sidecar yet.</li>
+    <li><a href="https://github.com/janhq/jan">Jan</a> applies only to UX behavior: show streaming progress and agent activity early instead of waiting for a complete final JSON block. Hyperwiki still transitions only on validated backend events.</li>
+  </ul>
+</section>
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>Do not introduce a standalone sidecar service in the first implementation.</li>
+    <li>Do not adopt Open Harness, deepagents, LangGraph, or another external agent harness as a runtime dependency until a local prototype proves it fits Tauri packaging and the local trust boundary.</li>
+    <li>Do not build a general Hyperwiki run engine for every agent workflow yet. Import onboarding is the only committed consumer.</li>
+    <li>Do not replace Codex-generated final plan docs with deterministic Rust plan generation.</li>
+    <li>Do not solve full semantic retrieval, vector search, or tool-RAG in the first slice. Use compact deterministic context packs first.</li>
   </ul>
 </section>
 <section>
@@ -49,12 +56,61 @@ wikiKind: "plan"
   </ul>
 </section>
 <section>
+  <h2>Backend API</h2>
+  <ul>
+    <li><code>start_import_onboarding(project_id, import_source_id)</code> creates or resumes the onboarding session, starts the provider if needed, emits an initial snapshot, and begins the first run if no question or active run exists.</li>
+    <li><code>get_import_onboarding_status(project_id)</code> returns the authoritative snapshot for reloads, including active phase, pending question, retryable failure, staged artifacts, and recent progress messages.</li>
+    <li><code>answer_import_onboarding_question(project_id, request_id, answer)</code> accepts only the current pending request, writes durable Q&amp;A, advances the state machine, and starts the next run.</li>
+    <li><code>retry_import_onboarding(project_id, run_id)</code> retries only retryable provider, parsing, or validation failures and preserves the last durable answer state.</li>
+    <li><code>cancel_import_onboarding(project_id, run_id)</code> cancels the active run and leaves the session in a resumable idle or retryable state.</li>
+    <li>React listens to <code>import-onboarding:event</code> and always treats <code>get_import_onboarding_status</code> as the source of truth after reload or reconnect.</li>
+  </ul>
+</section>
+<section>
+  <h2>State Machine Detail</h2>
+  <ul>
+    <li><code>idle</code>: no active provider turn; can start or resume from a checkpoint.</li>
+    <li><code>starting_provider</code>: Codex process or exec path is being prepared; UI shows immediate progress.</li>
+    <li><code>loading_context</code>: compact source and wiki context are assembled deterministically.</li>
+    <li><code>running_provider</code>: Codex is producing events; backend tracks heartbeat, deltas, and total-turn deadline.</li>
+    <li><code>parsing_question</code>: backend validates a complete structured question candidate.</li>
+    <li><code>waiting_for_answer</code>: exactly one durable <code>HumanInputRequest</code> is pending.</li>
+    <li><code>recording_answer</code>: backend writes Q&amp;A and rejects duplicate or stale submissions.</li>
+    <li><code>generating_plan</code>: Codex is expected to write or return final plan artifacts.</li>
+    <li><code>staging_artifacts</code>: generated files are held in runtime state before touching the real wiki.</li>
+    <li><code>validating_artifacts</code>: deterministic checks decide whether staged output can be committed.</li>
+    <li><code>complete</code>, <code>cancelled</code>, <code>retryable_failure</code>, and <code>fatal_failure</code>: terminal or user-actionable states with explicit diagnostics.</li>
+  </ul>
+</section>
+<section>
+  <h2>Data Model</h2>
+  <ul>
+    <li><code>ImportOnboardingSession</code>: <code>project_id</code>, <code>session_id</code>, <code>status</code>, <code>created_at</code>, <code>updated_at</code>, selected provider transport, and current run ID.</li>
+    <li><code>ImportOnboardingRun</code>: <code>run_id</code>, <code>session_id</code>, phase, provider handle, started timestamp, last event sequence, timeout policy, cancellation flag, and diagnostic summary.</li>
+    <li><code>HumanInputRequest</code>: <code>request_id</code>, <code>run_id</code>, question text, options, freeform allowance, source evidence, status, created timestamp, accepted answer, and answered timestamp.</li>
+    <li><code>OnboardingAnswer</code>: request ID, normalized answer value, freeform text when present, source UI action, timestamp, and durable wiki write status.</li>
+    <li><code>StagedArtifact</code>: virtual path, content, source run ID, intended real path, validation status, validation errors, commit status, and final write timestamp.</li>
+    <li><code>OnboardingEvent</code>: sequence, timestamp, project ID, session ID, run ID, phase, event kind, user-facing message, optional provider diagnostics key, and correlation ID.</li>
+  </ul>
+</section>
+<section>
   <h2>Runtime State</h2>
   <ul>
     <li>Store volatile onboarding checkpoints under ignored runtime state such as <code>.hyperwiki/state/import-onboarding/</code>.</li>
     <li>Store durable user decisions in a project wiki source page such as <code>wiki/sources/import-qna.mdx</code>.</li>
     <li>Store staged artifacts in runtime state until validation passes, then write real MDX files under <code>wiki/plans/</code> and related wiki paths.</li>
     <li>Every checkpoint should include project ID, session ID, run ID, active phase, pending human-input request, accepted answers, provider transport, provider conversation/thread handle when available, staged artifacts, and last diagnostics summary.</li>
+  </ul>
+</section>
+<section>
+  <h2>Codex Adapter Experiment</h2>
+  <ul>
+    <li>Primary path: persistent <code>codex app-server --listen stdio://</code> with thread reuse for follow-up questions.</li>
+    <li>Comparison path: fresh <code>codex exec --json</code> or schema-constrained turns for each question when thread reuse proves slow, opaque, or unreliable.</li>
+    <li>Measure provider startup time, first backend event time, first assistant delta time, first valid question time, answer-to-next-run-start time, answer-to-follow-up-question time, malformed-output rate, cancellation behavior, and restart recovery.</li>
+    <li>Choose persistent app-server when it is clearly faster for follow-ups and provides enough stream health to avoid false stalls.</li>
+    <li>Choose fresh structured turns when they are comparable in latency, simpler to recover, and produce more reliable question JSON or final artifact contracts.</li>
+    <li>Keep the public Rust API stable so this decision can change without touching React.</li>
   </ul>
 </section>
 <section>
@@ -76,6 +132,29 @@ wikiKind: "plan"
   </ul>
 </section>
 <section>
+  <h2>Artifact Validation</h2>
+  <ul>
+    <li>Required final artifacts: at least one active plan under <code>wiki/plans/</code>, updated plan index when needed, source Q&amp;A record, and no writes outside allowed wiki paths.</li>
+    <li>Validate MDX frontmatter contains <code>title</code>, <code>description</code>, and <code>wikiKind</code>.</li>
+    <li>Validate generated plan content includes summary, intent, scope or units, verification, and next action.</li>
+    <li>Validate links point to existing wiki paths or accepted external URLs.</li>
+    <li>Validate generated content references accepted answers or imported source evidence when making project-shaping decisions.</li>
+    <li>Only after validation passes should staged artifacts be written to the real project wiki. Failed validation becomes retryable with errors summarized for the next Codex repair turn.</li>
+  </ul>
+</section>
+<section>
+  <h2>Failure Semantics</h2>
+  <ul>
+    <li>Provider quiet but alive: keep showing phase-specific progress and do not mark stalled solely from missing assistant text.</li>
+    <li>Provider heartbeat lost: restart provider once, preserve checkpoint, and emit retryable failure if restart cannot reattach.</li>
+    <li>Malformed question: ask Codex for a repair once with the validation error; if still invalid, surface retryable failure with diagnostics.</li>
+    <li>Stale answer: reject the answer, return the current pending request, and do not start a new provider turn.</li>
+    <li>Duplicate run start: return the active run snapshot instead of spawning a second Codex turn.</li>
+    <li>Artifact validation failure: keep staged files, record validation errors, and run a repair turn before committing.</li>
+    <li>Fatal failure is reserved for unsupported provider configuration, missing project root, corrupt checkpoint that cannot be reconstructed, or write permission failures that block safe progress.</li>
+  </ul>
+</section>
+<section>
   <h2>Deferred Paths</h2>
   <ul>
     <li>Candidate 2, the separate sidecar service, remains a future option if Hyperwiki needs a reusable background engine reachable by multiple clients or processes.</li>
@@ -86,11 +165,21 @@ wikiKind: "plan"
 <section>
   <h2>Implementation Units</h2>
   <ul>
-    <li>Unit 01 - Codex adapter baseline and latency instrumentation: wrap current app-server code, add health/stream diagnostics, and measure first-question and answer-to-follow-up latency for persistent app-server versus fresh structured turns.</li>
-    <li>Unit 02 - Backend state machine and events: move import onboarding orchestration out of React into Rust-owned phases and typed UI events.</li>
-    <li>Unit 03 - Durable human-input bridge: introduce <code>HumanInputRequest</code>, checkpoint persistence, answer-by-ID routing, stale-answer rejection, and durable Q&amp;A writes.</li>
-    <li>Unit 04 - Artifact staging and validation: stage generated plans, validate MDX/frontmatter/links/required sections/source grounding, then commit accepted files to the project wiki.</li>
-    <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend state, make retry/cancel explicit, and show fast, phase-specific progress.</li>
+    <li>Unit 01 - Codex adapter baseline and latency instrumentation: wrap current app-server code, add adapter-level event normalization, add timing metrics, and run the persistent app-server versus fresh structured-turn comparison on the same import fixture.</li>
+    <li>Unit 02 - Backend state machine and events: add <code>ImportOnboardingManager</code>, session/run records, phase transitions, snapshot command, start/retry/cancel commands, and typed Tauri events.</li>
+    <li>Unit 03 - Durable human-input bridge: add <code>HumanInputRequest</code>, checkpoint persistence, answer-by-ID routing, stale-answer rejection, durable Q&amp;A writes, and reload recovery for a pending question.</li>
+    <li>Unit 04 - Artifact staging and validation: add staged artifact records, validators for MDX/frontmatter/links/required sections/source grounding, repair-loop prompt, and commit policy for real wiki writes.</li>
+    <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy.</li>
+  </ul>
+</section>
+<section>
+  <h2>Unit Acceptance</h2>
+  <ul>
+    <li>Unit 01 is complete when a local smoke command can report timing metrics for both Codex transport paths and no UI code depends on raw app-server events directly.</li>
+    <li>Unit 02 is complete when a fresh import reaches <code>waiting_for_answer</code> through backend state alone and duplicate start attempts return the same active run.</li>
+    <li>Unit 03 is complete when reloading during a pending question restores the same request ID and stale answer submissions are rejected without starting Codex.</li>
+    <li>Unit 04 is complete when malformed or incomplete generated plans stay staged, validation errors are visible to the repair loop, and valid artifacts are committed to actual wiki files.</li>
+    <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events.</li>
   </ul>
 </section>
 <section>
