@@ -403,6 +403,7 @@ interface CodexImportTurnSnapshot {
   phase: ImportPlanningProtocolPhase | string;
   text: string;
   textTail: string;
+  eventLog?: string[];
   events: number;
   firstDeltaMs?: number | null;
   lastEventMs?: number | null;
@@ -1113,10 +1114,21 @@ function App() {
       }
       if (!nextStatus) return;
       applyImportPlanningStatus(nextStatus);
+      setLastPlanningAnswer(answerSummary);
       if (!revealNextImportScriptQuestion(activeProject)) {
+        setPlanningActivity("Answer sent to the planning agent");
+        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+          "Answer sent to the planning agent",
+          "Starting the next Codex import-planning turn",
+        ]));
+        clearPlanningQuestions();
+        setPlanningInterviewStatus("waiting_for_question");
+        setStatus("Planning answer sent");
         appendImportLog(`Imported Q&A script exhausted project=${activeProject.id}; handing off to Codex for next turn or final plan`);
         void startImportPlanningTurn(activeProject, "answer", answerSummary, first.question.id);
       }
+      appendImportLog(`Planning answer submitted session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length}`);
+      return;
     } else if (first.question.sessionId) {
       const response = `Hyperwiki planning answer: ${answerSummary}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
       await sendPasteSubmitInput(first.question.sessionId, response);
@@ -1128,7 +1140,7 @@ function App() {
     appendImportLog(`Planning answer submitted session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length}`);
     setLastPlanningAnswer(answerSummary);
     setPlanningActivity("Answer sent to the planning agent");
-    setPlanningWorkstream((current) => [...current.slice(-8), "Answer sent to the planning agent"]);
+    setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Answer sent to the planning agent"]));
     clearPlanningQuestions();
     setPlanningInterviewStatus((current) => current === "answering" ? "waiting_for_question" : current);
     setStatus("Planning answer sent");
@@ -1299,7 +1311,7 @@ function App() {
       appendImportLog(`Imported Q&A turn start project=${project.id} request=${requestId} reason=${reason} previousSessions=${existingSessions.length} answerChars=${answer.length}`);
       setPlanningInterviewStatus("starting");
       setPlanningActivity("Starting the planning agent");
-      setPlanningWorkstream(["Starting the planning agent"]);
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Starting the planning agent"]));
       openImportedPlanningWorkspace(project, projectRoute);
       await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -1311,9 +1323,9 @@ function App() {
       activeImportPlanningTurn.current = { projectId: project.id, requestId, sessionId: "codex-app-server" };
       setPlanningInterviewStatus("waiting_for_question");
       setPlanningActivity(reason === "initial" || reason === "retry" ? "Codex is generating the planning question script" : "Planning agent is working on the next question");
-      setPlanningWorkstream(reason === "initial" || reason === "retry"
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, reason === "initial" || reason === "retry"
         ? ["Codex app-server script turn started", "Using inline source context", "Waiting for the first structured question"]
-        : ["Codex app-server turn started", "Waiting for the next structured question"]);
+        : ["Codex app-server turn started", "Waiting for the next structured question"]));
       setStatus("Imported project Q&A started");
       try {
         const started = await hyperwikiApi.json<CodexImportTurnStartResponse>(withProjectQuery("/api/import-planning/turn", project), {
@@ -1413,13 +1425,16 @@ function App() {
     if (phase === "waiting_for_question" || phase === "streaming") setPlanningInterviewStatus(phase);
     const label = importTurnSnapshotLabel(snapshot);
     if (label) setPlanningActivity(label);
+    const eventLines = snapshot.eventLog?.length
+      ? snapshot.eventLog.map((line) => `event: ${line}`)
+      : snapshot.events ? [`events observed: ${snapshot.events}`] : [];
     const lines = [
       label,
-      snapshot.events ? `App-server events: ${snapshot.events}` : "",
+      ...eventLines,
       snapshot.firstDeltaMs ? `First assistant text: ${snapshot.firstDeltaMs}ms` : "",
       snapshot.candidateCount ? `Structured candidates seen: ${snapshot.candidateCount}` : "",
     ].filter(Boolean);
-    if (lines.length) setPlanningWorkstream(lines);
+    if (lines.length) setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, lines));
   }
 
   async function handleImportPlanningTurnText(project: ProjectRecord, sessionId: string, requestId: string, text: string, answeredQuestionId = "") {
@@ -2610,6 +2625,9 @@ function ImportedPlanningQAView({
     ? "Checking Codex output..."
     : lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
   const isRetryableFailure = status === "stalled" || status === "schema_mismatch" || status === "failed";
+  const showActivityPane = !questions.length
+    && !isRetryableFailure
+    && (status === "starting" || status === "waiting_for_question" || status === "streaming" || status === "answering" || isStarting || Boolean(activity) || workstream.length > 0);
   const description = "Answer questions and make important decisions to create your project.";
 
   return (
@@ -2730,13 +2748,13 @@ function ImportedPlanningQAView({
             ) : null}
           </div>
         ) : null}
-        {!questions.length && (status === "starting" || status === "waiting_for_question" || status === "streaming" || status === "answering" || isStarting) ? (
+        {showActivityPane ? (
           <div className="grid gap-3 rounded-md border bg-background px-3 py-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               <span>{waitingLabel}</span>
             </div>
-            <div className="max-h-64 min-h-32 overflow-auto rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 text-secondary-foreground shadow-inner">
+            <div className="max-h-72 min-h-44 overflow-auto rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 text-secondary-foreground shadow-inner">
               {workstream.length ? (
                 workstream.map((line, index) => <p className="m-0 whitespace-pre-wrap" key={`${index}:${line}`}>{line}</p>)
               ) : (
@@ -4881,6 +4899,16 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
     default:
       return snapshot.phase ? `Codex import-planning phase: ${snapshot.phase}` : "";
   }
+}
+
+function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = 18) {
+  const next = [...current];
+  for (const line of nextLines) {
+    const normalized = line.trim();
+    if (!normalized || next[next.length - 1] === normalized) continue;
+    next.push(normalized);
+  }
+  return next.slice(-limit);
 }
 
 function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {

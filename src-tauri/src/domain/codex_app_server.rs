@@ -72,6 +72,7 @@ pub struct CodexTurnSnapshot {
     pub phase: String,
     pub text: String,
     pub text_tail: String,
+    pub event_log: Vec<String>,
     pub events: usize,
     pub first_delta_ms: Option<u128>,
     pub last_event_ms: Option<u128>,
@@ -416,6 +417,7 @@ fn empty_snapshot(phase: &str) -> CodexTurnSnapshot {
         phase: phase.to_string(),
         text: String::new(),
         text_tail: String::new(),
+        event_log: Vec::new(),
         events: 0,
         first_delta_ms: None,
         last_event_ms: None,
@@ -879,6 +881,7 @@ fn run_exec_json_turn(
             "exec_json_fallback",
             "",
             0,
+            &[],
             None,
             None,
             None,
@@ -956,6 +959,7 @@ fn run_exec_json_turn(
     let mut first_event_ms = None;
     let mut first_delta_ms = None;
     let mut events = 0usize;
+    let mut event_log = Vec::<String>::new();
 
     loop {
         if is_run_cancelled(run_id) {
@@ -978,6 +982,7 @@ fn run_exec_json_turn(
                     first_event_ms = Some(elapsed_ms);
                 }
                 let last_event_ms = Some(elapsed_ms);
+                push_event_log(&mut event_log, describe_exec_json_event(&value));
                 match value["type"].as_str().unwrap_or_default() {
                     "thread.started" => {
                         if let Some(id) = value["thread_id"].as_str() {
@@ -994,6 +999,7 @@ fn run_exec_json_turn(
                                 "turn_started",
                                 &text,
                                 events,
+                                &event_log,
                                 first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
@@ -1015,6 +1021,7 @@ fn run_exec_json_turn(
                                 "streaming",
                                 &text,
                                 events,
+                                &event_log,
                                 first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
@@ -1393,6 +1400,7 @@ impl AppServer {
         let mut first_delta_ms = None;
         let mut last_event_ms = None;
         let mut events = 0usize;
+        let mut event_log = Vec::<String>::new();
         let mut last_waiting_snapshot_ms = 0u128;
         loop {
             for value in state.lines.iter().skip(seen) {
@@ -1404,6 +1412,7 @@ impl AppServer {
                     continue;
                 };
                 events += 1;
+                push_event_log(&mut event_log, describe_app_server_event(value, &event));
                 let event_elapsed_ms = started_at.elapsed().as_millis();
                 if first_event_ms.is_none() {
                     first_event_ms = Some(event_elapsed_ms);
@@ -1420,6 +1429,7 @@ impl AppServer {
                                 "turn_started",
                                 &text,
                                 events,
+                                &event_log,
                                 first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
@@ -1451,6 +1461,7 @@ impl AppServer {
                                 "streaming",
                                 &text,
                                 events,
+                                &event_log,
                                 first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
@@ -1480,6 +1491,7 @@ impl AppServer {
                                 "streaming",
                                 &text,
                                 events,
+                                &event_log,
                                 first_event_ms,
                                 first_delta_ms,
                                 last_event_ms,
@@ -1523,6 +1535,7 @@ impl AppServer {
                         "exec_json_fallback",
                         &text,
                         events,
+                        &event_log,
                         first_event_ms,
                         first_delta_ms,
                         last_event_ms,
@@ -1554,6 +1567,7 @@ impl AppServer {
                         "waiting_for_first_event",
                         &text,
                         events,
+                        &event_log,
                         first_event_ms,
                         first_delta_ms,
                         last_event_ms,
@@ -1585,6 +1599,7 @@ impl AppServer {
                         "waiting_for_assistant",
                         &text,
                         events,
+                        &event_log,
                         first_event_ms,
                         first_delta_ms,
                         last_event_ms,
@@ -1662,10 +1677,123 @@ fn normalize_turn_event(value: &Value, thread_id: &str) -> Option<CodexAdapterEv
     }
 }
 
+fn push_event_log(event_log: &mut Vec<String>, line: String) {
+    if line.trim().is_empty() {
+        return;
+    }
+    if event_log.last() == Some(&line) {
+        return;
+    }
+    event_log.push(line);
+    if event_log.len() > 24 {
+        let drop_count = event_log.len().saturating_sub(24);
+        event_log.drain(0..drop_count);
+    }
+}
+
+fn describe_app_server_event(value: &Value, event: &CodexAdapterEvent) -> String {
+    let method = value["method"].as_str().unwrap_or("event");
+    match event {
+        CodexAdapterEvent::TurnStarted { turn_id } => {
+            format!("app-server {method}: turn started {}", short_id(turn_id))
+        }
+        CodexAdapterEvent::AssistantDelta { delta } => {
+            format!(
+                "app-server {method}: assistant delta {} chars",
+                delta.chars().count()
+            )
+        }
+        CodexAdapterEvent::AgentMessageCompleted { text } => {
+            format!(
+                "app-server {method}: assistant message complete {} chars",
+                text.chars().count()
+            )
+        }
+        CodexAdapterEvent::TurnCompleted { turn_id } => {
+            format!("app-server {method}: turn complete {}", short_id(turn_id))
+        }
+        CodexAdapterEvent::Error { message } => {
+            format!(
+                "app-server {method}: error {}",
+                compact_event_text(message, 120)
+            )
+        }
+        CodexAdapterEvent::Other => format!("app-server {method}"),
+    }
+}
+
+fn describe_exec_json_event(value: &Value) -> String {
+    let event_type = value["type"].as_str().unwrap_or("event");
+    match event_type {
+        "thread.started" => format!(
+            "exec-json thread.started: {}",
+            short_id(value["thread_id"].as_str().unwrap_or_default())
+        ),
+        "turn.started" => format!(
+            "exec-json turn.started: {}",
+            short_id(value["turn_id"].as_str().unwrap_or_default())
+        ),
+        "item.completed" => {
+            let item_type = value["item"]["type"].as_str().unwrap_or("item");
+            if item_type == "agent_message" {
+                let text = exec_agent_message_text(&value["item"]);
+                format!(
+                    "exec-json item.completed: agent message {} chars",
+                    text.chars().count()
+                )
+            } else {
+                format!("exec-json item.completed: {item_type}")
+            }
+        }
+        "turn.completed" => "exec-json turn.completed".to_string(),
+        "error" => format!(
+            "exec-json error: {}",
+            compact_event_text(value["message"].as_str().unwrap_or_default(), 120)
+        ),
+        _ => format!("exec-json {event_type}"),
+    }
+}
+
+fn short_id(id: &str) -> String {
+    if id.is_empty() {
+        return "unknown".to_string();
+    }
+    let chars = id.chars().collect::<Vec<_>>();
+    if chars.len() <= 12 {
+        return id.to_string();
+    }
+    format!(
+        "{}...{}",
+        chars.iter().take(6).collect::<String>(),
+        chars
+            .iter()
+            .rev()
+            .take(4)
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect::<String>()
+    )
+}
+
+fn compact_event_text(text: &str, max_chars: usize) -> String {
+    let compact = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if compact.chars().count() <= max_chars {
+        return compact;
+    }
+    let mut value = compact
+        .chars()
+        .take(max_chars.saturating_sub(3))
+        .collect::<String>();
+    value.push_str("...");
+    value
+}
+
 fn turn_snapshot(
     phase: &str,
     text: &str,
     events: usize,
+    event_log: &[String],
     first_event_ms: Option<u128>,
     first_delta_ms: Option<u128>,
     last_event_ms: Option<u128>,
@@ -1686,6 +1814,7 @@ fn turn_snapshot(
         phase: phase.to_string(),
         text: text.to_string(),
         text_tail,
+        event_log: event_log.to_vec(),
         events,
         first_delta_ms,
         last_event_ms,

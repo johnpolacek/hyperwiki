@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding activity visibility</h2>
+  <ul>
+    <li>Added readable Codex transport event summaries to import-planning turn snapshots so the intake UI can show which app-server or exec JSON events arrived.</li>
+    <li>Changed the imported-project Q&amp;A activity pane to keep a stable rolling workstream between questions and avoid clearing a newly revealed question during answer handoff.</li>
+    <li>Verified with <code>pnpm run check:tauri</code> and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding first-event fallback</h2>
   <ul>
     <li>Changed import onboarding so an accepted but silent <code>codex app-server</code> turn falls back to <code>codex exec --json</code> after a short first-event window.</li>
