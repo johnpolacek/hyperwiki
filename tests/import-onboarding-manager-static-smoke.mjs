@@ -36,5 +36,11 @@ assert.match(app, /requestId: item\.question\.requestId/);
 assert.match(importPlanning, /HumanInputCheckpointRequest/);
 assert.match(importPlanning, /human_input_request_path/);
 assert.match(importPlanning, /stale question/);
+assert.match(importPlanning, /StagedArtifactRecord/);
+assert.match(importPlanning, /ImportPlanningArtifactValidation/);
+assert.match(importPlanning, /validate_import_plan_artifacts/);
+assert.match(importPlanning, /staged-artifacts\.json/);
+assert.match(app, /artifactValidation/);
+assert.match(app, /importPlanArtifactsAreComplete/);
 
 console.log("import onboarding manager static smoke passed");

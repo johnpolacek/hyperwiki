@@ -334,13 +334,33 @@ interface ImportPlanningResponse {
   summary?: string;
 }
 
+interface StagedArtifactRecord {
+  virtualPath: string;
+  intendedPath: string;
+  contentHash: string;
+  validationStatus: string;
+  validationErrors: string[];
+  commitStatus: string;
+  committedAtMs?: number | null;
+}
+
+interface ImportPlanningArtifactValidation {
+  status: "valid" | "invalid" | string;
+  stagedPath: string;
+  artifacts: StagedArtifactRecord[];
+  errors: string[];
+  repairPrompt?: string | null;
+  validatedAtMs: number;
+}
+
 interface ImportPlanningStatus {
-  status: "notImported" | "incomplete" | "complete";
+  status: "notImported" | "incomplete" | "complete" | "needsRepair";
   answeredCount: number;
   currentQuestion?: ImportPlanningQuestion | null;
   currentRequestId?: string | null;
   nextAction: string;
   qnaPath?: string | null;
+  artifactValidation?: ImportPlanningArtifactValidation | null;
 }
 
 interface CodexImportTurnResponse {
@@ -638,7 +658,15 @@ function App() {
       }
       if (workspaceResult.status === "fulfilled") setWorkspace(workspaceResult.value);
       const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
-      const completed = selectedProject.importPlanning?.status === "complete" || planning.generatedPlanPaths.length > 0;
+      const completed = importPlanArtifactsAreComplete(selectedProject, planning.generatedPlanPaths);
+      if (selectedProject.importPlanning?.status === "needsRepair") {
+        appendImportLog(`Imported Q&A generated plan needs repair project=${project.id} errors=${selectedProject.importPlanning.artifactValidation?.errors.length || 0}`);
+        setPlanningInterviewStatus("failed");
+        setPlanningActivity(selectedProject.importPlanning.nextAction);
+        setPlanningWorkstream(importArtifactValidationLines(selectedProject.importPlanning));
+        setStatus("Imported project plan needs repair");
+        return;
+      }
       if (!completed) return;
       appendImportLog(`Imported Q&A completion detected project=${project.id} generatedPlanCount=${planning.generatedPlanPaths.length}`);
       importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
@@ -1460,8 +1488,23 @@ function App() {
     const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
     if (wikiResult.status === "fulfilled") setWikiPages(pages);
     if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
+    const latestProject = projectsResult.status === "fulfilled"
+      ? findActiveProject(projectsResult.value, unavailableProjectIds, {
+        projectSlug: project.projectSlug,
+        worktreeSlug: project.worktreeSlug,
+      }) || project
+      : project;
     const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
-    if (planning.generatedPlanPaths.length > 0) {
+    if (latestProject.importPlanning?.status === "needsRepair") {
+      appendImportLog(`Imported Q&A app-server plan validation failed project=${project.id} request=${requestId} errors=${latestProject.importPlanning.artifactValidation?.errors.length || 0}`);
+      clearActiveImportPlanningTurn(requestId);
+      setPlanningInterviewStatus("failed");
+      setPlanningActivity(latestProject.importPlanning.nextAction);
+      setPlanningWorkstream(importArtifactValidationLines(latestProject.importPlanning));
+      setStatus("Imported project plan needs repair");
+      return;
+    }
+    if (importPlanArtifactsAreComplete(latestProject, planning.generatedPlanPaths)) {
       appendImportLog(`Imported Q&A app-server plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
       clearActiveImportPlanningTurn(requestId);
       importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
@@ -1512,8 +1555,23 @@ function App() {
         const pages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
         if (wikiResult.status === "fulfilled") setWikiPages(pages);
         if (projectsResult.status === "fulfilled") setProjects(projectsResult.value);
+        const latestProject = projectsResult.status === "fulfilled"
+          ? findActiveProject(projectsResult.value, unavailableProjectIds, {
+            projectSlug: project.projectSlug,
+            worktreeSlug: project.worktreeSlug,
+          }) || project
+          : project;
         const planning = importedPlanningState({ kind: "wiki", path: "/wiki/plans/index.mdx" }, pages);
-        if (planning.generatedPlanPaths.length > 0) {
+        if (latestProject.importPlanning?.status === "needsRepair") {
+          appendImportLog(`Imported Q&A turn plan validation failed project=${project.id} request=${requestId} errors=${latestProject.importPlanning.artifactValidation?.errors.length || 0}`);
+          clearActiveImportPlanningTurn(requestId);
+          setPlanningInterviewStatus("failed");
+          setPlanningActivity(latestProject.importPlanning.nextAction);
+          setPlanningWorkstream(importArtifactValidationLines(latestProject.importPlanning));
+          setStatus("Imported project plan needs repair");
+          return;
+        }
+        if (importPlanArtifactsAreComplete(latestProject, planning.generatedPlanPaths)) {
           appendImportLog(`Imported Q&A turn plan detected project=${project.id} request=${requestId} generatedPlanCount=${planning.generatedPlanPaths.length}`);
           clearActiveImportPlanningTurn(requestId);
           importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
@@ -4885,6 +4943,23 @@ function importedPlanningState(route: ViewRoute, pages: WikiPage[]) {
     hasImportedSource: importedSource,
     isIntake: route.kind === "wiki" && route.path === "/wiki/plans/index.mdx" && importedSource && generatedPlanPaths.length === 0,
   };
+}
+
+function importPlanArtifactsAreComplete(project: ProjectRecord | null, generatedPlanPaths: string[]) {
+  if (project?.importPlanning?.status === "complete") return true;
+  if (project?.importPlanning?.status === "needsRepair") return false;
+  return !project?.importPlanning && generatedPlanPaths.length > 0;
+}
+
+function importArtifactValidationLines(importPlanning: ImportPlanningStatus) {
+  const validation = importPlanning.artifactValidation;
+  if (!validation) return [importPlanning.nextAction];
+  return [
+    importPlanning.nextAction,
+    `Artifact validation: ${validation.status}`,
+    `Staged artifacts: ${validation.artifacts.length}`,
+    ...validation.errors.slice(0, 8).map((error) => `validation: ${error}`),
+  ];
 }
 
 function importCompletionLandingPath(workspace: WorkspaceResponse | null, generatedPlanPaths: string[]) {

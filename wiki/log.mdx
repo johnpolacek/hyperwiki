@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 implementation | import onboarding Unit 04</h2>
+  <ul>
+    <li>Added staged import artifact records under ignored <code>.hyperwiki/state/import-onboarding/staged-artifacts.json</code> for generated plan files discovered under <code>wiki/plans/</code>.</li>
+    <li>Added deterministic artifact validation for MDX frontmatter, <code>wikiKind: "plan"</code>, titles, nested plan index, executable units, source grounding, and unit verification guidance.</li>
+    <li>Changed import planning status so delayed or reload-discovered plan files report <code>complete</code> only after validation passes, or <code>needsRepair</code> with repair prompt details when validation fails.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code> and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding first-question recovery</h2>
   <ul>
     <li>Hardened the imported-project first-question prompt so Codex is explicitly forbidden from command, file, wiki, or plan-writing behavior in the question-script turn.</li>
