@@ -532,6 +532,7 @@ fn render_mdx_body(mdx: &str) -> String {
     let mut in_list = false;
     let mut in_code = false;
     let mut code = String::new();
+    let mdx = expand_escaped_source_context_paragraphs(mdx);
     for line in mdx.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("```") {
@@ -586,6 +587,75 @@ fn render_mdx_body(mdx: &str) -> String {
     html
 }
 
+fn expand_escaped_source_context_paragraphs(mdx: &str) -> String {
+    let mut output = String::new();
+    for line in mdx.lines() {
+        let trimmed = line.trim();
+        if let Some(inner) = trimmed
+            .strip_prefix("<p>")
+            .and_then(|value| value.strip_suffix("</p>"))
+            .filter(|value| value.starts_with("## /wiki/"))
+        {
+            let decoded = decode_common_html_entities(inner);
+            let rendered = render_collapsed_source_context(&decoded);
+            if !rendered.trim().is_empty() {
+                output.push_str(&rendered);
+                output.push('\n');
+                continue;
+            }
+        }
+        output.push_str(line);
+        output.push('\n');
+    }
+    output
+}
+
+fn render_collapsed_source_context(value: &str) -> String {
+    normalized_source_segments(value)
+        .into_iter()
+        .filter_map(|segment| {
+            let (path, body) = collapsed_source_path_and_body(&segment)?;
+            let body = strip_collapsed_frontmatter(body).trim();
+            if body.is_empty() {
+                return None;
+            }
+            Some(format!(
+                r#"<article class="source-decision"><h3><a href="{path}">{label}</a></h3>{body}</article>"#,
+                path = escape_html_text(path),
+                label = escape_html_text(path),
+            ))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn normalized_source_segments(value: &str) -> Vec<String> {
+    let normalized = value.replace(" ## /wiki/", "\n## /wiki/");
+    normalized
+        .lines()
+        .filter(|line| line.trim_start().starts_with("## /wiki/"))
+        .map(|line| line.trim().to_string())
+        .collect()
+}
+
+fn collapsed_source_path_and_body(segment: &str) -> Option<(&str, &str)> {
+    let rest = segment.strip_prefix("## ")?;
+    let split = rest.find(char::is_whitespace)?;
+    let (path, body) = rest.split_at(split);
+    Some((path, body))
+}
+
+fn strip_collapsed_frontmatter(value: &str) -> &str {
+    let trimmed = value.trim_start();
+    let Some(rest) = trimmed.strip_prefix("--- ") else {
+        return trimmed;
+    };
+    let Some(end) = rest.find(" --- ") else {
+        return trimmed;
+    };
+    &rest[end + " --- ".len()..]
+}
+
 fn markdown_heading(line: &str) -> Option<(usize, &str)> {
     let hashes = line.chars().take_while(|ch| *ch == '#').count();
     if hashes == 0 || hashes > 6 {
@@ -631,6 +701,15 @@ fn escape_html_text(value: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
+}
+
+fn decode_common_html_entities(value: &str) -> String {
+    value
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
 }
 
 fn title_from_wiki_path(relative_path: &str) -> String {
@@ -752,6 +831,37 @@ mod tests {
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
         assert!(!source.markdown.contains("PlanHero"));
+    }
+
+    #[test]
+    fn renders_stale_escaped_import_source_bundle_as_html() {
+        let root = temp_root("wiki-stale-source-bundle");
+        fs::create_dir_all(root.join("wiki").join("plans").join("mvp")).unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("unit-01-confirmed-mvp.mdx"),
+            r#"---
+title: "Unit 01"
+wikiKind: "plan"
+---
+
+<h1>Unit 01</h1>
+<section>
+  <h2>Source Decisions</h2>
+  <p>## /wiki/sources/import-state.mdx --- title: &quot;Import Planning State&quot; wikiKind: &quot;source&quot; --- &lt;h1&gt;Import Planning State&lt;/h1&gt; &lt;section&gt;&lt;h2&gt;Summary&lt;/h2&gt;&lt;ul&gt;&lt;li&gt;Readiness: continue Q&amp;amp;A&lt;/li&gt;&lt;/ul&gt;&lt;/section&gt; ## /wiki/sources/import-qna.mdx --- title: &quot;Import Q&amp;amp;A&quot; wikiKind: &quot;source&quot; --- &lt;h1&gt;Import Q&amp;amp;A&lt;/h1&gt;</p>
+</section>"#,
+        )
+        .unwrap();
+
+        let html = read_wiki_page(&root, "/wiki/plans/mvp/unit-01-confirmed-mvp.mdx").unwrap();
+
+        assert!(html.contains(r#"<article class="source-decision">"#));
+        assert!(html.contains("<h1>Import Planning State</h1>"));
+        assert!(html.contains("<h1>Import Q&amp;A</h1>"));
+        assert!(!html.contains("&lt;h1&gt;"));
+        assert!(!html.contains("wikiKind: &quot;source&quot;"));
     }
 
     #[test]

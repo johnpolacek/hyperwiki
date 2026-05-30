@@ -957,11 +957,14 @@ fn runtime_plan_artifacts(
 ) -> Vec<GeneratedPlanArtifact> {
     let title = escape_html(&project.name);
     let ready_summary = escape_html(&compact(ready_context, 1000));
-    let source_summary = escape_html(&readable_source_excerpt(source_context, 1400));
-    let source_excerpt = if source_summary.trim().is_empty() {
-        "No source excerpt was available to the runtime planner. Preserve this as an implementation unknown and verify against the imported source before coding.".to_string()
+    let source_decisions = render_source_context_decisions(source_context);
+    let source_decisions = if source_decisions.trim().is_empty() {
+        format!(
+            "<p>{}</p>",
+            escape_html("No source excerpt was available to the runtime planner. Preserve this as an implementation unknown and verify against the imported source before coding.")
+        )
     } else {
-        source_summary
+        source_decisions
     };
     let ready_excerpt = if ready_summary.trim().is_empty() {
         "Codex signaled that planning could continue, but did not provide a usable plan-intent excerpt.".to_string()
@@ -998,7 +1001,7 @@ wikiKind: "plan"
 <section>
   <h2>Source Decisions</h2>
   <p>{ready_excerpt}</p>
-  <p>{source_excerpt}</p>
+  {source_decisions}
 </section>
 <section>
   <h2>Stage 01 - Confirmed MVP Implementation</h2>
@@ -1027,7 +1030,7 @@ wikiKind: "plan"
 <section>
   <h2>Source Decisions</h2>
   <p>{ready_excerpt}</p>
-  <p>{source_excerpt}</p>
+  {source_decisions}
 </section>
 <section>
   <h2>Scope</h2>
@@ -1897,58 +1900,59 @@ fn compact(value: &str, max_chars: usize) -> String {
     collapsed.chars().take(max_chars).collect::<String>()
 }
 
-fn readable_source_excerpt(value: &str, max_chars: usize) -> String {
-    let mut cleaned = String::new();
+fn render_source_context_decisions(value: &str) -> String {
+    source_context_chunks(value)
+        .into_iter()
+        .filter_map(|(path, body)| {
+            let body = strip_frontmatter_owned(&body);
+            let body = body.trim();
+            if body.is_empty() {
+                return None;
+            }
+            Some(format!(
+                r#"<article class="source-decision"><h3><a href="{path}">{label}</a></h3>
+{body}
+</article>"#,
+                path = escape_html(&path),
+                label = escape_html(&path),
+            ))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn source_context_chunks(value: &str) -> Vec<(String, String)> {
+    let mut chunks = Vec::new();
+    let mut current_path: Option<String> = None;
+    let mut current_body = Vec::new();
     for line in value.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty()
-            || trimmed == "---"
-            || trimmed.starts_with("## /")
-            || trimmed.starts_with("title:")
-            || trimmed.starts_with("description:")
-            || trimmed.starts_with("wikiKind:")
-        {
+        if let Some(path) = line.trim().strip_prefix("## /") {
+            if let Some(path) = current_path.take() {
+                chunks.push((path, current_body.join("\n")));
+                current_body.clear();
+            }
+            current_path = Some(format!("/{}", path.trim()));
             continue;
         }
-        let text = decode_common_html_entities(&strip_html_tags(trimmed));
-        if text.trim().is_empty() {
-            continue;
-        }
-        if !cleaned.is_empty() {
-            cleaned.push(' ');
-        }
-        cleaned.push_str(text.trim());
-    }
-    compact(&cleaned, max_chars)
-}
-
-fn strip_html_tags(value: &str) -> String {
-    let mut stripped = String::with_capacity(value.len());
-    let mut in_tag = false;
-    for ch in value.chars() {
-        match ch {
-            '<' => {
-                in_tag = true;
-                stripped.push(' ');
-            }
-            '>' => {
-                in_tag = false;
-                stripped.push(' ');
-            }
-            _ if !in_tag => stripped.push(ch),
-            _ => {}
+        if current_path.is_some() {
+            current_body.push(line);
         }
     }
-    stripped
+    if let Some(path) = current_path {
+        chunks.push((path, current_body.join("\n")));
+    }
+    chunks
 }
 
-fn decode_common_html_entities(value: &str) -> String {
-    value
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
+fn strip_frontmatter_owned(value: &str) -> String {
+    let trimmed = value.trim_start();
+    let Some(rest) = trimmed.strip_prefix("---") else {
+        return value.to_string();
+    };
+    let Some(end) = rest.find("\n---") else {
+        return value.to_string();
+    };
+    rest[end + "\n---".len()..].trim_start().to_string()
 }
 
 fn escape_html(value: &str) -> String {
@@ -2199,32 +2203,11 @@ mod tests {
         assert!(!unit.contains("wikiKind: \"source\""));
         assert!(!unit.contains("&lt;h1&gt;"));
         assert!(!unit.contains("&amp;amp;"));
+        assert!(unit.contains(r#"<article class="source-decision">"#));
+        assert!(unit.contains(r#"<h1>Micro Journal</h1>"#));
+        assert!(unit.contains(r#"<h1>Import Q&amp;A</h1>"#));
         let run = read_run(&root, &run_id).unwrap();
         assert_eq!(run.status, "complete");
         assert_eq!(run.phase, "complete");
-    }
-
-    #[test]
-    fn readable_source_excerpt_removes_mdx_scaffold_markup() {
-        let source = r#"## /wiki/sources/import-state.mdx
----
-title: "Import Planning State"
-description: "Compact state"
-wikiKind: "source"
----
-<h1>Import Planning State</h1>
-<section><h2>Summary</h2><ul><li>Latest answer: Static local-only MVP</li><li>Readiness: continue Q&amp;A</li></ul></section>
-
----
-
-## /wiki/sources/import-qna.mdx
-<article><h3>Agent Planning Question</h3><p><strong>Question:</strong> Should this be one HTML file?</p></article>
-"#;
-        let excerpt = readable_source_excerpt(source, 1000);
-        assert!(excerpt.contains("Latest answer: Static local-only MVP"));
-        assert!(excerpt.contains("Readiness: continue Q&A"));
-        assert!(!excerpt.contains("## /wiki/sources"));
-        assert!(!excerpt.contains("wikiKind:"));
-        assert!(!excerpt.contains("<h1>"));
     }
 }
