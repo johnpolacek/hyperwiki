@@ -108,33 +108,51 @@ export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onN
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
-        {markdown ? (
-          <div className="flex items-center justify-end gap-3 border-b pb-3">
-            <p className="m-0 text-xs text-muted-foreground" aria-live="polite">{copyStatus}</p>
-            <Button disabled={!markdown.trim()} size="sm" type="button" variant="outline" onClick={copyMarkdown}>
-              <Clipboard aria-hidden="true" data-icon="inline-start" />
-              Copy Markdown
-            </Button>
-          </div>
-        ) : null}
-        {validationWarnings.length ? (
-          <Alert className="rounded-lg">
-            <AlertCircle aria-hidden="true" />
-            <AlertTitle>Wiki validation warnings</AlertTitle>
-            <AlertDescription>
-              <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
-                {validationWarnings.slice(0, 5).map((warning, index) => (
-                  <li key={`${warning.kind}-${warning.line}-${index}`}>
-                    Line {warning.line}: {warning.message}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        <TooltipProvider>{content}</TooltipProvider>
-        {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
+      <div className="relative mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
+        <TooltipProvider>
+          {markdown ? (
+            <div className="pointer-events-none absolute right-6 top-8 z-10 md:right-10">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label="Copy Markdown"
+                    className="pointer-events-auto"
+                    disabled={!markdown.trim()}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                    onClick={copyMarkdown}
+                  >
+                    {copyStatus === "Markdown copied" ? (
+                      <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
+                    ) : (
+                      <Clipboard aria-hidden="true" data-icon="inline-start" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
+              </Tooltip>
+              <span className="sr-only" aria-live="polite">{copyStatus}</span>
+            </div>
+          ) : null}
+          {validationWarnings.length ? (
+            <Alert className="rounded-lg">
+              <AlertCircle aria-hidden="true" />
+              <AlertTitle>Wiki validation warnings</AlertTitle>
+              <AlertDescription>
+                <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                  {validationWarnings.slice(0, 5).map((warning, index) => (
+                    <li key={`${warning.kind}-${warning.line}-${index}`}>
+                      Line {warning.line}: {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {content}
+          {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
+        </TooltipProvider>
       </div>
     </article>
   );
