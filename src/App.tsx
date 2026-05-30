@@ -378,6 +378,13 @@ interface CodexImportTurnResponse {
   metrics?: CodexAdapterMetrics;
 }
 
+interface ImportPlanningReadyToPlan {
+  type: "hyperwiki-ready-to-plan";
+  requestId: string;
+  reasoning: string;
+  planIntent: string;
+}
+
 interface CodexImportTurnStartResponse {
   ok: boolean;
   runId: string;
@@ -413,6 +420,7 @@ type ImportPlanningProtocolPhase =
   | "exec_json_fallback"
   | "streaming"
   | "question_ready"
+  | "ready_to_plan"
   | "schema_mismatch"
   | "stalled"
   | "complete"
@@ -1325,18 +1333,6 @@ function App() {
     }
   }
 
-  async function cancelImportPlanningRun(project: ProjectRecord, runId: string, reason: string) {
-    try {
-      const cancelled = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-cancel?runId=${encodeURIComponent(runId)}`, project), {
-        method: "POST",
-      });
-      if (cancelled.run) setActiveImportPlanningRun(cancelled.run);
-      appendImportLog(`Imported Q&A backend run cancelled project=${project.id} run=${runId} reason=${reason}`);
-    } catch (error) {
-      appendImportLog(`Imported Q&A backend run cancel failed project=${project.id} run=${runId} reason=${reason}`, error);
-    }
-  }
-
   async function loadImportPlanningSourceContext(project: ProjectRecord) {
     const sourcePaths = [
       "/wiki/sources/import-state.mdx",
@@ -1363,7 +1359,7 @@ function App() {
     return context;
   }
 
-  async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry" | "repair", answer = "", answeredQuestionId = "") {
+  async function startImportPlanningTurn(project: ProjectRecord, reason: "initial" | "answer" | "retry" | "repair" | "plan" | "plan_repair", answer = "", answeredQuestionId = "") {
     const key = `${project.id}:import-qna`;
     if ((reason === "initial" || reason === "retry") && revealNextImportScriptQuestion(project)) {
       appendImportLog(`Imported Q&A start reused staged script project=${project.id} reason=${reason}`);
@@ -1392,6 +1388,10 @@ function App() {
       const sourceContext = reason === "initial" || reason === "retry" ? await loadImportPlanningSourceContext(project) : "";
       const prompt = reason === "initial" || reason === "retry"
         ? importedProjectQuestionScriptPrompt(project, requestId, sourceContext)
+        : reason === "plan"
+          ? importedProjectPlanGenerationPrompt(project, requestId, answer)
+          : reason === "plan_repair"
+            ? importedProjectPlanRepairPrompt(project, requestId, answer)
         : reason === "repair"
           ? importedProjectPlanningRepairPrompt(project, requestId, answer, answeredQuestionId)
           : importedProjectPlanningPrompt(project, requestId, answer, answeredQuestionId);
@@ -1400,9 +1400,13 @@ function App() {
       setPlanningInterviewStatus("waiting_for_question");
       setPlanningActivity(reason === "initial" || reason === "retry"
         ? "Codex is generating the planning question script"
-        : reason === "repair" ? "Planning agent is repairing the previous incomplete turn" : "Planning agent is working on the next question");
+        : reason === "plan" || reason === "plan_repair"
+          ? "Planning agent is writing the MVP plan"
+          : reason === "repair" ? "Planning agent is repairing the previous incomplete turn" : "Planning agent is working on the next question");
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, reason === "initial" || reason === "retry"
         ? ["Codex app-server script turn started", "Using inline source context", "Waiting for the first structured question"]
+        : reason === "plan" || reason === "plan_repair"
+          ? ["Codex app-server plan generation turn started", "Waiting for validated MVP plan artifacts"]
         : reason === "repair"
           ? ["Codex app-server repair turn started", "Previous turn produced no question or plan files", "Waiting for a generated plan or one structured question"]
         : ["Codex app-server turn started", "Waiting for the next structured question"]));
@@ -1500,15 +1504,6 @@ function App() {
             events: status.snapshot.events,
           };
         }
-        if (shouldUseLocalImportQuestionFallback(requestId, status.snapshot)) {
-          appendImportLog(`Imported Q&A local first-question fallback project=${project.id} request=${requestId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
-          return localImportQuestionFallbackTurn(project, requestId, status.snapshot);
-        }
-        if (shouldUseLocalImportFollowupNoTextFallback(requestId, status.snapshot)) {
-          appendImportLog(`Imported Q&A local follow-up fallback project=${project.id} request=${requestId} run=${runId} elapsedMs=${status.snapshot.elapsedMs} events=${status.snapshot.events}`);
-          await cancelImportPlanningRun(project, runId, "follow-up no-text fallback");
-          return localImportAnswerFollowupFallbackTurn(project, requestId, status.snapshot);
-        }
         if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
           throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid Hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
         }
@@ -1596,6 +1591,43 @@ function App() {
       setPlanningInterviewStatus("question_ready");
       await setImportPlanningQuestions(project, nextQuestions);
       setPlanningActivity("Next planning question is ready.");
+      return;
+    }
+    const readyToPlan = extractLatestReadyToPlanSignal(plain, requestId);
+    if (readyToPlan && !requestId.includes(":plan:") && !requestId.includes(":plan_repair:")) {
+      clearActiveImportPlanningTurn(requestId);
+      appendImportLog(`Imported Q&A ready-to-plan project=${project.id} request=${requestId} reasoning=${JSON.stringify(readyToPlan.reasoning.slice(0, 180))}`);
+      setPlanningInterviewStatus("waiting_for_question");
+      setPlanningActivity("Planning decisions are complete; generating the MVP plan.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+        "Structured ready-to-plan signal received.",
+        readyToPlan.reasoning ? `ready-to-plan: ${readyToPlan.reasoning}` : "Starting MVP plan generation.",
+      ]));
+      window.setTimeout(() => {
+        void startImportPlanningTurn(project, "plan", readyToPlan.planIntent || plain.slice(-1200), answeredQuestionId);
+      }, 0);
+      return;
+    }
+    if (requestId.includes(":plan:")) {
+      clearActiveImportPlanningTurn(requestId);
+      appendImportLog(`Imported Q&A plan generation missing artifacts project=${project.id} request=${requestId} tail=${JSON.stringify(plain.slice(-240))}`);
+      setPlanningInterviewStatus("waiting_for_question");
+      setPlanningActivity("Plan generation finished without validated artifacts; running one plan repair.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+        "Plan generation completed without validated MVP plan artifacts.",
+        "Starting one plan repair turn.",
+      ]));
+      window.setTimeout(() => {
+        void startImportPlanningTurn(project, "plan_repair", plain.slice(-1200), answeredQuestionId);
+      }, 0);
+      return;
+    }
+    if (requestId.includes(":plan_repair:")) {
+      clearActiveImportPlanningTurn(requestId);
+      setPlanningInterviewStatus("failed");
+      setPlanningActivity("Codex plan repair did not produce validated MVP plan artifacts.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Plan repair completed without validated MVP plan artifacts."]));
+      setStatus("Imported project plan repair failed");
       return;
     }
     if (shouldAutoRepairImportPlanningDrift(requestId, plain)) {
@@ -5031,24 +5063,6 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
   }
 }
 
-function shouldUseLocalImportQuestionFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
-  if (!requestId.includes(":initial:") && !requestId.includes(":retry:")) return false;
-  if (!snapshot.firstDeltaMs) return false;
-  const eventLog = snapshot.eventLog || [];
-  const completedAssistantMessage = eventLog.some((line) => /agent message|assistant message complete/i.test(line));
-  const usedCommands = eventLog.some((line) => /command_execution|exec_command/i.test(line));
-  const driftedTowardPlanWrite = /(?:write|create|update|generate).{0,80}(?:mvp|plan|wiki|planning tree|source briefs)/i.test(snapshot.textTail || snapshot.text || "");
-  const waitedAfterText = snapshot.elapsedMs >= (snapshot.firstDeltaMs || 0) + 3000;
-  return waitedAfterText && (completedAssistantMessage || usedCommands || driftedTowardPlanWrite || snapshot.elapsedMs >= 20000);
-}
-
-function shouldUseLocalImportFollowupNoTextFallback(requestId: string, snapshot: CodexImportTurnSnapshot) {
-  if (!requestId.includes(":answer:") && !requestId.includes(":repair:")) return false;
-  if (snapshot.firstDeltaMs) return false;
-  if (!["exec_json_fallback", "turn_started", "waiting_for_assistant", "waiting_for_first_event"].includes(snapshot.phase)) return false;
-  return snapshot.elapsedMs >= 18000;
-}
-
 function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
   if (!requestId.includes(":answer:")) return false;
   if (!text.trim()) return false;
@@ -5056,100 +5070,6 @@ function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
   const futureWork = /(?:i(?:'m| am| will)|we(?:'re| are| will)|going to|next(?:,| i| we)?).{0,140}(?:create|write|update|generate|produce).{0,140}(?:mvp|plan|wiki|brief|source|artifact|file)/i.test(compact);
   const docsOnlyPlanIntent = /(?:create|write|update|generate).{0,120}(?:mvp plan|plan files|durable briefs|wiki indexes|source briefs|docs-only)/i.test(compact);
   return futureWork || docsOnlyPlanIntent || compact.length > 0;
-}
-
-function localImportQuestionFallbackTurn(project: ProjectRecord, requestId: string, snapshot: CodexImportTurnSnapshot): CodexImportTurnResponse {
-  const text = localImportQuestionFallbackText(project, requestId);
-  return {
-    ok: true,
-    transport: "hyperwiki-local-question-fallback",
-    projectId: project.id,
-    requestId,
-    threadId: "hyperwiki-local-question-fallback",
-    turnId: snapshot.turnId || "local-question-fallback",
-    text,
-    firstDeltaMs: snapshot.firstDeltaMs ?? null,
-    elapsedMs: snapshot.elapsedMs,
-    planDetected: false,
-    events: snapshot.events,
-    metrics: snapshot.metrics,
-  };
-}
-
-function localImportAnswerFollowupFallbackTurn(project: ProjectRecord, requestId: string, snapshot: CodexImportTurnSnapshot): CodexImportTurnResponse {
-  const text = localImportAnswerFollowupFallbackText(project, requestId);
-  return {
-    ok: true,
-    transport: "hyperwiki-local-answer-fallback",
-    projectId: project.id,
-    requestId,
-    threadId: "hyperwiki-local-answer-fallback",
-    turnId: snapshot.turnId || "local-answer-fallback",
-    text,
-    firstDeltaMs: snapshot.firstDeltaMs ?? null,
-    elapsedMs: snapshot.elapsedMs,
-    planDetected: false,
-    events: snapshot.events,
-    metrics: snapshot.metrics,
-  };
-}
-
-function localImportQuestionFallbackText(project: ProjectRecord, requestId: string) {
-  const question = {
-    type: "hyperwiki-question",
-    requestId,
-    question: `Before Hyperwiki writes the MVP plan for ${project.name}, what should the first implementation target optimize for?`,
-    recommendedAnswer: "Small end-to-end MVP first.",
-    reasoning: "The import agent tried to move toward plan writing before producing a valid onboarding question, so Hyperwiki is asking a safe scope-setting decision to keep the plan grounded in your intent.",
-    options: [
-      {
-        label: "Small end-to-end MVP first",
-        description: "Plan the thinnest usable flow that proves the core product experience before adding breadth.",
-      },
-      {
-        label: "UX prototype first",
-        description: "Prioritize screens, interaction flow, and user-facing polish before deeper implementation.",
-      },
-      {
-        label: "Technical foundation first",
-        description: "Prioritize architecture, data model, integration seams, and verification before UI breadth.",
-      },
-      {
-        label: "Pause for source review",
-        description: "Do not create the MVP plan yet; inspect imported source context and ask a more specific question next.",
-      },
-    ],
-  };
-  return `\`\`\`json\n${JSON.stringify(question, null, 2)}\n\`\`\``;
-}
-
-function localImportAnswerFollowupFallbackText(project: ProjectRecord, requestId: string) {
-  const question = {
-    type: "hyperwiki-question",
-    requestId,
-    question: `What technical baseline should the MVP plan assume for ${project.name}?`,
-    recommendedAnswer: "Local browser app with simple local persistence.",
-    reasoning: "Codex did not produce assistant text quickly after the previous answer, so Hyperwiki is asking the next implementation-shaping decision locally to keep onboarding moving.",
-    options: [
-      {
-        label: "Local browser app with simple local persistence",
-        description: "Plan a small client-first MVP using local storage or an equivalent lightweight local data layer.",
-      },
-      {
-        label: "Full-stack app with backend API",
-        description: "Plan frontend, backend routes, server-side persistence, and local preview commands from the first unit.",
-      },
-      {
-        label: "Static prototype with no persistence",
-        description: "Plan the fastest inspectable UX slice and defer saved state until a later unit.",
-      },
-      {
-        label: "Ask one more source-specific question",
-        description: "Do not write the plan yet; use the imported brief and Q&A to ask a narrower follow-up.",
-      },
-    ],
-  };
-  return `\`\`\`json\n${JSON.stringify(question, null, 2)}\n\`\`\``;
 }
 
 function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = importPlanningWorkstreamLimit) {
@@ -5282,15 +5202,11 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
       "",
       "Output rules:",
       "- If a branching decision remains, emit one JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
+      "- If no blocking unknowns remain, emit one JSON object with type \"hyperwiki-ready-to-plan\", requestId, reasoning, and planIntent.",
       "- Options may be strings or objects with label and description. Put the recommended option first.",
       `- Every emitted object must use requestId exactly \"${requestId}\".`,
-      "- Keep prose before and after JSON to one short sentence or less.",
-      "- Stop after emitting the question.",
-      "",
-      "Final-plan rule:",
-      "- If no blocking unknowns remain, create the MVP plan files now before your final response. For that final write only, use $hyperwiki and $grill-with-docs, read the full source context, and follow the plan/stage/unit file contract.",
-      "- Preserve separate files under wiki/plans/mvp/ and update wiki/plans/index.mdx, wiki/log.mdx, and source briefs only as durable context requires.",
-      "- Do not finish with future-tense procedural prose like \"I am going to create the plan.\" Either write the plan files now or emit the next hyperwiki-question JSON object.",
+      "- Emit only the JSON object. Do not use tools, run commands, read additional files, write files, or include prose.",
+      "- Stop after emitting the JSON object.",
       "",
       `Imported project: ${project.name}`,
       `Project root: ${project.root}`,
@@ -5324,23 +5240,15 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
     "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
-    "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
+    "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or emit a hyperwiki-ready-to-plan object if no blocking unknowns remain.",
     "- If the user's answer rejects the options, reconcile the note and then ask the next blocking question with a new hyperwiki-question block.",
     "- This is the first plan for an imported project; treat it as MVP planning unless the user corrects that during Q&A.",
     "- Do not create wiki/plans/mvp/ until the Q&A has resolved blocking product, UX, technical, and verification decisions.",
     "- The technical-stack pass is mandatory before plan creation. Resolve or explicitly record as a blocker/unknown: frontend or client surface, backend/API/runtime, persistence/data storage, auth/user model, external services and integrations, AI/model provider when relevant, deployment/local preview approach, package manager, dev command, build/type/test commands, and any required environment variables.",
     "- Do not infer stack defaults from thin context. If source evidence does not justify a stack choice, ask a hyperwiki-question or record the unknown as a blocker in the generated plan.",
-    "- When the interview is done, create a decision-complete MDX MVP plan under wiki/plans/mvp/ with separate navigable files.",
-    "- Preserve the plan > stages > units structure as files: wiki/plans/mvp/index.mdx, wiki/plans/mvp/stage-XX-name.mdx, and one MDX file per unit under either wiki/plans/mvp/stage-XX-name/unit-XX-name.mdx or wiki/plans/mvp/units/stage-XX/XX-name.mdx.",
-    "- Do not collapse stages and units into headings inside wiki/plans/mvp/index.mdx; the sidebar depends on stage and unit files.",
-    "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
-    "- Do not create many single-unit stages unless each has a real phase boundary.",
+    "- When the interview is done, emit a hyperwiki-ready-to-plan object. Do not create plan files in this question-decision turn.",
     "- Name unknowns instead of inventing certainty.",
-    "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
-    "- Replace the import intake copy with the created MVP plan state once the plan exists.",
-    "- Update wiki/log.mdx and source briefs only when the interview creates durable project context.",
-    "- Keep all durable project knowledge under wiki/.",
-    "- Do not finish with future-tense procedural prose like \"I am going to create the plan.\" Either write the plan files now or emit the next hyperwiki-question JSON object.",
+    "- Do not finish with future-tense procedural prose like \"I am going to create the plan.\" Either emit a hyperwiki-ready-to-plan JSON object or emit the next hyperwiki-question JSON object.",
     "",
     `Imported project: ${project.name}`,
     `Project root: ${project.root}`,
@@ -5355,16 +5263,16 @@ function importedProjectPlanningRepairPrompt(project: ProjectRecord, requestId: 
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "The previous turn completed without a parseable hyperwiki-question and without validated generated plan files.",
-    "Do not summarize what you will do. Do one of these two actions now:",
+    "Do not summarize what you will do. Return one of these two JSON objects now:",
     "",
-    "A. If no blocking unknowns remain, create the MVP plan files now under wiki/plans/mvp/, update wiki/plans/index.mdx, and update durable source briefs or wiki/log.mdx only when needed.",
+    "A. If no blocking unknowns remain, output exactly one fenced JSON object with type \"hyperwiki-ready-to-plan\", requestId, reasoning, and planIntent.",
     "B. If a blocking unknown remains, output exactly one fenced JSON object with type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options.",
     "",
     "Strict output rules:",
     `- Any emitted question must use requestId exactly \"${requestId}\".`,
     "- Do not emit future-tense procedural prose such as \"I am going to update\" or \"I will create\".",
-    "- If you cannot safely write the plan files, ask the next blocking question instead.",
-    "- Stop immediately after the plan files are written or after the JSON question block.",
+    "- Do not write plan files in this repair turn.",
+    "- Stop immediately after the JSON block.",
     answeredQuestionId ? `- The answered question id was ${answeredQuestionId}.` : "- No answered question id was supplied.",
     "",
     "Context to read first:",
@@ -5375,6 +5283,65 @@ function importedProjectPlanningRepairPrompt(project: ProjectRecord, requestId: 
     "- wiki/sources/prd.mdx, wiki/sources/technical-brief.mdx, and wiki/sources/design-brief.mdx when present",
     "",
     "Previous incomplete assistant output:",
+    previousOutput.trim().slice(-1200) || "No previous output was captured.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+  ].join("\n");
+}
+
+function importedProjectPlanGenerationPrompt(project: ProjectRecord, requestId: string, readyContext = "") {
+  return [
+    "Use $hyperwiki and $grill-with-docs.",
+    "",
+    "You are generating the first MVP plan for this newly imported Hyperwiki project.",
+    "Plan mode only: do not implement product code from this prompt.",
+    "",
+    "This is a plan-generation turn, not a question turn.",
+    `- requestId: ${requestId}`,
+    "- Create validated MDX wiki plan files now.",
+    "- Do not ask another question unless writing a safe MVP plan is impossible; in that case emit exactly one hyperwiki-question JSON object and stop.",
+    "",
+    "Read first:",
+    "- wiki/index.mdx",
+    "- wiki/sources.mdx",
+    "- wiki/sources/import.mdx",
+    "- wiki/sources/import-qna.mdx",
+    "- wiki/sources/import-state.mdx when present",
+    "- wiki/sources/prd.mdx, wiki/sources/technical-brief.mdx, and wiki/sources/design-brief.mdx when present",
+    "",
+    "Plan artifact contract:",
+    "- Write wiki/plans/mvp/index.mdx.",
+    "- Write separate stage and executable unit files under wiki/plans/mvp/.",
+    "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Update wiki/log.mdx and source briefs only when the import decisions created durable project context.",
+    "- Every executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
+    "- Name unknowns instead of inventing certainty.",
+    "- Do not finish by saying you will write files. Write them before the final response.",
+    "",
+    "Ready-to-plan context:",
+    readyContext.trim().slice(-1600) || "No ready-to-plan context was supplied; use the imported source and Q&A.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+  ].join("\n");
+}
+
+function importedProjectPlanRepairPrompt(project: ProjectRecord, requestId: string, previousOutput = "") {
+  return [
+    "Use $hyperwiki and $grill-with-docs.",
+    "",
+    "You are repairing a failed Hyperwiki import plan-generation turn.",
+    "The previous turn completed without validated MVP plan artifacts.",
+    "",
+    `- requestId: ${requestId}`,
+    "- Write the missing MVP plan files now under wiki/plans/mvp/.",
+    "- Update wiki/plans/index.mdx.",
+    "- Do not ask another question unless the imported source and Q&A make MVP planning impossible.",
+    "- If you ask a question, emit exactly one hyperwiki-question JSON object and stop.",
+    "- Do not emit future-tense procedural prose.",
+    "",
+    "Previous incomplete output:",
     previousOutput.trim().slice(-1200) || "No previous output was captured.",
     "",
     `Imported project: ${project.name}`,
@@ -5567,6 +5534,37 @@ function planningQuestionExtractionDiagnostics(text: string, sessionId: string, 
   };
 }
 
+function extractLatestReadyToPlanSignal(text: string, expectedRequestId = ""): ImportPlanningReadyToPlan | null {
+  const candidates: ImportPlanningReadyToPlan[] = [];
+  const blocks = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const parsed = parseReadyToPlanJson(blocks[index]?.[1]?.trim() || "");
+    if (parsed) candidates.push(parsed);
+  }
+  const rawObjects = extractRawTypedObjects(text, "hyperwiki-ready-to-plan");
+  for (let index = rawObjects.length - 1; index >= 0; index -= 1) {
+    const parsed = parseReadyToPlanJson(rawObjects[index]);
+    if (parsed) candidates.push(parsed);
+  }
+  return candidates.find((candidate) => !expectedRequestId || !candidate.requestId || candidate.requestId === expectedRequestId) || null;
+}
+
+function parseReadyToPlanJson(raw: string): ImportPlanningReadyToPlan | null {
+  if (!raw || !raw.includes("hyperwiki-ready-to-plan")) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<ImportPlanningReadyToPlan>;
+    if (value.type !== "hyperwiki-ready-to-plan") return null;
+    return {
+      type: "hyperwiki-ready-to-plan",
+      requestId: stringValue(value.requestId),
+      reasoning: stringValue(value.reasoning),
+      planIntent: stringValue(value.planIntent),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function firstQuestionGroup(questions: PlanningQuestion[]) {
   if (!questions.length) return [];
   const first = questions[0];
@@ -5596,6 +5594,24 @@ function extractRawPlanningQuestionObjects(text: string) {
     const candidate = text.slice(start, end + 1);
     if (isPlanningQuestionObjectCandidate(candidate)) objects.push(candidate);
     searchFrom = end + 1;
+  }
+  return objects;
+}
+
+function extractRawTypedObjects(text: string, type: string) {
+  const objects: string[] = [];
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const markerIndex = text.indexOf(type, searchFrom);
+    if (markerIndex === -1) break;
+    const start = text.lastIndexOf("{", markerIndex);
+    if (start === -1) {
+      searchFrom = markerIndex + type.length;
+      continue;
+    }
+    const end = findJsonObjectEnd(text, start);
+    if (end !== -1) objects.push(text.slice(start, end + 1));
+    searchFrom = end === -1 ? markerIndex + type.length : end + 1;
   }
   return objects;
 }

@@ -187,9 +187,13 @@ const APP_SERVER_TURN_TIMEOUT: Duration = Duration::from_secs(120);
 const APP_SERVER_FIRST_EVENT_PROGRESS_AFTER: Duration = Duration::from_secs(3);
 const APP_SERVER_FIRST_EVENT_FALLBACK_AFTER: Duration = Duration::from_secs(10);
 const EXEC_JSON_TURN_TIMEOUT: Duration = Duration::from_secs(120);
+const EXEC_JSON_FIRST_ASSISTANT_PROGRESS_AFTER: Duration = Duration::from_secs(12);
+const EXEC_JSON_FIRST_ASSISTANT_TIMEOUT: Duration = Duration::from_secs(45);
 const EXEC_JSON_ASSISTANT_IDLE_COMPLETE_AFTER: Duration = Duration::from_secs(12);
 const FIRST_EVENT_TIMEOUT_MESSAGE: &str =
     "Codex app-server accepted the turn but did not emit a first event.";
+const EXEC_JSON_FIRST_ASSISTANT_TIMEOUT_MESSAGE: &str =
+    "Codex exec JSON fallback did not produce assistant text within the bounded import-planning window.";
 
 fn app_server() -> &'static Mutex<Option<AppServer>> {
     static SERVER: OnceLock<Mutex<Option<AppServer>>> = OnceLock::new();
@@ -964,6 +968,7 @@ fn run_exec_json_turn(
     let mut events = 0usize;
     let mut event_log = Vec::<String>::new();
     let mut last_event_at = start;
+    let mut last_waiting_snapshot_ms = 0u128;
 
     loop {
         if is_run_cancelled(run_id) {
@@ -1106,6 +1111,49 @@ fn run_exec_json_turn(
                         events,
                         "assistant_idle",
                     ));
+                }
+                if text.trim().is_empty() && now.duration_since(start) >= EXEC_JSON_FIRST_ASSISTANT_TIMEOUT {
+                    let _ = child.kill();
+                    update_run_snapshot(
+                        run_id,
+                        turn_snapshot(
+                            "stalled",
+                            &text,
+                            events,
+                            &event_log,
+                            first_event_ms,
+                            first_delta_ms,
+                            None,
+                            start.elapsed().as_millis(),
+                            &turn_id,
+                            Some(EXEC_JSON_FIRST_ASSISTANT_TIMEOUT_MESSAGE),
+                            timing_marks,
+                        ),
+                    );
+                    return Err((504, EXEC_JSON_FIRST_ASSISTANT_TIMEOUT_MESSAGE.to_string()));
+                }
+                let elapsed_ms = start.elapsed().as_millis();
+                if text.trim().is_empty()
+                    && start.elapsed() >= EXEC_JSON_FIRST_ASSISTANT_PROGRESS_AFTER
+                    && elapsed_ms.saturating_sub(last_waiting_snapshot_ms) >= 5_000
+                {
+                    last_waiting_snapshot_ms = elapsed_ms;
+                    update_run_snapshot(
+                        run_id,
+                        turn_snapshot(
+                            "waiting_for_assistant",
+                            &text,
+                            events,
+                            &event_log,
+                            first_event_ms,
+                            first_delta_ms,
+                            None,
+                            elapsed_ms,
+                            &turn_id,
+                            None,
+                            timing_marks,
+                        ),
+                    );
                 }
                 if let Some(status) = child
                     .try_wait()

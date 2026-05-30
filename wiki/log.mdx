@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding turn contracts</h2>
+  <ul>
+    <li>Split imported-project onboarding into Codex-authored decision turns and separate plan-generation turns using a structured <code>hyperwiki-ready-to-plan</code> signal.</li>
+    <li>Removed automatic deterministic local question fallbacks from the normal path so Codex remains responsible for authored questions and final plan content.</li>
+    <li>Added bounded exec JSON no-assistant snapshots and timeout semantics so lifecycle events and command execution cannot keep a turn waiting indefinitely without assistant text.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding cumulative activity</h2>
   <ul>
     <li>Changed the imported Planning Q&amp;A activity pane to remain visible alongside active questions when prior run output exists.</li>
