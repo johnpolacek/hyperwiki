@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding chained plan turn</h2>
+  <ul>
+    <li>Fixed a runtime transition bug where a <code>hyperwiki-ready-to-plan</code> response completed the question turn but the internal active-run guard prevented the chained plan-generation turn from starting.</li>
+    <li>Applied the same release-before-chain behavior to repair and plan-repair transitions so backend-owned follow-up turns can start without waiting for a manual retry.</li>
+    <li>Added a focused runtime regression test for active-run release before chained turns.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, focused preview retry, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 refactor | import onboarding runtime ownership</h2>
   <ul>
     <li>Added a Rust-owned import onboarding runtime layer with persisted sessions, runs, append-only event logs, and per-run checkpoints under ignored <code>.hyperwiki/state/import-onboarding/runtime/</code>.</li>

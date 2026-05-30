@@ -574,6 +574,13 @@ fn run_runtime_turn(
                 "Generated plan artifacts need one repair turn.",
                 None,
             )?;
+            complete_chained_runtime_run(
+                &project,
+                &run_id,
+                "validating_artifacts",
+                "Generated plan artifacts need one repair turn.",
+                app.as_ref(),
+            )?;
             spawn_runtime_turn(
                 project,
                 RuntimeTurnKind::PlanRepair,
@@ -650,6 +657,7 @@ fn run_runtime_turn(
                 "Structured ready-to-plan signal received.",
                 app.as_ref(),
             )?;
+            release_runtime_active(&project.id, &run_id);
             spawn_runtime_turn(project, RuntimeTurnKind::Plan, ready, String::new(), app)?;
             return Ok(());
         }
@@ -663,6 +671,13 @@ fn run_runtime_turn(
                 "parsing_contract",
                 "Planning turn completed without a parseable question or generated plan.",
                 Some(text_tail(&text, 500)),
+            )?;
+            complete_chained_runtime_run(
+                &project,
+                &run_id,
+                "running_repair_turn",
+                "Starting one repair turn to create the plan or ask the next question.",
+                app.as_ref(),
             )?;
             spawn_runtime_turn(
                 project,
@@ -692,6 +707,15 @@ fn run_runtime_turn(
             );
         }
         if let Some(question) = extract_latest_question(&text, &request_id, None) {
+            append_event_for_run(
+                &project.root,
+                app.as_ref(),
+                &run_id,
+                "question_ready",
+                "waiting_for_answer",
+                "Structured planning question ready.",
+                Some(question.prompt.clone()),
+            )?;
             record_human_input_request(
                 &project.root,
                 HumanInputCheckpointRequest {
@@ -701,6 +725,13 @@ fn run_runtime_turn(
                     run_id: run_id.clone(),
                 },
             )?;
+            let mut session = load_or_create_session(&project)?;
+            session.status = "waiting_for_answer".to_string();
+            session.phase = "waiting_for_answer".to_string();
+            session.current_run_id = None;
+            session.current_question_id = Some(question.id);
+            session.updated_at_ms = unix_time_ms();
+            write_session(&project.root, &session)?;
             update_runtime_run(
                 &project.root,
                 &run_id,
@@ -713,6 +744,13 @@ fn run_runtime_turn(
         }
         if matches!(kind, RuntimeTurnKind::Plan) {
             append_event_for_run(&project.root, app.as_ref(), &run_id, "contract_warning", "staging_artifacts", "Plan generation completed without validated MVP plan artifacts; running one repair.", Some(text_tail(&text, 500)))?;
+            complete_chained_runtime_run(
+                &project,
+                &run_id,
+                "running_plan_repair_turn",
+                "Plan generation completed without validated artifacts; starting one repair turn.",
+                app.as_ref(),
+            )?;
             spawn_runtime_turn(
                 project,
                 RuntimeTurnKind::PlanRepair,
@@ -899,6 +937,31 @@ fn complete_runtime_run(
     session.current_run_id = None;
     session.updated_at_ms = unix_time_ms();
     write_session(&project.root, &session)
+}
+
+fn complete_chained_runtime_run(
+    project: &ProjectRecord,
+    run_id: &str,
+    phase: &str,
+    message: &str,
+    app: Option<&tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    complete_runtime_run(project, run_id, phase, message, app)?;
+    release_runtime_active(&project.id, run_id);
+    Ok(())
+}
+
+fn release_runtime_active(project_id: &str, run_id: &str) {
+    if let Ok(mut guard) = registry().lock() {
+        if guard
+            .active_by_project
+            .get(project_id)
+            .map(|active| active == run_id)
+            .unwrap_or(false)
+        {
+            guard.active_by_project.remove(project_id);
+        }
+    }
 }
 
 fn fail_runtime_run(
@@ -1626,5 +1689,20 @@ mod tests {
         let ready = extract_ready_to_plan(text, "import-turn:answer:1").unwrap();
         assert!(ready.contains("Decisions are complete."));
         assert!(extract_ready_to_plan(text, "other-request").is_none());
+    }
+
+    #[test]
+    fn releases_completed_run_before_chained_turn() {
+        let project_id = format!("project-test-{}", monotonic_id());
+        let run_id = format!("run-test-{}", monotonic_id());
+        {
+            let mut guard = registry().lock().unwrap();
+            guard
+                .active_by_project
+                .insert(project_id.clone(), run_id.clone());
+        }
+        assert!(has_active_runtime_run(&project_id));
+        release_runtime_active(&project_id, &run_id);
+        assert!(!has_active_runtime_run(&project_id));
     }
 }
