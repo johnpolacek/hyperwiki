@@ -85,8 +85,13 @@ assert.match(importPlanning, /validate_import_plan_artifacts/);
 assert.match(importPlanning, /staged-artifacts\.json/);
 assert.match(runtime, /Use built-in Hyperwiki MDX plan components/);
 assert.match(runtime, /Visibility for=\\"agents\\"/);
-assert.match(runtime, /<PlanHero>/);
+assert.match(runtime, /<PlanHero/);
 assert.match(runtime, /<PlanSummary>/);
-assert.match(runtime, /<section>\\n  <h2>Implementation Notes<\/h2>/);
+assert.match(runtime, /<CardGroup cols=\\"3\\">/);
+assert.match(runtime, /<Columns cols=\\"2\\">/);
+assert.match(runtime, /<TaskList title=\\"Acceptance checks\\"/);
+assert.match(runtime, /<RequestExample title=\\"Open target\\">/);
+assert.match(runtime, /<ResponseExample title=\\"Verification note to record\\">/);
+assert.match(runtime, /<h2>Implementation Notes<\/h2>/);
 
 console.log("import onboarding manager static smoke passed");

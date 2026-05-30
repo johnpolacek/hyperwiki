@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | static import plan richness</h2>
+  <ul>
+    <li>Updated the deterministic static-local import compiler so fresh Micro-Journal-style plans emit richer MDX structures: card groups, columns, task lists, aside notes, request/response examples, and titled verification blocks.</li>
+    <li>Preserved the executable planning contract for <code>index.html</code>, browser <code>localStorage</code>, debounced autosave, clear-entry behavior, local-only guardrails, dependencies, and manual browser verification.</li>
+    <li>Validation: focused import runtime/planning tests, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | import plan detail quality gate</h2>
   <ul>
     <li>Added source-keyword-aware validation for generated imported-project unit pages, rejecting generic unit titles, generic source-decision prose, thin <code>Run checks</code> verification, and unit pages that do not visibly reuse concrete imported source terms.</li>
