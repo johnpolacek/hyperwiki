@@ -27,5 +27,8 @@ assert.ok(source.includes("option.description"), "Import Q&A should render optio
 assert.ok(mdxRenderer.includes("expandEscapedSourceContextParagraphs"), "React MDX plan renderer should repair stale escaped import source bundles");
 assert.ok(mdxRenderer.includes("renderCollapsedSourceContext"), "React MDX plan renderer should render collapsed source bundles as HTML");
 assert.ok(mdxRenderer.includes("source-decision"), "React MDX plan renderer should wrap repaired source content in source-decision articles");
+assert.ok(mdxRenderer.includes("list-disc"), "React MDX plan renderer should restore unordered list bullets after Tailwind preflight");
+assert.ok(mdxRenderer.includes("list-decimal"), "React MDX plan renderer should restore ordered list markers after Tailwind preflight");
+assert.ok(mdxRenderer.includes("space-y-1.5"), "React MDX plan renderer should keep list item spacing compact");
 
 console.log("new project upload static smoke passed");
