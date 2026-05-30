@@ -1528,8 +1528,9 @@ fn plan_repair_prompt(
         &format!("The requestId must be exactly \"{request_id}\"."),
         "The runtime will write and validate the artifacts. You only generate the file paths and complete MDX contents.",
         "Apply the bundled Hyperwiki planning contract even though you cannot call a skill tool in this turn.",
-        "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Steps, Step, StatusBadge, Callout, Warning, Danger, CodeBlock, and Visibility.",
-        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, and Steps/Step for stage or unit sequences. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
+        "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, and Visibility.",
+        "Before writing artifacts, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
+        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, CardGroup/Columns for alternatives or work tracks, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
         "Do not dump long imported source bundles into visible paragraphs; summarize visibly and preserve full context in agent-only Visibility blocks.",
         "Required artifact paths: wiki/plans/index.mdx, wiki/plans/mvp/index.mdx, one wiki/plans/mvp/stage-01-*.mdx stage page, and at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages.",
@@ -2236,6 +2237,8 @@ mod tests {
 
         assert!(prompt.contains("Apply the bundled Hyperwiki planning contract"));
         assert!(prompt.contains("PlanHero, PlanSummary, PlanUnit"));
+        assert!(prompt.contains("CardGroup, Columns, Column"));
+        assert!(prompt.contains("RequestExample/ResponseExample/ParamField/ResponseField"));
         assert!(prompt.contains("Visibility for=\"agents\""));
         assert!(prompt.contains("one wiki/plans/mvp/stage-01-*.mdx stage page"));
         assert!(prompt

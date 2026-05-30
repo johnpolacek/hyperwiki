@@ -171,7 +171,9 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
     let known_paths = known_relative_paths(&wiki_root, &files);
     let mut pages = files
         .into_iter()
-        .filter_map(|full_path| wiki_page_from_file(&wiki_root, &full_path, project_id, &known_paths))
+        .filter_map(|full_path| {
+            wiki_page_from_file(&wiki_root, &full_path, project_id, &known_paths)
+        })
         .collect::<Vec<_>>();
     pages.sort_by(|left, right| left.path.cmp(&right.path));
     WikiPageList { pages }
@@ -227,7 +229,10 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
     })
 }
 
-pub fn wiki_page_markdown(root: impl AsRef<Path>, request_path: &str) -> Result<WikiSource, String> {
+pub fn wiki_page_markdown(
+    root: impl AsRef<Path>,
+    request_path: &str,
+) -> Result<WikiSource, String> {
     read_wiki_source(root, request_path)
 }
 
@@ -297,11 +302,7 @@ fn wiki_markdown_export_files(root: impl AsRef<Path>) -> Vec<(String, String)> {
         if source.markdown.trim().is_empty() {
             continue;
         }
-        let path = page
-            .source_path
-            .trim_end_matches(".mdx")
-            .to_string()
-            + ".md";
+        let path = page.source_path.trim_end_matches(".mdx").to_string() + ".md";
         files.push((path, source.markdown));
     }
     files.push(("llms.txt".to_string(), wiki_llms_txt(&root)));
@@ -475,7 +476,13 @@ const MDX_SECTION_TAGS: &[&str] = &[
     "Check",
     "Panel",
     "Frame",
+    "CardGroup",
+    "Columns",
+    "Column",
     "Card",
+    "Aside",
+    "RequestExample",
+    "ResponseExample",
     "Steps",
     "Step",
     "Prompt",
@@ -485,14 +492,14 @@ const MDX_SECTION_TAGS: &[&str] = &[
     "Badge",
     "ParamField",
     "ResponseField",
-    "Tree",
     "TreeFolder",
     "TreeFile",
+    "Tree",
     "Tabs",
     "Tab",
     "AccordionGroup",
-    "Accordion",
     "AccordionItem",
+    "Accordion",
     "Tooltip",
 ];
 
@@ -555,6 +562,10 @@ fn mdx_component_markdown_hint(line: &str) -> Option<String> {
         ("Danger", "Danger"),
         ("Check", "Check"),
         ("Panel", "Panel"),
+        ("Card", "Card"),
+        ("Aside", "Aside"),
+        ("RequestExample", "Request example"),
+        ("ResponseExample", "Response example"),
         ("Prompt", "Prompt"),
         ("Update", "Update"),
     ];
@@ -595,7 +606,9 @@ fn mdx_bool_attr(line: &str, name: &str) -> bool {
     if let Some(value) = mdx_attr_value(line, name) {
         return !value.eq_ignore_ascii_case("false");
     }
-    line.contains(&format!(" {name} ")) || line.contains(&format!(" {name}>")) || line.contains(&format!(" {name}/"))
+    line.contains(&format!(" {name} "))
+        || line.contains(&format!(" {name}>"))
+        || line.contains(&format!(" {name}/"))
 }
 
 fn html_paragraph_to_markdown(line: &str) -> Option<String> {
@@ -673,7 +686,12 @@ fn wiki_page_from_file(
         .frontmatter
         .get("title")
         .cloned()
-        .or_else(|| document.headings.first().map(|heading| heading.text.clone()))
+        .or_else(|| {
+            document
+                .headings
+                .first()
+                .map(|heading| heading.text.clone())
+        })
         .unwrap_or_else(|| title_from_wiki_path(&relative_path));
     let summary = list_items_from_first_summary(&mdx);
     let path = project_id
@@ -777,7 +795,9 @@ fn parse_wiki_ast_nodes(mdx: &str) -> Vec<WikiAstNode> {
         }
         if let Some(component) = component_node_from_line(trimmed, line_number) {
             let is_human_visibility = match &component {
-                WikiAstNode::Component { name, attributes, .. } => {
+                WikiAstNode::Component {
+                    name, attributes, ..
+                } => {
                     name == "Visibility"
                         && attributes
                             .get("for")
@@ -849,7 +869,10 @@ fn parse_wiki_ast_nodes(mdx: &str) -> Vec<WikiAstNode> {
         if html_list_item_to_markdown(trimmed).is_some() {
             continue;
         }
-        if let Some(item) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+        if let Some(item) = trimmed
+            .strip_prefix("- ")
+            .or_else(|| trimmed.strip_prefix("* "))
+        {
             nodes.push(WikiAstNode::ListItem {
                 text: strip_html(item),
                 line: line_number,
@@ -879,12 +902,15 @@ fn component_node_from_line(line: &str, line_number: usize) -> Option<WikiAstNod
         return None;
     }
     let name_end = rest
-        .find(|character: char| {
-            character.is_whitespace() || character == '>' || character == '/'
-        })
+        .find(|character: char| character.is_whitespace() || character == '>' || character == '/')
         .unwrap_or(rest.len());
     let name = rest.get(..name_end)?.trim();
-    if name.is_empty() || name.chars().next().is_some_and(|ch| ch.is_ascii_lowercase()) {
+    if name.is_empty()
+        || name
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_ascii_lowercase())
+    {
         return None;
     }
     let attributes = mdx_attributes(line);
@@ -900,7 +926,10 @@ fn mdx_attributes(line: &str) -> BTreeMap<String, String> {
     let Some(start) = line.find(char::is_whitespace) else {
         return attributes;
     };
-    let raw = line[start..].trim_end_matches('>').trim_end_matches('/').trim();
+    let raw = line[start..]
+        .trim_end_matches('>')
+        .trim_end_matches('/')
+        .trim();
     for quote in ['"', '\''] {
         let mut rest = raw;
         while let Some(eq_index) = rest.find(&format!("={quote}")) {
@@ -1041,7 +1070,9 @@ fn markdown_from_nodes(nodes: &[WikiAstNode]) -> String {
     let mut text = String::new();
     for node in nodes {
         match node {
-            WikiAstNode::Heading { level, text: value, .. } => {
+            WikiAstNode::Heading {
+                level, text: value, ..
+            } => {
                 flush_markdown_text(&mut output, &mut text);
                 output.push_str(&"#".repeat(*level));
                 output.push(' ');
@@ -1189,7 +1220,13 @@ fn make_wiki_link(
 }
 
 fn resolve_wiki_link_target(href: &str, current_relative_path: &str) -> Option<String> {
-    let href = href.split('#').next().unwrap_or(href).split('?').next().unwrap_or(href);
+    let href = href
+        .split('#')
+        .next()
+        .unwrap_or(href)
+        .split('?')
+        .next()
+        .unwrap_or(href);
     if href.is_empty() || href.starts_with('#') {
         return None;
     }
@@ -1203,9 +1240,7 @@ fn resolve_wiki_link_target(href: &str, current_relative_path: &str) -> Option<S
         return Some(href[index..].to_string());
     }
     if href.starts_with("./") || href.starts_with("../") || href.ends_with(".mdx") {
-        let mut parts = current_relative_path
-            .split('/')
-            .collect::<Vec<_>>();
+        let mut parts = current_relative_path.split('/').collect::<Vec<_>>();
         parts.pop();
         for part in href.split('/') {
             if part.is_empty() || part == "." {
@@ -1761,11 +1796,17 @@ mod tests {
             .find(|page| page.path == "/wiki/plans/feature-plan.mdx")
             .unwrap();
 
-        assert_eq!(page.frontmatter.get("wikiKind").map(String::as_str), Some("plan"));
+        assert_eq!(
+            page.frontmatter.get("wikiKind").map(String::as_str),
+            Some("plan")
+        );
         assert_eq!(page.headings.len(), 2);
         assert_eq!(page.headings[1].text, "Scope");
         assert_eq!(page.links.len(), 2);
-        assert_eq!(page.links[0].target_path.as_deref(), Some("/wiki/plans/other.mdx"));
+        assert_eq!(
+            page.links[0].target_path.as_deref(),
+            Some("/wiki/plans/other.mdx")
+        );
         assert!(page.links[0].resolved);
         assert_eq!(page.validation_warnings.len(), 1);
         assert_eq!(page.validation_warnings[0].kind, "broken-wiki-link");
@@ -1795,12 +1836,28 @@ Agent-only text.
 <p>See <a href="./other.mdx">Other</a> and <a href="./missing.mdx">Missing</a>.</p>
 </ParamField>
 </Step>
+<CardGroup cols="2">
+<Card title="Option A"><p>Use the local pipeline.</p></Card>
+<Card title="Option B"><p>Defer runtime changes.</p></Card>
+</CardGroup>
+<Columns cols="2">
+<Column>
+<Aside title="Operator note"><p>Keep visible prose compact.</p></Aside>
+</Column>
+<Column>
+<RequestExample title="MCP request"><pre>GET /api/wiki/llms.txt</pre></RequestExample>
+<ResponseExample title="MCP response"><pre>200 OK</pre></ResponseExample>
+</Column>
+</Columns>
 "#,
             "plans/pipeline.mdx",
             &known_paths,
         );
 
-        assert_eq!(document.frontmatter.get("wikiKind").map(String::as_str), Some("plan"));
+        assert_eq!(
+            document.frontmatter.get("wikiKind").map(String::as_str),
+            Some("plan")
+        );
         assert!(document
             .component_refs
             .iter()
@@ -1809,10 +1866,28 @@ Agent-only text.
             .component_refs
             .iter()
             .any(|component| component.name == "ParamField"));
+        assert!(document
+            .component_refs
+            .iter()
+            .any(|component| component.name == "CardGroup"));
+        assert!(document
+            .component_refs
+            .iter()
+            .any(|component| component.name == "RequestExample"));
         assert!(document.markdown.contains("# Pipeline"));
         assert!(document.markdown.contains("Agent-only text."));
         assert!(document.markdown.contains("### Wire parser"));
-        assert!(document.markdown.contains("- `path` (param, string, required)"));
+        assert!(document
+            .markdown
+            .contains("- `path` (param, string, required)"));
+        assert!(document.markdown.contains("**Card:** Option A"));
+        assert!(document.markdown.contains("**Aside:** Operator note"));
+        assert!(document
+            .markdown
+            .contains("**Request example:** MCP request"));
+        assert!(document
+            .markdown
+            .contains("**Response example:** MCP response"));
         assert!(!document.markdown.contains("Human-only text."));
         assert_eq!(document.links.len(), 2);
         assert!(document.links.iter().any(|link| link.resolved));
@@ -1882,7 +1957,10 @@ Agent-only text.
         assert!(source.source.contains("<PlanHero>"));
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
-        assert!(source.component_refs.iter().any(|component| component.name == "PlanHero"));
+        assert!(source
+            .component_refs
+            .iter()
+            .any(|component| component.name == "PlanHero"));
         assert!(!source.markdown.contains("PlanHero"));
     }
 

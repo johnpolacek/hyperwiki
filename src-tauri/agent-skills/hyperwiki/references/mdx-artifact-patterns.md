@@ -21,7 +21,7 @@ If a generated page reads like a prose dump, revise it into clearer sections, ta
 
 Plan MDX can use these built-in components without imports:
 
-`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 
 Use them conservatively:
 
@@ -33,10 +33,88 @@ Use them conservatively:
 | Source-grounded facts, imported Q&A, confidence | `Evidence` |
 | Checks and completion gates | `Verification` |
 | Stage or unit sequence | `Steps` and `Step` |
+| Alternatives, risks, dependencies, work tracks | `CardGroup`, `Card`, `Columns`, `Column` |
+| API, MCP, command, event, or schema contracts | `RequestExample`, `ResponseExample`, `ParamField`, `ResponseField` |
+| Compact secondary context | `Aside` |
 | Important notes, constraints, risks | `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check` |
 | Long source context for agents only | `Visibility for="agents"` |
 
 Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
+
+## Planning Composition Cookbook
+
+Choose one primary composition pattern before writing a substantial plan. Do not use every component just because it exists.
+
+### Feature Plan
+
+Use for focused product, workflow, UI, runtime, or maintenance work.
+
+- `PlanHero` with title, status, and one-sentence outcome.
+- `PlanSummary` with status, shape, current unit, next action, blockers, and validation.
+- Plain sections for Scope, Non-goals, and Implementation Notes.
+- `Steps` for execution order when there is more than one unit.
+- `TaskList` only for small concrete checklists that will be updated by humans or agents.
+- `Verification` with acceptance checks and automated/manual commands.
+
+### Architecture Comparison
+
+Use when choosing between approaches.
+
+- `CardGroup` with one `Card` per option, each naming the tradeoff plainly.
+- `Evidence` for repo/source facts and confidence labels.
+- A comparison table for decision criteria.
+- `Decision` for the selected path, rationale, and consequences.
+- `Aside` for constraints that matter but should not dominate the page.
+
+```mdx
+<CardGroup cols="3">
+  <Card title="Candidate 1">
+    Fastest path, smallest runtime change, known tradeoff.
+  </Card>
+  <Card title="Candidate 2">
+    Stronger boundary, higher migration cost.
+  </Card>
+</CardGroup>
+```
+
+### API Or MCP Contract
+
+Use for endpoints, Tauri commands, MCP tools/resources, generated schemas, or event payloads.
+
+- `RequestExample` and `ResponseExample` for concrete examples.
+- `ParamField` and `ResponseField` for required fields and response shape.
+- `CodeBlock` for short schema or handler snippets.
+- `Verification` for contract tests and manual probes.
+
+```mdx
+<RequestExample title="Page Markdown">
+  <CodeBlock language="http">GET /api/wiki/page-markdown?path=/wiki/plans/index.mdx</CodeBlock>
+</RequestExample>
+
+<ResponseExample title="Markdown response">
+  <ResponseField name="markdown" type="string" required>
+    Agent-readable Markdown derivative.
+  </ResponseField>
+</ResponseExample>
+```
+
+### Implementation Unit
+
+Use for executable unit pages.
+
+- `PlanHero` and `PlanSummary` first.
+- Plain sections for Intent, Scope, Implementation Notes, Dependencies or Blockers, and Completion Gate.
+- `Evidence` only when the unit depends on source-grounded facts.
+- `Verification` is mandatory before marking complete.
+
+### Verification Handoff
+
+Use for review, testing, release, or dogfood plans.
+
+- `PlanSummary` with current evidence, gaps, and next check.
+- `Columns` for automated checks vs manual checks.
+- `RequestExample` or `CodeBlock` for exact commands or local API probes.
+- `Update` entries for important verification events.
 
 ## Artifact Pattern Selector
 

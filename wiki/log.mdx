@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | rich planning MDX composition</h2>
+  <ul>
+    <li>Added Holocron-inspired planning structures <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to Hyperwiki's local MDX plan renderer and Rust wiki document pipeline.</li>
+    <li>Updated plan-generation prompts and Hyperwiki skill guidance to choose a composition pattern before writing plans and to use richer components for alternatives, work tracks, contracts, and secondary context.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | wiki document pipeline</h2>
   <ul>
     <li>Introduced a parsed Rust <code>WikiDocument</code> pipeline for Hyperwiki's trusted local MDX dialect, producing frontmatter, AST-style body nodes, headings, wiki links, component references, Markdown derivatives, and validation warnings from one document pass.</li>

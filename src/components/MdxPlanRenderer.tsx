@@ -61,6 +61,12 @@ const componentTags = [
   "Panel",
   "Frame",
   "Card",
+  "CardGroup",
+  "Columns",
+  "Column",
+  "Aside",
+  "RequestExample",
+  "ResponseExample",
   "Steps",
   "Step",
   "Prompt",
@@ -432,7 +438,7 @@ function renderPlanComponent(
     );
   }
 
-  if (component === "PlanUnit" || component === "Panel" || component === "Card") {
+  if (component === "PlanUnit" || component === "Panel") {
     return (
       <section className="grid gap-2 py-1" key={key}>
         {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
@@ -440,6 +446,46 @@ function renderPlanComponent(
         <div className="grid gap-2">{children}</div>
       </section>
     );
+  }
+
+  if (component === "Card") {
+    return (
+      <Card className="rounded-lg py-4 shadow-none" key={key}>
+        {title || description ? (
+          <CardHeader className="px-4">
+            {title ? <CardTitle className="text-base leading-tight">{title}</CardTitle> : null}
+            {description ? <CardDescription>{description}</CardDescription> : null}
+          </CardHeader>
+        ) : null}
+        <CardContent className="grid gap-2 px-4">{children}</CardContent>
+      </Card>
+    );
+  }
+
+  if (component === "CardGroup") {
+    return <div className={cardGroupClass(node)} key={key}>{children}</div>;
+  }
+
+  if (component === "Columns") {
+    return <div className={columnsClass(node)} key={key}>{children}</div>;
+  }
+
+  if (component === "Column") {
+    return <div className="grid min-w-0 gap-3" key={key}>{children}</div>;
+  }
+
+  if (component === "Aside") {
+    return (
+      <aside className="grid gap-2 rounded-lg border bg-secondary/25 p-4 text-sm" key={key}>
+        {title ? <h3 className="m-0 text-sm font-bold leading-snug">{title}</h3> : null}
+        {description ? <p className="m-0 leading-6 text-muted-foreground">{description}</p> : null}
+        <div className="grid gap-2">{children}</div>
+      </aside>
+    );
+  }
+
+  if (component === "RequestExample" || component === "ResponseExample") {
+    return renderExamplePanel(node, component, children, key);
   }
 
   if (component === "Decision" || component === "Evidence" || component === "Verification") {
@@ -697,6 +743,26 @@ function renderFieldComponent(node: Element, component: string, children: ReactN
   );
 }
 
+function renderExamplePanel(node: Element, component: string, children: ReactNode[], key: string) {
+  const title = componentTitle(node) || (component === "RequestExample" ? "Request" : "Response");
+  const description = node.getAttribute("description") || "";
+  return (
+    <section className="overflow-hidden rounded-lg border bg-card" key={key}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-secondary/50 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <Code2 aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="truncate">{title}</span>
+        </div>
+        <Badge variant="outline">{component === "RequestExample" ? "request" : "response"}</Badge>
+      </div>
+      <div className="grid gap-3 p-4">
+        {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        {children}
+      </div>
+    </section>
+  );
+}
+
 function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
   const code = (node.textContent || "").trim();
   const title = componentTitle(node);
@@ -725,6 +791,26 @@ function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
         <pre className="m-0 p-4 font-mono text-xs leading-6">{children}</pre>
       </ScrollArea>
     </div>
+  );
+}
+
+function cardGroupClass(node: Element) {
+  const cols = node.getAttribute("cols") || node.getAttribute("columns") || "";
+  return cn(
+    "grid gap-3",
+    cols === "1" && "grid-cols-1",
+    cols !== "1" && cols !== "3" && "grid-cols-1 md:grid-cols-2",
+    cols === "3" && "grid-cols-1 md:grid-cols-3",
+  );
+}
+
+function columnsClass(node: Element) {
+  const cols = node.getAttribute("cols") || node.getAttribute("columns") || "";
+  return cn(
+    "grid gap-4",
+    cols === "1" && "grid-cols-1",
+    cols !== "1" && cols !== "3" && "grid-cols-1 md:grid-cols-2",
+    cols === "3" && "grid-cols-1 md:grid-cols-3",
   );
 }
 

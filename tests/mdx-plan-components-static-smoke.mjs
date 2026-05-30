@@ -37,6 +37,13 @@ const requiredComponents = [
   "Check",
   "Panel",
   "Frame",
+  "Card",
+  "CardGroup",
+  "Columns",
+  "Column",
+  "Aside",
+  "RequestExample",
+  "ResponseExample",
   "Steps",
   "Step",
   "Prompt",
@@ -89,6 +96,16 @@ for (const exportContract of [
 ]) {
   if (!app.includes(exportContract)) {
     throw new Error(`App must expose the wiki Markdown export contract: ${exportContract}`);
+  }
+}
+
+for (const generationContract of [
+  "choose the planning composition pattern",
+  "CardGroup/Columns for alternatives or work tracks",
+  "RequestExample/ResponseExample/ParamField/ResponseField for contracts",
+]) {
+  if (!app.includes(generationContract)) {
+    throw new Error(`Plan generation prompt must advertise rich MDX composition: ${generationContract}`);
   }
 }
 

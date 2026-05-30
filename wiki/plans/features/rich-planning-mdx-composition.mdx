@@ -1,0 +1,46 @@
+---
+title: "Rich Planning MDX Composition"
+description: "Make richer component-driven planning docs the default for new and modified Hyperwiki plans."
+wikiKind: "plan"
+---
+
+<PlanHero title="Rich Planning MDX Composition" status="complete" description="Add a small Holocron-inspired component set and teach Hyperwiki planning generators to compose richer operational MDX artifacts." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Completed unit: Unit 01 - Component vocabulary and generation guidance</li>
+    <li>Next action: use the richer composition patterns for new and modified plans going forward.</li>
+    <li>Blockers: none</li>
+    <li>Validation: renderer/static smoke, Rust wiki pipeline tests, and manual Copy Markdown/export spot check.</li>
+  </ul>
+</PlanSummary>
+
+## Reader Goal
+
+After 2 minutes, the reader can understand which richer planning components are being added, how future generated plans should use them, and how the change will be verified.
+
+<Decision title="Direction">
+  <p>Use Holocron as inspiration for a component cookbook and selected planning structures, not as a runtime dependency or docs-site shell.</p>
+</Decision>
+
+<PlanUnit title="Unit 01 - Component vocabulary and generation guidance">
+  <p>Add <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to the local renderer and Rust wiki document pipeline.</p>
+  <p>Update planning prompts, generated baseline guidance, and MDX artifact patterns so new and modified plans select richer structures when the content supports them.</p>
+</PlanUnit>
+
+<Evidence title="Source Basis">
+  <ul>
+    <li>Holocron uses component cookbook patterns such as cards, columns, examples, fields, steps, tabs, and visibility to make docs more scannable.</li>
+    <li>Hyperwiki already has a local component renderer, Markdown derivatives, and Rust component refs, so the lowest-risk path is to extend the existing vocabulary.</li>
+  </ul>
+</Evidence>
+
+<Verification>
+  <ul>
+    <li>Completed: <code>pnpm run check</code>.</li>
+    <li>Completed: <code>pnpm run test:tauri</code>.</li>
+    <li>Covered by Rust wiki Markdown derivative tests: rich planning wrappers are stripped into useful Markdown hints without raw component noise.</li>
+  </ul>
+</Verification>
