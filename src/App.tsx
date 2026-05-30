@@ -4529,7 +4529,7 @@ function TerminalPane(props: {
           </>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
-            {props.sessions.length ? "No live terminals running for this scope" : "No terminals running"}
+            No terminals running
           </div>
         )}
       </div>
