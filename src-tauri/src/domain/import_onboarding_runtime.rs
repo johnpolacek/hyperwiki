@@ -957,7 +957,7 @@ fn runtime_plan_artifacts(
 ) -> Vec<GeneratedPlanArtifact> {
     let title = escape_html(&project.name);
     let ready_summary = escape_html(&compact(ready_context, 1000));
-    let source_summary = escape_html(&compact(source_context, 1400));
+    let source_summary = escape_html(&readable_source_excerpt(source_context, 1400));
     let source_excerpt = if source_summary.trim().is_empty() {
         "No source excerpt was available to the runtime planner. Preserve this as an implementation unknown and verify against the imported source before coding.".to_string()
     } else {
@@ -1897,6 +1897,60 @@ fn compact(value: &str, max_chars: usize) -> String {
     collapsed.chars().take(max_chars).collect::<String>()
 }
 
+fn readable_source_excerpt(value: &str, max_chars: usize) -> String {
+    let mut cleaned = String::new();
+    for line in value.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty()
+            || trimmed == "---"
+            || trimmed.starts_with("## /")
+            || trimmed.starts_with("title:")
+            || trimmed.starts_with("description:")
+            || trimmed.starts_with("wikiKind:")
+        {
+            continue;
+        }
+        let text = decode_common_html_entities(&strip_html_tags(trimmed));
+        if text.trim().is_empty() {
+            continue;
+        }
+        if !cleaned.is_empty() {
+            cleaned.push(' ');
+        }
+        cleaned.push_str(text.trim());
+    }
+    compact(&cleaned, max_chars)
+}
+
+fn strip_html_tags(value: &str) -> String {
+    let mut stripped = String::with_capacity(value.len());
+    let mut in_tag = false;
+    for ch in value.chars() {
+        match ch {
+            '<' => {
+                in_tag = true;
+                stripped.push(' ');
+            }
+            '>' => {
+                in_tag = false;
+                stripped.push(' ');
+            }
+            _ if !in_tag => stripped.push(ch),
+            _ => {}
+        }
+    }
+    stripped
+}
+
+fn decode_common_html_entities(value: &str) -> String {
+    value
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+}
+
 fn escape_html(value: &str) -> String {
     value
         .replace('&', "&amp;")
@@ -2134,8 +2188,43 @@ mod tests {
             .join("mvp")
             .join("unit-01-confirmed-mvp.mdx")
             .exists());
+        let unit = fs::read_to_string(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("unit-01-confirmed-mvp.mdx"),
+        )
+        .unwrap();
+        assert!(!unit.contains("## /wiki/sources"));
+        assert!(!unit.contains("wikiKind: \"source\""));
+        assert!(!unit.contains("&lt;h1&gt;"));
+        assert!(!unit.contains("&amp;amp;"));
         let run = read_run(&root, &run_id).unwrap();
         assert_eq!(run.status, "complete");
         assert_eq!(run.phase, "complete");
+    }
+
+    #[test]
+    fn readable_source_excerpt_removes_mdx_scaffold_markup() {
+        let source = r#"## /wiki/sources/import-state.mdx
+---
+title: "Import Planning State"
+description: "Compact state"
+wikiKind: "source"
+---
+<h1>Import Planning State</h1>
+<section><h2>Summary</h2><ul><li>Latest answer: Static local-only MVP</li><li>Readiness: continue Q&amp;A</li></ul></section>
+
+---
+
+## /wiki/sources/import-qna.mdx
+<article><h3>Agent Planning Question</h3><p><strong>Question:</strong> Should this be one HTML file?</p></article>
+"#;
+        let excerpt = readable_source_excerpt(source, 1000);
+        assert!(excerpt.contains("Latest answer: Static local-only MVP"));
+        assert!(excerpt.contains("Readiness: continue Q&A"));
+        assert!(!excerpt.contains("## /wiki/sources"));
+        assert!(!excerpt.contains("wikiKind:"));
+        assert!(!excerpt.contains("<h1>"));
     }
 }
