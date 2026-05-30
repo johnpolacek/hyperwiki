@@ -412,12 +412,12 @@ function renderPlanComponent(
     };
     return (
       <section className={cn("grid gap-2 border-l-2 py-2 pl-4 pr-2", componentPanelAccent(component))} key={key}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <div className="grid gap-1">
+          <h2 className="m-0 inline-flex items-center gap-2 text-lg font-bold leading-tight">
             {icons[component]}
             {labels[component]}
-          </span>
-          {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
+          </h2>
+          {title ? <p className="m-0 text-base font-semibold leading-6 text-foreground">{title}</p> : null}
         </div>
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
