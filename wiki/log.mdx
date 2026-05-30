@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | MDX plan visual polish</h2>
+  <ul>
+    <li>Reworked MDX plan rendering from oversized stacked cards into a more compact working-brief layout with a metadata grid, left-ruled sections, tighter typography, and restrained evidence, decision, and verification panels.</li>
+    <li>Changed generated import unit templates so routine sections such as Scope, Implementation Notes, and Completion Gate stay as semantic sections instead of every heading becoming a full <code>PlanUnit</code> card.</li>
+    <li>Updated plan creation prompts, import repair prompts, and bundled Hyperwiki skill references to explain when to use MDX plan components and when to leave ordinary content as semantic sections.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, <code>pnpm run build:frontend</code>, and an <code>agent-browser</code> visual preview.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | plan generation component guidance</h2>
   <ul>
     <li>Updated regular plan creation prompts, import artifact repair prompts, and bundled Hyperwiki skill references to advertise the built-in MDX plan component vocabulary.</li>

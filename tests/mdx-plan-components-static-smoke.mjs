@@ -66,4 +66,15 @@ if (!renderer.includes('audience.toLowerCase() === "agents" ? null')) {
   throw new Error("MDX plan renderer must hide agent-only Visibility blocks in the app.");
 }
 
+for (const visualContract of [
+  "renderSummaryGrid",
+  "border-y border-border/70 bg-secondary/25",
+  "border-l border-border/80 py-1 pl-4",
+  "componentPanelAccent",
+]) {
+  if (!renderer.includes(visualContract)) {
+    throw new Error(`MDX plan renderer must keep the compact working-brief visual contract: ${visualContract}`);
+  }
+}
+
 console.log("mdx plan components static smoke test passed");

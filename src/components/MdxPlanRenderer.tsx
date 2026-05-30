@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -317,9 +316,9 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
     );
   }
   if (tag === "h1") return <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl" key={key}>{titleChildren}</h1>;
-  if (tag === "h2") return <h2 className="m-0 text-lg font-bold leading-tight md:text-xl" key={key}>{titleChildren}</h2>;
-  if (tag === "h3") return <h3 className="m-0 text-base font-bold leading-snug" key={key}>{titleChildren}</h3>;
-  if (tag === "p") return <p className="m-0 text-sm leading-7 text-muted-foreground" key={key}>{children}</p>;
+  if (tag === "h2") return <h2 className="m-0 text-lg font-bold leading-tight" key={key}>{titleChildren}</h2>;
+  if (tag === "h3") return <h3 className="m-0 text-sm font-bold leading-snug" key={key}>{titleChildren}</h3>;
+  if (tag === "p") return <p className="m-0 text-[0.94rem] leading-7 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
   if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
   if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-secondary px-4 py-3 font-mono text-xs leading-6" key={key}>{children}</pre>;
@@ -329,8 +328,8 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "tr") return <tr key={key}>{children}</tr>;
   if (tag === "th") return <th className="px-3 py-2 text-left font-bold leading-6" key={key}>{children}</th>;
   if (tag === "td") return <td className="px-3 py-2 align-top leading-6 text-muted-foreground" key={key}>{children}</td>;
-  if (tag === "ul") return <ul className="m-0 list-disc space-y-1.5 pb-5 pl-6 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ul>;
-  if (tag === "ol") return <ol className="m-0 list-decimal space-y-1.5 pb-5 pl-6 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ol>;
+  if (tag === "ul") return <ul className="m-0 flex list-disc flex-col gap-1.5 pb-3 pl-5 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ul>;
+  if (tag === "ol") return <ol className="m-0 flex list-decimal flex-col gap-1.5 pb-3 pl-5 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ol>;
   if (tag === "li") return <li className="pl-1 font-normal" key={key}>{children}</li>;
   if (tag === "dl") return <dl className={cn("grid gap-2", classTokens.has("summary") && "grid-cols-[auto_minmax(0,1fr)] rounded-md border bg-secondary/50 p-4 text-sm")} key={key}>{children}</dl>;
   if (tag === "dt") return <dt className="font-bold text-muted-foreground" key={key}>{children}</dt>;
@@ -375,7 +374,7 @@ function renderPlanComponent(
 
   if (component === "PlanHero") {
     return (
-      <section className="grid gap-5 border-b pb-8" key={key}>
+      <section className="grid gap-4 border-b border-border/70 pb-6" key={key}>
         {renderComponentHeader(title, description, node.getAttribute("status"))}
         {children}
       </section>
@@ -384,23 +383,19 @@ function renderPlanComponent(
 
   if (component === "PlanSummary") {
     return (
-      <Card className="rounded-lg bg-secondary/45 py-4 shadow-none" key={key}>
-        <CardContent className="grid gap-3 px-4">{children}</CardContent>
-      </Card>
+      <section className="border-y border-border/70 bg-secondary/25 px-0 py-3" key={key}>
+        {renderSummaryGrid(node, key, onNavigate, path) || <div className="grid gap-2 px-1">{children}</div>}
+      </section>
     );
   }
 
   if (component === "PlanUnit" || component === "Panel" || component === "Card") {
     return (
-      <Card className="rounded-lg shadow-none" key={key}>
-        {title || description ? (
-          <CardHeader className="gap-2 px-5">
-            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
-            {description ? <CardDescription>{description}</CardDescription> : null}
-          </CardHeader>
-        ) : null}
-        <CardContent className="grid gap-3 px-5">{children}</CardContent>
-      </Card>
+      <section className="grid gap-2 border-l border-border/80 py-1 pl-4" key={key}>
+        {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
+        {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        <div className="grid gap-2">{children}</div>
+      </section>
     );
   }
 
@@ -416,19 +411,17 @@ function renderPlanComponent(
       Verification: <CheckCircle2 className="size-4" />,
     };
     return (
-      <Card className="rounded-lg shadow-none" key={key}>
-        <CardHeader className="gap-2 px-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="gap-1.5">
-              {icons[component]}
-              {labels[component]}
-            </Badge>
-            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
-          </div>
-          {description ? <CardDescription>{description}</CardDescription> : null}
-        </CardHeader>
-        <CardContent className="grid gap-3 px-5">{children}</CardContent>
-      </Card>
+      <section className={cn("grid gap-2 border-l-2 py-2 pl-4 pr-2", componentPanelAccent(component))} key={key}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+            {icons[component]}
+            {labels[component]}
+          </span>
+          {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
+        </div>
+        {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        <div className="grid gap-2">{children}</div>
+      </section>
     );
   }
 
@@ -451,18 +444,18 @@ function renderPlanComponent(
   }
 
   if (component === "Steps") {
-    return <ol className="m-0 grid list-none gap-3 p-0" key={key}>{children}</ol>;
+    return <ol className="m-0 grid list-none gap-0 border-l border-border/80 p-0 pl-4" key={key}>{children}</ol>;
   }
 
   if (component === "Step") {
     const number = node.getAttribute("number") || node.getAttribute("index") || "";
     return (
-      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg border bg-card p-4" key={key}>
-        <div className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-          {number || <CheckCircle2 className="size-4" />}
+      <li className="relative grid gap-1 pb-4 pl-3" key={key}>
+        <div className="absolute -left-[1.36rem] top-1 flex size-3 items-center justify-center rounded-full border border-background bg-primary">
+          {number ? <span className="sr-only">{number}</span> : null}
         </div>
-        <div className="grid gap-2">
-          {title ? <h3 className="m-0 text-base font-bold leading-snug">{title}</h3> : null}
+        <div className="grid gap-1.5">
+          {title ? <h3 className="m-0 text-sm font-bold leading-snug">{title}</h3> : null}
           {children}
         </div>
       </li>
@@ -587,13 +580,63 @@ function renderPlanComponent(
   return undefined;
 }
 
+function renderSummaryGrid(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = Array.from(node.querySelectorAll(":scope > ul > li, :scope > ol > li"));
+  if (!items.length) return null;
+  return (
+    <dl className="grid gap-px md:grid-cols-2" key={`${key}-summary`}>
+      {items.map((item, index) => {
+        const label = summaryItemLabel(item);
+        return (
+          <div className="grid min-h-12 grid-cols-[8.5rem_minmax(0,1fr)] items-start gap-3 px-3 py-2 text-sm" key={`${key}-summary-${index}`}>
+            <dt className="font-mono text-xs leading-6 text-muted-foreground">{label || "Detail"}</dt>
+            <dd className="m-0 min-w-0 leading-6 text-foreground">{summaryItemValue(item, label, `${key}-summary-${index}`, onNavigate, path)}</dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+function summaryItemLabel(item: Element) {
+  const text = item.textContent || "";
+  const split = text.indexOf(":");
+  return split === -1 ? "" : text.slice(0, split).trim();
+}
+
+function summaryItemValue(item: Element, label: string, key: string, onNavigate: (path: string) => void, path?: string) {
+  if (!label) {
+    return Array.from(item.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path));
+  }
+  let trimmedPrefix = false;
+  return Array.from(item.childNodes)
+    .map((child, index) => {
+      if (!trimmedPrefix && child.nodeType === Node.TEXT_NODE) {
+        const text = child.textContent || "";
+        const split = text.indexOf(":");
+        if (split !== -1) {
+          trimmedPrefix = true;
+          return text.slice(split + 1).trimStart();
+        }
+      }
+      return renderNode(child, `${key}-${index}`, onNavigate, path);
+    })
+    .filter((child) => child !== "");
+}
+
+function componentPanelAccent(component: string) {
+  if (component === "Verification") return "border-primary/80 bg-secondary/20";
+  if (component === "Decision") return "border-primary/60";
+  return "border-border/90";
+}
+
 function renderComponentHeader(title: string, description: string, status: string | null) {
   if (!title && !description && !status) return null;
   return (
     <div className="grid gap-2">
       {status ? <Badge className="w-fit" variant={statusBadgeVariant(status)}>{status}</Badge> : null}
       {title ? <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl">{title}</h1> : null}
-      {description ? <p className="m-0 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p> : null}
+      {description ? <p className="m-0 max-w-3xl text-[0.94rem] leading-7 text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

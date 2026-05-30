@@ -29,7 +29,6 @@ Use them conservatively:
 | --- | --- |
 | Page title, intent, concise setup | `PlanHero` |
 | Status, current unit, next action, blockers, validation | `PlanSummary` |
-| Executable unit sections | `PlanUnit` |
 | Accepted choices and consequences | `Decision` |
 | Source-grounded facts, imported Q&A, confidence | `Evidence` |
 | Checks and completion gates | `Verification` |
@@ -37,7 +36,7 @@ Use them conservatively:
 | Important notes, constraints, risks | `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check` |
 | Long source context for agents only | `Visibility for="agents"` |
 
-Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
+Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
 
 ## Artifact Pattern Selector
 

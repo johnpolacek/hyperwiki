@@ -87,6 +87,6 @@ assert.match(runtime, /Use built-in Hyperwiki MDX plan components/);
 assert.match(runtime, /Visibility for=\\"agents\\"/);
 assert.match(runtime, /<PlanHero>/);
 assert.match(runtime, /<PlanSummary>/);
-assert.match(runtime, /<PlanUnit title=\\"Implementation Notes\\">/);
+assert.match(runtime, /<section>\\n  <h2>Implementation Notes<\/h2>/);
 
 console.log("import onboarding manager static smoke passed");
