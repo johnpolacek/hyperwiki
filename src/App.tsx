@@ -1039,7 +1039,7 @@ function App() {
       startedAt: Date.now(),
     };
     setAgentRun(run);
-    setSidePanelMode("agent-activity");
+    setSidePanelMode(kind === "execute" ? "terminal" : "agent-activity");
     return run.id;
   }
 
