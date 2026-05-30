@@ -400,25 +400,9 @@ function renderPlanComponent(
   }
 
   if (component === "Decision" || component === "Evidence" || component === "Verification") {
-    const labels: Record<string, string> = {
-      Decision: "Decision",
-      Evidence: "Evidence",
-      Verification: "Verification",
-    };
-    const icons: Record<string, ReactNode> = {
-      Decision: <Sparkles className="size-4" />,
-      Evidence: <FileText className="size-4" />,
-      Verification: <CheckCircle2 className="size-4" />,
-    };
     return (
       <section className={cn("grid gap-2 border-l-2 py-2 pl-4 pr-2", componentPanelAccent(component))} key={key}>
-        <div className="grid gap-1">
-          <h2 className="m-0 inline-flex items-center gap-2 text-lg font-bold leading-tight">
-            {icons[component]}
-            {labels[component]}
-          </h2>
-          {title ? <p className="m-0 text-base font-semibold leading-6 text-foreground">{title}</p> : null}
-        </div>
+        {title ? <h2 className="m-0 text-lg font-bold leading-tight">{title}</h2> : null}
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
       </section>
