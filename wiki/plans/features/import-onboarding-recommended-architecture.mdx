@@ -13,7 +13,7 @@ wikiKind: "plan"
     <li>Current unit: corrective runtime refactor after Unit 05 dogfooding</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
-    <li>Next action: dogfood a fresh import against the Rust-owned runtime endpoints and verify first question, answer-to-follow-up, retry, and generated-plan completion.</li>
+    <li>Next action: dogfood a fresh import against the Rust-owned runtime endpoints and verify first question, answer-to-follow-up, ready-to-plan fallback completion, retry, and generated-plan completion.</li>
   </ul>
 </section>
 <section>
@@ -34,6 +34,7 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: chained runtime transitions now release the completed active run before starting plan generation, repair, or plan repair, preventing the active-run guard from trapping onboarding after a valid <code>hyperwiki-ready-to-plan</code> signal.</li>
     <li>Corrective follow-up on 2026-05-29: the runtime finalizer now uses compare-and-release semantics, matching Tandem's <code>finish_if_match</code> pattern, so a completed parent run cannot erase a newly active child run.</li>
     <li>Corrective refactor on 2026-05-29: plan generation now follows the DeepAgents virtual-filesystem pattern. Codex generates a structured <code>hyperwiki-plan-artifacts</code> payload, while the Rust runtime owns safe MDX writes and deterministic validation.</li>
+    <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, a silent or timed-out plan-artifact turn no longer blocks onboarding. The Rust runtime writes a conservative MVP plan from accepted decisions and imported source context, then runs the same safe-path and MDX validators before marking onboarding complete.</li>
   </ul>
 </section>
 <section>
@@ -59,7 +60,7 @@ wikiKind: "plan"
     <li>Do not introduce a standalone sidecar service in the first implementation.</li>
     <li>Do not adopt Open Harness, deepagents, LangGraph, or another external agent harness as a runtime dependency until a local prototype proves it fits Tauri packaging and the local trust boundary.</li>
     <li>Do not build a general Hyperwiki run engine for every agent workflow yet. Import onboarding is the only committed consumer.</li>
-    <li>Do not replace Codex-generated final plan docs with deterministic Rust plan generation.</li>
+    <li>Do not replace Codex-generated final plan docs with deterministic Rust plan generation on the normal path. The runtime may generate a conservative fallback plan only after Codex has already completed the Q&amp;A contract with <code>hyperwiki-ready-to-plan</code> and the hidden plan-artifact turn stalls or times out.</li>
     <li>Do not solve full semantic retrieval, vector search, or tool-RAG in the first slice. Use compact deterministic context packs first.</li>
   </ul>
 </section>
@@ -73,6 +74,7 @@ wikiKind: "plan"
     <li>Represent questions as durable <code>HumanInputRequest</code> objects with IDs, run IDs, text, options, freeform allowance, source evidence, status, and accepted answer.</li>
     <li>Represent generated plan output as staged artifacts or virtual files until deterministic validators approve the actual write to <code>wiki/</code>.</li>
     <li>Implemented plan-generation boundary: Codex generates virtual artifact paths and complete MDX contents; Hyperwiki writes only allowed plan paths and then validates them.</li>
+    <li>Implemented fallback boundary: if the virtual-artifact turn is silent after decisions are complete, Hyperwiki writes only <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code> from accepted decisions and imported source context, then validates before completion.</li>
     <li>React renders typed backend state and submits answers by request ID. It must not parse raw Codex output, infer plan completion from assistant text, or own retry timing.</li>
     <li>Implemented refactor note: React still retains the generic terminal planning parser for non-import planning, but imported-project onboarding now treats Rust runtime status and event records as the source of truth.</li>
   </ul>

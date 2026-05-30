@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding plan fallback</h2>
+  <ul>
+    <li>Added a runtime-owned completion fallback for imports that have already reached a valid <code>hyperwiki-ready-to-plan</code> decision state but whose hidden Codex plan-artifact turn stalls or times out before assistant text.</li>
+    <li>The fallback writes only conservative MVP plan artifacts under <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code>, using accepted import decisions and source context rather than asking another hidden repair turn to finish.</li>
+    <li>The existing generated-plan safe path checks and MDX artifact validator still gate onboarding completion.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 refactor | import onboarding virtual artifacts</h2>
   <ul>
     <li>Changed import plan generation to use a DeepAgents-style virtual artifact contract: Codex now returns structured <code>hyperwiki-plan-artifacts</code> JSON instead of being asked to write wiki files directly.</li>

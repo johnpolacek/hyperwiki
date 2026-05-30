@@ -558,7 +558,31 @@ fn run_runtime_turn(
             plan_repair_prompt(&project, &request_id, &context, &prompt_context)
         }
     };
-    let response = execute_provider_turn(&project, &run_id, &prompt, app.clone())?;
+    let response = match execute_provider_turn(&project, &run_id, &prompt, app.clone()) {
+        Ok(response) => response,
+        Err((_status, error))
+            if matches!(kind, RuntimeTurnKind::Plan | RuntimeTurnKind::PlanRepair)
+                && is_plan_provider_stall(&error) =>
+        {
+            append_event_for_run(
+                &project.root,
+                app.as_ref(),
+                &run_id,
+                "plan_fallback_started",
+                "staging_artifacts",
+                "Codex plan artifact turn went quiet; completing from accepted decisions.",
+                Some(error),
+            )?;
+            return complete_plan_from_runtime_context(
+                &project,
+                &run_id,
+                &context,
+                &prompt_context,
+                app.as_ref(),
+            );
+        }
+        Err(error) => return Err(error),
+    };
     let text = response.text.clone();
     let planning = import_planning_status(&project.root);
     if planning.status == "complete" {
@@ -895,6 +919,183 @@ fn execute_provider_turn(
         }
     }
     Err((504, "Codex import-planning runtime timed out.".to_string()))
+}
+
+fn is_plan_provider_stall(error: &str) -> bool {
+    let lower = error.to_lowercase();
+    lower.contains("did not produce assistant text")
+        || lower.contains("did not emit assistant text")
+        || lower.contains("bounded import-planning window")
+        || lower.contains("runtime timed out")
+        || lower.contains("timed out")
+}
+
+fn complete_plan_from_runtime_context(
+    project: &ProjectRecord,
+    run_id: &str,
+    ready_context: &str,
+    source_context: &str,
+    app: Option<&tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    let artifacts = runtime_fallback_plan_artifacts(project, ready_context, source_context);
+    write_generated_plan_artifacts(&project.root, &artifacts)?;
+    append_event_for_run(
+        &project.root,
+        app,
+        run_id,
+        "artifacts_committed",
+        "validating_artifacts",
+        "Runtime wrote conservative MVP plan artifacts from accepted import decisions.",
+        Some(
+            artifacts
+                .iter()
+                .map(|artifact| artifact.path.clone())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    )?;
+    let validation = validate_import_plan_artifacts(&project.root);
+    if has_generated_plan_pages(&project.root) && validation.status == "valid" {
+        return complete_runtime_run(
+            project,
+            run_id,
+            "complete",
+            "Generated MVP plan is ready.",
+            app,
+        );
+    }
+    fail_runtime_run(
+        project,
+        run_id,
+        format!(
+            "Runtime fallback plan did not pass validation: {}",
+            validation.errors.join("; ")
+        ),
+        app,
+    )
+}
+
+fn runtime_fallback_plan_artifacts(
+    project: &ProjectRecord,
+    ready_context: &str,
+    source_context: &str,
+) -> Vec<GeneratedPlanArtifact> {
+    let title = escape_html(&project.name);
+    let ready_summary = escape_html(&compact(ready_context, 1000));
+    let source_summary = escape_html(&compact(source_context, 1400));
+    let source_excerpt = if source_summary.trim().is_empty() {
+        "No source excerpt was available to the runtime fallback. Preserve this as an implementation unknown and verify against the imported source before coding.".to_string()
+    } else {
+        source_summary
+    };
+    let ready_excerpt = if ready_summary.trim().is_empty() {
+        "Codex signaled that planning could continue, but did not provide a usable plan-intent excerpt before the artifact turn stalled.".to_string()
+    } else {
+        ready_summary
+    };
+    let plan_name = format!("{title} MVP Plan");
+    let root_index = format!(
+        r#"---
+title: "Plans"
+description: "Current project plans."
+wikiKind: "plan"
+---
+
+<h1>Plans</h1>
+<section>
+  <h2>Current MVP Plan</h2>
+  <ul>
+    <li><a href="/wiki/plans/mvp/index.mdx">{plan_name}</a></li>
+    <li>Current stage: Stage 01 - Confirmed MVP implementation</li>
+    <li>Current unit: <a href="/wiki/plans/mvp/unit-01-confirmed-mvp.mdx">Unit 01 - Confirmed MVP slice</a></li>
+  </ul>
+</section>
+"#
+    );
+    let mvp_index = format!(
+        r#"---
+title: "{plan_name}"
+description: "Runtime fallback MVP plan generated from accepted import decisions after the Codex artifact turn stalled."
+wikiKind: "plan"
+---
+
+<h1>{plan_name}</h1>
+<section>
+  <h2>Source Decisions</h2>
+  <p>{ready_excerpt}</p>
+  <p>{source_excerpt}</p>
+</section>
+<section>
+  <h2>Stage 01 - Confirmed MVP Implementation</h2>
+  <ul>
+    <li><a href="/wiki/plans/mvp/unit-01-confirmed-mvp.mdx">Unit 01 - Confirmed MVP slice</a></li>
+  </ul>
+</section>
+<section>
+  <h2>Unknowns</h2>
+  <p>Treat exact file names, visual polish, and verification commands as implementation details unless the imported source or Q&amp;A already names them. Do not add unconfirmed framework, backend, account, sync, or storage scope.</p>
+</section>
+"#
+    );
+    let unit = format!(
+        r#"---
+title: "Unit 01 - Confirmed MVP Slice"
+description: "Implement the first source-grounded MVP slice from the imported source and accepted Q&A decisions."
+wikiKind: "plan"
+---
+
+<h1>Unit 01 - Confirmed MVP Slice</h1>
+<section>
+  <h2>Intent</h2>
+  <p>Implement the smallest working MVP that matches the accepted import-planning decisions and the imported source evidence. This page exists because the Codex plan-artifact turn stalled after decisions were complete, so the runtime preserved progress with a conservative plan instead of leaving onboarding blocked.</p>
+</section>
+<section>
+  <h2>Source Decisions</h2>
+  <p>{ready_excerpt}</p>
+  <p>{source_excerpt}</p>
+</section>
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Build only the confirmed MVP surface described by the imported source and latest Q&amp;A answer.</li>
+    <li>Keep implementation choices local and dependency-light unless the source explicitly requires a framework, backend, account system, sync, or external service.</li>
+    <li>Persist any user-facing behavior and constraints named by the source context; mark missing details as unknowns instead of inventing product scope.</li>
+    <li>Update the wiki plan if implementation discovers a contradiction between the source, the Q&amp;A decision, and the repository shape.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Use the imported source files and <code>wiki/sources/import-qna.mdx</code> as the authority for UX, data, persistence, and verification decisions.</li>
+    <li>Avoid broad refactors or infrastructure changes in this first unit.</li>
+    <li>Keep generated or runtime state out of tracked source unless it is deliberate wiki context.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run the repository checks that apply to the touched files.</li>
+    <li>Manually exercise the MVP happy path described by the imported source.</li>
+    <li>Verify the accepted Q&amp;A decision is reflected in the implementation.</li>
+    <li>Confirm no unrequested storage, account, networking, framework, or deployment scope was introduced.</li>
+  </ul>
+</section>
+"#
+    );
+    vec![
+        GeneratedPlanArtifact {
+            path: "wiki/plans/index.mdx".to_string(),
+            content: root_index,
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/index.mdx".to_string(),
+            content: mvp_index,
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/unit-01-confirmed-mvp.mdx".to_string(),
+            content: unit,
+        },
+    ]
 }
 
 fn emit_snapshot_events(
@@ -1639,7 +1840,10 @@ fn write_generated_plan_artifacts(
     artifacts: &[GeneratedPlanArtifact],
 ) -> Result<(), (u16, String)> {
     if artifacts.is_empty() {
-        return Err((422, "No generated plan artifacts were supplied.".to_string()));
+        return Err((
+            422,
+            "No generated plan artifacts were supplied.".to_string(),
+        ));
     }
     for artifact in artifacts {
         let relative = safe_plan_artifact_path(&artifact.path)?;
@@ -1656,7 +1860,9 @@ fn safe_plan_artifact_path(path: &str) -> Result<PathBuf, (u16, String)> {
     let normalized = path.trim().trim_start_matches('/').replace('\\', "/");
     if normalized.is_empty()
         || normalized.starts_with('/')
-        || normalized.split('/').any(|part| part == ".." || part.is_empty())
+        || normalized
+            .split('/')
+            .any(|part| part == ".." || part.is_empty())
     {
         return Err((422, format!("Unsafe generated artifact path: {path}")));
     }
@@ -1753,6 +1959,14 @@ fn compact(value: &str, max_chars: usize) -> String {
     collapsed.chars().take(max_chars).collect::<String>()
 }
 
+fn escape_html(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 fn text_tail(value: &str, max_chars: usize) -> String {
     let chars = value.chars().collect::<Vec<_>>();
     if chars.len() <= max_chars {
@@ -1787,6 +2001,45 @@ fn unix_time_ms() -> u128 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn temp_root(name: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(format!(
+            "hyperwiki-import-onboarding-runtime-{name}-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    fn test_project(root: PathBuf) -> ProjectRecord {
+        ProjectRecord {
+            id: format!("project-test-{}", monotonic_id()),
+            root,
+            name: "Micro Journal".to_string(),
+            project_slug: "micro-journal".to_string(),
+            worktree_slug: "main".to_string(),
+            available: true,
+            last_opened_at: None,
+            active: false,
+            import_planning: None,
+        }
+    }
+
+    fn make_imported_project(root: &Path) {
+        fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import.mdx"),
+            "<h1>Micro Journal</h1><p>Single static HTML page with localStorage persistence, debounced autosave, and Clear Entry.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import-qna.mdx"),
+            "<h1>Import Q&amp;A</h1><p>Decision: Static single file.</p>",
+        )
+        .unwrap();
+    }
 
     #[test]
     fn extracts_structured_question_with_options() {
@@ -1892,5 +2145,59 @@ mod tests {
         assert!(safe_plan_artifact_path("../secret.mdx").is_err());
         assert!(safe_plan_artifact_path("src/App.tsx").is_err());
         assert!(safe_plan_artifact_path("wiki/sources/import.mdx").is_err());
+    }
+
+    #[test]
+    fn runtime_plan_fallback_writes_valid_mvp_artifacts() {
+        let root = temp_root("plan-fallback");
+        make_imported_project(&root);
+        let project = test_project(root.clone());
+        let session = load_or_create_session(&project).unwrap();
+        let run_id = format!("run-test-{}", monotonic_id());
+        write_run(
+            &root,
+            &ImportOnboardingRun {
+                project_id: project.id.clone(),
+                session_id: session.session_id,
+                run_id: run_id.clone(),
+                provider_run_id: None,
+                request_id: "import-turn:plan:test".to_string(),
+                kind: "plan".to_string(),
+                status: "running".to_string(),
+                phase: "running_plan_turn".to_string(),
+                retryable: false,
+                started_at_ms: unix_time_ms(),
+                updated_at_ms: unix_time_ms(),
+                error: None,
+            },
+        )
+        .unwrap();
+
+        complete_plan_from_runtime_context(
+            &project,
+            &run_id,
+            "Reasoning: decisions complete.\nPlan intent: Implement a static single-file localStorage MVP.",
+            &read_import_source_context(&root),
+            None,
+        )
+        .unwrap();
+
+        let validation = validate_import_plan_artifacts(&root);
+        assert_eq!(validation.status, "valid");
+        assert!(root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("index.mdx")
+            .exists());
+        assert!(root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("unit-01-confirmed-mvp.mdx")
+            .exists());
+        let run = read_run(&root, &run_id).unwrap();
+        assert_eq!(run.status, "complete");
+        assert_eq!(run.phase, "complete");
     }
 }
