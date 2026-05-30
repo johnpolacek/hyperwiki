@@ -503,8 +503,8 @@ fn spawn_runtime_turn(
         if let Err((_, error)) = result {
             let _ = fail_runtime_run(&project, &run_id, error, app.as_ref());
         }
+        release_runtime_active(&project.id, &run_id);
         if let Ok(mut guard) = registry().lock() {
-            guard.active_by_project.remove(&project.id);
             guard.cancelled_runs.remove(&run_id);
         }
     });
@@ -1704,5 +1704,29 @@ mod tests {
         assert!(has_active_runtime_run(&project_id));
         release_runtime_active(&project_id, &run_id);
         assert!(!has_active_runtime_run(&project_id));
+    }
+
+    #[test]
+    fn parent_finalizer_does_not_clear_child_run() {
+        let project_id = format!("project-test-{}", monotonic_id());
+        let parent_run_id = format!("parent-run-test-{}", monotonic_id());
+        let child_run_id = format!("child-run-test-{}", monotonic_id());
+        {
+            let mut guard = registry().lock().unwrap();
+            guard
+                .active_by_project
+                .insert(project_id.clone(), child_run_id.clone());
+        }
+
+        release_runtime_active(&project_id, &parent_run_id);
+
+        let active = registry()
+            .lock()
+            .unwrap()
+            .active_by_project
+            .get(&project_id)
+            .cloned();
+        assert_eq!(active.as_deref(), Some(child_run_id.as_str()));
+        release_runtime_active(&project_id, &child_run_id);
     }
 }

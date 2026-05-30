@@ -32,6 +32,7 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: onboarding now separates Codex-authored question-decision turns from plan-generation turns with a structured <code>hyperwiki-ready-to-plan</code> signal, and exec JSON fallback has a bounded first-assistant timeout instead of waiting on lifecycle events alone.</li>
     <li>Corrective refactor on 2026-05-29: import onboarding now has a Rust-owned runtime layer above the Codex adapter. The runtime persists <code>ImportOnboardingSession</code>, <code>ImportOnboardingRun</code>, append-only <code>events.jsonl</code>, and checkpoints under ignored runtime state; React starts, polls, answers, retries, and cancels through <code>/api/import-onboarding/*</code> endpoints instead of owning the Codex turn loop.</li>
     <li>Corrective follow-up on 2026-05-29: chained runtime transitions now release the completed active run before starting plan generation, repair, or plan repair, preventing the active-run guard from trapping onboarding after a valid <code>hyperwiki-ready-to-plan</code> signal.</li>
+    <li>Corrective follow-up on 2026-05-29: the runtime finalizer now uses compare-and-release semantics, matching Tandem's <code>finish_if_match</code> pattern, so a completed parent run cannot erase a newly active child run.</li>
   </ul>
 </section>
 <section>
