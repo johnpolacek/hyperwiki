@@ -121,7 +121,8 @@ All generated `wiki/*.mdx` and `wiki/**/*.mdx` pages should be renderer-agnostic
 - Use Markdown for ordinary content and semantic HTML/JSX only for richer structures.
 - Prefer summaries, tables, status matrices, execution tracks, decision panels, evidence matrices, `<details>`, and inline SVG diagrams over long prose.
 - Keep internal links relative and point to `.mdx` paths.
-- Use Hyperwiki planning components for plan pages when available; avoid other custom imports by default.
+- Use Hyperwiki planning components for plan pages when available: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+- Use `Visibility for="agents"` for long source context, raw Q&A, or handoff detail that should remain in Markdown derivatives but stay hidden in the rendered app.
 - Do not use inline scripts by default.
 - Do not define a skill-owned CSS/theme contract. Styling belongs to the target MDX renderer.
 - Load [`mdx-artifact-patterns.md`](mdx-artifact-patterns.md) before substantial MDX work.

@@ -24,8 +24,10 @@ Generated wiki pages must be `.mdx` source artifacts. Keep raw MDX useful in a t
 
 - Use minimal frontmatter: `title`, `description`, and `wikiKind`.
 - Start pages with CLI-readable status, reader goal, current state, next action, and blockers.
-- Prefer Markdown, tables, semantic HTML/JSX, `<details>`, and small inline SVG.
-- Use Hyperwiki planning components for plan pages when available: `PlanHero`, `PlanSummary`, `PlanStage`, `PlanUnit`, `Verification`, `Decision`, `Evidence`, `Risk`, `Callout`, `CommandBlock`, `SourceLink`, and `StatusTable`.
+- Prefer Markdown, tables, semantic HTML/JSX, `<details>`, and small inline SVG for ordinary docs.
+- Use Hyperwiki planning components for plan pages when they improve structure: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+- Prefer `PlanHero` for title and intent, `PlanSummary` for status/current unit/next action/blockers/validation, `PlanUnit` for executable unit sections, `Decision` for accepted choices, `Evidence` for source-grounded facts, `Verification` for checks, and `Steps`/`Step` for stage or unit sequences.
+- Use `Visibility for="agents"` for long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app. Use `Visibility for="humans"` only for app-visible explanation that should be stripped from agent Markdown.
 - Every executable plan unit must include a `Verification` section or `Verification` component.
 - Avoid inline scripts and remote assets.
 - Do not invent source truth; name unknowns and contradictions.

@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | plan generation component guidance</h2>
+  <ul>
+    <li>Updated regular plan creation prompts, import artifact repair prompts, and bundled Hyperwiki skill references to advertise the built-in MDX plan component vocabulary.</li>
+    <li>Changed the deterministic import MVP compiler to emit <code>PlanHero</code>, <code>PlanSummary</code>, <code>PlanUnit</code>, <code>Evidence</code>, <code>Decision</code>, <code>Verification</code>, <code>Steps</code>, and <code>Visibility for="agents"</code> directly.</li>
+    <li>Moved long imported source and Q&amp;A summaries out of visible paragraphs and into agent-only visibility blocks so generated plans stay readable in the app while preserving context in Markdown derivatives.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | shadcn MDX plan components</h2>
   <ul>
     <li>Added Hyperwiki-owned MDX plan components inspired by Holocron's component vocabulary without adding Holocron runtime dependencies.</li>

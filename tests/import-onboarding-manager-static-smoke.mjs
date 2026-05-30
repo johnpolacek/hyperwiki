@@ -69,6 +69,8 @@ assert.match(app, /Cancel Run/);
 assert.match(app, /importPlanningWorkstreamLimit = 1000/);
 assert.match(app, /const showActivityPane = !isRetryableFailure/);
 assert.match(app, /questions\.length \? "Planning activity" : waitingLabel/);
+assert.match(app, /PlanHero, PlanSummary, PlanUnit/);
+assert.match(app, /Visibility for=\\"agents\\"/);
 assert.doesNotMatch(app, /monitorImportPlanningTurn/);
 assert.doesNotMatch(app, /hyperwiki-local-answer-fallback/);
 
@@ -81,5 +83,10 @@ assert.match(importPlanning, /StagedArtifactRecord/);
 assert.match(importPlanning, /ImportPlanningArtifactValidation/);
 assert.match(importPlanning, /validate_import_plan_artifacts/);
 assert.match(importPlanning, /staged-artifacts\.json/);
+assert.match(runtime, /Use built-in Hyperwiki MDX plan components/);
+assert.match(runtime, /Visibility for=\\"agents\\"/);
+assert.match(runtime, /<PlanHero>/);
+assert.match(runtime, /<PlanSummary>/);
+assert.match(runtime, /<PlanUnit title=\\"Implementation Notes\\">/);
 
 console.log("import onboarding manager static smoke passed");

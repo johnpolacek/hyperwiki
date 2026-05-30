@@ -17,6 +17,28 @@ Every substantial MDX artifact must pass a structure and readability bar before 
 
 If a generated page reads like a prose dump, revise it into clearer sections, tables, diagrams, or decision panels.
 
+## Hyperwiki Plan Components
+
+Plan MDX can use these built-in components without imports:
+
+`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+
+Use them conservatively:
+
+| Need | Component |
+| --- | --- |
+| Page title, intent, concise setup | `PlanHero` |
+| Status, current unit, next action, blockers, validation | `PlanSummary` |
+| Executable unit sections | `PlanUnit` |
+| Accepted choices and consequences | `Decision` |
+| Source-grounded facts, imported Q&A, confidence | `Evidence` |
+| Checks and completion gates | `Verification` |
+| Stage or unit sequence | `Steps` and `Step` |
+| Important notes, constraints, risks | `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check` |
+| Long source context for agents only | `Visibility for="agents"` |
+
+Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
+
 ## Artifact Pattern Selector
 
 | Pattern | Use When | Required Structures |
