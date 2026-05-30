@@ -654,25 +654,11 @@ fn run_runtime_turn(
                 app.as_ref(),
                 &run_id,
                 "ready_to_plan",
-                "staging_artifacts",
-                "Planning decisions are complete; starting MVP plan artifact generation.",
+                "plan_compiler_started",
+                "Planning decisions are complete; compiling MVP plan artifacts.",
                 Some(ready.clone()),
             )?;
-            complete_chained_runtime_run(
-                &project,
-                &run_id,
-                "staging_artifacts",
-                "Planning decisions are complete; starting MVP plan artifact generation.",
-                app.as_ref(),
-            )?;
-            spawn_runtime_turn(
-                project,
-                RuntimeTurnKind::PlanRepair,
-                ready,
-                String::new(),
-                app,
-            )?;
-            return Ok(());
+            return compile_plan_from_ready_context(project, &run_id, &ready, &prompt_context, app);
         }
         let session = load_or_create_session(&project)?;
         if session.repair_attempts <= 1 && !matches!(kind, RuntimeTurnKind::Repair) {
@@ -790,6 +776,170 @@ fn run_runtime_turn(
         );
     }
     Ok(())
+}
+
+fn compile_plan_from_ready_context(
+    project: ProjectRecord,
+    run_id: &str,
+    ready_context: &str,
+    source_context: &str,
+    app: Option<tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    append_event_for_run(
+        &project.root,
+        app.as_ref(),
+        run_id,
+        "plan_compiler_started",
+        "plan_compiler_started",
+        "Compiling source-grounded MVP plan artifacts in the runtime.",
+        None,
+    )?;
+    let artifacts = match compile_import_mvp_plan_artifacts(&project, ready_context, source_context)
+    {
+        Ok(artifacts) => artifacts,
+        Err((422, error)) => {
+            return record_compiler_followup_question(project, run_id, &error, app);
+        }
+        Err(error) => return Err(error),
+    };
+    append_event_for_run(
+        &project.root,
+        app.as_ref(),
+        run_id,
+        "plan_artifacts_compiled",
+        "staging_artifacts",
+        "Runtime compiled MVP plan artifacts from accepted decisions.",
+        Some(
+            artifacts
+                .iter()
+                .map(|artifact| artifact.path.clone())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        ),
+    )?;
+    write_generated_plan_artifacts(&project.root, &artifacts)?;
+    append_event_for_run(
+        &project.root,
+        app.as_ref(),
+        run_id,
+        "plan_artifacts_written",
+        "validating_artifacts",
+        "Runtime wrote compiled MDX artifacts; validating now.",
+        None,
+    )?;
+    let validation = validate_import_plan_artifacts(&project.root);
+    if has_generated_plan_pages(&project.root) && validation.status == "valid" {
+        append_event_for_run(
+            &project.root,
+            app.as_ref(),
+            run_id,
+            "plan_validation_passed",
+            "complete",
+            "Compiled MVP plan artifacts passed validation.",
+            Some(format!("artifacts={}", validation.artifacts.len())),
+        )?;
+        return complete_runtime_run(
+            &project,
+            run_id,
+            "complete",
+            "Generated MVP plan is ready.",
+            app.as_ref(),
+        );
+    }
+
+    let session = load_or_create_session(&project)?;
+    if session.plan_repair_attempts == 0 {
+        append_event_for_run(
+            &project.root,
+            app.as_ref(),
+            run_id,
+            "contract_warning",
+            "validating_artifacts",
+            "Compiled plan artifacts need one Codex repair turn.",
+            Some(validation.errors.join("\n")),
+        )?;
+        complete_chained_runtime_run(
+            &project,
+            run_id,
+            "validating_artifacts",
+            "Compiled plan artifacts need one Codex repair turn.",
+            app.as_ref(),
+        )?;
+        spawn_runtime_turn(
+            project,
+            RuntimeTurnKind::PlanRepair,
+            validation
+                .repair_prompt
+                .clone()
+                .unwrap_or_else(|| validation.errors.join("\n")),
+            String::new(),
+            app,
+        )?;
+        return Ok(());
+    }
+
+    fail_runtime_run(
+        &project,
+        run_id,
+        "Compiled MVP plan artifacts did not pass validation.".to_string(),
+        app.as_ref(),
+    )
+}
+
+fn record_compiler_followup_question(
+    project: ProjectRecord,
+    run_id: &str,
+    error: &str,
+    app: Option<tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    let question = ImportPlanningQuestion {
+        id: format!("import-turn:compiler:{}", monotonic_id()),
+        label: "Agent Planning Question".to_string(),
+        prompt: "What concrete MVP surface and first behaviors should the imported project plan implement?".to_string(),
+        impact: "blocking".to_string(),
+        rationale: format!(
+            "The import plan compiler could not safely derive enough source evidence: {error}"
+        ),
+        recommended_answer: "Use the smallest source-described user workflow and list the first concrete behaviors to implement.".to_string(),
+        options: vec![ImportPlanningQuestionOption {
+            label: "Smallest source-described workflow".to_string(),
+            description: "Keeps the generated plan source-grounded instead of inventing MVP scope."
+                .to_string(),
+        }],
+    };
+    append_event_for_run(
+        &project.root,
+        app.as_ref(),
+        run_id,
+        "question_ready",
+        "waiting_for_answer",
+        "Plan compiler needs one more source-grounded decision.",
+        Some(question.prompt.clone()),
+    )?;
+    record_human_input_request(
+        &project.root,
+        HumanInputCheckpointRequest {
+            request_id: question.id.clone(),
+            question: question.clone(),
+            session_id: run_id.to_string(),
+            run_id: run_id.to_string(),
+        },
+    )?;
+    let mut session = load_or_create_session(&project)?;
+    session.status = "waiting_for_answer".to_string();
+    session.phase = "waiting_for_answer".to_string();
+    session.current_run_id = None;
+    session.current_question_id = Some(question.id);
+    session.updated_at_ms = unix_time_ms();
+    write_session(&project.root, &session)?;
+    update_runtime_run(
+        &project.root,
+        run_id,
+        "complete",
+        "waiting_for_answer",
+        false,
+        None,
+    )
 }
 
 fn execute_provider_turn(
@@ -1399,6 +1549,179 @@ fn plan_repair_prompt(
     .join("\n")
 }
 
+fn compile_import_mvp_plan_artifacts(
+    project: &ProjectRecord,
+    ready_context: &str,
+    source_context: &str,
+) -> Result<Vec<GeneratedPlanArtifact>, (u16, String)> {
+    let evidence = format!("{}\n\n{}", ready_context.trim(), source_context.trim());
+    if evidence.split_whitespace().count() < 8 {
+        return Err((
+            422,
+            "Import planning reached ready-to-plan without enough source evidence to compile MVP plan artifacts.".to_string(),
+        ));
+    }
+
+    let lower = evidence.to_lowercase();
+    let is_static_local_mvp = lower.contains("index.html")
+        || lower.contains("localstorage")
+        || lower.contains("local storage")
+        || lower.contains("vanilla")
+        || lower.contains("static html");
+    let title = clean_plan_title(&project.name);
+    let decision_summary = compact_for_plan(&evidence, 900);
+    let escaped_title = escape_html_text(&title);
+    let escaped_decisions = escape_html_text(&decision_summary);
+
+    if is_static_local_mvp {
+        return Ok(compile_static_local_mvp_artifacts(
+            &escaped_title,
+            &escaped_decisions,
+        ));
+    }
+
+    Ok(compile_generic_source_mvp_artifacts(
+        &escaped_title,
+        &escaped_decisions,
+    ))
+}
+
+fn compile_static_local_mvp_artifacts(
+    title: &str,
+    decision_summary: &str,
+) -> Vec<GeneratedPlanArtifact> {
+    vec![
+        GeneratedPlanArtifact {
+            path: "wiki/plans/index.mdx".to_string(),
+            content: format!(
+                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1>\n<section className=\"summary\">\n  <h2>Summary</h2>\n  <ul>\n    <li>Status: active planning</li>\n    <li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li>\n    <li>Shape: single-stage MVP with three executable units</li>\n    <li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Unit 01 - Root HTML Shell</a></li>\n    <li>Next action: implement the self-contained root <code>index.html</code> shell.</li>\n    <li>Blockers: none from accepted import decisions.</li>\n    <li>Validation: repository checks plus manual browser verification of the local-only journal workflow.</li>\n  </ul>\n</section>\n<section>\n  <h2>Active Plan</h2>\n  <p>The current active plan is the source-grounded MVP plan for {title}. It starts with Stage 01, a static local-only implementation path compiled from accepted import decisions.</p>\n</section>\n"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/index.mdx".to_string(),
+            content: format!(
+                "---\ntitle: \"{title} MVP Plan\"\ndescription: \"Source-grounded MVP plan compiled from import Q&amp;A decisions.\"\nwikiKind: \"plan\"\n---\n\n<h1>{title} MVP Plan</h1>\n<section className=\"summary\">\n  <h2>Summary</h2>\n  <ul>\n    <li>Status: active</li>\n    <li>Shape: single-stage MVP</li>\n    <li>Current stage: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\">Stage 01 - Static MVP Foundation</a></li>\n    <li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Unit 01 - Root HTML Shell</a></li>\n    <li>Source decisions: {decision_summary}</li>\n    <li>Unknowns: no blocking implementation unknowns remain for the local-only MVP slice.</li>\n  </ul>\n</section>\n<section>\n  <h2>Stage Sequence</h2>\n  <ol>\n    <li>Stage 01 builds the confirmed static local-only MVP as one root <code>index.html</code> file.</li>\n  </ol>\n</section>\n<section>\n  <h2>Units</h2>\n  <ol>\n    <li>Unit 01 creates semantic markup, embedded CSS, and the centered textarea workflow.</li>\n    <li>Unit 02 implements <code>localStorage</code> restore, debounced autosave, and save-status feedback.</li>\n    <li>Unit 03 implements clear-entry behavior and records manual verification.</li>\n  </ol>\n</section>\n<section>\n  <h2>Deferred Work</h2>\n  <p>Frameworks, backend services, accounts, sync, deployment automation, analytics, and external services are outside the accepted MVP decision.</p>\n</section>\n"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/stage-01-static-mvp-foundation.mdx".to_string(),
+            content: format!(
+                "---\ntitle: \"Stage 01 - Static MVP Foundation\"\ndescription: \"Build the accepted static local-only MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Static MVP Foundation</h1>\n<section>\n  <h2>Stage Goal</h2>\n  <p>Implement the source-decided {title} MVP as a single self-contained root <code>index.html</code> page using embedded HTML, CSS, and JavaScript.</p>\n</section>\n<section>\n  <h2>Unit Sequence</h2>\n  <ol>\n    <li><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Unit 01 - Root HTML Shell</a></li>\n    <li><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-persistence.mdx\">Unit 02 - Local Persistence</a></li>\n    <li><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-clear-entry-and-verification.mdx\">Unit 03 - Clear Entry And Verification</a></li>\n  </ol>\n</section>\n<section>\n  <h2>Dependencies</h2>\n  <p>Depends on the accepted source decision to keep the MVP static, local-only, dependency-free, and stored through browser <code>localStorage</code>.</p>\n</section>\n<section>\n  <h2>Verification</h2>\n  <p>Run applicable repository checks, then manually open the page in a browser, type a journal entry, reload to confirm restore, wait through debounce to confirm autosave, clear the entry, and confirm no backend, framework, build step, account, network, or external-service behavior is introduced.</p>\n</section>\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when all three units are implemented, the root <code>index.html</code> workflow works locally, and verification is recorded in the relevant unit.</p>\n</section>\n"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx"
+                .to_string(),
+            content: format!(
+                "---\ntitle: \"Unit 01 - Root HTML Shell\"\ndescription: \"Create the self-contained static journal shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - Root HTML Shell</h1>\n<section>\n  <h2>Intent</h2>\n  <p>Create the accepted MVP surface as a root <code>index.html</code> file with semantic markup, embedded CSS, embedded JavaScript, and a centered textarea workflow for {title}.</p>\n</section>\n<section>\n  <h2>Scope</h2>\n  <p>Build only the static document shell: page title, main journal region, textarea, save-status area, and clear-entry control. Do not add a framework, backend, build step, external services, or account model.</p>\n</section>\n<section>\n  <h2>Implementation Notes</h2>\n  <p>Use plain HTML, CSS, and JavaScript in one file. Keep the layout responsive and centered, make the textarea the primary interaction, and preserve the source decision summary: {decision_summary}</p>\n</section>\n<section>\n  <h2>Dependencies</h2>\n  <p>Depends on the accepted static local-only MVP decision. Blockers: none.</p>\n</section>\n<section>\n  <h2>Verification</h2>\n  <p>Open the root <code>index.html</code> in a browser and confirm the page renders, the textarea is usable, controls are visible, and no network or build process is required.</p>\n</section>\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when the static shell renders from the project root and is ready for local persistence wiring.</p>\n</section>\n"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-persistence.mdx"
+                .to_string(),
+            content: "---\ntitle: \"Unit 02 - Local Persistence\"\ndescription: \"Implement load-on-open restore and debounced localStorage autosave.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - Local Persistence</h1>\n<section>\n  <h2>Intent</h2>\n  <p>Persist the journal entry locally with browser <code>localStorage</code> so the accepted MVP restores the previous entry on open and saves edits automatically.</p>\n</section>\n<section>\n  <h2>Scope</h2>\n  <p>Add a stable storage key, load-on-open restore, debounced autosave after textarea input, and user-visible save status. Keep all data local to the browser.</p>\n</section>\n<section>\n  <h2>Implementation Notes</h2>\n  <p>Use a small debounce timer around <code>localStorage.setItem</code>. Restore from the same key during initialization. Handle empty content consistently without adding backend, sync, accounts, analytics, or external calls. Preserve source decisions and unknowns in comments only when useful for future maintainers.</p>\n</section>\n<section>\n  <h2>Dependencies</h2>\n  <p>Depends on Unit 01's textarea and status elements. Blockers: none.</p>\n</section>\n<section>\n  <h2>Verification</h2>\n  <p>Type a journal entry, wait through the debounce, reload the browser, and confirm the same text is restored from <code>localStorage</code>. Inspect behavior with browser dev tools if needed.</p>\n</section>\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when autosave and restore work without any backend, network, framework, or build step.</p>\n</section>\n".to_string(),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-clear-entry-and-verification.mdx"
+                .to_string(),
+            content: "---\ntitle: \"Unit 03 - Clear Entry And Verification\"\ndescription: \"Implement the clear-entry interaction and verify the MVP happy path.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 03 - Clear Entry And Verification</h1>\n<section>\n  <h2>Intent</h2>\n  <p>Finish the static local-only MVP by adding clear-entry behavior and recording the manual verification path for the journal workflow.</p>\n</section>\n<section>\n  <h2>Scope</h2>\n  <p>Wire the clear-entry control to clear the textarea, update <code>localStorage</code>, return focus to the editor, and update save status. Verify the complete local-only happy path.</p>\n</section>\n<section>\n  <h2>Implementation Notes</h2>\n  <p>Keep the clear action immediate and predictable. It may ask for confirmation only if the source explicitly requires it; otherwise make the behavior simple for the MVP. Do not introduce unrequested storage, networking, account, framework, deployment, or external-service scope.</p>\n</section>\n<section>\n  <h2>Dependencies</h2>\n  <p>Depends on Unit 02's storage key and autosave behavior. Blockers: none.</p>\n</section>\n<section>\n  <h2>Verification</h2>\n  <p>Enter text, confirm autosave, reload to confirm restore, activate Clear Entry, reload again, and confirm the entry remains cleared. Run the repository checks that apply to static HTML changes.</p>\n</section>\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when the entire MVP happy path works locally and verification confirms no unrequested backend, framework, build, account, network, or external service was added.</p>\n</section>\n".to_string(),
+        },
+    ]
+}
+
+fn compile_generic_source_mvp_artifacts(
+    title: &str,
+    decision_summary: &str,
+) -> Vec<GeneratedPlanArtifact> {
+    vec![
+        GeneratedPlanArtifact {
+            path: "wiki/plans/index.mdx".to_string(),
+            content: format!(
+                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><section><h2>Summary</h2><ul><li>Status: active planning</li><li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li><li>Shape: single-stage MVP with three executable units</li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Unit 01 - MVP Surface Shell</a></li><li>Next action: implement the source-decided MVP shell.</li><li>Blockers: none from accepted import decisions.</li><li>Validation: repository checks plus manual verification of the imported source workflow.</li></ul></section>"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/index.mdx".to_string(),
+            content: format!(
+                "---\ntitle: \"{title} MVP Plan\"\ndescription: \"Source-grounded MVP plan compiled from import Q&amp;A decisions.\"\nwikiKind: \"plan\"\n---\n\n<h1>{title} MVP Plan</h1><section><h2>Summary</h2><ul><li>Status: active</li><li>Shape: single-stage MVP</li><li>Current stage: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp.mdx\">Stage 01 - Source Grounded MVP</a></li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Unit 01 - MVP Surface Shell</a></li><li>Source decisions: {decision_summary}</li><li>Unknowns: no blocking implementation unknowns remain in the accepted ready-to-plan contract.</li></ul></section><section><h2>Stage Sequence</h2><p>Stage 01 implements the accepted source-grounded MVP units.</p></section><section><h2>Deferred Work</h2><p>Unrequested services, integrations, and post-MVP polish remain deferred until a later decision.</p></section>"
+            ),
+        },
+        GeneratedPlanArtifact {
+            path: "wiki/plans/mvp/stage-01-source-grounded-mvp.mdx".to_string(),
+            content: "---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the accepted imported-project MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Source Grounded MVP</h1><section><h2>Stage Goal</h2><p>Implement the source-decided MVP behavior without adding unrequested product scope.</p></section><section><h2>Unit Sequence</h2><ol><li><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Unit 01 - MVP Surface Shell</a></li><li><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-core-source-behavior.mdx\">Unit 02 - Core Source Behavior</a></li><li><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-verification-and-handoff.mdx\">Unit 03 - Verification And Handoff</a></li></ol></section><section><h2>Dependencies</h2><p>Depends on accepted import source decisions and Q&amp;A answers.</p></section><section><h2>Verification</h2><p>Run applicable repository checks and manually exercise the source-described workflow.</p></section><section><h2>Completion Gate</h2><p>Complete when all units are implemented and verified against source decisions.</p></section>".to_string(),
+        },
+        generic_unit_artifact(
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx",
+            "Unit 01 - MVP Surface Shell",
+            "Create the minimum source-decided user-facing MVP surface.",
+            decision_summary,
+        ),
+        generic_unit_artifact(
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-core-source-behavior.mdx",
+            "Unit 02 - Core Source Behavior",
+            "Implement the primary behavior described by the imported source and accepted decisions.",
+            decision_summary,
+        ),
+        generic_unit_artifact(
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-verification-and-handoff.mdx",
+            "Unit 03 - Verification And Handoff",
+            "Verify the source-described happy path and record remaining unknowns.",
+            decision_summary,
+        ),
+    ]
+}
+
+fn generic_unit_artifact(
+    path: &str,
+    title: &str,
+    intent: &str,
+    decision_summary: &str,
+) -> GeneratedPlanArtifact {
+    GeneratedPlanArtifact {
+        path: path.to_string(),
+        content: format!(
+            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<h1>{title}</h1><section><h2>Intent</h2><p>{intent}</p></section><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use the accepted source decisions as authority: {decision_summary}</p></section><section><h2>Dependencies</h2><p>Depends on prior units in Stage 01 and the accepted import Q&amp;A decisions. Blockers: none unless implementation discovers a contradiction with source evidence.</p></section><section><h2>Verification</h2><p>Run applicable repository checks and manually exercise the behavior named by the imported source.</p></section><section><h2>Completion Gate</h2><p>Complete when the unit behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
+        ),
+    }
+}
+
+fn clean_plan_title(value: &str) -> String {
+    let compact = value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_string();
+    if compact.is_empty() {
+        "Imported Project".to_string()
+    } else {
+        compact.chars().take(80).collect()
+    }
+}
+
+fn compact_for_plan(value: &str, max_chars: usize) -> String {
+    let compacted = value.split_whitespace().collect::<Vec<_>>().join(" ");
+    if compacted.chars().count() <= max_chars {
+        compacted
+    } else {
+        format!(
+            "{}...",
+            compacted
+                .chars()
+                .take(max_chars.saturating_sub(3))
+                .collect::<String>()
+        )
+    }
+}
+
+fn escape_html_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 fn extract_latest_question(
     text: &str,
     session_id: &str,
@@ -1913,5 +2236,56 @@ mod tests {
             .contains("at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages"));
         assert!(prompt.contains("do not produce a generic single \"Confirmed MVP Slice\" unit"));
         assert!(prompt.contains("localStorage persistence"));
+    }
+
+    #[test]
+    fn deterministic_compiler_generates_valid_static_local_mvp_plan() {
+        let root = temp_root("compiled-plan");
+        make_imported_project(&root);
+        let project = test_project(root.clone());
+        let source_context = read_import_source_context(&root);
+        let ready_context = "Reasoning: Decisions are complete.\nPlan intent: Create a root index.html Micro-Journal page with semantic markup, embedded CSS and JavaScript, localStorage restore/save behavior, debounce timing, clear-entry handling, responsive centered layout, and manual browser verification.";
+
+        let artifacts =
+            compile_import_mvp_plan_artifacts(&project, ready_context, &source_context).unwrap();
+        assert_eq!(artifacts.len(), 6);
+        assert!(artifacts
+            .iter()
+            .any(|artifact| artifact.path == "wiki/plans/index.mdx"));
+        assert!(artifacts
+            .iter()
+            .any(|artifact| artifact.path.ends_with("unit-02-local-persistence.mdx")));
+        let joined = artifacts
+            .iter()
+            .map(|artifact| artifact.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(joined.contains("root <code>index.html</code>"));
+        assert!(joined.contains("localStorage"));
+        assert!(joined.contains("debounced autosave"));
+        assert!(joined.contains("load-on-open restore"));
+        assert!(joined.contains("clear-entry"));
+        assert!(joined.contains("manual browser verification"));
+
+        write_generated_plan_artifacts(&root, &artifacts).unwrap();
+        let validation = validate_import_plan_artifacts(&root);
+        assert_eq!(validation.status, "valid");
+        assert_eq!(
+            validation
+                .artifacts
+                .iter()
+                .filter(|artifact| artifact.intended_path.contains("/unit-"))
+                .count(),
+            3
+        );
+    }
+
+    #[test]
+    fn deterministic_compiler_requires_source_evidence() {
+        let root = temp_root("compiled-plan-empty-source");
+        let project = test_project(root);
+        let error = compile_import_mvp_plan_artifacts(&project, "", "").unwrap_err();
+        assert_eq!(error.0, 422);
+        assert!(error.1.contains("without enough source evidence"));
     }
 }

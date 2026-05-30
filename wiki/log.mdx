@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 fix | deterministic import MVP plan compiler</h2>
+  <ul>
+    <li>Replaced the normal post-<code>hyperwiki-ready-to-plan</code> hidden artifact-generation turn with a Rust-owned compiler that writes source-grounded stage and unit MDX artifacts directly through the existing safe plan-artifact path.</li>
+    <li>Added compiler progress events for start, compiled artifact paths, writes, and validation success, while preserving Codex <code>PlanRepair</code> only for validation fallback and manual retry paths.</li>
+    <li>Added focused Micro-Journal coverage proving compiled artifacts include root <code>index.html</code>, vanilla HTML/CSS/JS, <code>localStorage</code>, debounce, restore, clear-entry, and manual verification details, and updated static smoke coverage to reject the old normal <code>PlanRepair</code> handoff.</li>
+    <li>Verified with focused <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>pnpm run smoke:import-onboarding-manager</code>, <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 fix | import onboarding MVP artifact shape</h2>
   <ul>
     <li>Removed the conservative one-unit runtime fallback that completed imported-project onboarding with a generic <code>Unit 01 - Confirmed MVP Slice</code> plan after <code>hyperwiki-ready-to-plan</code>.</li>

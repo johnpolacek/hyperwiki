@@ -10,10 +10,10 @@ wikiKind: "plan"
   <ul>
     <li>Status: implementation in progress</li>
     <li>Shape: go-forward architecture plan</li>
-    <li>Current unit: corrective MVP artifact planning shape hardening complete</li>
+    <li>Current unit: Unit 07 - deterministic import MVP plan compiler complete</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
-    <li>Next action: dogfood a fresh import against the stricter artifact-generation path and verify the generated plan has concrete stages and units before onboarding completion.</li>
+    <li>Next action: dogfood a fresh Micro-Journal import and verify <code>hyperwiki-ready-to-plan</code> completes through compiled stage and unit artifacts without a hidden artifact-generation stall.</li>
   </ul>
 </section>
 <section>
@@ -36,6 +36,7 @@ wikiKind: "plan"
     <li>Corrective refactor on 2026-05-29: plan generation now follows the DeepAgents virtual-filesystem pattern. Codex generates a structured <code>hyperwiki-plan-artifacts</code> payload, while the Rust runtime owns safe MDX writes and deterministic validation.</li>
     <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding briefly wrote a conservative one-unit MVP plan from accepted decisions and imported source context. Dogfooding showed that this satisfied weak validators while failing Hyperwiki's stage/unit planning contract, so the go-forward path returns to explicit artifact generation with stronger validation and retryable failure on provider stalls.</li>
     <li>Corrective follow-up complete on 2026-05-30: ready-to-plan now starts the backend-owned artifact-generation run, the conservative runtime fallback was removed, the plan prompt embeds the Hyperwiki stage/unit contract, and validators reject generic confirmed-MVP placeholders, missing stage pages, and single-unit MVP plans.</li>
+    <li>Corrective follow-up complete on 2026-05-30: dogfooding showed the backend-owned artifact-generation run could still fail when Codex emitted lifecycle events but no assistant text. Normal plan artifact creation now uses a deterministic Rust compiler, with Codex plan repair reserved for validation fallback only.</li>
   </ul>
 </section>
 <section>
@@ -75,7 +76,7 @@ wikiKind: "plan"
     <li>Represent questions as durable <code>HumanInputRequest</code> objects with IDs, run IDs, text, options, freeform allowance, source evidence, status, and accepted answer.</li>
     <li>Represent generated plan output as staged artifacts or virtual files until deterministic validators approve the actual write to <code>wiki/</code>.</li>
     <li>Superseded plan-generation boundary: Codex briefly generated virtual artifact paths and complete MDX contents while Hyperwiki owned safe writes, but dogfooding showed the second hidden turn was still too unreliable.</li>
-    <li>Implemented plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, Hyperwiki starts a backend-owned plan artifact generation run. The model returns structured artifact JSON, while the Rust runtime owns safe writes, artifact validation, and retryable failure states.</li>
+    <li>Corrected plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, Hyperwiki deterministically compiles source-grounded MDX plan artifacts, writes them through the safe artifact path, and validates them before completion. Codex plan repair remains available only when compiled or existing artifacts fail validation.</li>
     <li>React renders typed backend state and submits answers by request ID. It must not parse raw Codex output, infer plan completion from assistant text, or own retry timing.</li>
     <li>Implemented refactor note: React still retains the generic terminal planning parser for non-import planning, but imported-project onboarding now treats Rust runtime status and event records as the source of truth.</li>
   </ul>
@@ -197,6 +198,7 @@ wikiKind: "plan"
     <li>Unit 04 - Artifact staging and validation: add staged artifact records, validators for MDX/frontmatter/links/required sections/source grounding, repair-loop prompt, and commit policy for real wiki writes.</li>
     <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy. Complete on 2026-05-29.</li>
     <li>Unit 06 - MVP artifact shape hardening: remove the one-unit conservative completion fallback, require stage and multi-unit artifacts, and keep provider stalls as retryable failures instead of completing with placeholder plans. Complete on 2026-05-30.</li>
+    <li>Unit 07 - Deterministic import MVP plan compiler: compile the accepted import decisions and source evidence into validated stage and unit MDX artifacts in Rust, emit compiler progress events, and use Codex plan repair only after deterministic validation failure. Complete on 2026-05-30.</li>
   </ul>
 </section>
 <section>
@@ -208,6 +210,7 @@ wikiKind: "plan"
     <li>Unit 04 is complete when malformed or incomplete generated plans stay staged, validation errors are visible to the repair loop, and valid artifacts are committed to actual wiki files.</li>
     <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events. Implemented by binding the import Q&amp;A view to backend run status, showing the run phase in the activity panel, exposing cancel, and removing the old terminal-replay monitor from the import-planning route.</li>
     <li>Unit 06 is complete when <code>hyperwiki-ready-to-plan</code> chains to artifact generation, the runtime no longer contains the generic confirmed-MVP fallback, validators require an MVP stage page and at least two concrete unit pages, and static smoke coverage rejects the old fallback path.</li>
+    <li>Unit 07 is complete when <code>hyperwiki-ready-to-plan</code> writes validated compiled plan artifacts without spawning the normal <code>PlanRepair</code> turn, the compiled Micro-Journal fixture contains root <code>index.html</code>, vanilla HTML/CSS/JS, <code>localStorage</code>, debounce, restore, clear-entry, and manual verification details, and provider stalls during hidden artifact generation are no longer on the happy path.</li>
   </ul>
 </section>
 <section>

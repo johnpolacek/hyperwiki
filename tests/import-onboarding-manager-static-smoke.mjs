@@ -24,11 +24,21 @@ for (const symbol of [
   "hyperwiki-ready-to-plan",
   "running_plan_repair_turn",
   "hyperwiki-plan-artifacts",
+  "compile_import_mvp_plan_artifacts",
+  "plan_compiler_started",
+  "plan_artifacts_compiled",
+  "plan_artifacts_written",
+  "plan_validation_passed",
 ]) {
   assert.match(runtime, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing runtime symbol ${symbol}`);
 }
 assert.doesNotMatch(runtime, /complete_plan_from_runtime_context/);
 assert.doesNotMatch(runtime, /Unit 01 - Confirmed MVP Slice/);
+assert.doesNotMatch(
+  runtime,
+  /spawn_runtime_turn\(\s*project,\s*RuntimeTurnKind::PlanRepair,\s*ready,/,
+  "ready-to-plan should compile artifacts directly instead of spawning the normal hidden plan repair turn",
+);
 
 for (const endpoint of [
   "/api/import-onboarding/start",
