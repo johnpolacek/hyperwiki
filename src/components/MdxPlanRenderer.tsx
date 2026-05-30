@@ -43,7 +43,7 @@ function renderTrustedMdx(source: string, onNavigate: (path: string) => void, pa
 }
 
 function mdxBodyToHtml(source: string) {
-  const body = normalizeComponentTags(stripFrontmatter(source).replaceAll("className=", "class="));
+  const body = expandEscapedSourceContextParagraphs(normalizeComponentTags(stripFrontmatter(source).replaceAll("className=", "class=")));
   const lines = body.split(/\r?\n/);
   const html: string[] = [];
   let inCode = false;
@@ -122,6 +122,48 @@ function mdxBodyToHtml(source: string) {
   }
   if (inList) html.push("</ul>");
   return html.join("\n");
+}
+
+function expandEscapedSourceContextParagraphs(source: string) {
+  return source.replace(/<p>(## \/wiki\/[\s\S]*?)<\/p>/g, (_match, inner: string) => {
+    const rendered = renderCollapsedSourceContext(decodeCommonHtmlEntities(inner));
+    return rendered || _match;
+  });
+}
+
+function renderCollapsedSourceContext(value: string) {
+  return normalizedSourceSegments(value)
+    .map((segment) => {
+      const parsed = collapsedSourcePathAndBody(segment);
+      if (!parsed) return "";
+      const body = stripCollapsedFrontmatter(parsed.body).trim();
+      if (!body) return "";
+      return `<article class="source-decision"><h3><a href="${escapeHtml(parsed.path)}">${escapeHtml(parsed.path)}</a></h3>${body}</article>`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function normalizedSourceSegments(value: string) {
+  return value
+    .replaceAll(" ## /wiki/", "\n## /wiki/")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("## /wiki/"));
+}
+
+function collapsedSourcePathAndBody(segment: string) {
+  const rest = segment.replace(/^##\s+/, "");
+  const split = rest.search(/\s/);
+  if (split === -1) return null;
+  return { path: rest.slice(0, split), body: rest.slice(split) };
+}
+
+function stripCollapsedFrontmatter(value: string) {
+  const trimmed = value.trimStart();
+  if (!trimmed.startsWith("--- ")) return trimmed;
+  const end = trimmed.indexOf(" --- ", 4);
+  return end === -1 ? trimmed : trimmed.slice(end + " --- ".length);
 }
 
 function parseTableBlock(lines: string[], startIndex: number) {
@@ -292,4 +334,13 @@ function escapeHtml(value: string) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function decodeCommonHtmlEntities(value: string) {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'");
 }
