@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | shadcn MDX plan components</h2>
+  <ul>
+    <li>Added Hyperwiki-owned MDX plan components inspired by Holocron's component vocabulary without adding Holocron runtime dependencies.</li>
+    <li>Installed focused shadcn/ui primitives for cards, badges, alerts, tabs, accordions, separators, tooltips, scroll areas, and collapsibles.</li>
+    <li>Extended the trusted React MDX renderer with plan wrappers for decisions, evidence, verification, callouts, panels, frames, steps, prompts, updates, task lists, fields, trees, code blocks, tabs, accordions, badges, and human or agent visibility.</li>
+    <li>Extended Rust Markdown derivatives so visual wrappers do not leak into agent context, field/step context remains useful, and <code>Visibility for="humans"</code> is excluded from agent-facing Markdown while <code>Visibility for="agents"</code> is preserved.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, and a temporary Vite shell smoke through <code>agent-browser</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 fix | deterministic import MVP plan compiler</h2>
   <ul>
     <li>Replaced the normal post-<code>hyperwiki-ready-to-plan</code> hidden artifact-generation turn with a Rust-owned compiler that writes source-grounded stage and unit MDX artifacts directly through the existing safe plan-artifact path.</li>

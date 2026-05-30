@@ -1,0 +1,56 @@
+---
+title: "shadcn MDX Plan Components"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero>
+  <h1>shadcn MDX Plan Components</h1>
+  <p>Bring a Holocron-inspired MDX component vocabulary into Hyperwiki plans without importing Holocron runtime dependencies. Components stay Hyperwiki-owned, render through the trusted local MDX renderer, and use shadcn/ui primitives where they improve plan readability and design quality.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: narrow frontend and derivative upgrade</li>
+    <li>Current unit: all units complete</li>
+    <li>Next action: use this component vocabulary in future generated plans and plan-authoring guidance.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, targeted Rust tests for MDX markdown derivatives, and a Vite shell browser smoke.</li>
+  </ul>
+</PlanSummary>
+
+<Decision title="Runtime boundary">
+  <p>Do not depend on Holocron, Spiceflow, hosted assistants, icon atlases, Mermaid, Prism virtual modules, or public docs deployment conventions. Hyperwiki only adopts the useful component ideas.</p>
+</Decision>
+
+<Decision title="Component boundary">
+  <p>Use actual shadcn/ui primitives for cards, badges, alerts, tabs, accordions, separators, scroll areas, collapsibles, tooltips, and buttons. Use shadcn-style local wrappers for plan-specific concepts such as decisions, evidence, verification, steps, fields, trees, prompts, updates, and visibility.</p>
+</Decision>
+
+<Decision title="Agent context boundary">
+  <p>Visual MDX must not degrade agent context. App-only human content can be wrapped in <code>Visibility for="humans"</code>, while agent-only context can be wrapped in <code>Visibility for="agents"</code>. Markdown derivatives should strip human-only content and preserve agent-only content.</p>
+</Decision>
+
+<Steps>
+  <Step title="Unit 01 - shadcn primitives and MDX renderer">
+    <p>Add the shadcn components that fit the plan surface and extend <code>MdxPlanRenderer</code> with Hyperwiki-owned components for plan structure, calls to action, steps, fields, trees, prompts, updates, code, and visibility.</p>
+    <p><strong>Verification:</strong> TypeScript check, frontend build, and static smoke coverage proving the renderer imports and recognizes the expected components.</p>
+  </Step>
+  <Step title="Unit 02 - Markdown derivative contract">
+    <p>Extend the Rust MDX derivative path so new wrapper tags do not leak into agent context and visibility blocks follow the human versus agent contract.</p>
+    <p><strong>Verification:</strong> Rust unit tests for wrapper stripping, field labels, and visibility behavior.</p>
+  </Step>
+  <Step title="Unit 03 - Wiki reconciliation">
+    <p>Record the new component vocabulary in this plan, the plans index, and the project log so later plan-generation work can use the same vocabulary.</p>
+    <p><strong>Verification:</strong> Wiki pages remain discoverable through the existing plan index and source navigation.</p>
+  </Step>
+</Steps>
+
+<Verification>
+  <ul>
+    <li>Ran <code>pnpm run check</code>.</li>
+    <li>Ran <code>pnpm run build:frontend</code>.</li>
+    <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>.</li>
+    <li>Ran an <code>agent-browser</code> smoke against a temporary Vite frontend on <code>127.0.0.1:1421</code>; the shell rendered, while direct plan content remained unavailable because wiki source loading is Tauri-owned.</li>
+  </ul>
+</Verification>

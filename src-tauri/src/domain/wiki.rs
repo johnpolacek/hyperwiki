@@ -108,6 +108,7 @@ pub fn mdx_markdown_derivative(mdx: &str) -> String {
     let body = strip_frontmatter(mdx);
     let mut output = String::new();
     let mut in_code = false;
+    let mut skip_human_visibility = false;
     let mut text = String::new();
     for line in body.lines() {
         let trimmed = line.trim();
@@ -126,7 +127,29 @@ pub fn mdx_markdown_derivative(mdx: &str) -> String {
             output.push('\n');
             continue;
         }
-        let line = strip_mdx_wrappers(line);
+        if skip_human_visibility {
+            if trimmed.contains("</Visibility>") {
+                skip_human_visibility = false;
+            }
+            continue;
+        }
+        if is_visibility_open_for(trimmed, "humans") {
+            if !trimmed.contains("</Visibility>") {
+                skip_human_visibility = true;
+            }
+            continue;
+        }
+        let line = strip_visibility_wrappers(line);
+        let trimmed = line.trim();
+        if let Some(hint) = mdx_component_markdown_hint(trimmed) {
+            flush_markdown_text(&mut output, &mut text);
+            output.push_str(&hint);
+            output.push('\n');
+            if trimmed.ends_with("/>") || trimmed.ends_with('>') {
+                continue;
+            }
+        }
+        let line = strip_mdx_wrappers(&line);
         let trimmed = line.trim();
         if trimmed.is_empty() {
             flush_markdown_text(&mut output, &mut text);
@@ -141,6 +164,12 @@ pub fn mdx_markdown_derivative(mdx: &str) -> String {
                 output.push_str(&item);
                 output.push('\n');
             }
+            continue;
+        }
+        if let Some(paragraph) = html_paragraph_to_markdown(trimmed) {
+            flush_markdown_text(&mut output, &mut text);
+            output.push_str(&paragraph);
+            output.push_str("\n\n");
             continue;
         }
         if let Some(item) = html_list_item_to_markdown(trimmed) {
@@ -179,23 +208,163 @@ fn flush_markdown_text(output: &mut String, text: &mut String) {
 }
 
 fn strip_mdx_wrappers(line: &str) -> String {
-    line.replace(" className=", " class=")
-        .replace("<PlanHero", "<section")
-        .replace("</PlanHero>", "</section>")
-        .replace("<PlanSummary", "<section")
-        .replace("</PlanSummary>", "</section>")
-        .replace("<PlanUnit", "<section")
-        .replace("</PlanUnit>", "</section>")
-        .replace("<Decision", "<section")
-        .replace("</Decision>", "</section>")
-        .replace("<Evidence", "<section")
-        .replace("</Evidence>", "</section>")
-        .replace("<Verification", "<section")
-        .replace("</Verification>", "</section>")
-        .replace("<Callout", "<section")
-        .replace("</Callout>", "</section>")
+    let mut output = line.replace(" className=", " class=");
+    for tag in MDX_SECTION_TAGS {
+        output = output
+            .replace(&format!("<{tag}"), "<section")
+            .replace(&format!("</{tag}>"), "</section>");
+    }
+    output
+        .replace("<CodeBlock", "<pre")
+        .replace("</CodeBlock>", "</pre>")
         .replace("<CommandBlock", "<pre")
         .replace("</CommandBlock>", "</pre>")
+}
+
+const MDX_SECTION_TAGS: &[&str] = &[
+    "PlanHero",
+    "PlanSummary",
+    "PlanUnit",
+    "Decision",
+    "Evidence",
+    "Verification",
+    "Callout",
+    "Note",
+    "Tip",
+    "Warning",
+    "Danger",
+    "Check",
+    "Panel",
+    "Frame",
+    "Card",
+    "Steps",
+    "Step",
+    "Prompt",
+    "Update",
+    "TaskList",
+    "StatusBadge",
+    "Badge",
+    "ParamField",
+    "ResponseField",
+    "Tree",
+    "TreeFolder",
+    "TreeFile",
+    "Tabs",
+    "Tab",
+    "AccordionGroup",
+    "Accordion",
+    "AccordionItem",
+    "Tooltip",
+];
+
+fn is_visibility_open_for(line: &str, audience: &str) -> bool {
+    is_mdx_opening(line, "Visibility")
+        && mdx_attr_value(line, "for")
+            .or_else(|| mdx_attr_value(line, "audience"))
+            .map(|value| value.eq_ignore_ascii_case(audience))
+            .unwrap_or(false)
+}
+
+fn strip_visibility_wrappers(line: &str) -> String {
+    let mut output = line.to_string();
+    while let Some(start) = output.find("<Visibility") {
+        let Some(end) = output[start..].find('>') else {
+            break;
+        };
+        output.replace_range(start..start + end + 1, "");
+    }
+    output.replace("</Visibility>", "")
+}
+
+fn mdx_component_markdown_hint(line: &str) -> Option<String> {
+    if is_mdx_opening(line, "ParamField") || is_mdx_opening(line, "ResponseField") {
+        let field_kind = if is_mdx_opening(line, "ParamField") {
+            "param"
+        } else {
+            "response"
+        };
+        let name = mdx_attr_value(line, "name")
+            .or_else(|| mdx_attr_value(line, "field"))
+            .or_else(|| mdx_attr_value(line, "title"))
+            .unwrap_or_else(|| "field".to_string());
+        let mut details = vec![field_kind.to_string()];
+        if let Some(field_type) = mdx_attr_value(line, "type") {
+            details.push(field_type);
+        }
+        if mdx_bool_attr(line, "required") {
+            details.push("required".to_string());
+        }
+        if mdx_bool_attr(line, "deprecated") {
+            details.push("deprecated".to_string());
+        }
+        return Some(format!("- `{name}` ({})", details.join(", ")));
+    }
+
+    if is_mdx_opening(line, "StatusBadge") || is_mdx_opening(line, "Badge") {
+        let value = mdx_attr_value(line, "status")
+            .or_else(|| mdx_attr_value(line, "label"))
+            .unwrap_or_else(|| "Status".to_string());
+        return Some(format!("Status: {value}"));
+    }
+
+    if is_mdx_opening(line, "Step") {
+        return mdx_attr_value(line, "title")
+            .or_else(|| mdx_attr_value(line, "label"))
+            .map(|title| format!("### {title}"));
+    }
+
+    let labeled_components = [
+        ("Decision", "Decision"),
+        ("Evidence", "Evidence"),
+        ("Verification", "Verification"),
+        ("Callout", "Note"),
+        ("Note", "Note"),
+        ("Tip", "Tip"),
+        ("Warning", "Warning"),
+        ("Danger", "Danger"),
+        ("Check", "Check"),
+        ("Panel", "Panel"),
+        ("Prompt", "Prompt"),
+        ("Update", "Update"),
+    ];
+    for (tag, label) in labeled_components {
+        if is_mdx_opening(line, tag) {
+            let title = mdx_attr_value(line, "title")
+                .or_else(|| mdx_attr_value(line, "label"))
+                .or_else(|| mdx_attr_value(line, "date"));
+            if let Some(title) = title {
+                return Some(format!("**{label}:** {title}"));
+            }
+        }
+    }
+
+    None
+}
+
+fn is_mdx_opening(line: &str, tag: &str) -> bool {
+    line.starts_with(&format!("<{tag}>"))
+        || line.starts_with(&format!("<{tag} "))
+        || line.starts_with(&format!("<{tag}/"))
+}
+
+fn mdx_attr_value(line: &str, name: &str) -> Option<String> {
+    for quote in ['"', '\''] {
+        let marker = format!("{name}={quote}");
+        if let Some(start) = line.find(&marker) {
+            let value_start = start + marker.len();
+            let value = line.get(value_start..)?;
+            let end = value.find(quote)?;
+            return value.get(..end).map(ToString::to_string);
+        }
+    }
+    None
+}
+
+fn mdx_bool_attr(line: &str, name: &str) -> bool {
+    if let Some(value) = mdx_attr_value(line, name) {
+        return !value.eq_ignore_ascii_case("false");
+    }
+    line.contains(&format!(" {name} ")) || line.contains(&format!(" {name}>")) || line.contains(&format!(" {name}/"))
 }
 
 fn html_heading_to_markdown(line: &str) -> Option<String> {
@@ -211,6 +380,21 @@ fn html_heading_to_markdown(line: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn html_paragraph_to_markdown(line: &str) -> Option<String> {
+    first_between_case_insensitive(line, "<p", "</p>").and_then(|value| {
+        let content = value
+            .split_once('>')
+            .map(|(_, content)| strip_html(content))
+            .unwrap_or_else(|| strip_html(&value));
+        let content = content.trim().to_string();
+        if content.is_empty() {
+            None
+        } else {
+            Some(content)
+        }
+    })
 }
 
 fn html_list_item_to_markdown(line: &str) -> Option<String> {
@@ -831,6 +1015,48 @@ mod tests {
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
         assert!(!source.markdown.contains("PlanHero"));
+    }
+
+    #[test]
+    fn mdx_markdown_derivative_applies_visibility_contract() {
+        let markdown = mdx_markdown_derivative(
+            r#"<h1>Plan</h1>
+<Visibility for="humans">
+Human-only decoration.
+</Visibility>
+<Visibility for="agents">
+Agent-only instruction.
+</Visibility>"#,
+        );
+
+        assert!(markdown.contains("# Plan"));
+        assert!(markdown.contains("Agent-only instruction."));
+        assert!(!markdown.contains("Human-only decoration."));
+        assert!(!markdown.contains("Visibility"));
+    }
+
+    #[test]
+    fn mdx_markdown_derivative_preserves_plan_component_context() {
+        let markdown = mdx_markdown_derivative(
+            r#"<Step title="Wire renderer">
+<ParamField name="path" type="string" required>
+<p>Wiki path.</p>
+</ParamField>
+<ResponseField name="markdown" type="string">
+Derivative text.
+</ResponseField>
+<StatusBadge status="active" />
+</Step>"#,
+        );
+
+        assert!(markdown.contains("### Wire renderer"));
+        assert!(markdown.contains("- `path` (param, string, required)"));
+        assert!(markdown.contains("Wiki path."));
+        assert!(markdown.contains("- `markdown` (response, string)"));
+        assert!(markdown.contains("Derivative text."));
+        assert!(markdown.contains("Status: active"));
+        assert!(!markdown.contains("ParamField"));
+        assert!(!markdown.contains("ResponseField"));
     }
 
     #[test]

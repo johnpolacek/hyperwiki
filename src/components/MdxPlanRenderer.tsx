@@ -1,4 +1,33 @@
 import { useMemo, type ReactNode } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clipboard,
+  Code2,
+  FileText,
+  Folder,
+  Info,
+  Lightbulb,
+  MessageSquareText,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
+import {
+  Accordion as UiAccordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
@@ -17,7 +46,35 @@ const componentTags = [
   "Evidence",
   "Verification",
   "Callout",
+  "Note",
+  "Tip",
+  "Warning",
+  "Danger",
+  "Check",
+  "Panel",
+  "Frame",
+  "Card",
+  "Steps",
+  "Step",
+  "Prompt",
+  "Update",
+  "TaskList",
+  "StatusBadge",
+  "Badge",
+  "ParamField",
+  "ResponseField",
+  "Tree",
+  "TreeFolder",
+  "TreeFile",
+  "CodeBlock",
   "CommandBlock",
+  "Visibility",
+  "Tabs",
+  "Tab",
+  "AccordionGroup",
+  "Accordion",
+  "AccordionItem",
+  "Tooltip",
 ];
 
 export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanRendererProps) {
@@ -28,7 +85,7 @@ export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanR
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
       <div className="mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
-        {content}
+        <TooltipProvider>{content}</TooltipProvider>
         {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
       </div>
     </article>
@@ -233,6 +290,11 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   const component = node.getAttribute("data-plan-component") || "";
   const classTokens = new Set(className.split(/\s+/).filter(Boolean));
 
+  if (component) {
+    const renderedComponent = renderPlanComponent(node, component, children, key, onNavigate, path);
+    if (renderedComponent !== undefined) return renderedComponent;
+  }
+
   if (component === "CommandBlock") {
     return <pre className="overflow-auto rounded-md border bg-secondary px-4 py-3 font-mono text-xs leading-6" key={key}>{children}</pre>;
   }
@@ -292,6 +354,419 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "div") return <div className="grid gap-3" key={key}>{children}</div>;
 
   return <span key={key}>{children}</span>;
+}
+
+function renderPlanComponent(
+  node: Element,
+  component: string,
+  children: ReactNode[],
+  key: string,
+  onNavigate: (path: string) => void,
+  path?: string,
+): ReactNode | undefined {
+  const title = componentTitle(node);
+  const description = node.getAttribute("description") || node.getAttribute("summary") || "";
+  const icon = node.getAttribute("icon") || "";
+
+  if (component === "Visibility") {
+    const audience = node.getAttribute("for") || node.getAttribute("audience") || "";
+    return audience.toLowerCase() === "agents" ? null : <>{children}</>;
+  }
+
+  if (component === "PlanHero") {
+    return (
+      <section className="grid gap-5 border-b pb-8" key={key}>
+        {renderComponentHeader(title, description, node.getAttribute("status"))}
+        {children}
+      </section>
+    );
+  }
+
+  if (component === "PlanSummary") {
+    return (
+      <Card className="rounded-lg bg-secondary/45 py-4 shadow-none" key={key}>
+        <CardContent className="grid gap-3 px-4">{children}</CardContent>
+      </Card>
+    );
+  }
+
+  if (component === "PlanUnit" || component === "Panel" || component === "Card") {
+    return (
+      <Card className="rounded-lg shadow-none" key={key}>
+        {title || description ? (
+          <CardHeader className="gap-2 px-5">
+            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
+            {description ? <CardDescription>{description}</CardDescription> : null}
+          </CardHeader>
+        ) : null}
+        <CardContent className="grid gap-3 px-5">{children}</CardContent>
+      </Card>
+    );
+  }
+
+  if (component === "Decision" || component === "Evidence" || component === "Verification") {
+    const labels: Record<string, string> = {
+      Decision: "Decision",
+      Evidence: "Evidence",
+      Verification: "Verification",
+    };
+    const icons: Record<string, ReactNode> = {
+      Decision: <Sparkles className="size-4" />,
+      Evidence: <FileText className="size-4" />,
+      Verification: <CheckCircle2 className="size-4" />,
+    };
+    return (
+      <Card className="rounded-lg shadow-none" key={key}>
+        <CardHeader className="gap-2 px-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="secondary" className="gap-1.5">
+              {icons[component]}
+              {labels[component]}
+            </Badge>
+            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
+          </div>
+          {description ? <CardDescription>{description}</CardDescription> : null}
+        </CardHeader>
+        <CardContent className="grid gap-3 px-5">{children}</CardContent>
+      </Card>
+    );
+  }
+
+  if (isCalloutComponent(component)) {
+    return renderCallout(component, title, description, children, key, icon);
+  }
+
+  if (component === "Frame") {
+    return (
+      <div className="overflow-hidden rounded-lg border bg-card shadow-sm" key={key}>
+        {title ? (
+          <div className="flex items-center justify-between gap-3 border-b bg-secondary/50 px-4 py-2">
+            <div className="text-sm font-semibold">{title}</div>
+            {node.getAttribute("caption") ? <div className="text-xs text-muted-foreground">{node.getAttribute("caption")}</div> : null}
+          </div>
+        ) : null}
+        <div className="grid gap-3 p-4">{children}</div>
+      </div>
+    );
+  }
+
+  if (component === "Steps") {
+    return <ol className="m-0 grid list-none gap-3 p-0" key={key}>{children}</ol>;
+  }
+
+  if (component === "Step") {
+    const number = node.getAttribute("number") || node.getAttribute("index") || "";
+    return (
+      <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg border bg-card p-4" key={key}>
+        <div className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+          {number || <CheckCircle2 className="size-4" />}
+        </div>
+        <div className="grid gap-2">
+          {title ? <h3 className="m-0 text-base font-bold leading-snug">{title}</h3> : null}
+          {children}
+        </div>
+      </li>
+    );
+  }
+
+  if (component === "Prompt") {
+    return (
+      <Collapsible defaultOpen className="rounded-lg border bg-card" key={key}>
+        <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold">
+          <span className="inline-flex items-center gap-2">
+            <MessageSquareText className="size-4 text-muted-foreground" />
+            {title || "Prompt"}
+          </span>
+          <ChevronDown className="size-4 text-muted-foreground" />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid gap-3 border-t px-4 py-3">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  if (component === "Update") {
+    return (
+      <section className="grid gap-3 border-l-2 border-primary pl-4" key={key}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>{node.getAttribute("label") || node.getAttribute("date") || "Update"}</Badge>
+          {title ? <h3 className="m-0 text-base font-bold">{title}</h3> : null}
+        </div>
+        {children}
+      </section>
+    );
+  }
+
+  if (component === "TaskList") {
+    return (
+      <Card className="rounded-lg py-4 shadow-none" key={key}>
+        <CardHeader className="px-5">
+          <CardTitle className="inline-flex items-center gap-2 text-base">
+            <CheckCircle2 className="size-4 text-muted-foreground" />
+            {title || "Tasks"}
+          </CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
+        </CardHeader>
+        <CardContent className="grid gap-3 px-5">{children}</CardContent>
+      </Card>
+    );
+  }
+
+  if (component === "StatusBadge" || component === "Badge") {
+    const value = node.getAttribute("status") || node.getAttribute("label") || node.textContent?.trim() || "Status";
+    return <Badge className="w-fit" variant={statusBadgeVariant(value)} key={key}>{value}</Badge>;
+  }
+
+  if (component === "ParamField" || component === "ResponseField") {
+    return renderFieldComponent(node, component, children, key);
+  }
+
+  if (component === "Tree") {
+    return (
+      <Card className="rounded-lg py-4 shadow-none" key={key}>
+        {title || description ? (
+          <CardHeader className="px-5">
+            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
+            {description ? <CardDescription>{description}</CardDescription> : null}
+          </CardHeader>
+        ) : null}
+        <CardContent className="px-5">
+          <div className="grid gap-1 rounded-md border bg-secondary/40 p-3 font-mono text-xs">{children}</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (component === "TreeFolder" || component === "TreeFile") {
+    const name = node.getAttribute("name") || node.textContent?.trim() || (component === "TreeFolder" ? "folder" : "file");
+    const depth = Number.parseInt(node.getAttribute("depth") || "0", 10);
+    return (
+      <div className="grid gap-1" key={key} style={{ paddingLeft: `${Number.isFinite(depth) ? depth * 14 : 0}px` }}>
+        <div className="flex items-center gap-2 text-foreground">
+          {component === "TreeFolder" ? <Folder className="size-3.5 text-muted-foreground" /> : <FileText className="size-3.5 text-muted-foreground" />}
+          <span>{name}</span>
+        </div>
+        {component === "TreeFolder" && children.length ? <div className="grid gap-1 pl-4">{children}</div> : null}
+      </div>
+    );
+  }
+
+  if (component === "CodeBlock" || component === "CommandBlock") {
+    return renderCodeBlock(node, children, key);
+  }
+
+  if (component === "Tabs") {
+    return renderTabs(node, key, onNavigate, path);
+  }
+
+  if (component === "Tab") {
+    return <div className="grid gap-3" key={key}>{children}</div>;
+  }
+
+  if (component === "AccordionGroup") {
+    return renderAccordionGroup(node, key, onNavigate, path);
+  }
+
+  if (component === "Accordion" || component === "AccordionItem") {
+    return renderAccordionItem(node, key, onNavigate, path);
+  }
+
+  if (component === "Tooltip") {
+    const content = node.getAttribute("content") || node.getAttribute("tip") || node.getAttribute("title") || "";
+    return (
+      <Tooltip key={key}>
+        <TooltipTrigger asChild>
+          <span className="cursor-help underline decoration-dotted underline-offset-4">{children}</span>
+        </TooltipTrigger>
+        <TooltipContent>{content}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return undefined;
+}
+
+function renderComponentHeader(title: string, description: string, status: string | null) {
+  if (!title && !description && !status) return null;
+  return (
+    <div className="grid gap-2">
+      {status ? <Badge className="w-fit" variant={statusBadgeVariant(status)}>{status}</Badge> : null}
+      {title ? <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl">{title}</h1> : null}
+      {description ? <p className="m-0 max-w-3xl text-sm leading-7 text-muted-foreground">{description}</p> : null}
+    </div>
+  );
+}
+
+function renderCallout(component: string, title: string, description: string, children: ReactNode[], key: string, icon: string) {
+  const kind = calloutKind(component);
+  const destructive = kind === "danger";
+  const iconNode = calloutIcon(kind, icon);
+  return (
+    <Alert className="rounded-lg" variant={destructive ? "destructive" : "default"} key={key}>
+      {iconNode}
+      <AlertTitle>{title || calloutTitle(kind)}</AlertTitle>
+      <AlertDescription>
+        {description ? <p className="m-0">{description}</p> : null}
+        {children}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function renderFieldComponent(node: Element, component: string, children: ReactNode[], key: string) {
+  const name = node.getAttribute("name") || node.getAttribute("field") || node.getAttribute("title") || "field";
+  const type = node.getAttribute("type") || "";
+  const required = booleanAttr(node, "required");
+  const deprecated = booleanAttr(node, "deprecated");
+  return (
+    <div className="grid gap-2 rounded-lg border bg-card p-4" key={key}>
+      <div className="flex flex-wrap items-center gap-2">
+        <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-sm">{name}</code>
+        {type ? <Badge variant="secondary">{type}</Badge> : null}
+        {required ? <Badge>required</Badge> : null}
+        {deprecated ? <Badge variant="destructive">deprecated</Badge> : null}
+        <Badge variant="outline">{component === "ParamField" ? "param" : "response"}</Badge>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
+  const code = (node.textContent || "").trim();
+  const title = componentTitle(node);
+  const language = node.getAttribute("language") || node.getAttribute("lang") || "";
+  return (
+    <div className="overflow-hidden rounded-lg border bg-card" key={key}>
+      <div className="flex items-center justify-between gap-3 border-b bg-secondary/50 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <Code2 className="size-3.5 shrink-0" />
+          <span className="truncate">{title || language || "Code"}</span>
+        </div>
+        {code ? (
+          <Button
+            className="h-7 px-2"
+            size="sm"
+            type="button"
+            variant="ghost"
+            onClick={() => void navigator.clipboard?.writeText(code)}
+          >
+            <Clipboard className="size-3.5" />
+            <span className="sr-only">Copy code</span>
+          </Button>
+        ) : null}
+      </div>
+      <ScrollArea className="max-h-[28rem]">
+        <pre className="m-0 p-4 font-mono text-xs leading-6">{children}</pre>
+      </ScrollArea>
+    </div>
+  );
+}
+
+function renderTabs(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const tabs = directComponentChildren(node, "Tab");
+  if (!tabs.length) return <div className="grid gap-3" key={key}>{Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path))}</div>;
+
+  const values = tabs.map((tab, index) => tab.getAttribute("value") || slugValue(componentTitle(tab) || `tab-${index + 1}`));
+  const defaultValue = node.getAttribute("defaultValue") || node.getAttribute("default") || values[0];
+  return (
+    <UiTabs className="rounded-lg border bg-card p-4" defaultValue={defaultValue} key={key}>
+      <TabsList className="max-w-full flex-wrap justify-start">
+        {tabs.map((tab, index) => (
+          <TabsTrigger key={values[index]} value={values[index]}>
+            {componentTitle(tab) || `Tab ${index + 1}`}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {tabs.map((tab, index) => (
+        <TabsContent className="grid gap-3 pt-3" key={values[index]} value={values[index]}>
+          {Array.from(tab.childNodes).map((child, childIndex) => renderNode(child, `${key}-${index}-${childIndex}`, onNavigate, path))}
+        </TabsContent>
+      ))}
+    </UiTabs>
+  );
+}
+
+function renderAccordionGroup(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = directComponentChildren(node, "AccordionItem").concat(directComponentChildren(node, "Accordion"));
+  if (!items.length) return <div className="grid gap-3" key={key}>{Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path))}</div>;
+  return (
+    <UiAccordion className="rounded-lg border bg-card px-4" collapsible key={key} type="single">
+      {items.map((item, index) => renderAccordionItem(item, `${key}-${index}`, onNavigate, path, index))}
+    </UiAccordion>
+  );
+}
+
+function renderAccordionItem(node: Element, key: string, onNavigate: (path: string) => void, path?: string, index = 0) {
+  const value = node.getAttribute("value") || slugValue(componentTitle(node) || `item-${index + 1}`);
+  return (
+    <AccordionItem key={key} value={value}>
+      <AccordionTrigger>{componentTitle(node) || `Item ${index + 1}`}</AccordionTrigger>
+      <AccordionContent className="grid gap-3">
+        {Array.from(node.childNodes).map((child, childIndex) => renderNode(child, `${key}-${childIndex}`, onNavigate, path))}
+      </AccordionContent>
+    </AccordionItem>
+  );
+}
+
+function componentTitle(node: Element) {
+  return node.getAttribute("title") || node.getAttribute("label") || node.getAttribute("name") || "";
+}
+
+function booleanAttr(node: Element, name: string) {
+  const value = node.getAttribute(name);
+  return value !== null && value !== "false";
+}
+
+function directComponentChildren(node: Element, component: string) {
+  return Array.from(node.children).filter((child) => child.getAttribute("data-plan-component") === component);
+}
+
+function isCalloutComponent(component: string) {
+  return ["Callout", "Note", "Tip", "Warning", "Danger", "Check"].includes(component);
+}
+
+function calloutKind(component: string) {
+  if (component === "Danger") return "danger";
+  if (component === "Warning") return "warning";
+  if (component === "Tip") return "tip";
+  if (component === "Check") return "check";
+  if (component === "Note") return "note";
+  return "info";
+}
+
+function calloutTitle(kind: string) {
+  const titles: Record<string, string> = {
+    check: "Check",
+    danger: "Danger",
+    info: "Note",
+    note: "Note",
+    tip: "Tip",
+    warning: "Warning",
+  };
+  return titles[kind] || "Note";
+}
+
+function calloutIcon(kind: string, icon: string) {
+  if (icon === "none") return null;
+  if (kind === "danger") return <ShieldAlert className="size-4" />;
+  if (kind === "warning") return <AlertCircle className="size-4" />;
+  if (kind === "tip") return <Lightbulb className="size-4" />;
+  if (kind === "check") return <CheckCircle2 className="size-4" />;
+  return <Info className="size-4" />;
+}
+
+function statusBadgeVariant(value: string): "default" | "secondary" | "destructive" | "outline" {
+  const normalized = value.toLowerCase();
+  if (normalized.includes("blocked") || normalized.includes("danger") || normalized.includes("deprecated")) return "destructive";
+  if (normalized.includes("complete") || normalized.includes("active") || normalized.includes("current")) return "default";
+  if (normalized.includes("planned") || normalized.includes("draft")) return "secondary";
+  return "outline";
+}
+
+function slugValue(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
 }
 
 function normalizeTitleChildren(children: ReactNode[]) {
