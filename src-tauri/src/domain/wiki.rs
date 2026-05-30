@@ -30,6 +30,7 @@ pub struct WikiPage {
     pub frontmatter: BTreeMap<String, String>,
     pub headings: Vec<WikiHeading>,
     pub links: Vec<WikiLink>,
+    pub component_refs: Vec<WikiComponentRef>,
     pub validation_warnings: Vec<WikiValidationWarning>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
@@ -50,6 +51,7 @@ pub struct WikiSource {
     pub frontmatter: BTreeMap<String, String>,
     pub headings: Vec<WikiHeading>,
     pub links: Vec<WikiLink>,
+    pub component_refs: Vec<WikiComponentRef>,
     pub validation_warnings: Vec<WikiValidationWarning>,
 }
 
@@ -81,6 +83,59 @@ pub struct WikiValidationWarning {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub href: Option<String>,
     pub line: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiComponentRef {
+    pub name: String,
+    pub line: usize,
+    pub attributes: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WikiDocument {
+    pub frontmatter: BTreeMap<String, String>,
+    pub nodes: Vec<WikiAstNode>,
+    pub headings: Vec<WikiHeading>,
+    pub links: Vec<WikiLink>,
+    pub component_refs: Vec<WikiComponentRef>,
+    pub validation_warnings: Vec<WikiValidationWarning>,
+    pub markdown: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WikiAstNode {
+    Heading {
+        level: usize,
+        text: String,
+        line: usize,
+    },
+    Paragraph {
+        text: String,
+        line: usize,
+    },
+    ListItem {
+        text: String,
+        line: usize,
+    },
+    CodeBlock {
+        text: String,
+        line: usize,
+    },
+    Component {
+        name: String,
+        attributes: BTreeMap<String, String>,
+        line: usize,
+    },
+    Html {
+        raw: String,
+        line: usize,
+    },
+    Text {
+        text: String,
+        line: usize,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -159,16 +214,15 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
     let mut files = Vec::new();
     collect_wiki_files(&wiki_root, &mut files);
     let known_paths = known_relative_paths(&wiki_root, &files);
-    let headings = headings_from_mdx(&source);
-    let links = wiki_links_from_mdx(&source, relative, &known_paths);
-    let validation_warnings = validation_warnings_from_links(&links);
+    let document = parse_wiki_document(&source, relative, &known_paths);
     Ok(WikiSource {
         path: format!("/wiki/{relative}"),
-        markdown: mdx_markdown_derivative(&source),
-        frontmatter: frontmatter_values(&source),
-        headings,
-        links,
-        validation_warnings,
+        markdown: document.markdown,
+        frontmatter: document.frontmatter,
+        headings: document.headings,
+        links: document.links,
+        component_refs: document.component_refs,
+        validation_warnings: document.validation_warnings,
         source,
     })
 }
@@ -380,97 +434,7 @@ fn wiki_relative_path(path: &str) -> Option<&str> {
 }
 
 pub fn mdx_markdown_derivative(mdx: &str) -> String {
-    let body = strip_frontmatter(mdx);
-    let mut output = String::new();
-    let mut in_code = false;
-    let mut skip_human_visibility = false;
-    let mut text = String::new();
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("import ") || trimmed.starts_with("export ") {
-            continue;
-        }
-        if trimmed.starts_with("```") {
-            flush_markdown_text(&mut output, &mut text);
-            in_code = !in_code;
-            output.push_str(trimmed);
-            output.push('\n');
-            continue;
-        }
-        if in_code {
-            output.push_str(line);
-            output.push('\n');
-            continue;
-        }
-        if skip_human_visibility {
-            if trimmed.contains("</Visibility>") {
-                skip_human_visibility = false;
-            }
-            continue;
-        }
-        if is_visibility_open_for(trimmed, "humans") {
-            if !trimmed.contains("</Visibility>") {
-                skip_human_visibility = true;
-            }
-            continue;
-        }
-        let line = strip_visibility_wrappers(line);
-        let trimmed = line.trim();
-        if let Some(hint) = mdx_component_markdown_hint(trimmed) {
-            flush_markdown_text(&mut output, &mut text);
-            output.push_str(&hint);
-            output.push('\n');
-            if trimmed.ends_with("/>") || trimmed.ends_with('>') {
-                continue;
-            }
-        }
-        let line = strip_mdx_wrappers(&line);
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            flush_markdown_text(&mut output, &mut text);
-            continue;
-        }
-        if let Some(heading) = html_heading_to_markdown(trimmed) {
-            flush_markdown_text(&mut output, &mut text);
-            output.push_str(&heading);
-            output.push('\n');
-            for item in html_list_items_to_markdown(trimmed) {
-                output.push_str("- ");
-                output.push_str(&item);
-                output.push('\n');
-            }
-            continue;
-        }
-        if let Some(paragraph) = html_paragraph_to_markdown(trimmed) {
-            flush_markdown_text(&mut output, &mut text);
-            output.push_str(&paragraph);
-            output.push_str("\n\n");
-            continue;
-        }
-        if let Some(item) = html_list_item_to_markdown(trimmed) {
-            flush_markdown_text(&mut output, &mut text);
-            output.push_str("- ");
-            output.push_str(&item);
-            output.push('\n');
-            continue;
-        }
-        if trimmed.starts_with('<') && trimmed.ends_with('>') {
-            flush_markdown_text(&mut output, &mut text);
-            continue;
-        }
-        if !text.is_empty() {
-            text.push(' ');
-        }
-        text.push_str(&strip_html(trimmed));
-    }
-    flush_markdown_text(&mut output, &mut text);
-    output
-        .lines()
-        .map(str::trim_end)
-        .collect::<Vec<_>>()
-        .join("\n")
-        .trim()
-        .to_string()
+    parse_wiki_document(mdx, "index.mdx", &HashSet::new()).markdown
 }
 
 fn flush_markdown_text(output: &mut String, text: &mut String) {
@@ -531,14 +495,6 @@ const MDX_SECTION_TAGS: &[&str] = &[
     "AccordionItem",
     "Tooltip",
 ];
-
-fn is_visibility_open_for(line: &str, audience: &str) -> bool {
-    is_mdx_opening(line, "Visibility")
-        && mdx_attr_value(line, "for")
-            .or_else(|| mdx_attr_value(line, "audience"))
-            .map(|value| value.eq_ignore_ascii_case(audience))
-            .unwrap_or(false)
-}
 
 fn strip_visibility_wrappers(line: &str) -> String {
     let mut output = line.to_string();
@@ -642,21 +598,6 @@ fn mdx_bool_attr(line: &str, name: &str) -> bool {
     line.contains(&format!(" {name} ")) || line.contains(&format!(" {name}>")) || line.contains(&format!(" {name}/"))
 }
 
-fn html_heading_to_markdown(line: &str) -> Option<String> {
-    for level in 1..=6 {
-        let start = format!("<h{level}");
-        let end = format!("</h{level}>");
-        if let Some(value) = first_between_case_insensitive(line, &start, &end) {
-            let content = value
-                .split_once('>')
-                .map(|(_, content)| strip_html(content))
-                .unwrap_or_else(|| strip_html(&value));
-            return Some(format!("{} {}", "#".repeat(level), content));
-        }
-    }
-    None
-}
-
 fn html_paragraph_to_markdown(line: &str) -> Option<String> {
     first_between_case_insensitive(line, "<p", "</p>").and_then(|value| {
         let content = value
@@ -727,23 +668,28 @@ fn wiki_page_from_file(
 ) -> Option<WikiPage> {
     let relative_path = slash_path(full_path.strip_prefix(base_root).ok()?);
     let mdx = fs::read_to_string(full_path).unwrap_or_default();
-    let title = first_heading(&mdx).unwrap_or_else(|| title_from_wiki_path(&relative_path));
+    let document = parse_wiki_document(&mdx, &relative_path, known_paths);
+    let title = document
+        .frontmatter
+        .get("title")
+        .cloned()
+        .or_else(|| document.headings.first().map(|heading| heading.text.clone()))
+        .unwrap_or_else(|| title_from_wiki_path(&relative_path));
     let summary = list_items_from_first_summary(&mdx);
     let path = project_id
         .map(|id| format!("/projects/{id}/wiki/{relative_path}"))
         .unwrap_or_else(|| format!("/wiki/{relative_path}"));
     let status = page_status(&summary, &path);
-    let links = wiki_links_from_mdx(&mdx, &relative_path, known_paths);
-    let validation_warnings = validation_warnings_from_links(&links);
     Some(WikiPage {
         title,
         summary,
         source_path: format!("wiki/{relative_path}"),
         format: "mdx".to_string(),
-        frontmatter: frontmatter_values(&mdx),
-        headings: headings_from_mdx(&mdx),
-        links,
-        validation_warnings,
+        frontmatter: document.frontmatter,
+        headings: document.headings,
+        links: document.links,
+        component_refs: document.component_refs,
+        validation_warnings: document.validation_warnings,
         path,
         status,
     })
@@ -770,6 +716,371 @@ fn first_heading(mdx: &str) -> Option<String> {
     })
 }
 
+fn parse_wiki_document(
+    mdx: &str,
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> WikiDocument {
+    let frontmatter = frontmatter_values(mdx);
+    let nodes = parse_wiki_ast_nodes(mdx);
+    let headings = headings_from_nodes(&nodes);
+    let links = links_from_nodes(&nodes, current_relative_path, known_paths);
+    let component_refs = component_refs_from_nodes(&nodes);
+    let validation_warnings = validation_warnings_from_links(&links);
+    let markdown = markdown_from_nodes(&nodes);
+    WikiDocument {
+        frontmatter,
+        nodes,
+        headings,
+        links,
+        component_refs,
+        validation_warnings,
+        markdown,
+    }
+}
+
+fn parse_wiki_ast_nodes(mdx: &str) -> Vec<WikiAstNode> {
+    let mut nodes = Vec::new();
+    let mut in_code = false;
+    let mut code = String::new();
+    let mut code_start_line = 0;
+    let mut skip_human_visibility = false;
+    for (line_number, line) in mdx_body_lines(mdx) {
+        let trimmed = line.trim();
+        if trimmed.starts_with("```") {
+            if in_code {
+                nodes.push(WikiAstNode::CodeBlock {
+                    text: code.trim_end().to_string(),
+                    line: code_start_line,
+                });
+                code.clear();
+                in_code = false;
+            } else {
+                in_code = true;
+                code_start_line = line_number;
+            }
+            continue;
+        }
+        if in_code {
+            code.push_str(line);
+            code.push('\n');
+            continue;
+        }
+        if trimmed.is_empty() || trimmed.starts_with("import ") || trimmed.starts_with("export ") {
+            continue;
+        }
+        if skip_human_visibility {
+            if trimmed.contains("</Visibility>") {
+                skip_human_visibility = false;
+            }
+            continue;
+        }
+        if let Some(component) = component_node_from_line(trimmed, line_number) {
+            let is_human_visibility = match &component {
+                WikiAstNode::Component { name, attributes, .. } => {
+                    name == "Visibility"
+                        && attributes
+                            .get("for")
+                            .or_else(|| attributes.get("audience"))
+                            .map(|value| value.eq_ignore_ascii_case("humans"))
+                            .unwrap_or(false)
+                }
+                _ => false,
+            };
+            nodes.push(component);
+            if is_human_visibility {
+                if !trimmed.contains("</Visibility>") {
+                    skip_human_visibility = true;
+                }
+                continue;
+            }
+        }
+        let line = strip_visibility_wrappers(line);
+        let trimmed = line.trim();
+        let recorded_html_links = trimmed.contains("href=");
+        if recorded_html_links {
+            nodes.push(WikiAstNode::Html {
+                raw: trimmed.to_string(),
+                line: line_number,
+            });
+        }
+        if let Some(hint) = mdx_component_markdown_hint(trimmed) {
+            push_markdown_hint_node(&mut nodes, &hint, line_number);
+            if trimmed.ends_with("/>") || trimmed.ends_with('>') {
+                continue;
+            }
+        }
+        let stripped = strip_mdx_wrappers(&line);
+        let trimmed = stripped.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some((level, text)) = markdown_heading(trimmed) {
+            nodes.push(WikiAstNode::Heading {
+                level,
+                text: strip_html(text),
+                line: line_number,
+            });
+            continue;
+        }
+        if let Some(heading) = html_heading_node(trimmed, line_number) {
+            nodes.push(heading);
+            for item in html_list_items_to_markdown(trimmed) {
+                nodes.push(WikiAstNode::ListItem {
+                    text: item,
+                    line: line_number,
+                });
+            }
+            continue;
+        }
+        if let Some(paragraph) = html_paragraph_to_markdown(trimmed) {
+            nodes.push(WikiAstNode::Paragraph {
+                text: paragraph,
+                line: line_number,
+            });
+            continue;
+        }
+        for item in html_list_items_to_markdown(trimmed) {
+            nodes.push(WikiAstNode::ListItem {
+                text: item,
+                line: line_number,
+            });
+        }
+        if html_list_item_to_markdown(trimmed).is_some() {
+            continue;
+        }
+        if let Some(item) = trimmed.strip_prefix("- ").or_else(|| trimmed.strip_prefix("* ")) {
+            nodes.push(WikiAstNode::ListItem {
+                text: strip_html(item),
+                line: line_number,
+            });
+            continue;
+        }
+        if trimmed.starts_with('<') && trimmed.ends_with('>') {
+            if !recorded_html_links {
+                nodes.push(WikiAstNode::Html {
+                    raw: trimmed.to_string(),
+                    line: line_number,
+                });
+            }
+            continue;
+        }
+        nodes.push(WikiAstNode::Text {
+            text: strip_html(trimmed),
+            line: line_number,
+        });
+    }
+    nodes
+}
+
+fn component_node_from_line(line: &str, line_number: usize) -> Option<WikiAstNode> {
+    let rest = line.strip_prefix('<')?;
+    if rest.starts_with('/') || rest.starts_with('!') {
+        return None;
+    }
+    let name_end = rest
+        .find(|character: char| {
+            character.is_whitespace() || character == '>' || character == '/'
+        })
+        .unwrap_or(rest.len());
+    let name = rest.get(..name_end)?.trim();
+    if name.is_empty() || name.chars().next().is_some_and(|ch| ch.is_ascii_lowercase()) {
+        return None;
+    }
+    let attributes = mdx_attributes(line);
+    Some(WikiAstNode::Component {
+        name: name.to_string(),
+        attributes,
+        line: line_number,
+    })
+}
+
+fn mdx_attributes(line: &str) -> BTreeMap<String, String> {
+    let mut attributes = BTreeMap::new();
+    let Some(start) = line.find(char::is_whitespace) else {
+        return attributes;
+    };
+    let raw = line[start..].trim_end_matches('>').trim_end_matches('/').trim();
+    for quote in ['"', '\''] {
+        let mut rest = raw;
+        while let Some(eq_index) = rest.find(&format!("={quote}")) {
+            let key = rest[..eq_index]
+                .split_whitespace()
+                .last()
+                .unwrap_or_default()
+                .trim_matches('/')
+                .to_string();
+            let after = &rest[eq_index + 2..];
+            let Some(end) = after.find(quote) else {
+                break;
+            };
+            if !key.is_empty() {
+                attributes.insert(key, after[..end].to_string());
+            }
+            rest = &after[end + 1..];
+        }
+    }
+    attributes
+}
+
+fn push_markdown_hint_node(nodes: &mut Vec<WikiAstNode>, hint: &str, line: usize) {
+    if let Some(text) = hint.strip_prefix("### ") {
+        nodes.push(WikiAstNode::Heading {
+            level: 3,
+            text: text.to_string(),
+            line,
+        });
+        return;
+    }
+    if let Some(text) = hint.strip_prefix("- ") {
+        nodes.push(WikiAstNode::ListItem {
+            text: text.to_string(),
+            line,
+        });
+        return;
+    }
+    nodes.push(WikiAstNode::Paragraph {
+        text: hint.to_string(),
+        line,
+    });
+}
+
+fn html_heading_node(line: &str, line_number: usize) -> Option<WikiAstNode> {
+    for level in 1..=6 {
+        let start = format!("<h{level}");
+        let end = format!("</h{level}>");
+        if let Some(value) = first_between_case_insensitive(line, &start, &end) {
+            let text = value
+                .split_once('>')
+                .map(|(_, content)| strip_html(content))
+                .unwrap_or_else(|| strip_html(&value));
+            return Some(WikiAstNode::Heading {
+                level,
+                text,
+                line: line_number,
+            });
+        }
+    }
+    None
+}
+
+fn headings_from_nodes(nodes: &[WikiAstNode]) -> Vec<WikiHeading> {
+    nodes
+        .iter()
+        .filter_map(|node| match node {
+            WikiAstNode::Heading { level, text, line } => Some(WikiHeading {
+                level: *level,
+                text: text.clone(),
+                anchor: heading_anchor(text),
+                line: *line,
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+fn component_refs_from_nodes(nodes: &[WikiAstNode]) -> Vec<WikiComponentRef> {
+    nodes
+        .iter()
+        .filter_map(|node| match node {
+            WikiAstNode::Component {
+                name,
+                attributes,
+                line,
+            } => Some(WikiComponentRef {
+                name: name.clone(),
+                line: *line,
+                attributes: attributes.clone(),
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+fn links_from_nodes(
+    nodes: &[WikiAstNode],
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> Vec<WikiLink> {
+    let mut links = Vec::new();
+    for node in nodes {
+        match node {
+            WikiAstNode::Heading { text, line, .. }
+            | WikiAstNode::Paragraph { text, line }
+            | WikiAstNode::ListItem { text, line }
+            | WikiAstNode::Text { text, line } => {
+                links.extend(markdown_links_from_line(
+                    text,
+                    *line,
+                    current_relative_path,
+                    known_paths,
+                ));
+            }
+            WikiAstNode::Html { raw, line } => {
+                links.extend(html_links_from_line(
+                    raw,
+                    *line,
+                    current_relative_path,
+                    known_paths,
+                ));
+                links.extend(markdown_links_from_line(
+                    raw,
+                    *line,
+                    current_relative_path,
+                    known_paths,
+                ));
+            }
+            WikiAstNode::Component { .. } | WikiAstNode::CodeBlock { .. } => {}
+        }
+    }
+    links
+}
+
+fn markdown_from_nodes(nodes: &[WikiAstNode]) -> String {
+    let mut output = String::new();
+    let mut text = String::new();
+    for node in nodes {
+        match node {
+            WikiAstNode::Heading { level, text: value, .. } => {
+                flush_markdown_text(&mut output, &mut text);
+                output.push_str(&"#".repeat(*level));
+                output.push(' ');
+                output.push_str(value);
+                output.push('\n');
+            }
+            WikiAstNode::Paragraph { text: value, .. } | WikiAstNode::Text { text: value, .. } => {
+                if !text.is_empty() {
+                    text.push(' ');
+                }
+                text.push_str(value);
+            }
+            WikiAstNode::ListItem { text: value, .. } => {
+                flush_markdown_text(&mut output, &mut text);
+                output.push_str("- ");
+                output.push_str(value);
+                output.push('\n');
+            }
+            WikiAstNode::CodeBlock { text: value, .. } => {
+                flush_markdown_text(&mut output, &mut text);
+                output.push_str("```\n");
+                output.push_str(value);
+                output.push_str("\n```\n");
+            }
+            WikiAstNode::Component { .. } | WikiAstNode::Html { .. } => {
+                flush_markdown_text(&mut output, &mut text);
+            }
+        }
+    }
+    flush_markdown_text(&mut output, &mut text);
+    output
+        .lines()
+        .map(str::trim_end)
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
 fn frontmatter_values(mdx: &str) -> BTreeMap<String, String> {
     let mut values = BTreeMap::new();
     let mut lines = mdx.lines();
@@ -794,65 +1105,6 @@ fn frontmatter_values(mdx: &str) -> BTreeMap<String, String> {
         );
     }
     values
-}
-
-fn headings_from_mdx(mdx: &str) -> Vec<WikiHeading> {
-    let mut headings = Vec::new();
-    for (line_number, line) in mdx_body_lines(mdx) {
-        let trimmed = line.trim();
-        if let Some((level, text)) = markdown_heading(trimmed) {
-            let text = strip_html(text);
-            headings.push(WikiHeading {
-                level,
-                anchor: heading_anchor(&text),
-                text,
-                line: line_number,
-            });
-            continue;
-        }
-        for level in 1..=6 {
-            let start = format!("<h{level}");
-            let end = format!("</h{level}>");
-            if let Some(value) = first_between_case_insensitive(trimmed, &start, &end) {
-                let text = value
-                    .split_once('>')
-                    .map(|(_, content)| strip_html(content))
-                    .unwrap_or_else(|| strip_html(&value));
-                if !text.trim().is_empty() {
-                    headings.push(WikiHeading {
-                        level,
-                        anchor: heading_anchor(&text),
-                        text,
-                        line: line_number,
-                    });
-                }
-            }
-        }
-    }
-    headings
-}
-
-fn wiki_links_from_mdx(
-    mdx: &str,
-    current_relative_path: &str,
-    known_paths: &HashSet<String>,
-) -> Vec<WikiLink> {
-    let mut links = Vec::new();
-    for (line_number, line) in mdx_body_lines(mdx) {
-        links.extend(markdown_links_from_line(
-            line,
-            line_number,
-            current_relative_path,
-            known_paths,
-        ));
-        links.extend(html_links_from_line(
-            line,
-            line_number,
-            current_relative_path,
-            known_paths,
-        ));
-    }
-    links
 }
 
 fn markdown_links_from_line(
@@ -1520,6 +1772,54 @@ mod tests {
     }
 
     #[test]
+    fn parses_document_pipeline_once_for_metadata_components_and_markdown() {
+        let mut known_paths = HashSet::new();
+        known_paths.insert("plans/other.mdx".to_string());
+        let document = parse_wiki_document(
+            r#"---
+title: "Pipeline"
+wikiKind: "plan"
+---
+
+<PlanHero title="Pipeline" status="active">
+<h1>Pipeline</h1>
+</PlanHero>
+<Visibility for="humans">
+Human-only text.
+</Visibility>
+<Visibility for="agents">
+Agent-only text.
+</Visibility>
+<Step title="Wire parser">
+<ParamField name="path" type="string" required>
+<p>See <a href="./other.mdx">Other</a> and <a href="./missing.mdx">Missing</a>.</p>
+</ParamField>
+</Step>
+"#,
+            "plans/pipeline.mdx",
+            &known_paths,
+        );
+
+        assert_eq!(document.frontmatter.get("wikiKind").map(String::as_str), Some("plan"));
+        assert!(document
+            .component_refs
+            .iter()
+            .any(|component| component.name == "PlanHero"));
+        assert!(document
+            .component_refs
+            .iter()
+            .any(|component| component.name == "ParamField"));
+        assert!(document.markdown.contains("# Pipeline"));
+        assert!(document.markdown.contains("Agent-only text."));
+        assert!(document.markdown.contains("### Wire parser"));
+        assert!(document.markdown.contains("- `path` (param, string, required)"));
+        assert!(!document.markdown.contains("Human-only text."));
+        assert_eq!(document.links.len(), 2);
+        assert!(document.links.iter().any(|link| link.resolved));
+        assert_eq!(document.validation_warnings.len(), 1);
+    }
+
+    #[test]
     fn parses_custom_plan_status_metric() {
         let root = temp_root("wiki-custom-status");
         let plan_dir = root.join("wiki").join("plans");
@@ -1582,6 +1882,7 @@ mod tests {
         assert!(source.source.contains("<PlanHero>"));
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
+        assert!(source.component_refs.iter().any(|component| component.name == "PlanHero"));
         assert!(!source.markdown.contains("PlanHero"));
     }
 

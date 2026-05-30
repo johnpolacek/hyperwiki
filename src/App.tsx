@@ -71,6 +71,7 @@ interface WikiPage {
   frontmatter?: Record<string, string>;
   headings?: WikiHeading[];
   links?: WikiLink[];
+  componentRefs?: WikiComponentRef[];
   validationWarnings?: WikiValidationWarning[];
 }
 
@@ -94,6 +95,12 @@ interface WikiValidationWarning {
   message: string;
   href?: string;
   line: number;
+}
+
+interface WikiComponentRef {
+  name: string;
+  line: number;
+  attributes: Record<string, string>;
 }
 
 interface AgentRunState {
@@ -128,6 +135,7 @@ interface WikiSourceResponse {
   frontmatter?: Record<string, string>;
   headings?: WikiHeading[];
   links?: WikiLink[];
+  componentRefs?: WikiComponentRef[];
   validationWarnings?: WikiValidationWarning[];
 }
 

@@ -1,0 +1,55 @@
+---
+title: "Wiki Document Pipeline"
+description: "Introduce a single parsed document pipeline for MDX wiki metadata and derivatives."
+wikiKind: "plan"
+---
+
+<PlanHero title="Wiki Document Pipeline" status="complete" description="Move Hyperwiki's wiki processing toward AST-first MDX discipline without adopting Holocron's runtime." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: Unit 01 - parsed wiki document pipeline complete</li>
+    <li>Next action: use the document pipeline as the base for local search or any future deeper MDX AST parser migration.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused Rust wiki tests, TypeScript/static smoke, frontend build, and Rust cargo check passed.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Intent</h2>
+  <p>Give Hyperwiki one coherent local document pipeline that can feed rendering, Markdown exports, agent context, navigation metadata, validation warnings, and future search without repeatedly rescanning MDX source with unrelated string transforms.</p>
+</section>
+
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Add a parsed <code>WikiDocument</code> representation for frontmatter, body nodes, headings, links, component references, Markdown derivative, and validation warnings.</li>
+    <li>Make <code>/api/wiki/source</code>, <code>/api/wiki/page-markdown</code>, <code>/api/wiki</code>, <code>/api/wiki/llms.txt</code>, and the Markdown zip export consume the same document pipeline.</li>
+    <li>Expose component references in wiki page/source payloads for future validation, search, and component documentation.</li>
+    <li>Keep the current trusted local MDX rendering surface and local-only trust boundary unchanged.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>No arbitrary MDX/TSX imports.</li>
+    <li>No hosted docs runtime, Spiceflow/RSC shell, or Holocron dependency.</li>
+    <li>No full search UI in this unit.</li>
+  </ul>
+</section>
+
+<PlanUnit title="Unit 01 - Parsed wiki document pipeline">
+  <p>Implement the first durable AST-first step as a repo-local Rust parser tailored to Hyperwiki's trusted MDX dialect. This should centralize metadata and derivative generation while leaving room for a deeper MDX AST crate later if needed.</p>
+  <Verification>
+    <ul>
+      <li>Passed: <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>.</li>
+      <li>Passed: <code>pnpm run check</code>.</li>
+      <li>Passed: <code>pnpm run build:frontend</code>.</li>
+      <li>Passed: <code>pnpm run check:tauri</code>.</li>
+      <li>Passed: <code>pnpm run test:tauri</code>.</li>
+    </ul>
+  </Verification>
+</PlanUnit>

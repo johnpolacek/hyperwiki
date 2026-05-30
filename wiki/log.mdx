@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | wiki document pipeline</h2>
+  <ul>
+    <li>Introduced a parsed Rust <code>WikiDocument</code> pipeline for Hyperwiki's trusted local MDX dialect, producing frontmatter, AST-style body nodes, headings, wiki links, component references, Markdown derivatives, and validation warnings from one document pass.</li>
+    <li>Changed wiki source, page index, page Markdown, <code>llms.txt</code>, Markdown zip, and generated skill exports to consume the shared document pipeline instead of separate heading/link/Markdown scans.</li>
+    <li>Extended wiki page/source payloads with <code>componentRefs</code> so future search, validation, and component documentation can reason about MDX component usage.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | wiki Markdown export completion</h2>
   <ul>
     <li>Added a local <code>/api/wiki/export-markdown-zip</code> endpoint that returns a base64 zip payload containing Markdown derivatives, <code>llms.txt</code>, and a generated project <code>SKILL.md</code>.</li>
