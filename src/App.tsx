@@ -66,6 +66,32 @@ interface WikiPage {
   currentState?: string;
   format?: "html" | "mdx";
   sourcePath?: string;
+  frontmatter?: Record<string, string>;
+  headings?: WikiHeading[];
+  links?: WikiLink[];
+  validationWarnings?: WikiValidationWarning[];
+}
+
+interface WikiHeading {
+  level: number;
+  text: string;
+  anchor: string;
+  line: number;
+}
+
+interface WikiLink {
+  href: string;
+  label: string;
+  line: number;
+  targetPath?: string;
+  resolved: boolean;
+}
+
+interface WikiValidationWarning {
+  kind: string;
+  message: string;
+  href?: string;
+  line: number;
 }
 
 interface AgentRunState {
@@ -97,6 +123,10 @@ interface WikiSourceResponse {
   path: string;
   source: string;
   markdown: string;
+  frontmatter?: Record<string, string>;
+  headings?: WikiHeading[];
+  links?: WikiLink[];
+  validationWarnings?: WikiValidationWarning[];
 }
 
 interface ProjectRecord {
@@ -2521,6 +2551,7 @@ function WorkspacePane(props: {
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
             path={props.wikiPath}
             source={props.wikiSource.source}
+            validationWarnings={props.wikiSource.validationWarnings}
           />
         ) : (
           <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />

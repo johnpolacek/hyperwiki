@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -33,8 +33,16 @@ import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 interface MdxPlanRendererProps {
   source: string;
   markdown?: string;
+  validationWarnings?: MdxValidationWarning[];
   onNavigate: (path: string) => void;
   path?: string;
+}
+
+interface MdxValidationWarning {
+  kind: string;
+  message: string;
+  href?: string;
+  line: number;
 }
 
 const componentTags = [
@@ -76,14 +84,49 @@ const componentTags = [
   "Tooltip",
 ];
 
-export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onNavigate, path }: MdxPlanRendererProps) {
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path), [source, onNavigate, path]);
+  const [copyStatus, setCopyStatus] = useState("");
+  const copyMarkdown = async () => {
+    if (!markdown?.trim()) return;
+    try {
+      await navigator.clipboard?.writeText(markdown);
+      setCopyStatus("Markdown copied");
+      window.setTimeout(() => setCopyStatus(""), 1800);
+    } catch {
+      setCopyStatus("Could not copy Markdown");
+    }
+  };
   if (!source.trim()) {
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
       <div className="mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
+        {markdown ? (
+          <div className="flex items-center justify-end gap-3 border-b pb-3">
+            <p className="m-0 text-xs text-muted-foreground" aria-live="polite">{copyStatus}</p>
+            <Button disabled={!markdown.trim()} size="sm" type="button" variant="outline" onClick={copyMarkdown}>
+              <Clipboard aria-hidden="true" data-icon="inline-start" />
+              Copy Markdown
+            </Button>
+          </div>
+        ) : null}
+        {validationWarnings.length ? (
+          <Alert className="rounded-lg">
+            <AlertCircle aria-hidden="true" />
+            <AlertTitle>Wiki validation warnings</AlertTitle>
+            <AlertDescription>
+              <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                {validationWarnings.slice(0, 5).map((warning, index) => (
+                  <li key={`${warning.kind}-${warning.line}-${index}`}>
+                    Line {warning.line}: {warning.message}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <TooltipProvider>{content}</TooltipProvider>
         {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
       </div>

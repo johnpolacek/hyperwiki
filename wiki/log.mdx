@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | Holocron-inspired wiki exports and validation</h2>
+  <ul>
+    <li>Added local-first wiki Markdown export surfaces through <code>/api/wiki/page-markdown</code> and <code>/api/wiki/llms.txt</code> without adopting Holocron's runtime, docs shell, hosting model, or <code>docs.json</code> structure.</li>
+    <li>Enriched the Rust wiki index and source payloads with frontmatter, headings, wiki links, and broken-link validation warnings so navigation, agent context, and future guardrails can consume structured page metadata.</li>
+    <li>Added a copy-as-Markdown action and validation-warning display to React-rendered plan pages using the existing Markdown derivative contract.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run check:tauri</code>. A frontend-only Vite preview reached the app shell through <code>agent-browser</code>, but wiki content could not load without the Tauri command transport.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | MDX plan visual polish</h2>
   <ul>
     <li>Reworked MDX plan rendering from oversized stacked cards into a more compact working-brief layout with a metadata grid, left-ruled sections, tighter typography, and restrained evidence, decision, and verification panels.</li>

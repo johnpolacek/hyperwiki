@@ -1,5 +1,6 @@
 use super::DomainSurface;
 use serde::Serialize;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -25,6 +26,10 @@ pub struct WikiPage {
     pub path: String,
     pub source_path: String,
     pub format: String,
+    pub frontmatter: BTreeMap<String, String>,
+    pub headings: Vec<WikiHeading>,
+    pub links: Vec<WikiLink>,
+    pub validation_warnings: Vec<WikiValidationWarning>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
 }
@@ -41,6 +46,40 @@ pub struct WikiSource {
     pub path: String,
     pub source: String,
     pub markdown: String,
+    pub frontmatter: BTreeMap<String, String>,
+    pub headings: Vec<WikiHeading>,
+    pub links: Vec<WikiLink>,
+    pub validation_warnings: Vec<WikiValidationWarning>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiHeading {
+    pub level: usize,
+    pub text: String,
+    pub anchor: String,
+    pub line: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiLink {
+    pub href: String,
+    pub label: String,
+    pub line: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_path: Option<String>,
+    pub resolved: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiValidationWarning {
+    pub kind: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+    pub line: usize,
 }
 
 pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> WikiPageList {
@@ -48,8 +87,13 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
     if !wiki_root.is_dir() {
         return WikiPageList { pages: Vec::new() };
     }
-    let mut pages = Vec::new();
-    walk_wiki(&wiki_root, &wiki_root, project_id, &mut pages);
+    let mut files = Vec::new();
+    collect_wiki_files(&wiki_root, &mut files);
+    let known_paths = known_relative_paths(&wiki_root, &files);
+    let mut pages = files
+        .into_iter()
+        .filter_map(|full_path| wiki_page_from_file(&wiki_root, &full_path, project_id, &known_paths))
+        .collect::<Vec<_>>();
     pages.sort_by(|left, right| left.path.cmp(&right.path));
     WikiPageList { pages }
 }
@@ -87,11 +131,54 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
         return Err("Only MDX wiki source can be served.".to_string());
     }
     let source = fs::read_to_string(page_path).map_err(|error| error.to_string())?;
+    let wiki_root = root.as_ref().join("wiki");
+    let mut files = Vec::new();
+    collect_wiki_files(&wiki_root, &mut files);
+    let known_paths = known_relative_paths(&wiki_root, &files);
+    let headings = headings_from_mdx(&source);
+    let links = wiki_links_from_mdx(&source, relative, &known_paths);
+    let validation_warnings = validation_warnings_from_links(&links);
     Ok(WikiSource {
         path: format!("/wiki/{relative}"),
         markdown: mdx_markdown_derivative(&source),
+        frontmatter: frontmatter_values(&source),
+        headings,
+        links,
+        validation_warnings,
         source,
     })
+}
+
+pub fn wiki_page_markdown(root: impl AsRef<Path>, request_path: &str) -> Result<WikiSource, String> {
+    read_wiki_source(root, request_path)
+}
+
+pub fn wiki_llms_txt(root: impl AsRef<Path>) -> String {
+    let pages = list_wiki_pages(&root, None);
+    let mut output = String::from("# Hyperwiki Project Wiki\n\n");
+    output.push_str("Repo-local wiki pages exported as Markdown derivatives for local agents.\n\n");
+    output.push_str("## Pages\n");
+    for page in &pages.pages {
+        output.push_str("- [");
+        output.push_str(&page.title);
+        output.push_str("](");
+        output.push_str(&page.path);
+        output.push_str(")\n");
+    }
+    for page in pages.pages {
+        if let Ok(source) = read_wiki_source(&root, &page.path) {
+            if source.markdown.trim().is_empty() {
+                continue;
+            }
+            output.push_str("\n---\n\n");
+            output.push_str("## ");
+            output.push_str(&page.path);
+            output.push_str("\n\n");
+            output.push_str(&source.markdown);
+            output.push('\n');
+        }
+    }
+    output.trim_end().to_string()
 }
 
 fn wiki_relative_path(path: &str) -> Option<&str> {
@@ -419,44 +506,59 @@ fn html_list_items_to_markdown(line: &str) -> Vec<String> {
     items
 }
 
-fn walk_wiki(
-    base_root: &Path,
-    directory: &Path,
-    project_id: Option<&str>,
-    pages: &mut Vec<WikiPage>,
-) {
+fn collect_wiki_files(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
     let Ok(entries) = fs::read_dir(directory) else {
         return;
     };
     for entry in entries.flatten() {
         let full_path = entry.path();
         if full_path.is_dir() {
-            walk_wiki(base_root, &full_path, project_id, pages);
+            collect_wiki_files(&full_path, files);
             continue;
         }
         if full_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
             continue;
         }
-        let Ok(relative_path) = full_path.strip_prefix(base_root) else {
-            continue;
-        };
-        let relative_path = slash_path(relative_path);
-        let mdx = fs::read_to_string(&full_path).unwrap_or_default();
-        let title = first_heading(&mdx).unwrap_or_else(|| title_from_wiki_path(&relative_path));
-        let summary = list_items_from_first_summary(&mdx);
-        let path = project_id
-            .map(|id| format!("/projects/{id}/wiki/{relative_path}"))
-            .unwrap_or_else(|| format!("/wiki/{relative_path}"));
-        let status = page_status(&summary, &path);
-        pages.push(WikiPage {
-            title,
-            summary,
-            source_path: format!("wiki/{relative_path}"),
-            format: "mdx".to_string(),
-            path,
-            status,
-        });
+        files.push(full_path);
     }
+}
+
+fn known_relative_paths(base_root: &Path, files: &[std::path::PathBuf]) -> HashSet<String> {
+    files
+        .iter()
+        .filter_map(|full_path| full_path.strip_prefix(base_root).ok())
+        .map(slash_path)
+        .collect()
+}
+
+fn wiki_page_from_file(
+    base_root: &Path,
+    full_path: &Path,
+    project_id: Option<&str>,
+    known_paths: &HashSet<String>,
+) -> Option<WikiPage> {
+    let relative_path = slash_path(full_path.strip_prefix(base_root).ok()?);
+    let mdx = fs::read_to_string(full_path).unwrap_or_default();
+    let title = first_heading(&mdx).unwrap_or_else(|| title_from_wiki_path(&relative_path));
+    let summary = list_items_from_first_summary(&mdx);
+    let path = project_id
+        .map(|id| format!("/projects/{id}/wiki/{relative_path}"))
+        .unwrap_or_else(|| format!("/wiki/{relative_path}"));
+    let status = page_status(&summary, &path);
+    let links = wiki_links_from_mdx(&mdx, &relative_path, known_paths);
+    let validation_warnings = validation_warnings_from_links(&links);
+    Some(WikiPage {
+        title,
+        summary,
+        source_path: format!("wiki/{relative_path}"),
+        format: "mdx".to_string(),
+        frontmatter: frontmatter_values(&mdx),
+        headings: headings_from_mdx(&mdx),
+        links,
+        validation_warnings,
+        path,
+        status,
+    })
 }
 
 fn first_heading(mdx: &str) -> Option<String> {
@@ -478,6 +580,256 @@ fn first_heading(mdx: &str) -> Option<String> {
             .unwrap_or(&value);
         strip_html(content)
     })
+}
+
+fn frontmatter_values(mdx: &str) -> BTreeMap<String, String> {
+    let mut values = BTreeMap::new();
+    let mut lines = mdx.lines();
+    if lines.next().map(str::trim) != Some("---") {
+        return values;
+    }
+    for line in lines {
+        let line = line.trim();
+        if line == "---" {
+            break;
+        }
+        let Some((key, value)) = line.split_once(':') else {
+            continue;
+        };
+        values.insert(
+            key.trim().to_string(),
+            value
+                .trim()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .to_string(),
+        );
+    }
+    values
+}
+
+fn headings_from_mdx(mdx: &str) -> Vec<WikiHeading> {
+    let mut headings = Vec::new();
+    for (line_number, line) in mdx_body_lines(mdx) {
+        let trimmed = line.trim();
+        if let Some((level, text)) = markdown_heading(trimmed) {
+            let text = strip_html(text);
+            headings.push(WikiHeading {
+                level,
+                anchor: heading_anchor(&text),
+                text,
+                line: line_number,
+            });
+            continue;
+        }
+        for level in 1..=6 {
+            let start = format!("<h{level}");
+            let end = format!("</h{level}>");
+            if let Some(value) = first_between_case_insensitive(trimmed, &start, &end) {
+                let text = value
+                    .split_once('>')
+                    .map(|(_, content)| strip_html(content))
+                    .unwrap_or_else(|| strip_html(&value));
+                if !text.trim().is_empty() {
+                    headings.push(WikiHeading {
+                        level,
+                        anchor: heading_anchor(&text),
+                        text,
+                        line: line_number,
+                    });
+                }
+            }
+        }
+    }
+    headings
+}
+
+fn wiki_links_from_mdx(
+    mdx: &str,
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> Vec<WikiLink> {
+    let mut links = Vec::new();
+    for (line_number, line) in mdx_body_lines(mdx) {
+        links.extend(markdown_links_from_line(
+            line,
+            line_number,
+            current_relative_path,
+            known_paths,
+        ));
+        links.extend(html_links_from_line(
+            line,
+            line_number,
+            current_relative_path,
+            known_paths,
+        ));
+    }
+    links
+}
+
+fn markdown_links_from_line(
+    line: &str,
+    line_number: usize,
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> Vec<WikiLink> {
+    let mut links = Vec::new();
+    let mut rest = line;
+    while let Some(label_start) = rest.find('[') {
+        let after_label_start = &rest[label_start + 1..];
+        let Some(label_end) = after_label_start.find("](") else {
+            break;
+        };
+        let label = &after_label_start[..label_end];
+        let after_href_start = &after_label_start[label_end + 2..];
+        let Some(href_end) = after_href_start.find(')') else {
+            break;
+        };
+        let href = &after_href_start[..href_end];
+        links.push(make_wiki_link(
+            href,
+            label,
+            line_number,
+            current_relative_path,
+            known_paths,
+        ));
+        rest = &after_href_start[href_end + 1..];
+    }
+    links
+}
+
+fn html_links_from_line(
+    line: &str,
+    line_number: usize,
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> Vec<WikiLink> {
+    let mut links = Vec::new();
+    for quote in ['"', '\''] {
+        let marker = format!("href={quote}");
+        let mut rest = line;
+        while let Some(start) = rest.find(&marker) {
+            let after = &rest[start + marker.len()..];
+            let Some(end) = after.find(quote) else {
+                break;
+            };
+            let href = &after[..end];
+            links.push(make_wiki_link(
+                href,
+                "",
+                line_number,
+                current_relative_path,
+                known_paths,
+            ));
+            rest = &after[end + 1..];
+        }
+    }
+    links
+}
+
+fn make_wiki_link(
+    href: &str,
+    label: &str,
+    line: usize,
+    current_relative_path: &str,
+    known_paths: &HashSet<String>,
+) -> WikiLink {
+    let target_path = resolve_wiki_link_target(href, current_relative_path);
+    let resolved = target_path
+        .as_ref()
+        .map(|target| known_paths.contains(target.trim_start_matches("/wiki/")))
+        .unwrap_or(true);
+    WikiLink {
+        href: href.to_string(),
+        label: strip_html(label),
+        line,
+        target_path,
+        resolved,
+    }
+}
+
+fn resolve_wiki_link_target(href: &str, current_relative_path: &str) -> Option<String> {
+    let href = href.split('#').next().unwrap_or(href).split('?').next().unwrap_or(href);
+    if href.is_empty() || href.starts_with('#') {
+        return None;
+    }
+    if href.contains("://") || href.starts_with("mailto:") || href.starts_with("tel:") {
+        return None;
+    }
+    if let Some(relative) = href.strip_prefix("/wiki/") {
+        return Some(format!("/wiki/{relative}"));
+    }
+    if let Some(index) = href.find("/wiki/") {
+        return Some(href[index..].to_string());
+    }
+    if href.starts_with("./") || href.starts_with("../") || href.ends_with(".mdx") {
+        let mut parts = current_relative_path
+            .split('/')
+            .collect::<Vec<_>>();
+        parts.pop();
+        for part in href.split('/') {
+            if part.is_empty() || part == "." {
+                continue;
+            }
+            if part == ".." {
+                if parts.is_empty() {
+                    return Some(format!("/wiki/{href}"));
+                }
+                parts.pop();
+                continue;
+            }
+            parts.push(part);
+        }
+        return Some(format!("/wiki/{}", parts.join("/")));
+    }
+    None
+}
+
+fn mdx_body_lines(mdx: &str) -> Vec<(usize, &str)> {
+    let mut lines = Vec::new();
+    let mut in_frontmatter = mdx.lines().next().map(str::trim) == Some("---");
+    for (index, line) in mdx.lines().enumerate() {
+        let line_number = index + 1;
+        if line_number == 1 && in_frontmatter {
+            continue;
+        }
+        if in_frontmatter {
+            if line.trim() == "---" {
+                in_frontmatter = false;
+            }
+            continue;
+        }
+        lines.push((line_number, line));
+    }
+    lines
+}
+
+fn validation_warnings_from_links(links: &[WikiLink]) -> Vec<WikiValidationWarning> {
+    links
+        .iter()
+        .filter(|link| link.target_path.is_some() && !link.resolved)
+        .map(|link| WikiValidationWarning {
+            kind: "broken-wiki-link".to_string(),
+            message: format!("Wiki link target does not exist: {}", link.href),
+            href: Some(link.href.clone()),
+            line: link.line,
+        })
+        .collect()
+}
+
+fn heading_anchor(value: &str) -> String {
+    let mut output = String::new();
+    let mut previous_dash = false;
+    for character in value.to_lowercase().chars() {
+        if character.is_ascii_alphanumeric() {
+            output.push(character);
+            previous_dash = false;
+        } else if !previous_dash {
+            output.push('-');
+            previous_dash = true;
+        }
+    }
+    output.trim_matches('-').to_string()
 }
 
 fn list_items_from_first_summary(html: &str) -> Vec<String> {
@@ -952,6 +1304,34 @@ mod tests {
     }
 
     #[test]
+    fn indexes_frontmatter_headings_links_and_validation_warnings() {
+        let root = temp_root("wiki-index-metadata");
+        let plan_dir = root.join("wiki").join("plans");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(plan_dir.join("other.mdx"), "<h1>Other</h1>").unwrap();
+        fs::write(
+            plan_dir.join("feature-plan.mdx"),
+            "---\ntitle: \"Feature\"\nwikiKind: \"plan\"\n---\n\n<h1>Feature</h1>\n## Scope\n[Other](./other.mdx)\n<a href=\"/wiki/plans/missing.mdx\">Missing</a>",
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let page = pages
+            .iter()
+            .find(|page| page.path == "/wiki/plans/feature-plan.mdx")
+            .unwrap();
+
+        assert_eq!(page.frontmatter.get("wikiKind").map(String::as_str), Some("plan"));
+        assert_eq!(page.headings.len(), 2);
+        assert_eq!(page.headings[1].text, "Scope");
+        assert_eq!(page.links.len(), 2);
+        assert_eq!(page.links[0].target_path.as_deref(), Some("/wiki/plans/other.mdx"));
+        assert!(page.links[0].resolved);
+        assert_eq!(page.validation_warnings.len(), 1);
+        assert_eq!(page.validation_warnings[0].kind, "broken-wiki-link");
+    }
+
+    #[test]
     fn parses_custom_plan_status_metric() {
         let root = temp_root("wiki-custom-status");
         let plan_dir = root.join("wiki").join("plans");
@@ -1015,6 +1395,25 @@ mod tests {
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
         assert!(!source.markdown.contains("PlanHero"));
+    }
+
+    #[test]
+    fn exports_llms_txt_from_markdown_derivatives() {
+        let root = temp_root("wiki-llms");
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "<h1>Sample</h1>\n<p>Agent-readable page.</p>",
+        )
+        .unwrap();
+
+        let export = wiki_llms_txt(&root);
+
+        assert!(export.contains("# Hyperwiki Project Wiki"));
+        assert!(export.contains("- [Sample](/wiki/plans/sample.mdx)"));
+        assert!(export.contains("## /wiki/plans/sample.mdx"));
+        assert!(export.contains("Agent-readable page."));
     }
 
     #[test]

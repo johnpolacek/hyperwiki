@@ -208,6 +208,38 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => json_response(200, &serde_json::Value::Null),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/page-markdown") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let source_path = query_param(&request.path, "path")
+            .and_then(|path| percent_decode_path_segment(&path))
+            .unwrap_or_else(|| "/wiki/index.mdx".to_string());
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::wiki_page_markdown(project_root, &source_path) {
+            Ok(source) => json_response(200, &source),
+            Err(error) => error_response(404, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/llms.txt") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return text_response(200, crate::domain::wiki::wiki_llms_txt(project_root));
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki/source") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -1515,6 +1547,66 @@ mod tests {
         assert!(response.ok, "{}", response.text);
         assert!(response.text.contains("<PlanHero>"));
         assert!(response.text.contains("\"markdown\":\"# Sample\""));
+    }
+
+    #[test]
+    fn wiki_page_markdown_endpoint_returns_markdown_export() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-markdown");
+        let home = temp_root("command-wiki-markdown-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "<h1>Sample</h1><p>Markdown export.</p>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/page-markdown?path=%2Fwiki%2Fplans%2Fsample.mdx".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("\"markdown\":\"# Sample"));
+        assert!(response.text.contains("Markdown export."));
+    }
+
+    #[test]
+    fn wiki_llms_txt_endpoint_returns_project_export() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-llms");
+        let home = temp_root("command-wiki-llms-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/llms.txt".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("# Hyperwiki Project Wiki"));
+        assert!(response.text.contains("- [Home](/wiki/index.mdx)"));
     }
 
     #[test]

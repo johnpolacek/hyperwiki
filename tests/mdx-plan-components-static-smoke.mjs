@@ -71,6 +71,8 @@ for (const visualContract of [
   "bg-secondary/25 px-0 py-3",
   "grid gap-1",
   "grid gap-2 py-1",
+  "Copy Markdown",
+  "validationWarnings",
 ]) {
   if (!renderer.includes(visualContract)) {
     throw new Error(`MDX plan renderer must keep the compact working-brief visual contract: ${visualContract}`);
