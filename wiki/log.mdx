@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 refactor | import onboarding virtual artifacts</h2>
+  <ul>
+    <li>Changed import plan generation to use a DeepAgents-style virtual artifact contract: Codex now returns structured <code>hyperwiki-plan-artifacts</code> JSON instead of being asked to write wiki files directly.</li>
+    <li>Added runtime parsing, safe path validation, and MDX artifact writes for generated MVP plan files under <code>wiki/plans/</code>, followed by the existing deterministic artifact validator.</li>
+    <li>Restricted plan artifact writes to <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code> so hidden agent output cannot modify product code or unrelated wiki state.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding run finalizer</h2>
   <ul>
     <li>Matched the Tandem-style <code>finish_if_match</code> lifecycle pattern for import onboarding active runs.</li>

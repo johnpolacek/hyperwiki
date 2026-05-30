@@ -112,6 +112,12 @@ pub struct ImportOnboardingEventsResponse {
     pub events: Vec<ImportOnboardingEventRecord>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GeneratedPlanArtifact {
+    path: String,
+    content: String,
+}
+
 #[derive(Debug, Default)]
 struct RuntimeRegistry {
     active_by_project: HashMap<String, String>,
@@ -547,8 +553,10 @@ fn run_runtime_turn(
             &prompt_context,
             &answered_question_id,
         ),
-        RuntimeTurnKind::Plan => plan_turn_prompt(&project, &request_id, &context),
-        RuntimeTurnKind::PlanRepair => plan_repair_prompt(&project, &request_id, &context),
+        RuntimeTurnKind::Plan => plan_turn_prompt(&project, &request_id, &context, &prompt_context),
+        RuntimeTurnKind::PlanRepair => {
+            plan_repair_prompt(&project, &request_id, &context, &prompt_context)
+        }
     };
     let response = execute_provider_turn(&project, &run_id, &prompt, app.clone())?;
     let text = response.text.clone();
@@ -696,6 +704,33 @@ fn run_runtime_turn(
         );
     }
     if matches!(kind, RuntimeTurnKind::Plan | RuntimeTurnKind::PlanRepair) {
+        if let Some(artifacts) = extract_plan_artifacts(&text, &request_id) {
+            append_event_for_run(
+                &project.root,
+                app.as_ref(),
+                &run_id,
+                "artifacts_received",
+                "staging_artifacts",
+                "Structured MVP plan artifacts received from Codex.",
+                Some(format!("artifacts={}", artifacts.len())),
+            )?;
+            write_generated_plan_artifacts(&project.root, &artifacts)?;
+            append_event_for_run(
+                &project.root,
+                app.as_ref(),
+                &run_id,
+                "artifacts_committed",
+                "validating_artifacts",
+                "Runtime wrote Codex-generated MDX artifacts; validating now.",
+                Some(
+                    artifacts
+                        .iter()
+                        .map(|artifact| artifact.path.clone())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                ),
+            )?;
+        }
         let validation = validate_import_plan_artifacts(&project.root);
         if has_generated_plan_pages(&project.root) && validation.status == "valid" {
             return complete_runtime_run(
@@ -1344,22 +1379,35 @@ fn repair_turn_prompt(
     .join("\n")
 }
 
-fn plan_turn_prompt(project: &ProjectRecord, request_id: &str, ready_context: &str) -> String {
+fn plan_turn_prompt(
+    project: &ProjectRecord,
+    request_id: &str,
+    ready_context: &str,
+    source_context: &str,
+) -> String {
     [
-        "Use $hyperwiki and $grill-with-docs.",
-        "",
         "You are generating the first MVP plan for this newly imported Hyperwiki project.",
-        "Plan mode only: do not implement product code from this prompt.",
-        &format!("requestId: {request_id}"),
-        "Create validated MDX wiki plan files now.",
-        "Do not ask another question unless writing a safe MVP plan is impossible; in that case emit exactly one hyperwiki-question JSON object and stop.",
+        "Artifact-generation response only. Do not use tools. Do not run commands. Do not read files. Do not write files.",
+        "Use only the inline source context and ready-to-plan context in this prompt.",
+        &format!("The requestId must be exactly \"{request_id}\"."),
         "",
-        "Read first: wiki/index.mdx, wiki/sources.mdx, wiki/sources/import.mdx, wiki/sources/import-qna.mdx, wiki/sources/import-state.mdx when present, and source briefs when present.",
-        "Plan artifact contract: write wiki/plans/mvp/index.mdx, separate stage/unit files under wiki/plans/mvp/, update wiki/plans/index.mdx, and include Verification in every executable unit.",
-        "Name unknowns instead of inventing certainty. Do not finish by saying you will write files; write them before the final response.",
+        "Output exactly one fenced JSON block. No prose before or after the block.",
+        "The JSON object must have type=\"hyperwiki-plan-artifacts\", requestId, and artifacts.",
+        "artifacts must be an array of objects with path and content.",
+        "Required artifact paths:",
+        "- wiki/plans/mvp/index.mdx",
+        "- at least one executable unit under wiki/plans/mvp/ with \"unit-\" in the filename",
+        "- wiki/plans/index.mdx",
+        "Every artifact content must be complete MDX text, including frontmatter with wikiKind: \"plan\" for plan files.",
+        "Every executable unit must include a Verification section.",
+        "Name unknowns, source evidence, and decisions instead of inventing certainty.",
+        "If writing a safe MVP plan is impossible, emit exactly one hyperwiki-question JSON object instead.",
         "",
         "Ready-to-plan context:",
         &text_tail(ready_context, 1600),
+        "",
+        "Inline source context:",
+        source_context,
         "",
         &format!("Imported project: {}", project.name),
         &format!("Project root: {}", project.root.display()),
@@ -1367,19 +1415,27 @@ fn plan_turn_prompt(project: &ProjectRecord, request_id: &str, ready_context: &s
     .join("\n")
 }
 
-fn plan_repair_prompt(project: &ProjectRecord, request_id: &str, previous_output: &str) -> String {
+fn plan_repair_prompt(
+    project: &ProjectRecord,
+    request_id: &str,
+    previous_output: &str,
+    source_context: &str,
+) -> String {
     [
-        "Use $hyperwiki and $grill-with-docs.",
-        "",
         "You are repairing a failed Hyperwiki import plan-generation turn.",
-        &format!("requestId: {request_id}"),
-        "Write the missing MVP plan files now under wiki/plans/mvp/ and update wiki/plans/index.mdx.",
-        "Do not ask another question unless the imported source and Q&A make MVP planning impossible.",
-        "If you ask a question, emit exactly one hyperwiki-question JSON object and stop.",
-        "Do not emit future-tense procedural prose.",
+        "Artifact-generation response only. Do not use tools. Do not run commands. Do not read files. Do not write files.",
+        "Return exactly one fenced JSON object with type=\"hyperwiki-plan-artifacts\", requestId, and artifacts.",
+        &format!("The requestId must be exactly \"{request_id}\"."),
+        "The runtime will write and validate the artifacts. You only generate the file paths and complete MDX contents.",
+        "Required artifact paths: wiki/plans/mvp/index.mdx, at least one wiki/plans/mvp/*unit-*.mdx file, and wiki/plans/index.mdx.",
+        "Every executable unit must include a Verification section and source-grounded decisions or unknowns.",
+        "If the imported source and Q&A make MVP planning impossible, emit exactly one hyperwiki-question JSON object and stop.",
         "",
         "Previous incomplete output or validation prompt:",
         &text_tail(previous_output, 1600),
+        "",
+        "Inline source context:",
+        source_context,
         "",
         &format!("Imported project: {}", project.name),
         &format!("Project root: {}", project.root.display()),
@@ -1540,6 +1596,79 @@ fn extract_ready_to_plan(text: &str, request_id: &str) -> Option<String> {
         return Some(format!("Reasoning: {reasoning}\nPlan intent: {intent}"));
     }
     None
+}
+
+fn extract_plan_artifacts(text: &str, request_id: &str) -> Option<Vec<GeneratedPlanArtifact>> {
+    for raw in json_candidates(text).into_iter().rev() {
+        let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+            continue;
+        };
+        if value.get("type").and_then(Value::as_str) != Some("hyperwiki-plan-artifacts") {
+            continue;
+        }
+        if let Some(found_request_id) = value.get("requestId").and_then(Value::as_str) {
+            if found_request_id != request_id {
+                continue;
+            }
+        }
+        let artifacts = value
+            .get("artifacts")
+            .and_then(Value::as_array)?
+            .iter()
+            .filter_map(|artifact| {
+                let path = artifact.get("path").and_then(Value::as_str)?.trim();
+                let content = artifact.get("content").and_then(Value::as_str)?.trim();
+                if path.is_empty() || content.is_empty() {
+                    return None;
+                }
+                Some(GeneratedPlanArtifact {
+                    path: path.trim_start_matches('/').to_string(),
+                    content: format!("{}\n", content),
+                })
+            })
+            .collect::<Vec<_>>();
+        if !artifacts.is_empty() {
+            return Some(artifacts);
+        }
+    }
+    None
+}
+
+fn write_generated_plan_artifacts(
+    root: &Path,
+    artifacts: &[GeneratedPlanArtifact],
+) -> Result<(), (u16, String)> {
+    if artifacts.is_empty() {
+        return Err((422, "No generated plan artifacts were supplied.".to_string()));
+    }
+    for artifact in artifacts {
+        let relative = safe_plan_artifact_path(&artifact.path)?;
+        let destination = root.join(relative);
+        if let Some(parent) = destination.parent() {
+            fs::create_dir_all(parent).map_err(|error| (500, error.to_string()))?;
+        }
+        fs::write(destination, &artifact.content).map_err(|error| (500, error.to_string()))?;
+    }
+    Ok(())
+}
+
+fn safe_plan_artifact_path(path: &str) -> Result<PathBuf, (u16, String)> {
+    let normalized = path.trim().trim_start_matches('/').replace('\\', "/");
+    if normalized.is_empty()
+        || normalized.starts_with('/')
+        || normalized.split('/').any(|part| part == ".." || part.is_empty())
+    {
+        return Err((422, format!("Unsafe generated artifact path: {path}")));
+    }
+    let allowed = normalized == "wiki/plans/index.mdx"
+        || (normalized.starts_with("wiki/plans/mvp/") && normalized.ends_with(".mdx"));
+    if !allowed {
+        return Err((
+            422,
+            format!("Generated plan artifact path is outside the allowed plan boundary: {path}"),
+        ));
+    }
+    Ok(PathBuf::from(normalized))
 }
 
 fn json_candidates(text: &str) -> Vec<String> {
@@ -1728,5 +1857,40 @@ mod tests {
             .cloned();
         assert_eq!(active.as_deref(), Some(child_run_id.as_str()));
         release_runtime_active(&project_id, &child_run_id);
+    }
+
+    #[test]
+    fn extracts_structured_plan_artifacts() {
+        let text = r#"
+```json
+{
+  "type": "hyperwiki-plan-artifacts",
+  "requestId": "import-turn:plan:1",
+  "artifacts": [
+    {
+      "path": "wiki/plans/index.mdx",
+      "content": "---\ntitle: \"Plans\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1>"
+    },
+    {
+      "path": "wiki/plans/mvp/unit-01-build.mdx",
+      "content": "---\ntitle: \"Unit 01\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01</h1>\n<h2>Verification</h2>"
+    }
+  ]
+}
+```
+"#;
+        let artifacts = extract_plan_artifacts(text, "import-turn:plan:1").unwrap();
+        assert_eq!(artifacts.len(), 2);
+        assert_eq!(artifacts[0].path, "wiki/plans/index.mdx");
+        assert!(extract_plan_artifacts(text, "other-request").is_none());
+    }
+
+    #[test]
+    fn rejects_generated_plan_artifacts_outside_plan_boundary() {
+        assert!(safe_plan_artifact_path("wiki/plans/mvp/unit-01.mdx").is_ok());
+        assert!(safe_plan_artifact_path("wiki/plans/index.mdx").is_ok());
+        assert!(safe_plan_artifact_path("../secret.mdx").is_err());
+        assert!(safe_plan_artifact_path("src/App.tsx").is_err());
+        assert!(safe_plan_artifact_path("wiki/sources/import.mdx").is_err());
     }
 }
