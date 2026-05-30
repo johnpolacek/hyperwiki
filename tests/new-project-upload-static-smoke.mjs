@@ -30,5 +30,7 @@ assert.ok(mdxRenderer.includes("source-decision"), "React MDX plan renderer shou
 assert.ok(mdxRenderer.includes("list-disc"), "React MDX plan renderer should restore unordered list bullets after Tailwind preflight");
 assert.ok(mdxRenderer.includes("list-decimal"), "React MDX plan renderer should restore ordered list markers after Tailwind preflight");
 assert.ok(mdxRenderer.includes("space-y-1.5"), "React MDX plan renderer should keep list item spacing compact");
+assert.ok(mdxRenderer.includes("flex-col gap-7"), "React MDX plan renderer should keep breathing room between top-level document blocks");
+assert.ok(mdxRenderer.includes('tag === "section") return <section className="grid gap-5"'), "React MDX plan renderer should separate section headings from preceding content");
 
 console.log("new project upload static smoke passed");
