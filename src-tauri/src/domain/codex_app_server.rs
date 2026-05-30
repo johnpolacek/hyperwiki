@@ -1868,10 +1868,14 @@ fn describe_exec_json_event(value: &Value) -> String {
             "exec-json thread.started: {}",
             short_id(value["thread_id"].as_str().unwrap_or_default())
         ),
-        "turn.started" => format!(
-            "exec-json turn.started: {}",
-            short_id(value["turn_id"].as_str().unwrap_or_default())
-        ),
+        "turn.started" => {
+            let turn_id = value["turn_id"].as_str().unwrap_or_default();
+            if turn_id.is_empty() {
+                "exec-json turn.started".to_string()
+            } else {
+                format!("exec-json turn.started: {}", short_id(turn_id))
+            }
+        }
         "item.completed" => {
             let item_type = value["item"]["type"].as_str().unwrap_or("item");
             if item_type == "agent_message" {
