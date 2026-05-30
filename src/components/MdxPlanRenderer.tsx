@@ -27,7 +27,7 @@ export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanR
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex max-w-[72rem] flex-col gap-7 px-6 py-8 md:px-10">
+      <div className="mx-auto flex max-w-[72rem] flex-col gap-9 px-6 py-8 md:px-10">
         {content}
         {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
       </div>
@@ -287,8 +287,8 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (isStage) return <section className="grid gap-5 border-t pt-8" key={key}>{children}</section>;
   if (isUnit) return <article className="grid gap-3 rounded-md border bg-card p-4" key={key}>{children}</article>;
   if (isPanel) return <section className="grid gap-4 rounded-md border bg-card p-5" key={key}>{children}</section>;
-  if (tag === "section") return <section className="grid gap-5" key={key}>{children}</section>;
-  if (tag === "article") return <article className="grid gap-4" key={key}>{children}</article>;
+  if (tag === "section") return <section className="grid gap-3" key={key}>{children}</section>;
+  if (tag === "article") return <article className="grid gap-3" key={key}>{children}</article>;
   if (tag === "div") return <div className="grid gap-3" key={key}>{children}</div>;
 
   return <span key={key}>{children}</span>;
