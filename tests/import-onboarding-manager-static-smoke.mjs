@@ -22,10 +22,13 @@ for (const symbol of [
   "contract_warning",
   "contract_error",
   "hyperwiki-ready-to-plan",
-  "running_plan_turn",
+  "running_plan_repair_turn",
+  "hyperwiki-plan-artifacts",
 ]) {
   assert.match(runtime, new RegExp(symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing runtime symbol ${symbol}`);
 }
+assert.doesNotMatch(runtime, /complete_plan_from_runtime_context/);
+assert.doesNotMatch(runtime, /Unit 01 - Confirmed MVP Slice/);
 
 for (const endpoint of [
   "/api/import-onboarding/start",

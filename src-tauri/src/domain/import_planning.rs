@@ -311,6 +311,23 @@ pub fn validate_import_plan_artifacts(root: &Path) -> ImportPlanningArtifactVali
     if !artifacts.is_empty() && !has_executable_unit {
         errors.push("Generated plan has no executable unit pages.".to_string());
     }
+    let executable_unit_count = artifacts
+        .iter()
+        .filter(|artifact| is_unit_artifact_path(&artifact.intended_path))
+        .count();
+    if !artifacts.is_empty() && executable_unit_count < 2 {
+        errors.push(
+            "Generated MVP plan must include at least two concrete executable unit pages."
+                .to_string(),
+        );
+    }
+    let has_mvp_stage_page = artifacts
+        .iter()
+        .any(|artifact| is_mvp_stage_artifact_path(&artifact.intended_path));
+    if !artifacts.is_empty() && !has_mvp_stage_page {
+        errors
+            .push("Generated MVP plan is missing a stage page under wiki/plans/mvp/.".to_string());
+    }
     for artifact in artifacts.iter_mut() {
         if artifact.validation_errors.is_empty() {
             artifact.validation_status = "valid".to_string();
@@ -372,12 +389,9 @@ fn collect_import_plan_artifact_paths(base: &Path, path: &Path, paths: &mut Vec<
         if path.extension().and_then(|value| value.to_str()) != Some("mdx") {
             continue;
         }
-        let Ok(relative) = path.strip_prefix(base) else {
+        let Ok(_relative) = path.strip_prefix(base) else {
             continue;
         };
-        if relative == Path::new("index.mdx") {
-            continue;
-        }
         paths.push(path);
     }
 }
@@ -411,6 +425,7 @@ fn staged_artifact_record(
 fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
     let mut errors = Vec::new();
     let trimmed = content.trim_start();
+    let lower = content.to_lowercase();
     if !trimmed.starts_with("---") {
         errors.push("missing MDX frontmatter".to_string());
     }
@@ -420,16 +435,60 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
     if !content.contains("<h1") {
         errors.push("missing h1 title".to_string());
     }
-    if is_unit_artifact_path(path) && !content.to_lowercase().contains("verification") {
-        errors.push("unit page must include verification guidance".to_string());
+    if lower.contains("unit 01 - confirmed mvp slice") || lower.contains("confirmed mvp slice") {
+        errors.push(
+            "generated MVP plan still contains the generic confirmed MVP slice placeholder"
+                .to_string(),
+        );
+    }
+    if path == "wiki/plans/index.mdx" {
+        for (label, needle) in [
+            ("active plan", "active plan"),
+            ("planning shape", "shape"),
+            ("current unit", "current"),
+            ("next action", "next action"),
+            ("blockers", "blocker"),
+            ("validation", "validation"),
+        ] {
+            if !lower.contains(needle) {
+                errors.push(format!("Plans index must include {label}"));
+            }
+        }
+    }
+    if is_unit_artifact_path(path) {
+        for (label, alternatives) in [
+            ("intent or goal", &["intent", "goal"][..]),
+            ("scope", &["scope"][..]),
+            ("implementation notes", &["implementation notes"][..]),
+            (
+                "dependencies or blockers",
+                &["dependencies", "blockers", "dependency", "blocker"][..],
+            ),
+            ("verification", &["verification"][..]),
+            ("completion gate", &["completion gate"][..]),
+        ] {
+            if !alternatives.iter().any(|needle| lower.contains(needle)) {
+                errors.push(format!("unit page must include {label}"));
+            }
+        }
+    }
+    if is_mvp_stage_artifact_path(path) {
+        for (label, alternatives) in [
+            ("stage goal", &["stage goal", "goal"][..]),
+            ("unit sequence", &["unit sequence", "units"][..]),
+            ("completion gate", &["completion gate"][..]),
+            ("verification", &["verification"][..]),
+        ] {
+            if !alternatives.iter().any(|needle| lower.contains(needle)) {
+                errors.push(format!("stage page must include {label}"));
+            }
+        }
     }
     if path.ends_with("/index.mdx") {
-        let lower = content.to_lowercase();
         if !lower.contains("stage") && !lower.contains("unit") {
             errors.push("plan index must reference stages or units".to_string());
         }
     }
-    let lower = content.to_lowercase();
     if path.contains("/mvp/")
         && !lower.contains("unknown")
         && !lower.contains("source")
@@ -445,6 +504,12 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
 
 fn is_unit_artifact_path(path: &str) -> bool {
     path.contains("/unit-") || path.contains("/units/")
+}
+
+fn is_mvp_stage_artifact_path(path: &str) -> bool {
+    path.starts_with("wiki/plans/mvp/stage-")
+        && path.ends_with(".mdx")
+        && !is_unit_artifact_path(path)
 }
 
 fn import_artifact_repair_prompt(errors: &[String]) -> String {
@@ -670,7 +735,53 @@ mod tests {
         .unwrap();
         fs::write(
             root.join("wiki").join("plans").join("index.mdx"),
-            "<h1>Plans</h1>",
+            "---\ntitle: \"Plans\"\ndescription: \"Current project plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><p>Active plan pending import planning. Shape pending. Current unit none. Next action continue import Q&amp;A. Blockers: unresolved import decisions. Validation pending.</p>",
+        )
+        .unwrap();
+    }
+
+    fn write_valid_import_plan(root: &Path) {
+        fs::create_dir_all(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            "---\ntitle: \"Plans\"\ndescription: \"Current project plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><section><h2>Active Plan</h2><p>Active plan: MVP Plan. Shape: single-stage MVP. Current stage: Stage 01. Current unit: Unit 01. Next action: implement Unit 01. Blockers: none. Validation: static file manual check.</p></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            "---\ntitle: \"MVP Plan\"\ndescription: \"Source-grounded MVP plan.\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><section><h2>Summary</h2><p>Status active. Shape single-stage MVP. Current unit Unit 01. Source decisions and unknowns are preserved.</p></section><section><h2>Stage Sequence</h2><p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\">Stage 01</a> contains the unit sequence.</p></section><section><h2>Deferred Work</h2><p>Unknown deployment polish is deferred.</p></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            "---\ntitle: \"Stage 01 - Static MVP Foundation\"\ndescription: \"Build the source-grounded static MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Static MVP Foundation</h1><section><h2>Stage Goal</h2><p>Implement the source-decided local MVP.</p></section><section><h2>Unit Sequence</h2><ul><li>Unit 01 - Static shell</li><li>Unit 02 - Persistence and interactions</li></ul></section><section><h2>Dependencies</h2><p>Source decision: local-only MVP.</p></section><section><h2>Verification</h2><p>Manual browser check and applicable repository checks.</p></section><section><h2>Completion Gate</h2><p>All units complete with verification recorded.</p></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-01-static-shell.mdx"),
+            "---\ntitle: \"Unit 01 - Static Shell\"\ndescription: \"Create the source-grounded static UI shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - Static Shell</h1><h2>Intent</h2><p>Build the static source-decided UI shell.</p><h2>Scope</h2><p>One self-contained HTML surface.</p><h2>Implementation Notes</h2><p>Use embedded CSS and JavaScript. Preserve source decisions and unknowns.</p><h2>Dependencies</h2><p>Depends on the accepted local-only decision.</p><h2>Verification</h2><p>Open the HTML and inspect the textarea workflow.</p><h2>Completion Gate</h2><p>Complete when the shell renders without backend, framework, or network scope.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-02-persistence-and-interactions.mdx"),
+            "---\ntitle: \"Unit 02 - Persistence And Interactions\"\ndescription: \"Add local persistence and source-grounded interactions.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - Persistence And Interactions</h1><h2>Intent</h2><p>Implement source-decided localStorage autosave, restore, and clear behavior.</p><h2>Scope</h2><p>Persistence, debounced autosave, load-on-open restore, and clear-entry interaction.</p><h2>Implementation Notes</h2><p>Use the accepted static local-only MVP answer and preserve unknowns.</p><h2>Dependencies</h2><p>Depends on the static shell.</p><h2>Verification</h2><p>Type text, reload to confirm restore, wait through debounce, clear entry, and confirm no backend or framework is introduced.</p><h2>Completion Gate</h2><p>Complete when localStorage behavior works for the happy path and clear action.</p>",
         )
         .unwrap();
     }
@@ -685,18 +796,7 @@ mod tests {
         assert_eq!(status.answered_count, 0);
         assert!(status.current_question.is_none());
 
-        fs::create_dir_all(root.join("wiki").join("plans").join("mvp")).unwrap();
-        fs::write(
-            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
-            "---\ntitle: \"MVP Plan\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><p>Stage and unit plan grounded in source decisions and unknowns.</p>",
-        )
-        .unwrap();
-        fs::create_dir_all(root.join("wiki").join("plans").join("mvp").join("stage-01")).unwrap();
-        fs::write(
-            root.join("wiki").join("plans").join("mvp").join("stage-01").join("unit-01-build.mdx"),
-            "---\ntitle: \"Unit 01\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01</h1><h2>Source Context</h2><p>Source decision.</p><h2>Verification</h2><p>Run checks.</p>",
-        )
-        .unwrap();
+        write_valid_import_plan(&root);
 
         let status = import_planning_status(&root);
         assert_eq!(status.status, "complete");
@@ -721,6 +821,11 @@ mod tests {
         make_imported_project(&root);
         fs::create_dir_all(root.join("wiki").join("plans").join("mvp")).unwrap();
         fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            "---\ntitle: \"Plans\"\ndescription: \"Current project plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><p>Active plan: MVP. Shape: single-stage MVP. Current unit: Unit 01. Next action: repair. Blockers: invalid unit. Validation: failing.</p>",
+        )
+        .unwrap();
+        fs::write(
             root.join("wiki").join("plans").join("mvp").join("index.mdx"),
             "---\ntitle: \"MVP Plan\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><p>Stage and unit list from source decisions.</p>",
         )
@@ -743,6 +848,43 @@ mod tests {
             .repair_prompt
             .unwrap()
             .contains("Repair the staged Hyperwiki import plan artifacts"));
+    }
+
+    #[test]
+    fn generated_plan_validation_rejects_confirmed_mvp_placeholder() {
+        let root = temp_root("placeholder-plan");
+        make_imported_project(&root);
+        fs::create_dir_all(root.join("wiki").join("plans").join("mvp")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            "---\ntitle: \"Plans\"\ndescription: \"Current project plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><p>Active plan: MVP. Shape: single-stage MVP. Current unit: Unit 01. Next action: implement. Blockers: none. Validation: pending.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            "---\ntitle: \"MVP Plan\"\ndescription: \"Runtime fallback.\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><p>Stage 01 and Unit 01 from source decisions and unknowns.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("unit-01-confirmed-mvp.mdx"),
+            "---\ntitle: \"Unit 01 - Confirmed MVP Slice\"\ndescription: \"Placeholder.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - Confirmed MVP Slice</h1><h2>Intent</h2><p>Source decision.</p><h2>Scope</h2><p>Build the MVP.</p><h2>Implementation Notes</h2><p>Unknowns remain.</p><h2>Dependencies</h2><p>None.</p><h2>Verification</h2><p>Run checks.</p><h2>Completion Gate</h2><p>Done when implemented.</p>",
+        )
+        .unwrap();
+
+        let validation = validate_import_plan_artifacts(&root);
+        assert_eq!(validation.status, "invalid");
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("generic confirmed MVP slice placeholder")));
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("at least two concrete executable unit pages")));
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("missing a stage page")));
     }
 
     #[test]

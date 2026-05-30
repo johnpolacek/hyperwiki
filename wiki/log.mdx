@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 fix | import onboarding MVP artifact shape</h2>
+  <ul>
+    <li>Removed the conservative one-unit runtime fallback that completed imported-project onboarding with a generic <code>Unit 01 - Confirmed MVP Slice</code> plan after <code>hyperwiki-ready-to-plan</code>.</li>
+    <li>Changed ready-to-plan handling to start the backend-owned <code>hyperwiki-plan-artifacts</code> generation run and leave provider stalls as retryable failures instead of committing placeholder plans.</li>
+    <li>Strengthened import artifact validation so MVP plans require a stage page, at least two concrete executable unit pages, Plans index current-work fields, unit handoff sections, and no confirmed-MVP placeholder wording.</li>
+    <li>Updated static smoke coverage to assert the artifact-generation contract and reject the old direct completion fallback.</li>
+    <li>Verified with focused <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code> and <code>import_onboarding_runtime</code>, plus <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding direct plan completion</h2>
   <ul>
     <li>Removed the second hidden Codex plan-artifact turn from the normal imported-project onboarding path.</li>

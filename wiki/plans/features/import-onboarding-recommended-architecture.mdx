@@ -10,10 +10,10 @@ wikiKind: "plan"
   <ul>
     <li>Status: implementation in progress</li>
     <li>Shape: go-forward architecture plan</li>
-    <li>Current unit: corrective runtime refactor after Unit 05 dogfooding</li>
+    <li>Current unit: corrective MVP artifact planning shape hardening complete</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
-    <li>Next action: dogfood a fresh import against the Rust-owned runtime endpoints and verify first question, answer-to-ready-to-plan, immediate runtime plan completion, retry, and generated-plan validation.</li>
+    <li>Next action: dogfood a fresh import against the stricter artifact-generation path and verify the generated plan has concrete stages and units before onboarding completion.</li>
   </ul>
 </section>
 <section>
@@ -34,7 +34,8 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: chained runtime transitions now release the completed active run before starting plan generation, repair, or plan repair, preventing the active-run guard from trapping onboarding after a valid <code>hyperwiki-ready-to-plan</code> signal.</li>
     <li>Corrective follow-up on 2026-05-29: the runtime finalizer now uses compare-and-release semantics, matching Tandem's <code>finish_if_match</code> pattern, so a completed parent run cannot erase a newly active child run.</li>
     <li>Corrective refactor on 2026-05-29: plan generation now follows the DeepAgents virtual-filesystem pattern. Codex generates a structured <code>hyperwiki-plan-artifacts</code> payload, while the Rust runtime owns safe MDX writes and deterministic validation.</li>
-    <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding no longer starts a second hidden plan-artifact agent turn. The Rust runtime writes a conservative MVP plan from accepted decisions and imported source context, then runs the same safe-path and MDX validators before marking onboarding complete.</li>
+    <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding briefly wrote a conservative one-unit MVP plan from accepted decisions and imported source context. Dogfooding showed that this satisfied weak validators while failing Hyperwiki's stage/unit planning contract, so the go-forward path returns to explicit artifact generation with stronger validation and retryable failure on provider stalls.</li>
+    <li>Corrective follow-up complete on 2026-05-30: ready-to-plan now starts the backend-owned artifact-generation run, the conservative runtime fallback was removed, the plan prompt embeds the Hyperwiki stage/unit contract, and validators reject generic confirmed-MVP placeholders, missing stage pages, and single-unit MVP plans.</li>
   </ul>
 </section>
 <section>
@@ -60,7 +61,7 @@ wikiKind: "plan"
     <li>Do not introduce a standalone sidecar service in the first implementation.</li>
     <li>Do not adopt Open Harness, deepagents, LangGraph, or another external agent harness as a runtime dependency until a local prototype proves it fits Tauri packaging and the local trust boundary.</li>
     <li>Do not build a general Hyperwiki run engine for every agent workflow yet. Import onboarding is the only committed consumer.</li>
-    <li>Do not ask a second hidden Codex turn to generate final plan docs after the interview is decision-complete. The runtime generates a conservative plan only after Codex has completed the Q&amp;A contract with <code>hyperwiki-ready-to-plan</code>.</li>
+    <li>Do not mark onboarding complete from a generic runtime-authored placeholder. The plan artifact run may be backend-managed, but it must produce concrete stage and unit MDX artifacts that pass Hyperwiki's planning contract.</li>
     <li>Do not solve full semantic retrieval, vector search, or tool-RAG in the first slice. Use compact deterministic context packs first.</li>
   </ul>
 </section>
@@ -74,7 +75,7 @@ wikiKind: "plan"
     <li>Represent questions as durable <code>HumanInputRequest</code> objects with IDs, run IDs, text, options, freeform allowance, source evidence, status, and accepted answer.</li>
     <li>Represent generated plan output as staged artifacts or virtual files until deterministic validators approve the actual write to <code>wiki/</code>.</li>
     <li>Superseded plan-generation boundary: Codex briefly generated virtual artifact paths and complete MDX contents while Hyperwiki owned safe writes, but dogfooding showed the second hidden turn was still too unreliable.</li>
-    <li>Implemented plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, Hyperwiki writes only <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code> from accepted decisions and imported source context, then validates before completion.</li>
+    <li>Implemented plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, Hyperwiki starts a backend-owned plan artifact generation run. The model returns structured artifact JSON, while the Rust runtime owns safe writes, artifact validation, and retryable failure states.</li>
     <li>React renders typed backend state and submits answers by request ID. It must not parse raw Codex output, infer plan completion from assistant text, or own retry timing.</li>
     <li>Implemented refactor note: React still retains the generic terminal planning parser for non-import planning, but imported-project onboarding now treats Rust runtime status and event records as the source of truth.</li>
   </ul>
@@ -195,6 +196,7 @@ wikiKind: "plan"
     <li>Unit 03 - Durable human-input bridge: add <code>HumanInputRequest</code>, checkpoint persistence, answer-by-ID routing, stale-answer rejection, durable Q&amp;A writes, and reload recovery for a pending question.</li>
     <li>Unit 04 - Artifact staging and validation: add staged artifact records, validators for MDX/frontmatter/links/required sections/source grounding, repair-loop prompt, and commit policy for real wiki writes.</li>
     <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy. Complete on 2026-05-29.</li>
+    <li>Unit 06 - MVP artifact shape hardening: remove the one-unit conservative completion fallback, require stage and multi-unit artifacts, and keep provider stalls as retryable failures instead of completing with placeholder plans. Complete on 2026-05-30.</li>
   </ul>
 </section>
 <section>
@@ -205,6 +207,7 @@ wikiKind: "plan"
     <li>Unit 03 is complete when reloading during a pending question restores the same request ID and stale answer submissions are rejected without starting Codex.</li>
     <li>Unit 04 is complete when malformed or incomplete generated plans stay staged, validation errors are visible to the repair loop, and valid artifacts are committed to actual wiki files.</li>
     <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events. Implemented by binding the import Q&amp;A view to backend run status, showing the run phase in the activity panel, exposing cancel, and removing the old terminal-replay monitor from the import-planning route.</li>
+    <li>Unit 06 is complete when <code>hyperwiki-ready-to-plan</code> chains to artifact generation, the runtime no longer contains the generic confirmed-MVP fallback, validators require an MVP stage page and at least two concrete unit pages, and static smoke coverage rejects the old fallback path.</li>
   </ul>
 </section>
 <section>
@@ -214,7 +217,7 @@ wikiKind: "plan"
     <li>Answer submission records durable Q&amp;A and produces a follow-up question or final plan state without duplicate turns.</li>
     <li>Reload during a pending question restores the backend checkpoint and prevents stale answer routing.</li>
     <li>Malformed question output, Codex restart, provider timeout, cancellation, and artifact validation failure become explicit retryable states where possible.</li>
-    <li>Generated onboarding completion is based on validated wiki files, not assistant text.</li>
+    <li>Generated onboarding completion is based on validated wiki files, not assistant text or a generic runtime fallback.</li>
     <li>Latency metrics are captured for provider startup, first progress, first question, answer-to-follow-up, and plan generation start.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, focused Codex adapter tests, state-machine unit tests, checkpoint resume tests, artifact validator tests, and an import-onboarding smoke test.</li>
   </ul>
