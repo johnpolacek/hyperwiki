@@ -1575,6 +1575,7 @@ fn compile_import_mvp_plan_artifacts(
         || lower.contains("static html");
     let title = clean_plan_title(&project.name);
     let decision_summary = compact_for_plan(&evidence, 900);
+    let source_terms = source_terms_for_plan(&evidence);
     let escaped_title = escape_html_text(&title);
     let escaped_decisions = escape_html_text(&decision_summary);
 
@@ -1588,6 +1589,7 @@ fn compile_import_mvp_plan_artifacts(
     Ok(compile_generic_source_mvp_artifacts(
         &escaped_title,
         &escaped_decisions,
+        &source_terms,
     ))
 }
 
@@ -1637,40 +1639,48 @@ fn compile_static_local_mvp_artifacts(
 fn compile_generic_source_mvp_artifacts(
     title: &str,
     decision_summary: &str,
+    source_terms: &[String],
 ) -> Vec<GeneratedPlanArtifact> {
+    let source_focus = escape_html_text(&source_focus_phrase(source_terms, title));
+    let unit_01_title = format!("Unit 01 - {source_focus} Surface");
+    let unit_02_title = format!("Unit 02 - {source_focus} Workflow");
+    let unit_03_title = format!("Unit 03 - {source_focus} Verification");
     vec![
         GeneratedPlanArtifact {
             path: "wiki/plans/index.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Plans</h1><p>Current source-grounded implementation plans for {title}.</p></PlanHero><PlanSummary><ul><li>Status: active planning</li><li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li><li>Shape: single-stage MVP with three executable units</li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Unit 01 - MVP Surface Shell</a></li><li>Next action: implement the source-decided MVP shell.</li><li>Blockers: none from accepted import decisions.</li><li>Validation: repository checks plus manual verification of the imported source workflow.</li></ul></PlanSummary>"
+                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Plans</h1><p>Current source-grounded implementation plans for {title}.</p></PlanHero><PlanSummary><ul><li>Status: active planning</li><li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li><li>Shape: single-stage MVP with three executable units</li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">{unit_01_title}</a></li><li>Next action: implement the source-decided {source_focus} surface.</li><li>Blockers: none from accepted import decisions.</li><li>Validation: repository checks plus manual verification of the {source_focus} workflow.</li></ul></PlanSummary>"
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/index.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"{title} MVP Plan\"\ndescription: \"Source-grounded MVP plan compiled from import Q&amp;A decisions.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title} MVP Plan</h1><p>Source-grounded MVP plan compiled from accepted import Q&amp;A decisions.</p></PlanHero><PlanSummary><ul><li>Status: active</li><li>Shape: single-stage MVP</li><li>Current stage: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp.mdx\">Stage 01 - Source Grounded MVP</a></li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Unit 01 - MVP Surface Shell</a></li><li>Unknowns: no blocking implementation unknowns remain in the accepted ready-to-plan contract.</li></ul></PlanSummary><Evidence title=\"Accepted source decisions\"><p>The visible plan summarizes the accepted source boundary. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Steps><Step title=\"Stage 01 - Source Grounded MVP\"><p>Implement the accepted source-grounded MVP units.</p></Step></Steps><Decision title=\"Deferred Work\"><p>Unrequested services, integrations, and post-MVP polish remain deferred until a later decision.</p></Decision>"
+                "---\ntitle: \"{title} MVP Plan\"\ndescription: \"Source-grounded MVP plan compiled from import Q&amp;A decisions.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title} MVP Plan</h1><p>Source-grounded MVP plan compiled from accepted import Q&amp;A decisions for {source_focus}.</p></PlanHero><PlanSummary><ul><li>Status: active</li><li>Shape: single-stage MVP</li><li>Current stage: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp.mdx\">Stage 01 - Source Grounded MVP</a></li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">{unit_01_title}</a></li><li>Unknowns: no blocking implementation unknowns remain in the accepted ready-to-plan contract.</li></ul></PlanSummary><Evidence title=\"Accepted source decisions\"><p>The visible plan centers the {source_focus} behavior and keeps the accepted source boundary available for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Steps><Step title=\"{unit_01_title}\"><p>Create the source-decided {source_focus} user-facing surface.</p></Step><Step title=\"{unit_02_title}\"><p>Implement the core {source_focus} workflow described by the imported source and accepted decisions.</p></Step><Step title=\"{unit_03_title}\"><p>Verify the {source_focus} happy path and record remaining source-specific unknowns.</p></Step></Steps><Decision title=\"Deferred Work\"><p>Unrequested services, integrations, and post-MVP polish remain deferred until a later decision.</p></Decision>"
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-source-grounded-mvp.mdx".to_string(),
-            content: "---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the accepted imported-project MVP.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Stage 01 - Source Grounded MVP</h1><p>Stage goal: implement the source-decided MVP behavior without adding unrequested product scope.</p></PlanHero><Steps><Step title=\"Unit 01 - MVP Surface Shell\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx\">Create the minimum source-decided user-facing MVP surface.</a></p></Step><Step title=\"Unit 02 - Core Source Behavior\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-core-source-behavior.mdx\">Implement the primary behavior described by the imported source and accepted decisions.</a></p></Step><Step title=\"Unit 03 - Verification And Handoff\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-verification-and-handoff.mdx\">Verify the source-described happy path and record remaining unknowns.</a></p></Step></Steps><Decision title=\"Dependencies\"><p>Depends on accepted import source decisions and Q&amp;A answers.</p></Decision><Verification><p>Run applicable repository checks and manually exercise the source-described workflow.</p></Verification><section><h2>Completion Gate</h2><p>Complete when all units are implemented and verified against source decisions.</p></section>".to_string(),
+            content: format!("---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the accepted imported-project MVP.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Stage 01 - Source Grounded MVP</h1><p>Stage goal: implement the source-decided {source_focus} MVP behavior without adding unrequested product scope.</p></PlanHero><Steps><Step title=\"{unit_01_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">Create the minimum source-decided {source_focus} user-facing surface.</a></p></Step><Step title=\"{unit_02_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-source-workflow.mdx\">Implement the primary {source_focus} workflow described by the imported source and accepted decisions.</a></p></Step><Step title=\"{unit_03_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-source-verification.mdx\">Verify the {source_focus} happy path and record remaining unknowns.</a></p></Step></Steps><Decision title=\"Dependencies\"><p>Depends on accepted import source decisions and Q&amp;A answers for {source_focus}.</p></Decision><Verification><p>Run applicable repository checks, then manually exercise the {source_focus} workflow named by the imported source.</p></Verification><section><h2>Completion Gate</h2><p>Complete when all {source_focus} units are implemented and verified against source decisions.</p></section>"),
         },
         generic_unit_artifact(
-            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-mvp-surface-shell.mdx",
-            "Unit 01 - MVP Surface Shell",
-            "Create the minimum source-decided user-facing MVP surface.",
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx",
+            &unit_01_title,
+            &format!("Create the minimum source-decided {source_focus} user-facing surface."),
+            &source_focus,
             decision_summary,
         ),
         generic_unit_artifact(
-            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-core-source-behavior.mdx",
-            "Unit 02 - Core Source Behavior",
-            "Implement the primary behavior described by the imported source and accepted decisions.",
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-source-workflow.mdx",
+            &unit_02_title,
+            &format!("Implement the primary {source_focus} workflow described by the imported source and accepted decisions."),
+            &source_focus,
             decision_summary,
         ),
         generic_unit_artifact(
-            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-verification-and-handoff.mdx",
-            "Unit 03 - Verification And Handoff",
-            "Verify the source-described happy path and record remaining unknowns.",
+            "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-source-verification.mdx",
+            &unit_03_title,
+            &format!("Verify the {source_focus} happy path and record remaining source-specific unknowns."),
+            &source_focus,
             decision_summary,
         ),
     ]
@@ -1680,14 +1690,89 @@ fn generic_unit_artifact(
     path: &str,
     title: &str,
     intent: &str,
+    source_focus: &str,
     decision_summary: &str,
 ) -> GeneratedPlanArtifact {
     GeneratedPlanArtifact {
         path: path.to_string(),
         content: format!(
-            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use the accepted source decisions as authority, but keep visible instructions concise.</p></section><Evidence title=\"Accepted source decisions\"><p>Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Decision title=\"Dependencies\"><p>Depends on prior units in Stage 01 and the accepted import Q&amp;A decisions. Blockers: none unless implementation discovers a contradiction with source evidence.</p></Decision><Verification><p>Run applicable repository checks and manually exercise the behavior named by the imported source.</p></Verification><section><h2>Completion Gate</h2><p>Complete when the unit behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
+            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and implement only the {source_focus} behavior named by source evidence. Avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use accepted source decisions for {source_focus} as authority. Preserve source-specific constraints in code or handoff notes when implementation discovers a contradiction.</p></section><Evidence title=\"Accepted source decisions\"><p>The visible execution target is {source_focus}. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Decision title=\"Dependencies\"><p>Depends on prior units in Stage 01 and accepted import Q&amp;A decisions for {source_focus}. Blockers: none unless implementation contradicts source evidence.</p></Decision><Verification><p>Run applicable repository checks, open the implemented {source_focus} surface, exercise the source-described happy path, and confirm the observed behavior matches accepted import decisions before marking complete.</p></Verification><section><h2>Completion Gate</h2><p>Complete when the {source_focus} behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
         ),
     }
+}
+
+fn source_terms_for_plan(content: &str) -> Vec<String> {
+    let mut terms = Vec::new();
+    for token in content
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .map(str::trim)
+        .filter(|token| token.len() >= 5)
+        .map(|token| token.to_lowercase())
+    {
+        if PLAN_COMMON_TERMS.contains(&token.as_str()) || terms.contains(&token) {
+            continue;
+        }
+        terms.push(token);
+        if terms.len() >= 5 {
+            break;
+        }
+    }
+    terms
+}
+
+const PLAN_COMMON_TERMS: &[&str] = &[
+    "accepted",
+    "answer",
+    "answers",
+    "brief",
+    "build",
+    "complete",
+    "context",
+    "create",
+    "creates",
+    "decision",
+    "decisions",
+    "description",
+    "generated",
+    "hyperwiki",
+    "implementation",
+    "intent",
+    "import",
+    "imported",
+    "local",
+    "manual",
+    "planning",
+    "project",
+    "reasoning",
+    "source",
+    "sources",
+    "stage",
+    "summary",
+    "unknown",
+    "unknowns",
+    "validation",
+    "verification",
+];
+
+fn source_focus_phrase(source_terms: &[String], fallback: &str) -> String {
+    let selected = source_terms
+        .iter()
+        .take(3)
+        .map(|term| title_word(term))
+        .collect::<Vec<_>>();
+    if selected.is_empty() {
+        fallback.to_string()
+    } else {
+        selected.join(" ")
+    }
+}
+
+fn title_word(value: &str) -> String {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return String::new();
+    };
+    format!("{}{}", first.to_uppercase(), chars.as_str())
 }
 
 fn clean_plan_title(value: &str) -> String {
@@ -2292,6 +2377,45 @@ mod tests {
                 .count(),
             3
         );
+    }
+
+    #[test]
+    fn deterministic_compiler_generates_valid_generic_source_mvp_plan() {
+        let root = temp_root("compiled-generic-plan");
+        fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import.mdx"),
+            "<h1>RouteChat</h1><p>RouteChat creates walking tour routes with map pins, itinerary editing, and shareable route links.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import-qna.mdx"),
+            "<h1>Import Q&amp;A</h1><p>Decision: prioritize walking tour route creation, map pins, itinerary editing, and shareable links.</p>",
+        )
+        .unwrap();
+        let mut project = test_project(root.clone());
+        project.name = "RouteChat".to_string();
+        let source_context = read_import_source_context(&root);
+        let ready_context = "Reasoning: Decisions are complete.\nPlan intent: Create a RouteChat MVP for walking tour routes, map pins, itinerary editing, and shareable route links.";
+
+        let artifacts =
+            compile_import_mvp_plan_artifacts(&project, ready_context, &source_context).unwrap();
+        let joined = artifacts
+            .iter()
+            .map(|artifact| artifact.content.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        assert!(joined.contains("Routechat Walking Routes"));
+        assert!(joined.contains("walking tour"));
+        assert!(joined.contains("map pins"));
+        assert!(!joined.contains("MVP Surface Shell"));
+        assert!(!joined.contains("Core Source Behavior"));
+        assert!(!joined.contains("Run checks."));
+
+        write_generated_plan_artifacts(&root, &artifacts).unwrap();
+        let validation = validate_import_plan_artifacts(&root);
+        assert_eq!(validation.status, "valid", "{:?}", validation.errors);
     }
 
     #[test]

@@ -1,0 +1,34 @@
+---
+title: "Import Plan Detail Quality Gate"
+description: "Ensure generated import stages and units are detailed enough to execute, not just structurally valid."
+wikiKind: "plan"
+---
+
+<PlanHero title="Import Plan Detail Quality Gate" status="complete" description="Tighten import plan validation and deterministic fallback generation so stage and unit pages preserve concrete source-specific planning detail." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Completed unit: Unit 01 - Source-specific unit quality validation</li>
+    <li>Next action: dogfood the next imported project and inspect generated unit detail in the app.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused import planning/runtime tests plus <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</PlanSummary>
+
+## Reader Goal
+
+After 2 minutes, the reader can tell how Hyperwiki rejects generic imported-project unit plans and what detail the fallback compiler must include.
+
+<PlanUnit title="Unit 01 - Source-specific unit quality validation">
+  <p>Add a validation gate that rejects generic MVP unit titles, thin verification instructions, and unit pages that do not reuse concrete source terms when imported source evidence is available.</p>
+  <p>Update the deterministic generic compiler so fallback stages and units include concrete source keywords, accepted decision summaries, source-specific scope, and manual acceptance checks.</p>
+</PlanUnit>
+
+<Verification>
+  <ul>
+    <li>Completed: focused import planning/runtime tests cover valid source-specific unit pages and invalid generic fallback pages.</li>
+    <li>Completed: <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</Verification>

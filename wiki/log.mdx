@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | import plan detail quality gate</h2>
+  <ul>
+    <li>Added source-keyword-aware validation for generated imported-project unit pages, rejecting generic unit titles, generic source-decision prose, thin <code>Run checks</code> verification, and unit pages that do not visibly reuse concrete imported source terms.</li>
+    <li>Updated the deterministic generic import compiler so fallback stage and unit pages use source-derived focus terms, concrete scope, source-specific dependencies, and manual acceptance checks.</li>
+    <li>Validation: focused import planning/runtime tests, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | rich planning MDX composition</h2>
   <ul>
     <li>Added Holocron-inspired planning structures <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to Hyperwiki's local MDX plan renderer and Rust wiki document pipeline.</li>

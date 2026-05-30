@@ -292,6 +292,7 @@ pub fn has_generated_plan_pages(root: &Path) -> bool {
 
 pub fn validate_import_plan_artifacts(root: &Path) -> ImportPlanningArtifactValidation {
     let mut artifacts = collect_import_plan_artifacts(root);
+    let source_terms = source_specific_terms(root);
     let mut errors = Vec::new();
     if artifacts.is_empty() {
         errors.push("No generated plan artifacts were found under wiki/plans/.".to_string());
@@ -329,6 +330,15 @@ pub fn validate_import_plan_artifacts(root: &Path) -> ImportPlanningArtifactVali
             .push("Generated MVP plan is missing a stage page under wiki/plans/mvp/.".to_string());
     }
     for artifact in artifacts.iter_mut() {
+        if is_unit_artifact_path(&artifact.intended_path) {
+            artifact
+                .validation_errors
+                .extend(validate_unit_detail_quality(
+                    &artifact.intended_path,
+                    root,
+                    &source_terms,
+                ));
+        }
         if artifact.validation_errors.is_empty() {
             artifact.validation_status = "valid".to_string();
         } else {
@@ -422,6 +432,69 @@ fn staged_artifact_record(
     })
 }
 
+fn validate_unit_detail_quality(path: &str, root: &Path, source_terms: &[String]) -> Vec<String> {
+    let full_path = root.join(path);
+    let content = fs::read_to_string(full_path).unwrap_or_default();
+    let visible = strip_agent_visibility_blocks(&content);
+    let lower = visible.to_lowercase();
+    let mut errors = Vec::new();
+
+    for phrase in [
+        "mvp surface shell",
+        "core source behavior",
+        "verification and handoff",
+        "confirmed mvp slice",
+        "build the mvp",
+        "source decision.",
+        "run checks.",
+        "use the accepted source decisions as authority, but keep visible instructions concise",
+        "manually exercise the behavior named by the imported source",
+    ] {
+        if lower.contains(phrase) {
+            errors.push(format!(
+                "unit page contains generic planning detail: {phrase}"
+            ));
+        }
+    }
+
+    if source_terms.len() >= 3 {
+        let matched = source_terms
+            .iter()
+            .filter(|term| lower.contains(term.as_str()))
+            .take(3)
+            .count();
+        if matched < 2 {
+            errors.push(
+                "unit page must include at least two concrete terms from imported source/Q&A in visible planning content"
+                    .to_string(),
+            );
+        }
+    }
+
+    let verification = section_after_heading(&visible, "verification");
+    let verification = if verification.trim().is_empty() {
+        strip_htmlish(&visible)
+    } else {
+        verification
+    };
+    let verification_lower = verification.to_lowercase();
+    if verification.split_whitespace().count() < 10
+        || verification_lower.trim() == "run checks."
+        || ![
+            "open", "type", "reload", "confirm", "inspect", "exercise", "verify", "run",
+        ]
+        .iter()
+        .any(|verb| verification_lower.contains(verb))
+    {
+        errors.push(
+            "unit page verification must name concrete automated or manual acceptance checks"
+                .to_string(),
+        );
+    }
+
+    errors
+}
+
 fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
     let mut errors = Vec::new();
     let trimmed = content.trim_start();
@@ -500,6 +573,177 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
         );
     }
     errors
+}
+
+fn source_specific_terms(root: &Path) -> Vec<String> {
+    let source_root = root.join("wiki").join("sources");
+    let candidates = [
+        source_root.join("import.mdx"),
+        source_root.join("import-qna.mdx"),
+        source_root.join("import-state.mdx"),
+        source_root.join("prd.mdx"),
+        source_root.join("technical-brief.mdx"),
+        source_root.join("design-brief.mdx"),
+    ];
+    let mut terms = Vec::new();
+    for path in candidates {
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        for term in concrete_terms(&strip_htmlish(&content)) {
+            if !terms.contains(&term) {
+                terms.push(term);
+            }
+        }
+    }
+    terms.truncate(24);
+    terms
+}
+
+fn concrete_terms(content: &str) -> Vec<String> {
+    content
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .map(str::trim)
+        .filter(|token| token.len() >= 5)
+        .map(|token| token.to_lowercase())
+        .filter(|token| !COMMON_IMPORT_PLAN_TERMS.contains(&token.as_str()))
+        .collect()
+}
+
+const COMMON_IMPORT_PLAN_TERMS: &[&str] = &[
+    "about",
+    "accepted",
+    "active",
+    "answer",
+    "answers",
+    "brief",
+    "build",
+    "complete",
+    "context",
+    "create",
+    "current",
+    "creates",
+    "decision",
+    "decisions",
+    "description",
+    "generated",
+    "hyperwiki",
+    "implementation",
+    "intent",
+    "import",
+    "imported",
+    "local",
+    "manual",
+    "missing",
+    "planning",
+    "project",
+    "reasoning",
+    "source",
+    "sources",
+    "stage",
+    "status",
+    "summary",
+    "title",
+    "unknown",
+    "unknowns",
+    "validation",
+    "verification",
+    "wikikind",
+];
+
+fn strip_htmlish(content: &str) -> String {
+    let mut output = String::new();
+    let mut in_tag = false;
+    for ch in content.chars() {
+        match ch {
+            '<' => {
+                in_tag = true;
+                output.push(' ');
+            }
+            '>' => {
+                in_tag = false;
+                output.push(' ');
+            }
+            _ if !in_tag => output.push(ch),
+            _ => {}
+        }
+    }
+    output
+        .replace("&amp;", " ")
+        .replace("&quot;", " ")
+        .replace("&lt;", " ")
+        .replace("&gt;", " ")
+}
+
+fn strip_agent_visibility_blocks(content: &str) -> String {
+    let mut output = content.to_string();
+    let mut cursor = 0;
+    loop {
+        let lower = output.to_lowercase();
+        let Some(relative_start) = lower[cursor..].find("<visibility") else {
+            break;
+        };
+        let start = cursor + relative_start;
+        let Some(open_end_relative) = lower[start..].find('>') else {
+            break;
+        };
+        let open_end = start + open_end_relative + 1;
+        let opening = &lower[start..open_end];
+        if !opening.contains("agents") {
+            cursor = open_end;
+            continue;
+        }
+        if let Some(close_relative) = lower[open_end..].find("</visibility>") {
+            let close_end = open_end + close_relative + "</visibility>".len();
+            output.replace_range(start..close_end, "");
+            cursor = start;
+        } else {
+            output.replace_range(start..output.len(), "");
+            break;
+        }
+    }
+    output
+}
+
+fn section_after_heading(content: &str, heading: &str) -> String {
+    let lower = content.to_lowercase();
+    let component_open = format!("<{heading}");
+    if let Some(start) = lower.find(&component_open) {
+        let after_open = content[start..]
+            .find('>')
+            .map(|index| start + index + 1)
+            .unwrap_or(start + component_open.len());
+        let close = format!("</{heading}>");
+        let end = lower[after_open..]
+            .find(&close)
+            .map(|index| after_open + index)
+            .unwrap_or(content.len());
+        return strip_htmlish(&content[after_open..end]);
+    }
+    let patterns = [
+        format!("<h2>{heading}"),
+        format!("## {heading}"),
+        heading.to_string(),
+    ];
+    let mut found = None;
+    for pattern in patterns {
+        if let Some(index) = lower.find(&pattern) {
+            found = Some((index, pattern.len()));
+            break;
+        }
+    }
+    let Some((start, pattern_len)) = found else {
+        return String::new();
+    };
+    let rest = &content[start + pattern_len..];
+    let rest_lower = rest.to_lowercase();
+    let end = ["<h2", "## ", "<section", "<verification", "</verification>"]
+        .iter()
+        .filter_map(|needle| rest_lower.find(needle))
+        .filter(|index| *index > 0)
+        .min()
+        .unwrap_or(rest.len());
+    strip_htmlish(&rest[..end])
 }
 
 fn is_unit_artifact_path(path: &str) -> bool {
@@ -725,12 +969,12 @@ mod tests {
         fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
         fs::write(
             root.join("wiki").join("sources").join("import.mdx"),
-            "<h1>Source Import</h1><p>RouteChat imported source.</p>",
+            "<h1>Source Import</h1><p>RouteChat creates walking tour routes with map pins and shareable itineraries.</p>",
         )
         .unwrap();
         fs::write(
             root.join("wiki").join("sources").join("prd.mdx"),
-            "<h1>Product Brief</h1><section><h2>Summary</h2><ul><li>RouteChat creates tours.</li></ul></section>",
+            "<h1>Product Brief</h1><section><h2>Summary</h2><ul><li>RouteChat creates walking tours and shareable route itineraries.</li></ul></section>",
         )
         .unwrap();
         fs::write(
@@ -772,7 +1016,7 @@ mod tests {
                 .join("mvp")
                 .join("stage-01-static-mvp-foundation")
                 .join("unit-01-static-shell.mdx"),
-            "---\ntitle: \"Unit 01 - Static Shell\"\ndescription: \"Create the source-grounded static UI shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - Static Shell</h1><h2>Intent</h2><p>Build the static source-decided UI shell.</p><h2>Scope</h2><p>One self-contained HTML surface.</p><h2>Implementation Notes</h2><p>Use embedded CSS and JavaScript. Preserve source decisions and unknowns.</p><h2>Dependencies</h2><p>Depends on the accepted local-only decision.</p><h2>Verification</h2><p>Open the HTML and inspect the textarea workflow.</p><h2>Completion Gate</h2><p>Complete when the shell renders without backend, framework, or network scope.</p>",
+            "---\ntitle: \"Unit 01 - RouteChat Tour Shell\"\ndescription: \"Create the source-grounded route tour UI shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - RouteChat Tour Shell</h1><h2>Intent</h2><p>Build the RouteChat walking tour shell for route itineraries.</p><h2>Scope</h2><p>One source-decided surface for walking tour route entry, map pin placeholders, and itinerary review.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat tour decisions. Preserve source decisions and unknowns around shareable routes.</p><h2>Dependencies</h2><p>Depends on the accepted RouteChat walking tour decision.</p><h2>Verification</h2><p>Open the surface, enter a walking tour route, inspect map pin placeholders, and confirm the itinerary review path is visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat tour shell renders the route itinerary workflow without backend, framework, or network scope.</p>",
         )
         .unwrap();
         fs::write(
@@ -781,7 +1025,7 @@ mod tests {
                 .join("mvp")
                 .join("stage-01-static-mvp-foundation")
                 .join("unit-02-persistence-and-interactions.mdx"),
-            "---\ntitle: \"Unit 02 - Persistence And Interactions\"\ndescription: \"Add local persistence and source-grounded interactions.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - Persistence And Interactions</h1><h2>Intent</h2><p>Implement source-decided localStorage autosave, restore, and clear behavior.</p><h2>Scope</h2><p>Persistence, debounced autosave, load-on-open restore, and clear-entry interaction.</p><h2>Implementation Notes</h2><p>Use the accepted static local-only MVP answer and preserve unknowns.</p><h2>Dependencies</h2><p>Depends on the static shell.</p><h2>Verification</h2><p>Type text, reload to confirm restore, wait through debounce, clear entry, and confirm no backend or framework is introduced.</p><h2>Completion Gate</h2><p>Complete when localStorage behavior works for the happy path and clear action.</p>",
+            "---\ntitle: \"Unit 02 - RouteChat Tour Interactions\"\ndescription: \"Add source-grounded RouteChat tour interactions.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - RouteChat Tour Interactions</h1><h2>Intent</h2><p>Implement walking tour route creation, itinerary edits, and shareable route interaction state.</p><h2>Scope</h2><p>RouteChat tour route editing, map pin interaction state, itinerary updates, and shareable route handoff copy.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat walking tour answer and preserve unknowns around map pins and shareable itineraries.</p><h2>Dependencies</h2><p>Depends on the RouteChat tour shell.</p><h2>Verification</h2><p>Create a walking tour route, update map pins, edit the itinerary, and confirm the shareable route handoff remains visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat walking tour workflow works for route creation, itinerary editing, and shareable route review.</p>",
         )
         .unwrap();
     }
@@ -885,6 +1129,63 @@ mod tests {
             .errors
             .iter()
             .any(|error| error.contains("missing a stage page")));
+    }
+
+    #[test]
+    fn generated_plan_validation_rejects_generic_unit_detail() {
+        let root = temp_root("generic-unit-detail");
+        make_imported_project(&root);
+        fs::create_dir_all(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-source-grounded-mvp"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            "---\ntitle: \"Plans\"\ndescription: \"Current project plans.\"\nwikiKind: \"plan\"\n---\n\n<h1>Plans</h1><p>Active plan: MVP. Shape: single-stage MVP. Current unit: Unit 01. Next action: implement. Blockers: none. Validation: pending.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            "---\ntitle: \"MVP Plan\"\ndescription: \"Source-grounded MVP plan.\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><p>Stage 01 and Unit 01 from source decisions and unknowns.</p>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("stage-01-source-grounded-mvp.mdx"),
+            "---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the source-grounded MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Source Grounded MVP</h1><h2>Stage Goal</h2><p>Implement RouteChat walking tour routes.</p><h2>Unit Sequence</h2><p>Unit 01 and Unit 02.</p><h2>Verification</h2><p>Verify RouteChat walking tour route behavior.</p><h2>Completion Gate</h2><p>Complete when units pass.</p>",
+        )
+        .unwrap();
+        for unit in [
+            "unit-01-mvp-surface-shell.mdx",
+            "unit-02-core-source-behavior.mdx",
+        ] {
+            fs::write(
+                root.join("wiki")
+                    .join("plans")
+                    .join("mvp")
+                    .join("stage-01-source-grounded-mvp")
+                    .join(unit),
+                "---\ntitle: \"Unit 01 - MVP Surface Shell\"\ndescription: \"Generic.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - MVP Surface Shell</h1><h2>Intent</h2><p>Create the minimum source-decided user-facing MVP surface.</p><h2>Scope</h2><p>Build the MVP.</p><h2>Implementation Notes</h2><p>Use the accepted source decisions as authority, but keep visible instructions concise.</p><h2>Dependencies</h2><p>None.</p><h2>Verification</h2><p>Run checks.</p><h2>Completion Gate</h2><p>Done when implemented.</p>",
+            )
+            .unwrap();
+        }
+
+        let validation = validate_import_plan_artifacts(&root);
+        assert_eq!(validation.status, "invalid");
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("generic planning detail")));
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("concrete terms from imported source")));
+        assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("concrete automated or manual acceptance checks")));
     }
 
     #[test]
