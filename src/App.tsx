@@ -880,8 +880,9 @@ function App() {
     try {
       const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`, activeProject));
       const nextSessions = response.sessions || [];
+      const liveSessions = nextSessions.filter(isLiveTerminalSession);
       setSessions(nextSessions);
-      setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
+      setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
     } catch {
       setSessions([]);
       setActiveSessionId(null);
@@ -976,8 +977,9 @@ function App() {
     const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(scope.scope)}`, project));
     const nextSessions = response.sessions || [];
     appendImportLog(`Loaded sessions project=${project.id} scope=${scope.scope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
+    const liveSessions = nextSessions.filter(isLiveTerminalSession);
     setSessions(nextSessions);
-    setActiveSessionId((current) => current && nextSessions.some((session) => session.id === current) ? current : nextSessions[0]?.id || null);
+    setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
     return nextSessions;
   }
 
@@ -992,7 +994,7 @@ function App() {
       throw new Error("Project not found for agent planning.");
     }
     const existing = knownSessions.find(isAgentSession);
-    if (existing?.command && !options.forceNew) {
+    if (existing?.command && isLiveTerminalSession(existing) && !options.forceNew) {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length}`);
       setActiveSessionId(existing.id);
       return existing;
@@ -4388,7 +4390,8 @@ function TerminalPane(props: {
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
-  const activeSession = props.sessions.find((session) => session.id === props.activeSessionId) || props.sessions[0] || null;
+  const liveSessions = props.sessions.filter(isLiveTerminalSession);
+  const activeSession = liveSessions.find((session) => session.id === props.activeSessionId) || liveSessions[0] || null;
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
@@ -4498,11 +4501,11 @@ function TerminalPane(props: {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {props.sessions.length ? (
+        {liveSessions.length ? (
           <>
-            {props.sessions.length > 1 ? (
+            {liveSessions.length > 1 ? (
               <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#2c302d] bg-[#151816] px-2 py-1.5 text-xs">
-                {props.sessions.map((session) => (
+                {liveSessions.map((session) => (
                   <button
                     className={cn(
                       "max-w-44 truncate rounded border border-transparent px-2.5 py-1 text-left text-[#9da79f] transition-colors hover:border-[#3a403b] hover:text-[#eef2ec]",
@@ -4526,7 +4529,7 @@ function TerminalPane(props: {
           </>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
-            No terminals running
+            {props.sessions.length ? "No live terminals running for this scope" : "No terminals running"}
           </div>
         )}
       </div>
@@ -5120,6 +5123,10 @@ function titleForPath(path: string, pages: WikiPage[]) {
 
 function isAgentSession(session: SessionRecord) {
   return session.role === "agent" || session.name?.toLowerCase().startsWith("agent");
+}
+
+function isLiveTerminalSession(session: SessionRecord) {
+  return session.status === "active";
 }
 
 function hasImportedSource(pages: WikiPage[]) {

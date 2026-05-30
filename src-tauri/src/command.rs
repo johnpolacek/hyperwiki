@@ -542,11 +542,22 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| ".".into());
         let scope = query_param(&request.path, "scope");
-        return json_response(
-            200,
-            &crate::domain::sessions::SessionRegistry::new(&project_root)
-                .list(scope.as_deref(), true),
-        );
+        let mut sessions = crate::domain::sessions::SessionRegistry::new(&project_root)
+            .list(scope.as_deref(), true);
+        let manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        for session in sessions.sessions.iter_mut() {
+            let is_live = manager.diagnostics(&session.id).live;
+            if is_live {
+                session.status = "active".to_string();
+                session.connected_clients = session.connected_clients.max(1);
+            } else if session.status == "active" {
+                session.status = "detached".to_string();
+                session.connected_clients = 0;
+            }
+        }
+        return json_response(200, &sessions);
     }
     if request.method == "POST" && request.path.starts_with("/api/sessions/prune") {
         let project_root = resolve_request_project(&request.path)
