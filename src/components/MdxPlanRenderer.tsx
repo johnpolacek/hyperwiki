@@ -383,7 +383,7 @@ function renderPlanComponent(
 
   if (component === "PlanSummary") {
     return (
-      <section className="border-y border-border/70 bg-secondary/25 px-0 py-3" key={key}>
+      <section className="bg-secondary/25 px-0 py-3" key={key}>
         {renderSummaryGrid(node, key, onNavigate, path) || <div className="grid gap-2 px-1">{children}</div>}
       </section>
     );
@@ -584,7 +584,7 @@ function renderSummaryGrid(node: Element, key: string, onNavigate: (path: string
   const items = Array.from(node.querySelectorAll(":scope > ul > li, :scope > ol > li"));
   if (!items.length) return null;
   return (
-    <dl className="grid gap-px md:grid-cols-2" key={`${key}-summary`}>
+    <dl className="grid gap-1" key={`${key}-summary`}>
       {items.map((item, index) => {
         const label = summaryItemLabel(item);
         return (

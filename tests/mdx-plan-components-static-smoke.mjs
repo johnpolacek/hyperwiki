@@ -68,7 +68,8 @@ if (!renderer.includes('audience.toLowerCase() === "agents" ? null')) {
 
 for (const visualContract of [
   "renderSummaryGrid",
-  "border-y border-border/70 bg-secondary/25",
+  "bg-secondary/25 px-0 py-3",
+  "grid gap-1",
   "border-l border-border/80 py-1 pl-4",
   "componentPanelAccent",
 ]) {
