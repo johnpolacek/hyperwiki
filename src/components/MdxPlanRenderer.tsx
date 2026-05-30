@@ -27,7 +27,7 @@ export function MdxPlanRenderer({ source, markdown, onNavigate, path }: MdxPlanR
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="mx-auto flex max-w-[72rem] flex-col gap-9 px-6 py-8 md:px-10">
+      <div className="mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
         {content}
         {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
       </div>
@@ -267,9 +267,9 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "tr") return <tr key={key}>{children}</tr>;
   if (tag === "th") return <th className="px-3 py-2 text-left font-bold leading-6" key={key}>{children}</th>;
   if (tag === "td") return <td className="px-3 py-2 align-top leading-6 text-muted-foreground" key={key}>{children}</td>;
-  if (tag === "ul") return <ul className="m-0 list-disc space-y-1.5 pl-6 text-sm leading-6 text-muted-foreground marker:text-muted-foreground/70" key={key}>{children}</ul>;
-  if (tag === "ol") return <ol className="m-0 list-decimal space-y-1.5 pl-6 text-sm leading-6 text-muted-foreground marker:text-muted-foreground/70" key={key}>{children}</ol>;
-  if (tag === "li") return <li className="pl-1" key={key}>{children}</li>;
+  if (tag === "ul") return <ul className="m-0 list-disc space-y-1.5 pb-5 pl-6 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ul>;
+  if (tag === "ol") return <ol className="m-0 list-decimal space-y-1.5 pb-5 pl-6 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ol>;
+  if (tag === "li") return <li className="pl-1 font-normal" key={key}>{children}</li>;
   if (tag === "dl") return <dl className={cn("grid gap-2", classTokens.has("summary") && "grid-cols-[auto_minmax(0,1fr)] rounded-md border bg-secondary/50 p-4 text-sm")} key={key}>{children}</dl>;
   if (tag === "dt") return <dt className="font-bold text-muted-foreground" key={key}>{children}</dt>;
   if (tag === "dd") return <dd className="m-0 min-w-0 font-semibold" key={key}>{children}</dd>;
