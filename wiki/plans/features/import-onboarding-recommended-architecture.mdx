@@ -8,12 +8,12 @@ wikiKind: "plan"
 <section className="summary">
   <h2>Summary</h2>
   <ul>
-    <li>Status: recommended</li>
+    <li>Status: implementation in progress</li>
     <li>Shape: go-forward architecture plan</li>
-    <li>Current unit: Unit 05 complete - frontend simplification and UX polish</li>
+    <li>Current unit: corrective runtime refactor after Unit 05 dogfooding</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
-    <li>Next action: dogfood a fresh import and inspect whether the backend activity stream now gives enough between-question visibility without the terminal listener.</li>
+    <li>Next action: dogfood a fresh import against the Rust-owned runtime endpoints and verify first question, answer-to-follow-up, retry, and generated-plan completion.</li>
   </ul>
 </section>
 <section>
@@ -30,6 +30,7 @@ wikiKind: "plan"
     <li>Superseded corrective follow-up on 2026-05-29: post-answer and repair turns briefly used deterministic local follow-up fallbacks for no-text exec JSON fallback stalls, but the go-forward implementation removed those fallbacks so Codex remains responsible for authored questions and plan content.</li>
     <li>Corrective follow-up on 2026-05-29: the Q&amp;A activity pane now stays visible with active questions and keeps a larger cumulative workstream so users can inspect the between-question Codex/run output instead of losing the terminal-like history.</li>
     <li>Corrective follow-up on 2026-05-29: onboarding now separates Codex-authored question-decision turns from plan-generation turns with a structured <code>hyperwiki-ready-to-plan</code> signal, and exec JSON fallback has a bounded first-assistant timeout instead of waiting on lifecycle events alone.</li>
+    <li>Corrective refactor on 2026-05-29: import onboarding now has a Rust-owned runtime layer above the Codex adapter. The runtime persists <code>ImportOnboardingSession</code>, <code>ImportOnboardingRun</code>, append-only <code>events.jsonl</code>, and checkpoints under ignored runtime state; React starts, polls, answers, retries, and cancels through <code>/api/import-onboarding/*</code> endpoints instead of owning the Codex turn loop.</li>
   </ul>
 </section>
 <section>
@@ -69,6 +70,7 @@ wikiKind: "plan"
     <li>Represent questions as durable <code>HumanInputRequest</code> objects with IDs, run IDs, text, options, freeform allowance, source evidence, status, and accepted answer.</li>
     <li>Represent generated plan output as staged artifacts or virtual files until deterministic validators approve the actual write to <code>wiki/</code>.</li>
     <li>React renders typed backend state and submits answers by request ID. It must not parse raw Codex output, infer plan completion from assistant text, or own retry timing.</li>
+    <li>Implemented refactor note: React still retains the generic terminal planning parser for non-import planning, but imported-project onboarding now treats Rust runtime status and event records as the source of truth.</li>
   </ul>
 </section>
 <section>
@@ -79,7 +81,8 @@ wikiKind: "plan"
     <li><code>answer_import_onboarding_question(project_id, request_id, answer)</code> accepts only the current pending request, writes durable Q&amp;A, advances the state machine, and starts the next run.</li>
     <li><code>retry_import_onboarding(project_id, run_id)</code> retries only retryable provider, parsing, or validation failures and preserves the last durable answer state.</li>
     <li><code>cancel_import_onboarding(project_id, run_id)</code> cancels the active run and leaves the session in a resumable idle or retryable state.</li>
-    <li>React listens to <code>import-onboarding:event</code> and always treats <code>get_import_onboarding_status</code> as the source of truth after reload or reconnect.</li>
+    <li>React listens to <code>import-onboarding://event</code> when available and always treats <code>get_import_onboarding_status</code> as the source of truth after reload or reconnect.</li>
+    <li>Implemented endpoint names: <code>/api/import-onboarding/start</code>, <code>/api/import-onboarding/status</code>, <code>/api/import-onboarding/events</code>, <code>/api/import-onboarding/answer</code>, <code>/api/import-onboarding/retry</code>, and <code>/api/import-onboarding/cancel</code>.</li>
   </ul>
 </section>
 <section>

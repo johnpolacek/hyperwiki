@@ -63,6 +63,18 @@ pub struct ImportPlanningQuestion {
     pub prompt: String,
     pub impact: String,
     pub rationale: String,
+    #[serde(default)]
+    pub recommended_answer: String,
+    #[serde(default)]
+    pub options: Vec<ImportPlanningQuestionOption>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportPlanningQuestionOption {
+    pub label: String,
+    #[serde(default)]
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
@@ -743,6 +755,8 @@ mod tests {
             prompt: "Which source-specific slice should come first?".to_string(),
             impact: "blocking".to_string(),
             rationale: "Asked by the visible import-planning agent.".to_string(),
+            recommended_answer: String::new(),
+            options: Vec::new(),
         };
 
         let status = record_import_planning_answer(
@@ -778,6 +792,8 @@ mod tests {
             prompt: "Which source-specific slice should come first?".to_string(),
             impact: "blocking".to_string(),
             rationale: "Asked by the visible import-planning agent.".to_string(),
+            recommended_answer: String::new(),
+            options: Vec::new(),
         };
 
         let status = record_human_input_request(

@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 refactor | import onboarding runtime ownership</h2>
+  <ul>
+    <li>Added a Rust-owned import onboarding runtime layer with persisted sessions, runs, append-only event logs, and per-run checkpoints under ignored <code>.hyperwiki/state/import-onboarding/runtime/</code>.</li>
+    <li>Moved imported-project Q&amp;A start, answer, retry, cancel, status, and event access to <code>/api/import-onboarding/*</code> endpoints while keeping the existing Codex adapter as the provider layer.</li>
+    <li>Changed the React import Q&amp;A view to render runtime status/events and submit answers by pending request ID instead of driving Codex turn prompts and repair timing itself.</li>
+    <li>Updated static smoke coverage to assert the runtime boundary and event visibility contract.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding turn contracts</h2>
   <ul>
     <li>Split imported-project onboarding into Codex-authored decision turns and separate plan-generation turns using a structured <code>hyperwiki-ready-to-plan</code> signal.</li>

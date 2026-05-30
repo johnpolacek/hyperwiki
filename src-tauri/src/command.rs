@@ -91,8 +91,8 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
     }
     if request.method == "GET" && request.path.starts_with("/api/projects") {
         let active_id = query_param(&request.path, "project");
-        let list = crate::domain::projects::ProjectRegistry::from_environment()
-            .list(active_id.as_deref());
+        let list =
+            crate::domain::projects::ProjectRegistry::from_environment().list(active_id.as_deref());
         eprintln!(
             "[hyperwiki] projects list active_id={:?} projects={} checkouts={} groups={} active={:?}",
             active_id,
@@ -279,6 +279,80 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::import_planning::clarify_import_plan(&project.root, parsed),
         );
     }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/start") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::start_import_onboarding(project, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-onboarding/status") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::import_onboarding_status(&project) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-onboarding/events") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::import_onboarding_events(&project) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/answer") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        let Some(parsed) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<
+                crate::domain::import_onboarding_runtime::ImportOnboardingAnswerRequest,
+            >(body)
+            .ok()
+        }) else {
+            return error_response(400, "Invalid import onboarding answer request.");
+        };
+        return match crate::domain::import_onboarding_runtime::answer_import_onboarding(
+            project, parsed, app,
+        ) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/retry") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::retry_import_onboarding(project, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/cancel") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::cancel_import_onboarding(
+            project, app,
+        ) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/import-planning/status") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
         else {
@@ -294,13 +368,12 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         else {
             return error_response(404, "Project not found for import planning.");
         };
-        let parsed = request
-            .body
-            .as_deref()
-            .and_then(|body| {
-                serde_json::from_str::<crate::domain::import_planning::HumanInputCheckpointRequest>(body)
-                    .ok()
-            });
+        let parsed = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::import_planning::HumanInputCheckpointRequest>(
+                body,
+            )
+            .ok()
+        });
         let Some(parsed) = parsed else {
             return error_response(400, "Invalid import planning question checkpoint.");
         };
@@ -317,18 +390,23 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         else {
             return error_response(404, "Project not found for import planning.");
         };
-        let parsed = request
-            .body
-            .as_deref()
-            .and_then(|body| {
-                serde_json::from_str::<crate::domain::import_planning::ImportPlanningProgressRequest>(body)
+        let parsed =
+            request
+                .body
+                .as_deref()
+                .and_then(|body| {
+                    serde_json::from_str::<
+                        crate::domain::import_planning::ImportPlanningProgressRequest,
+                    >(body)
                     .ok()
-            })
-            .unwrap_or(crate::domain::import_planning::ImportPlanningProgressRequest {
-                question: None,
-                answer: String::new(),
-                request_id: String::new(),
-            });
+                })
+                .unwrap_or(
+                    crate::domain::import_planning::ImportPlanningProgressRequest {
+                        question: None,
+                        answer: String::new(),
+                        request_id: String::new(),
+                    },
+                );
         return match crate::domain::import_planning::record_import_planning_answer(
             &project.root,
             parsed,
@@ -651,7 +729,8 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 current_page: String::new(),
                 request_id: String::new(),
             });
-        return match crate::domain::codex_app_server::retry_import_planning_turn(project, body, app) {
+        return match crate::domain::codex_app_server::retry_import_planning_turn(project, body, app)
+        {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };
@@ -679,7 +758,8 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 current_page: String::new(),
                 request_id: String::new(),
             });
-        return match crate::domain::codex_app_server::start_import_planning_turn(project, body, app) {
+        return match crate::domain::codex_app_server::start_import_planning_turn(project, body, app)
+        {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };
@@ -833,7 +913,8 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     let query = path.split_once('?')?.1;
     query.split('&').find_map(|pair| {
         let (left, right) = pair.split_once('=')?;
-        (left == key).then(|| percent_decode_path_segment(right).unwrap_or_else(|| right.to_string()))
+        (left == key)
+            .then(|| percent_decode_path_segment(right).unwrap_or_else(|| right.to_string()))
     })
 }
 
@@ -886,7 +967,9 @@ fn current_project_record() -> Option<crate::domain::projects::ProjectRecord> {
             last_opened_at: None,
             available: true,
             active: false,
-            import_planning: Some(crate::domain::import_planning::import_planning_status(&root)),
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &root,
+            )),
         })
 }
 
@@ -1370,11 +1453,7 @@ mod tests {
         let root = temp_root("command-wiki");
         let home = temp_root("command-wiki-home");
         fs::create_dir_all(root.join("wiki")).unwrap();
-        fs::write(
-            root.join("wiki").join("index.mdx"),
-            "<h1>Command Wiki</h1>",
-        )
-        .unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Command Wiki</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
 
@@ -1477,7 +1556,11 @@ mod tests {
         });
         assert!(answer.ok, "{}", answer.text);
         assert!(answer.text.contains("\"answeredCount\":1"));
-        assert!(root.join("wiki").join("sources").join("import-qna.mdx").exists());
+        assert!(root
+            .join("wiki")
+            .join("sources")
+            .join("import-qna.mdx")
+            .exists());
 
         let blocked = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
@@ -1492,7 +1575,9 @@ mod tests {
             body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
         });
         assert_eq!(missing_stack.status, 409);
-        assert!(missing_stack.text.contains("plans are created by the visible agent"));
+        assert!(missing_stack
+            .text
+            .contains("plans are created by the visible agent"));
 
         let create = hyperwiki_request(HyperwikiRequest {
             path: format!("/api/import-planning/create-plan?project={}", project.id),
@@ -1500,7 +1585,9 @@ mod tests {
             body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"frontend-stack\",\"answer\":\"React, Vite, TypeScript, and Tailwind for the mobile web UI.\"},{\"id\":\"backend-runtime\",\"answer\":\"Client-first prototype with a small Node route handler only if provider proxying is required.\"},{\"id\":\"data-storage\",\"answer\":\"Browser local storage for demo route state; no database in the first milestone.\"},{\"id\":\"auth-users\",\"answer\":\"No accounts in the first demo.\"},{\"id\":\"services-integrations\",\"answer\":\"Mock route feed plus Gemini API integration; defer maps SDK billing setup.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"dev-commands\",\"answer\":\"pnpm install, pnpm dev, pnpm run build, pnpm run check, and GEMINI_API_KEY for provider calls.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
         });
         assert_eq!(create.status, 409);
-        assert!(create.text.contains("plans are created by the visible agent"));
+        assert!(create
+            .text
+            .contains("plans are created by the visible agent"));
     }
 
     #[test]
@@ -1723,11 +1810,7 @@ mod tests {
             "{\"project\":{\"name\":\"Agent Prompt\"}}",
         )
         .unwrap();
-        fs::write(
-            root.join("wiki").join("index.mdx"),
-            "<h1>Agent Prompt</h1>",
-        )
-        .unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Agent Prompt</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
 
@@ -1778,8 +1861,12 @@ mod tests {
         assert!(routed.ok);
         assert!(routed.text.contains("\"id\":\"agent-command\""));
         assert!(explicitly_routed.ok);
-        assert!(explicitly_routed.text.contains("\"requestedSessionId\":\"agent-command\""));
-        assert!(explicitly_routed.text.contains("\"requestId\":\"test-answer-1\""));
+        assert!(explicitly_routed
+            .text
+            .contains("\"requestedSessionId\":\"agent-command\""));
+        assert!(explicitly_routed
+            .text
+            .contains("\"requestId\":\"test-answer-1\""));
         assert!(explicitly_routed.text.contains("\"live\":true"));
         assert!(!missing_requested.ok);
         assert_eq!(missing_requested.status, 409);

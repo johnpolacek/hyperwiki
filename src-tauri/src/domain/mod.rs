@@ -1,6 +1,7 @@
 pub mod app_shell;
 pub mod codex_app_server;
 pub mod git;
+pub mod import_onboarding_runtime;
 pub mod import_planning;
 pub mod mcp;
 pub mod previews;
@@ -30,6 +31,8 @@ pub fn surfaces() -> Vec<DomainSurface> {
         wiki::surface(),
         settings::surface(),
         git::surface(),
+        // Import onboarding is part of the import-planning surface and is
+        // intentionally not listed as a separate user-facing domain.
         import_planning::surface(),
         sessions::surface(),
         terminals::surface(),

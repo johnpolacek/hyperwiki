@@ -322,6 +322,8 @@ interface ImportPlanningQuestion {
   prompt: string;
   impact: string;
   rationale: string;
+  recommendedAnswer?: string;
+  options?: PlanningQuestionOption[];
 }
 
 interface ImportPlanningResponse {
@@ -376,6 +378,30 @@ interface CodexImportTurnResponse {
   planDetected: boolean;
   events: number;
   metrics?: CodexAdapterMetrics;
+}
+
+interface ImportOnboardingEventRecord {
+  seq: number;
+  timestampMs: number;
+  projectId: string;
+  sessionId: string;
+  runId: string;
+  requestId: string;
+  kind: string;
+  phase: string;
+  message: string;
+  detail?: string | null;
+}
+
+interface ImportOnboardingStatusResponse {
+  ok: boolean;
+  session: ImportOnboardingSessionRecord;
+  activeRun?: ImportOnboardingRunRecord | null;
+  currentQuestion?: ImportPlanningQuestion | null;
+  importPlanning: ImportPlanningStatus;
+  retryableFailure?: string | null;
+  recentEvents?: ImportOnboardingEventRecord[];
+  artifactValidation?: ImportPlanningArtifactValidation | null;
 }
 
 interface ImportPlanningReadyToPlan {
@@ -459,6 +485,9 @@ interface ImportOnboardingSessionRecord {
   status: string;
   phase: string;
   currentRunId?: string | null;
+  currentQuestionId?: string | null;
+  repairAttempts?: number;
+  planRepairAttempts?: number;
   createdAtMs: number;
   updatedAtMs: number;
 }
@@ -467,7 +496,9 @@ interface ImportOnboardingRunRecord {
   projectId: string;
   sessionId: string;
   runId: string;
+  providerRunId?: string | null;
   requestId: string;
+  kind?: string;
   status: string;
   phase: string;
   retryable: boolean;
@@ -1146,33 +1177,26 @@ function App() {
     setPlanningInterviewStatus("answering");
     appendImportLog(`Planning answer submitting request=${requestId} session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length} chars=${answerSummary.length}`);
     if (activeProject && isIncompleteImportProject(activeProject)) {
-      let nextStatus: ImportPlanningStatus | null = null;
-      for (const item of trimmedAnswers) {
-        nextStatus = await hyperwikiApi.json<ImportPlanningStatus>(withProjectQuery("/api/import-planning/answer", activeProject), {
-          method: "POST",
-          body: {
-            question: planningQuestionToImportQuestion(item.question),
-            answer: item.answer,
-            requestId: item.question.requestId || item.question.id,
-          },
-        });
-        appendImportLog(`Planning answer persisted project=${activeProject.id} question=${item.question.id} answered=${nextStatus.answeredCount} next=${nextStatus.currentQuestion?.id || "agent"}`);
-      }
-      if (!nextStatus) return;
-      applyImportPlanningStatus(nextStatus);
+      const item = trimmedAnswers[0];
+      const nextStatus = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery("/api/import-onboarding/answer", activeProject), {
+        method: "POST",
+        body: {
+          requestId: item.question.requestId || item.question.id,
+          answer: item.answer,
+        },
+      });
+      appendImportLog(`Planning answer accepted by runtime project=${activeProject.id} question=${item.question.id} next=${nextStatus.currentQuestion?.id || "agent"}`);
+      applyImportOnboardingStatus(activeProject, nextStatus);
       setLastPlanningAnswer(answerSummary);
-      if (!revealNextImportScriptQuestion(activeProject)) {
-        setPlanningActivity("Answer sent to the planning agent");
-        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
-          "Answer sent to the planning agent",
-          "Starting the next Codex import-planning turn",
-        ]));
-        clearPlanningQuestions();
-        setPlanningInterviewStatus("waiting_for_question");
-        setStatus("Planning answer sent");
-        appendImportLog(`Imported Q&A script exhausted project=${activeProject.id}; handing off to Codex for next turn or final plan`);
-        void startImportPlanningTurn(activeProject, "answer", answerSummary, first.question.id);
-      }
+      setPlanningActivity("Answer sent to the planning agent");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+        "Answer sent to the planning agent",
+        "Starting the next Codex import-planning turn",
+      ]));
+      clearPlanningQuestions();
+      setPlanningInterviewStatus("waiting_for_question");
+      setStatus("Planning answer sent");
+      void waitForImportOnboardingRuntime(activeProject);
       appendImportLog(`Planning answer submitted session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length}`);
       return;
     } else if (first.question.sessionId) {
@@ -1192,9 +1216,9 @@ function App() {
     setStatus("Planning answer sent");
   }
 
-  function applyImportPlanningStatus(nextStatus: ImportPlanningStatus) {
+  function applyImportPlanningStatus(nextStatus: ImportPlanningStatus, projectId = activeProject?.id || "") {
     setActiveProject((current) => current ? { ...current, importPlanning: nextStatus } : current);
-    setProjects((current) => updateProjectImportPlanning(current, activeProject?.id || "", nextStatus));
+    setProjects((current) => updateProjectImportPlanning(current, projectId, nextStatus));
     if (nextStatus.currentQuestion) {
       setPlanningQuestions([importPlanningQuestionToPlanningQuestion(nextStatus.currentQuestion)]);
       setPlanningInterviewStatus("question_ready");
@@ -1304,7 +1328,7 @@ function App() {
       return;
     }
     try {
-      await startImportPlanningTurn(project, "initial");
+      await startImportOnboardingRuntime(project, activeImportPlanningRun?.retryable || planningInterviewStatus === "failed" ? "retry" : "start");
     } catch (error) {
       appendImportLog(`Imported Q&A start failed project=${project.id}`, error);
       throw error;
@@ -1312,25 +1336,133 @@ function App() {
   }
 
   async function cancelActiveImportPlanningTurn() {
-    const activeTurn = activeImportPlanningTurn.current;
-    const runId = activeTurn?.runId || activeImportPlanningRun?.runId || "";
-    if (!activeProject || !runId) return;
-    appendImportLog(`Imported Q&A cancel requested project=${activeProject.id} run=${runId}`);
+    const runId = activeImportPlanningRun?.runId || activeImportPlanningTurn.current?.runId || "";
+    if (!activeProject) return;
+    appendImportLog(`Imported Q&A cancel requested project=${activeProject.id} run=${runId || "runtime"}`);
     try {
-      const cancelled = await hyperwikiApi.json<CodexImportTurnStatusResponse>(withProjectQuery(`/api/import-planning/turn-cancel?runId=${encodeURIComponent(runId)}`, activeProject), {
+      const cancelled = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery("/api/import-onboarding/cancel", activeProject), {
         method: "POST",
       });
-      if (cancelled.run) setActiveImportPlanningRun(cancelled.run);
-      if (activeTurn?.requestId) clearActiveImportPlanningTurn(activeTurn.requestId);
+      applyImportOnboardingStatus(activeProject, cancelled);
       setPlanningInterviewStatus("idle");
-      setPlanningActivity(cancelled.error || "Import Q&A cancelled.");
-      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [cancelled.error || "Import Q&A cancelled."]));
+      setPlanningActivity(cancelled.retryableFailure || "Import Q&A cancelled.");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [cancelled.retryableFailure || "Import Q&A cancelled."]));
       setStatus("Imported project Q&A cancelled");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       appendImportLog(`Imported Q&A cancel failed project=${activeProject.id} run=${runId} error=${message}`, error);
       setPlanningActivity(`Cancel failed: ${message}`);
     }
+  }
+
+  async function startImportOnboardingRuntime(project: ProjectRecord, action: "start" | "retry" | "answer") {
+    const key = `${project.id}:import-qna`;
+    const inFlight = importedPlanningRuns.current.get(key);
+    if (inFlight) {
+      appendImportLog(`Imported Q&A runtime joined in-flight run project=${project.id} action=${action}`);
+      await inFlight;
+      return;
+    }
+    const run = (async () => {
+      const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+      openImportedPlanningWorkspace(project, projectRoute);
+      setPlanningInterviewStatus("starting");
+      setPlanningActivity("Starting the planning agent");
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
+        action === "answer" ? "Answer sent to the planning agent" : action === "retry" ? "Retrying import planning" : "Starting the planning agent",
+        "Codex import-planning phase: starting",
+      ]));
+      setStatus("Imported project Q&A started");
+      const endpoint = action === "retry" ? "/api/import-onboarding/retry" : "/api/import-onboarding/start";
+      const started = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery(endpoint, project), {
+        method: "POST",
+      });
+      applyImportOnboardingStatus(project, started);
+      await waitForImportOnboardingRuntime(project);
+    })();
+    importedPlanningRuns.current.set(key, run);
+    try {
+      await run;
+    } finally {
+      importedPlanningRuns.current.delete(key);
+    }
+  }
+
+  async function waitForImportOnboardingRuntime(project: ProjectRecord) {
+    const startedAt = Date.now();
+    for (let attempt = 1; attempt <= 360; attempt += 1) {
+      await delay(500);
+      const status = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery("/api/import-onboarding/status", project));
+      applyImportOnboardingStatus(project, status);
+      if (attempt === 1 || attempt % 10 === 0 || status.session.status !== "running") {
+        appendImportLog(`Imported Q&A runtime status project=${project.id} attempt=${attempt} status=${status.session.status} phase=${status.session.phase} elapsedMs=${Date.now() - startedAt}`);
+      }
+      if (status.currentQuestion) return;
+      if (status.importPlanning.status === "complete") {
+        importedPlanningCompletedKeys.current.add(`${project.id}:import-qna`);
+        setPlanningInterviewStatus("idle");
+        setPlanningActivity("Generated MVP plan is ready.");
+        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Generated MVP plan is ready."]));
+        await loadProjectData(project);
+        return;
+      }
+      if (status.session.status === "retryable_failure" || status.activeRun?.retryable) {
+        setPlanningInterviewStatus("failed");
+        setPlanningActivity(status.retryableFailure || "Planning runtime needs retry.");
+        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [status.retryableFailure || "Planning runtime needs retry."]));
+        setStatus("Imported project Q&A needs retry");
+        return;
+      }
+      if (!status.activeRun && status.session.status !== "running" && status.session.status !== "waiting_for_answer") return;
+    }
+    setPlanningInterviewStatus("stalled");
+    setPlanningActivity("Import planning runtime timed out.");
+    setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Import planning runtime timed out."]));
+  }
+
+  function applyImportOnboardingStatus(project: ProjectRecord, response: ImportOnboardingStatusResponse) {
+    applyImportPlanningStatus(response.importPlanning, project.id);
+    setActiveImportPlanningRun(response.activeRun || null);
+    applyImportOnboardingEventLines(response.recentEvents || []);
+    if (response.currentQuestion) {
+      setPlanningQuestions([importPlanningQuestionToPlanningQuestion(response.currentQuestion)]);
+      setPlanningInterviewStatus("question_ready");
+      setPlanningActivity(response.importPlanning.nextAction || "Next planning question is ready.");
+      return;
+    }
+    if (response.importPlanning.status === "complete") {
+      clearPlanningQuestions();
+      setPlanningInterviewStatus("idle");
+      setPlanningActivity("Generated MVP plan is ready.");
+      return;
+    }
+    if (response.session.status === "retryable_failure" || response.activeRun?.retryable) {
+      clearPlanningQuestions();
+      setPlanningInterviewStatus("failed");
+      setPlanningActivity(response.retryableFailure || "Import planning needs retry.");
+      return;
+    }
+    if (response.session.status === "running" || response.activeRun?.status === "running") {
+      clearPlanningQuestions();
+      const phase = response.activeRun?.phase || response.session.phase;
+      setPlanningInterviewStatus(phase === "streaming" ? "streaming" : "waiting_for_question");
+      setPlanningActivity(importOnboardingPhaseLabel(phase));
+      return;
+    }
+  }
+
+  function applyImportOnboardingEventLines(events: ImportOnboardingEventRecord[]) {
+    const lines: string[] = [];
+    for (const event of events.slice(-12)) {
+      const key = `runtime:${event.seq}:${event.kind}:${event.phase}:${event.message}:${event.detail || ""}`;
+      if (importTurnSnapshotLineKeys.current.has(key)) continue;
+      importTurnSnapshotLineKeys.current.add(key);
+      lines.push(event.message);
+      if (event.detail) {
+        lines.push(...event.detail.split("\n").map((line) => line.trim()).filter(Boolean));
+      }
+    }
+    if (lines.length) setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, lines));
   }
 
   async function loadImportPlanningSourceContext(project: ProjectRecord) {
@@ -5063,6 +5195,38 @@ function importTurnSnapshotLabel(snapshot: CodexImportTurnSnapshot) {
   }
 }
 
+function importOnboardingPhaseLabel(phase: string) {
+  switch (phase) {
+    case "starting_provider":
+    case "starting":
+      return "Starting the planning agent";
+    case "thread_ready":
+      return "Codex provider and import thread are ready.";
+    case "turn_requested":
+      return "Codex turn requested; waiting for provider events.";
+    case "waiting_for_first_event":
+      return "Codex is still preparing the first app-server event.";
+    case "waiting_for_assistant":
+    case "streaming":
+      return "Receiving Codex output and checking for a structured question.";
+    case "exec_json_fallback":
+      return "Codex app-server was quiet; trying codex exec JSON.";
+    case "running_question_turn":
+      return "Waiting for the next structured question.";
+    case "running_repair_turn":
+      return "Repairing the previous incomplete planning turn.";
+    case "running_plan_turn":
+    case "running_plan_repair_turn":
+      return "Planning agent is writing the MVP plan.";
+    case "parsing_contract":
+      return "Parsing the planning contract.";
+    case "waiting_for_answer":
+      return "Next planning question is ready.";
+    default:
+      return phase ? phase.replace(/_/g, " ") : "Import planning is running.";
+  }
+}
+
 function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
   if (!requestId.includes(":answer:")) return false;
   if (!text.trim()) return false;
@@ -5103,12 +5267,12 @@ function isIncompleteImportProject(project: ProjectRecord | null | undefined) {
 function importPlanningQuestionToPlanningQuestion(question: ImportPlanningQuestion): PlanningQuestion {
   return {
     id: question.id,
-    sessionId: "",
+    sessionId: question.id,
     requestId: question.id,
     question: question.prompt,
-    recommendedAnswer: "",
+    recommendedAnswer: question.recommendedAnswer || "",
     reasoning: question.rationale,
-    options: [],
+    options: question.options || [],
   };
 }
 
@@ -5119,6 +5283,8 @@ function planningQuestionToImportQuestion(question: PlanningQuestion): ImportPla
     prompt: question.question,
     impact: "blocking",
     rationale: question.reasoning || question.recommendedAnswer || "Captured during imported project planning Q&A.",
+    recommendedAnswer: question.recommendedAnswer,
+    options: question.options,
   };
 }
 
