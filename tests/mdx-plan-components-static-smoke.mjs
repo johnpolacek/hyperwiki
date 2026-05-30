@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const renderer = await readFile(path.resolve("src/components/MdxPlanRenderer.tsx"), "utf8");
+const app = await readFile(path.resolve("src/App.tsx"), "utf8");
 
 const requiredImports = [
   "@/components/ui/accordion",
@@ -76,6 +77,18 @@ for (const visualContract of [
 ]) {
   if (!renderer.includes(visualContract)) {
     throw new Error(`MDX plan renderer must keep the compact working-brief visual contract: ${visualContract}`);
+  }
+}
+
+for (const exportContract of [
+  "/api/wiki/export-markdown-zip",
+  "/api/wiki/skill.md",
+  "isReactRenderedMdxPath",
+  "Download wiki Markdown zip",
+  "Download project skill",
+]) {
+  if (!app.includes(exportContract)) {
+    throw new Error(`App must expose the wiki Markdown export contract: ${exportContract}`);
   }
 }
 

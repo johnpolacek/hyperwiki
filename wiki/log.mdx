@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-30 implementation | wiki Markdown export completion</h2>
+  <ul>
+    <li>Added a local <code>/api/wiki/export-markdown-zip</code> endpoint that returns a base64 zip payload containing Markdown derivatives, <code>llms.txt</code>, and a generated project <code>SKILL.md</code>.</li>
+    <li>Added <code>/api/wiki/skill.md</code> for direct generated skill export without writing generated files back into the repository.</li>
+    <li>Added wiki header download actions for the Markdown zip and project skill, and routed all MDX wiki pages through the React renderer so non-plan pages also expose Copy Markdown and validation warnings.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | Holocron-inspired wiki exports and validation</h2>
   <ul>
     <li>Added local-first wiki Markdown export surfaces through <code>/api/wiki/page-markdown</code> and <code>/api/wiki/llms.txt</code> without adopting Holocron's runtime, docs shell, hosting model, or <code>docs.json</code> structure.</li>

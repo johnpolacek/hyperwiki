@@ -1,4 +1,5 @@
 use super::DomainSurface;
+use base64::Engine;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
@@ -80,6 +81,29 @@ pub struct WikiValidationWarning {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub href: Option<String>,
     pub line: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiMarkdownExportFile {
+    pub path: String,
+    pub bytes: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiMarkdownZipExport {
+    pub filename: String,
+    pub mime_type: String,
+    pub base64: String,
+    pub files: Vec<WikiMarkdownExportFile>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiSkillExport {
+    pub filename: String,
+    pub content: String,
 }
 
 pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> WikiPageList {
@@ -179,6 +203,170 @@ pub fn wiki_llms_txt(root: impl AsRef<Path>) -> String {
         }
     }
     output.trim_end().to_string()
+}
+
+pub fn wiki_project_skill(root: impl AsRef<Path>) -> WikiSkillExport {
+    WikiSkillExport {
+        filename: "SKILL.md".to_string(),
+        content: generated_project_skill(root),
+    }
+}
+
+pub fn wiki_markdown_zip_export(root: impl AsRef<Path>) -> WikiMarkdownZipExport {
+    let files = wiki_markdown_export_files(&root);
+    let zip_entries = files
+        .iter()
+        .map(|(path, content)| (path.as_str(), content.as_bytes()))
+        .collect::<Vec<_>>();
+    let zip = zip_store(&zip_entries);
+    WikiMarkdownZipExport {
+        filename: "hyperwiki-markdown-export.zip".to_string(),
+        mime_type: "application/zip".to_string(),
+        base64: base64::engine::general_purpose::STANDARD.encode(zip),
+        files: files
+            .into_iter()
+            .map(|(path, content)| WikiMarkdownExportFile {
+                path,
+                bytes: content.len(),
+            })
+            .collect(),
+    }
+}
+
+fn wiki_markdown_export_files(root: impl AsRef<Path>) -> Vec<(String, String)> {
+    let pages = list_wiki_pages(&root, None);
+    let mut files = Vec::new();
+    for page in pages.pages {
+        let Ok(source) = read_wiki_source(&root, &page.path) else {
+            continue;
+        };
+        if source.markdown.trim().is_empty() {
+            continue;
+        }
+        let path = page
+            .source_path
+            .trim_end_matches(".mdx")
+            .to_string()
+            + ".md";
+        files.push((path, source.markdown));
+    }
+    files.push(("llms.txt".to_string(), wiki_llms_txt(&root)));
+    files.push(("SKILL.md".to_string(), generated_project_skill(root)));
+    files.sort_by(|left, right| left.0.cmp(&right.0));
+    files
+}
+
+fn generated_project_skill(root: impl AsRef<Path>) -> String {
+    let pages = list_wiki_pages(&root, None);
+    let mut content = String::from(
+        r#"---
+name: hyperwiki-project-context
+description: Use when working in this repository and you need canonical project wiki context, current plans, source briefs, or local agent handoff guidance.
+---
+
+# Hyperwiki Project Context
+
+Use this skill to read the local Hyperwiki project wiki as canonical repo-visible context.
+
+## Workflow
+
+1. Read `wiki/index.mdx` first for project orientation.
+2. Read `wiki/plans/index.mdx` for the current plan, current unit, blockers, and next action.
+3. Read `wiki/sources.mdx` and linked source briefs when product, design, technical, or imported-source context matters.
+4. Prefer Markdown derivatives from Hyperwiki's local APIs over rendered app HTML when you need agent-readable context:
+   - `/api/wiki/page-markdown?path=/wiki/path.mdx`
+   - `/api/wiki/llms.txt`
+   - `/api/wiki/export-markdown-zip`
+5. Treat repo files and Git as canonical. Runtime exports are returned to the caller and are not automatically written into the wiki.
+
+## Wiki Pages
+
+"#,
+    );
+    for page in pages.pages {
+        content.push_str("- `");
+        content.push_str(&page.source_path);
+        content.push_str("` - ");
+        content.push_str(&page.title);
+        content.push('\n');
+    }
+    content.trim_end().to_string()
+}
+
+fn zip_store(entries: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut output = Vec::new();
+    let mut central_directory = Vec::new();
+    let mut offset = 0u32;
+    for (name, bytes) in entries {
+        let name_bytes = name.as_bytes();
+        let crc = crc32(bytes);
+        let size = bytes.len() as u32;
+        write_u32(&mut output, 0x0403_4b50);
+        write_u16(&mut output, 20);
+        write_u16(&mut output, 0);
+        write_u16(&mut output, 0);
+        write_u16(&mut output, 0);
+        write_u16(&mut output, 33);
+        write_u32(&mut output, crc);
+        write_u32(&mut output, size);
+        write_u32(&mut output, size);
+        write_u16(&mut output, name_bytes.len() as u16);
+        write_u16(&mut output, 0);
+        output.extend_from_slice(name_bytes);
+        output.extend_from_slice(bytes);
+
+        write_u32(&mut central_directory, 0x0201_4b50);
+        write_u16(&mut central_directory, 20);
+        write_u16(&mut central_directory, 20);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 33);
+        write_u32(&mut central_directory, crc);
+        write_u32(&mut central_directory, size);
+        write_u32(&mut central_directory, size);
+        write_u16(&mut central_directory, name_bytes.len() as u16);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 0);
+        write_u16(&mut central_directory, 0);
+        write_u32(&mut central_directory, 0);
+        write_u32(&mut central_directory, offset);
+        central_directory.extend_from_slice(name_bytes);
+        offset = output.len() as u32;
+    }
+    let central_directory_offset = output.len() as u32;
+    let central_directory_size = central_directory.len() as u32;
+    output.extend_from_slice(&central_directory);
+    write_u32(&mut output, 0x0605_4b50);
+    write_u16(&mut output, 0);
+    write_u16(&mut output, 0);
+    write_u16(&mut output, entries.len() as u16);
+    write_u16(&mut output, entries.len() as u16);
+    write_u32(&mut output, central_directory_size);
+    write_u32(&mut output, central_directory_offset);
+    write_u16(&mut output, 0);
+    output
+}
+
+fn crc32(bytes: &[u8]) -> u32 {
+    let mut crc = 0xffff_ffffu32;
+    for byte in bytes {
+        crc ^= *byte as u32;
+        for _ in 0..8 {
+            let mask = if crc & 1 == 1 { 0xedb8_8320 } else { 0 };
+            crc = (crc >> 1) ^ mask;
+        }
+    }
+    !crc
+}
+
+fn write_u16(output: &mut Vec<u8>, value: u16) {
+    output.extend_from_slice(&value.to_le_bytes());
+}
+
+fn write_u32(output: &mut Vec<u8>, value: u32) {
+    output.extend_from_slice(&value.to_le_bytes());
 }
 
 fn wiki_relative_path(path: &str) -> Option<&str> {
@@ -1414,6 +1602,39 @@ mod tests {
         assert!(export.contains("- [Sample](/wiki/plans/sample.mdx)"));
         assert!(export.contains("## /wiki/plans/sample.mdx"));
         assert!(export.contains("Agent-readable page."));
+    }
+
+    #[test]
+    fn exports_generated_project_skill() {
+        let root = temp_root("wiki-skill");
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+
+        let skill = wiki_project_skill(&root);
+
+        assert_eq!(skill.filename, "SKILL.md");
+        assert!(skill.content.contains("name: hyperwiki-project-context"));
+        assert!(skill.content.contains("wiki/index.mdx"));
+        assert!(skill.content.contains("/api/wiki/export-markdown-zip"));
+        assert!(skill.content.contains("`wiki/index.mdx` - Home"));
+    }
+
+    #[test]
+    fn exports_markdown_zip_with_wiki_markdown_llms_and_skill() {
+        let root = temp_root("wiki-zip");
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+
+        let export = wiki_markdown_zip_export(&root);
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(export.base64.as_bytes())
+            .unwrap();
+
+        assert_eq!(export.mime_type, "application/zip");
+        assert!(bytes.starts_with(b"PK\x03\x04"));
+        assert!(export.files.iter().any(|file| file.path == "wiki/index.md"));
+        assert!(export.files.iter().any(|file| file.path == "llms.txt"));
+        assert!(export.files.iter().any(|file| file.path == "SKILL.md"));
+        assert!(String::from_utf8_lossy(&bytes).contains("wiki/index.md"));
+        assert!(String::from_utf8_lossy(&bytes).contains("SKILL.md"));
     }
 
     #[test]

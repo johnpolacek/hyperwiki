@@ -208,6 +208,35 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => json_response(200, &serde_json::Value::Null),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/export-markdown-zip") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::wiki::wiki_markdown_zip_export(project_root),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/skill.md") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return text_response(200, crate::domain::wiki::wiki_project_skill(project_root).content);
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki/page-markdown") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -1607,6 +1636,63 @@ mod tests {
         assert!(response.ok, "{}", response.text);
         assert!(response.text.contains("# Hyperwiki Project Wiki"));
         assert!(response.text.contains("- [Home](/wiki/index.mdx)"));
+    }
+
+    #[test]
+    fn wiki_markdown_zip_endpoint_returns_download_payload() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-zip");
+        let home = temp_root("command-wiki-zip-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/export-markdown-zip".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("\"filename\":\"hyperwiki-markdown-export.zip\""));
+        assert!(response.text.contains("\"mimeType\":\"application/zip\""));
+        assert!(response.text.contains("\"path\":\"SKILL.md\""));
+    }
+
+    #[test]
+    fn wiki_skill_endpoint_returns_generated_skill_markdown() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-skill");
+        let home = temp_root("command-wiki-skill-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/skill.md".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("name: hyperwiki-project-context"));
+        assert!(response.text.contains("/api/wiki/export-markdown-zip"));
     }
 
     #[test]

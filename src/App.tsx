@@ -5,7 +5,9 @@ import {
   ChevronDown,
   Circle,
   Command,
+  Download,
   ExternalLink,
+  FileCode2,
   FolderOpen,
   FolderGit2,
   GitBranch,
@@ -127,6 +129,13 @@ interface WikiSourceResponse {
   headings?: WikiHeading[];
   links?: WikiLink[];
   validationWarnings?: WikiValidationWarning[];
+}
+
+interface WikiMarkdownZipExportResponse {
+  filename: string;
+  mimeType: string;
+  base64: string;
+  files?: Array<{ path: string; bytes: number }>;
 }
 
 interface ProjectRecord {
@@ -772,7 +781,7 @@ function App() {
     let cancelled = false;
     setIsWikiLoading(true);
     setWikiError("");
-    const request = isReactRenderedPlanPath(route.path)
+    const request = isReactRenderedMdxPath(route.path)
       ? hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(route.path)}`, activeProject))
       : hyperwikiApi.text(wikiRequestPath(route.path, activeProject));
     request
@@ -2051,6 +2060,28 @@ function App() {
     setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
   }
 
+  async function downloadWikiMarkdownZip() {
+    setStatus("Preparing wiki Markdown export");
+    try {
+      const exportPayload = await hyperwikiApi.json<WikiMarkdownZipExportResponse>(withProjectQuery("/api/wiki/export-markdown-zip", activeProject));
+      downloadBase64File(exportPayload.filename || "hyperwiki-markdown-export.zip", exportPayload.mimeType || "application/zip", exportPayload.base64);
+      setStatus(`Wiki Markdown export ready${exportPayload.files?.length ? ` (${exportPayload.files.length} files)` : ""}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not export wiki Markdown.");
+    }
+  }
+
+  async function downloadWikiSkill() {
+    setStatus("Preparing project skill");
+    try {
+      const content = await hyperwikiApi.text(withProjectQuery("/api/wiki/skill.md", activeProject));
+      downloadTextFile("SKILL.md", "text/markdown", content);
+      setStatus("Project skill export ready");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not export project skill.");
+    }
+  }
+
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute && route.kind !== "plan-create";
@@ -2103,6 +2134,8 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
+          onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
+          onDownloadWikiSkill={downloadWikiSkill}
           activeImportPlanningRun={activeImportPlanningRun}
           onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
           onPlanImportedProject={planImportedProject}
@@ -2453,6 +2486,8 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onCancelImportPlanningTurn: () => Promise<void>;
+  onDownloadWikiMarkdownZip: () => Promise<void>;
+  onDownloadWikiSkill: () => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
@@ -2533,6 +2568,28 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Button
+            aria-label="Download wiki Markdown zip"
+            className="size-8"
+            size="icon"
+            title="Download wiki Markdown zip"
+            type="button"
+            variant="outline"
+            onClick={() => void props.onDownloadWikiMarkdownZip()}
+          >
+            <Download aria-hidden="true" data-icon="inline-start" />
+          </Button>
+          <Button
+            aria-label="Download project skill"
+            className="size-8"
+            size="icon"
+            title="Download project skill"
+            type="button"
+            variant="outline"
+            onClick={() => void props.onDownloadWikiSkill()}
+          >
+            <FileCode2 aria-hidden="true" data-icon="inline-start" />
+          </Button>
           <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onNavigate={props.onNavigate} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
@@ -2545,7 +2602,7 @@ function WorkspacePane(props: {
         ) : null}
         {props.wikiError ? (
           <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
-        ) : props.wikiSource && isReactRenderedPlanPath(props.wikiPath) ? (
+        ) : props.wikiSource && isReactRenderedMdxPath(props.wikiPath) ? (
           <MdxPlanRenderer
             markdown={props.wikiSource.markdown}
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
@@ -5294,8 +5351,34 @@ function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
   return importedPlanningState(route, pages).isIntake;
 }
 
-function isReactRenderedPlanPath(path: string) {
-  return displayWikiPath(path).startsWith("/wiki/plans/") && path.endsWith(".mdx");
+function isReactRenderedMdxPath(path: string) {
+  return displayWikiPath(path).startsWith("/wiki/") && path.endsWith(".mdx");
+}
+
+function downloadTextFile(filename: string, mimeType: string, content: string) {
+  const blob = new Blob([content], { type: mimeType });
+  downloadBlob(filename, blob);
+}
+
+function downloadBase64File(filename: string, mimeType: string, base64: string) {
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  downloadBlob(filename, new Blob([bytes], { type: mimeType }));
+}
+
+function downloadBlob(filename: string, blob: Blob) {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }
 
 function isIncompleteImportProject(project: ProjectRecord | null | undefined) {
