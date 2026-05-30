@@ -346,8 +346,8 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (isHero) return <section className="grid gap-5 border-b pb-8" key={key}>{children}</section>;
   if (isSummary) return <section className="grid gap-3 rounded-md border bg-secondary/50 p-4" key={key}>{children}</section>;
   if (isStage) return <section className="grid gap-5 border-t pt-8" key={key}>{children}</section>;
-  if (isUnit) return <article className="grid gap-3 rounded-md border bg-card p-4" key={key}>{children}</article>;
-  if (isPanel) return <section className="grid gap-4 rounded-md border bg-card p-5" key={key}>{children}</section>;
+  if (isUnit) return <article className="grid gap-3 py-1" key={key}>{children}</article>;
+  if (isPanel) return <section className="grid gap-3 py-1" key={key}>{children}</section>;
   if (tag === "section") return <section className="grid gap-3" key={key}>{children}</section>;
   if (tag === "article") return <article className="grid gap-3" key={key}>{children}</article>;
   if (tag === "div") return <div className="grid gap-3" key={key}>{children}</div>;
@@ -391,7 +391,7 @@ function renderPlanComponent(
 
   if (component === "PlanUnit" || component === "Panel" || component === "Card") {
     return (
-      <section className="grid gap-2 border-l border-border/80 py-1 pl-4" key={key}>
+      <section className="grid gap-2 py-1" key={key}>
         {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
@@ -401,7 +401,7 @@ function renderPlanComponent(
 
   if (component === "Decision" || component === "Evidence" || component === "Verification") {
     return (
-      <section className={cn("grid gap-2 border-l-2 py-2 pl-4 pr-2", componentPanelAccent(component))} key={key}>
+      <section className="grid gap-2 py-1" key={key}>
         {title ? <h2 className="m-0 text-lg font-bold leading-tight">{title}</h2> : null}
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
@@ -606,12 +606,6 @@ function summaryItemValue(item: Element, label: string, key: string, onNavigate:
       return renderNode(child, `${key}-${index}`, onNavigate, path);
     })
     .filter((child) => child !== "");
-}
-
-function componentPanelAccent(component: string) {
-  if (component === "Verification") return "border-primary/80 bg-secondary/20";
-  if (component === "Decision") return "border-primary/60";
-  return "border-border/90";
 }
 
 function renderComponentHeader(title: string, description: string, status: string | null) {

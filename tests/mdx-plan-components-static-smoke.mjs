@@ -70,8 +70,7 @@ for (const visualContract of [
   "renderSummaryGrid",
   "bg-secondary/25 px-0 py-3",
   "grid gap-1",
-  "border-l border-border/80 py-1 pl-4",
-  "componentPanelAccent",
+  "grid gap-2 py-1",
 ]) {
   if (!renderer.includes(visualContract)) {
     throw new Error(`MDX plan renderer must keep the compact working-brief visual contract: ${visualContract}`);
