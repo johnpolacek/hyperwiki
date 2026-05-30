@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-29 fix | import onboarding direct plan completion</h2>
+  <ul>
+    <li>Removed the second hidden Codex plan-artifact turn from the normal imported-project onboarding path.</li>
+    <li>After Codex emits <code>hyperwiki-ready-to-plan</code>, the Rust runtime now immediately writes a conservative MVP plan from accepted decisions and imported source context, then validates the allowed plan files before completing onboarding.</li>
+    <li>This addresses dogfood runs where Q&amp;A succeeded but the post-decision artifact turn stayed quiet long enough to feel hung.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-29 fix | import onboarding plan fallback</h2>
   <ul>
     <li>Added a runtime-owned completion fallback for imports that have already reached a valid <code>hyperwiki-ready-to-plan</code> decision state but whose hidden Codex plan-artifact turn stalls or times out before assistant text.</li>

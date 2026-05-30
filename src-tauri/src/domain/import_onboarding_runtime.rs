@@ -129,7 +129,6 @@ enum RuntimeTurnKind {
     Initial,
     Answer,
     Repair,
-    Plan,
     PlanRepair,
 }
 
@@ -139,7 +138,6 @@ impl RuntimeTurnKind {
             RuntimeTurnKind::Initial => "initial",
             RuntimeTurnKind::Answer => "answer",
             RuntimeTurnKind::Repair => "repair",
-            RuntimeTurnKind::Plan => "plan",
             RuntimeTurnKind::PlanRepair => "plan_repair",
         }
     }
@@ -553,7 +551,6 @@ fn run_runtime_turn(
             &prompt_context,
             &answered_question_id,
         ),
-        RuntimeTurnKind::Plan => plan_turn_prompt(&project, &request_id, &context, &prompt_context),
         RuntimeTurnKind::PlanRepair => {
             plan_repair_prompt(&project, &request_id, &context, &prompt_context)
         }
@@ -561,8 +558,7 @@ fn run_runtime_turn(
     let response = match execute_provider_turn(&project, &run_id, &prompt, app.clone()) {
         Ok(response) => response,
         Err((_status, error))
-            if matches!(kind, RuntimeTurnKind::Plan | RuntimeTurnKind::PlanRepair)
-                && is_plan_provider_stall(&error) =>
+            if matches!(kind, RuntimeTurnKind::PlanRepair) && is_plan_provider_stall(&error) =>
         {
             append_event_for_run(
                 &project.root,
@@ -678,20 +674,17 @@ fn run_runtime_turn(
                 app.as_ref(),
                 &run_id,
                 "ready_to_plan",
-                "running_plan_turn",
-                "Planning decisions are complete; generating the MVP plan.",
+                "staging_artifacts",
+                "Planning decisions are complete; writing the MVP plan.",
                 Some(ready.clone()),
             )?;
-            complete_runtime_run(
+            return complete_plan_from_runtime_context(
                 &project,
                 &run_id,
-                "ready_to_plan",
-                "Structured ready-to-plan signal received.",
+                &ready,
+                &prompt_context,
                 app.as_ref(),
-            )?;
-            release_runtime_active(&project.id, &run_id);
-            spawn_runtime_turn(project, RuntimeTurnKind::Plan, ready, String::new(), app)?;
-            return Ok(());
+            );
         }
         let session = load_or_create_session(&project)?;
         if session.repair_attempts <= 1 && !matches!(kind, RuntimeTurnKind::Repair) {
@@ -727,7 +720,7 @@ fn run_runtime_turn(
             app.as_ref(),
         );
     }
-    if matches!(kind, RuntimeTurnKind::Plan | RuntimeTurnKind::PlanRepair) {
+    if matches!(kind, RuntimeTurnKind::PlanRepair) {
         if let Some(artifacts) = extract_plan_artifacts(&text, &request_id) {
             append_event_for_run(
                 &project.root,
@@ -798,24 +791,6 @@ fn run_runtime_turn(
                 "waiting_for_answer",
                 false,
                 None,
-            )?;
-            return Ok(());
-        }
-        if matches!(kind, RuntimeTurnKind::Plan) {
-            append_event_for_run(&project.root, app.as_ref(), &run_id, "contract_warning", "staging_artifacts", "Plan generation completed without validated MVP plan artifacts; running one repair.", Some(text_tail(&text, 500)))?;
-            complete_chained_runtime_run(
-                &project,
-                &run_id,
-                "running_plan_repair_turn",
-                "Plan generation completed without validated artifacts; starting one repair turn.",
-                app.as_ref(),
-            )?;
-            spawn_runtime_turn(
-                project,
-                RuntimeTurnKind::PlanRepair,
-                text_tail(&text, 1200),
-                String::new(),
-                app,
             )?;
             return Ok(());
         }
@@ -937,7 +912,7 @@ fn complete_plan_from_runtime_context(
     source_context: &str,
     app: Option<&tauri::AppHandle>,
 ) -> Result<(), (u16, String)> {
-    let artifacts = runtime_fallback_plan_artifacts(project, ready_context, source_context);
+    let artifacts = runtime_plan_artifacts(project, ready_context, source_context);
     write_generated_plan_artifacts(&project.root, &artifacts)?;
     append_event_for_run(
         &project.root,
@@ -975,7 +950,7 @@ fn complete_plan_from_runtime_context(
     )
 }
 
-fn runtime_fallback_plan_artifacts(
+fn runtime_plan_artifacts(
     project: &ProjectRecord,
     ready_context: &str,
     source_context: &str,
@@ -984,12 +959,12 @@ fn runtime_fallback_plan_artifacts(
     let ready_summary = escape_html(&compact(ready_context, 1000));
     let source_summary = escape_html(&compact(source_context, 1400));
     let source_excerpt = if source_summary.trim().is_empty() {
-        "No source excerpt was available to the runtime fallback. Preserve this as an implementation unknown and verify against the imported source before coding.".to_string()
+        "No source excerpt was available to the runtime planner. Preserve this as an implementation unknown and verify against the imported source before coding.".to_string()
     } else {
         source_summary
     };
     let ready_excerpt = if ready_summary.trim().is_empty() {
-        "Codex signaled that planning could continue, but did not provide a usable plan-intent excerpt before the artifact turn stalled.".to_string()
+        "Codex signaled that planning could continue, but did not provide a usable plan-intent excerpt.".to_string()
     } else {
         ready_summary
     };
@@ -1015,7 +990,7 @@ wikiKind: "plan"
     let mvp_index = format!(
         r#"---
 title: "{plan_name}"
-description: "Runtime fallback MVP plan generated from accepted import decisions after the Codex artifact turn stalled."
+description: "Runtime MVP plan generated from accepted import decisions and imported source context."
 wikiKind: "plan"
 ---
 
@@ -1047,7 +1022,7 @@ wikiKind: "plan"
 <h1>Unit 01 - Confirmed MVP Slice</h1>
 <section>
   <h2>Intent</h2>
-  <p>Implement the smallest working MVP that matches the accepted import-planning decisions and the imported source evidence. This page exists because the Codex plan-artifact turn stalled after decisions were complete, so the runtime preserved progress with a conservative plan instead of leaving onboarding blocked.</p>
+  <p>Implement the smallest working MVP that matches the accepted import-planning decisions and the imported source evidence. This page is written by the import onboarding runtime after Codex completes the decision contract, so onboarding does not depend on a second hidden agent turn to create plan files.</p>
 </section>
 <section>
   <h2>Source Decisions</h2>
@@ -1422,7 +1397,6 @@ fn runtime_phase(kind: RuntimeTurnKind) -> &'static str {
         RuntimeTurnKind::Initial => "running_question_turn",
         RuntimeTurnKind::Answer => "running_question_turn",
         RuntimeTurnKind::Repair => "running_repair_turn",
-        RuntimeTurnKind::Plan => "running_plan_turn",
         RuntimeTurnKind::PlanRepair => "running_plan_repair_turn",
     }
 }
@@ -1576,42 +1550,6 @@ fn repair_turn_prompt(
         "",
         "Inline source context:",
         source_context,
-    ]
-    .join("\n")
-}
-
-fn plan_turn_prompt(
-    project: &ProjectRecord,
-    request_id: &str,
-    ready_context: &str,
-    source_context: &str,
-) -> String {
-    [
-        "You are generating the first MVP plan for this newly imported Hyperwiki project.",
-        "Artifact-generation response only. Do not use tools. Do not run commands. Do not read files. Do not write files.",
-        "Use only the inline source context and ready-to-plan context in this prompt.",
-        &format!("The requestId must be exactly \"{request_id}\"."),
-        "",
-        "Output exactly one fenced JSON block. No prose before or after the block.",
-        "The JSON object must have type=\"hyperwiki-plan-artifacts\", requestId, and artifacts.",
-        "artifacts must be an array of objects with path and content.",
-        "Required artifact paths:",
-        "- wiki/plans/mvp/index.mdx",
-        "- at least one executable unit under wiki/plans/mvp/ with \"unit-\" in the filename",
-        "- wiki/plans/index.mdx",
-        "Every artifact content must be complete MDX text, including frontmatter with wikiKind: \"plan\" for plan files.",
-        "Every executable unit must include a Verification section.",
-        "Name unknowns, source evidence, and decisions instead of inventing certainty.",
-        "If writing a safe MVP plan is impossible, emit exactly one hyperwiki-question JSON object instead.",
-        "",
-        "Ready-to-plan context:",
-        &text_tail(ready_context, 1600),
-        "",
-        "Inline source context:",
-        source_context,
-        "",
-        &format!("Imported project: {}", project.name),
-        &format!("Project root: {}", project.root.display()),
     ]
     .join("\n")
 }
