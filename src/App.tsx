@@ -2205,6 +2205,7 @@ function App() {
               onInitializeGit={initializeGitFromTerminal}
               onRenameSession={renameSession}
               onRestartSession={restartSession}
+              onRunDev={() => runCommandAction("execute-worktree")}
               onSelectSession={setActiveSessionId}
               onStart={startTerminal}
               onTerminalText={handleTerminalText}
@@ -2608,7 +2609,7 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} />
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -2695,29 +2696,15 @@ function CommandBar({
   onResumeImportPlanning,
   onRunCommand,
   onSetSidePanelMode,
-  reviewWorkflows,
-  wikiPath,
 }: {
   activePlanState: PlanPageActionState;
   canResumeImportPlanning: boolean;
   onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: SidePanelMode) => void;
-  reviewWorkflows: ReviewWorkflow[];
-  wikiPath: string;
 }) {
-  const [mode, setMode] = useState<"closed" | "worktree" | "new-plan" | "review">("closed");
-  const [branch, setBranch] = useState(`feature/${slugify(wikiPath)}`);
-  const [title, setTitle] = useState("");
-  const [intent, setIntent] = useState("");
-  const [planType, setPlanType] = useState("feature");
-
-  useEffect(() => {
-    setBranch(`feature/${slugify(wikiPath)}`);
-  }, [wikiPath]);
-
   return (
-    <div className="relative flex items-center gap-2">
+    <div className="flex items-center gap-2">
       {activePlanState.isPlanPage && activePlanState.isComplete ? (
         <div className="flex min-w-0 items-center gap-2 rounded-md border bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">
           <span className="max-w-56 truncate">{activePlanState.message}</span>
@@ -2735,85 +2722,6 @@ function CommandBar({
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
         execute
       </Button>
-      <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
-        run dev
-      </Button>
-      {mode !== "closed" ? (
-        <div className="absolute right-0 top-10 z-20 w-[28rem] border bg-popover p-3 text-popover-foreground shadow-lg">
-          {mode === "worktree" ? (
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                onRunCommand("execute-worktree", { branch });
-                setMode("closed");
-              }}
-            >
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-bold">Branch</span>
-                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="border bg-background px-2 py-2" onChange={(event) => setBranch(event.target.value)} value={branch} />
-              </label>
-              <Button type="submit">
-                <GitBranch aria-hidden="true" data-icon="inline-start" />
-                Create Worktree And Execute
-              </Button>
-            </form>
-          ) : null}
-          {mode === "review" ? (
-            <div className="flex flex-col gap-2">
-              {reviewWorkflows.length ? (
-                reviewWorkflows.map((workflow) => (
-                  <button
-                    className="grid gap-1 rounded-md border bg-background p-2 text-left text-sm hover:bg-secondary"
-                    key={workflow.id}
-                    onClick={() => {
-                      onRunCommand("review", { workflowId: workflow.id });
-                      setMode("closed");
-                    }}
-                    type="button"
-                  >
-                    <span className="font-bold">{workflow.label}</span>
-                    <span className="text-xs text-muted-foreground">{workflow.description}</span>
-                  </button>
-                ))
-              ) : (
-                <div className="text-sm text-muted-foreground">No review workflows available.</div>
-              )}
-            </div>
-          ) : null}
-          {mode === "new-plan" ? (
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                onRunCommand("new-plan", { title, intent, planType });
-                setMode("closed");
-              }}
-            >
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-bold">Title</span>
-                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="border bg-background px-2 py-2" onChange={(event) => setTitle(event.target.value)} value={title} />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-bold">Intent</span>
-                <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-24 border bg-background px-2 py-2" onChange={(event) => setIntent(event.target.value)} value={intent} />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-bold">Type</span>
-                <select className="border bg-background px-2 py-2" onChange={(event) => setPlanType(event.target.value)} value={planType}>
-                  <option value="feature">feature</option>
-                  <option value="refactor">refactor</option>
-                  <option value="fix">fix</option>
-                </select>
-              </label>
-              <Button type="submit">
-                <Plus aria-hidden="true" data-icon="inline-start" />
-                Create Plan
-              </Button>
-            </form>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -4486,6 +4394,7 @@ function TerminalPane(props: {
   onInitializeGit: () => Promise<void>;
   onRenameSession: (sessionId: string, name: string) => void;
   onRestartSession: (session: SessionRecord) => void;
+  onRunDev: () => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
   onTerminalText: (sessionId: string, text: string) => void;
@@ -4561,6 +4470,9 @@ function TerminalPane(props: {
               {hasGit ? "+ worktree" : "init git"}
             </Button>
           ) : null}
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={props.onRunDev}>
+            run dev
+          </Button>
           {isWorktreeOpen ? (
             <form className="absolute left-0 top-[calc(100%+8px)] z-50 grid w-[min(420px,calc(100vw-32px))] gap-3 rounded-lg border border-[#465063] bg-[#111513] p-3.5 text-[#eef2ec] shadow-[0_18px_52px_rgba(0,0,0,0.42)]" onSubmit={submitWorktree}>
               <header className="flex items-center justify-between gap-3">
@@ -4588,10 +4500,10 @@ function TerminalPane(props: {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <label className="flex items-center gap-1.5 text-[#9da79f]">
-            <span>thinking</span>
+            <span>think</span>
             <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={thinkingEffort} onChange={(event) => setThinkingEffort(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
               <option value="low">low</option>
-              <option value="medium">medium</option>
+              <option value="medium">med</option>
               <option value="high">high</option>
               <option value="xhigh">xhigh</option>
             </select>
