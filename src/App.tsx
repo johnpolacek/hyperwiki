@@ -4707,6 +4707,7 @@ function XtermSession({
   const fitRef = useRef<FitAddon | null>(null);
   const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
+  const hasWrittenTerminalDisplayRef = useRef(false);
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -4716,6 +4717,7 @@ function XtermSession({
     closedRef.current = false;
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
+    hasWrittenTerminalDisplayRef.current = false;
     pendingRef.current = [];
     let hasLoadedReplay = false;
     let eventBuffer: TerminalOutputEventPayload[] = [];
@@ -4775,9 +4777,10 @@ function XtermSession({
       const bytes = Uint8Array.from(payload.bytes || []);
       if (!bytes.length) return;
       const text = terminalBytesToText(bytes);
+      const displayText = cleanInitialTerminalDisplayText(text, hasWrittenTerminalDisplayRef);
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
-      terminal.write(bytes);
+      if (displayText) terminal.write(displayText);
     };
 
     const handleTerminalChunk = (payload: TerminalOutputEventPayload) => {
@@ -4796,9 +4799,10 @@ function XtermSession({
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
           const text = terminalBytesToText(bytes);
+          const displayText = cleanInitialTerminalDisplayText(text, hasWrittenTerminalDisplayRef);
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
-          terminal.write(bytes);
+          if (displayText) terminal.write(displayText);
         }
         seenSeqRef.current = replay.seq || 0;
         hasLoadedReplay = true;
@@ -5353,20 +5357,7 @@ function updateProjectImportPlanning(projects: ProjectListResponse, projectId: s
 }
 
 function agentLaunchCommand(layout: LayoutResponse | null) {
-  return normalizeAgentLaunchCommand(layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo");
-}
-
-function normalizeAgentLaunchCommand(command: string) {
-  const trimmed = command.trim();
-  if (!trimmed || !/^(?:[\w./-]+\/)?codex(?:\s|$)/.test(trimmed)) return trimmed;
-  let normalized = trimmed.replace(/(^|\s)--yolo(?=\s|$)/g, "");
-  if (!/(^|\s)--dangerously-bypass-approvals-and-sandbox(?=\s|$)/.test(normalized)) {
-    normalized = normalized.replace(/^((?:[\w./-]+\/)?codex)(?=\s|$)/, "$1 --dangerously-bypass-approvals-and-sandbox");
-  }
-  if (!/(^|\s)--no-alt-screen(?=\s|$)/.test(normalized)) {
-    normalized = `${normalized} --no-alt-screen`;
-  }
-  return normalized.replace(/\s+/g, " ").trim();
+  return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
 }
 
 function importAgentLaunchCommand(layout: LayoutResponse | null) {
@@ -6197,6 +6188,13 @@ async function listenTerminalOutput(handler: (payload: TerminalOutputEventPayloa
 
 function terminalBytesToText(bytes: Uint8Array) {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+function cleanInitialTerminalDisplayText(data: string, hasWritten: { current: boolean }) {
+  if (hasWritten.current) return data;
+  const cleaned = data.replace(/^%[ \t]*(?:\r\n?|\n)/, "");
+  if (cleaned.length > 0) hasWritten.current = true;
+  return cleaned;
 }
 
 function terminalTextForParsing(data: string) {

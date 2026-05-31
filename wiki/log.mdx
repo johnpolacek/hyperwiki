@@ -7,10 +7,10 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
-  <h2>2026-05-31 implementation | Codex terminal launch compatibility</h2>
+  <h2>2026-05-31 implementation | terminal startup marker cleanup</h2>
   <ul>
-    <li>Normalized Codex agent launch commands before terminal startup so legacy <code>codex --yolo</code> becomes the current explicit bypass flag.</li>
-    <li>Added <code>--no-alt-screen</code> to Codex agent terminals so startup remains visible inside Hyperwiki's embedded xterm panel.</li>
+    <li>Preserved the <code>codex --yolo</code> agent launch fallback and removed the command normalization that rewrote it.</li>
+    <li>Added a narrow xterm display cleanup for zsh's startup-only partial-line <code>%</code> marker before the first terminal content is rendered.</li>
     <li>Validation: <code>pnpm run check</code>.</li>
   </ul>
 </article>
