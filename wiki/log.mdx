@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | import plan execution brief polish</h2>
+  <ul>
+    <li>Tightened React MDX plan rendering for operational planning pages: smaller hero scale, denser cards/checklists, tighter prose rhythm, and a compact visible <code>Copy MD</code> action.</li>
+    <li>Reworked deterministic static-local import templates around execution-brief grammar: build, where, ready when, do not add, acceptance checks, manual command checks, unlocks next, verification, and completion gate.</li>
+    <li>Replaced API-flavored request/response panels in simple static import plans with <code>CommandBlock</code> and <code>Aside</code> components, while preserving request/response components for real contract docs.</li>
+    <li>Validation: focused import runtime/planning tests, static smoke tests, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | import planning Codex prewarm</h2>
   <ul>
     <li>Added non-generative Codex prewarm for import onboarding: Hyperwiki now starts and initializes <code>codex app-server</code> during app setup and warms imported-project threads after project creation or resume.</li>

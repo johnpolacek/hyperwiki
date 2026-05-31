@@ -1528,9 +1528,9 @@ fn plan_repair_prompt(
         &format!("The requestId must be exactly \"{request_id}\"."),
         "The runtime will write and validate the artifacts. You only generate the file paths and complete MDX contents.",
         "Apply the bundled Hyperwiki planning contract even though you cannot call a skill tool in this turn.",
-        "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, and Visibility.",
+        "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
         "Before writing artifacts, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, CardGroup/Columns for alternatives or work tracks, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
+        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, CardGroup/Columns for alternatives or work tracks, CommandBlock for exact local commands, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
         "Do not dump long imported source bundles into visible paragraphs; summarize visibly and preserve full context in agent-only Visibility blocks.",
         "Required artifact paths: wiki/plans/index.mdx, wiki/plans/mvp/index.mdx, one wiki/plans/mvp/stage-01-*.mdx stage page, and at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages.",
@@ -1601,37 +1601,384 @@ fn compile_static_local_mvp_artifacts(
         GeneratedPlanArtifact {
             path: "wiki/plans/index.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"active planning\">\n  <h1>Plans</h1>\n  <p>Current source-grounded implementation plans for {title}.</p>\n</PlanHero>\n\n<PlanSummary>\n  <ul>\n    <li>Status: active planning</li>\n    <li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li>\n    <li>Shape: single-stage MVP with three executable units</li>\n    <li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Unit 01 - Root HTML Shell</a></li>\n    <li>Next action: implement the self-contained root <code>index.html</code> shell.</li>\n    <li>Blockers: none from accepted import decisions.</li>\n    <li>Validation: repository checks plus manual browser verification of the local-only journal workflow.</li>\n  </ul>\n</PlanSummary>\n\n<CardGroup cols=\"3\">\n  <Card title=\"Active plan\" description=\"Source-grounded MVP for {title}\">\n    <p>Start with Stage 01 and keep the implementation path static, local-only, and dependency-free.</p>\n  </Card>\n  <Card title=\"Current unit\" description=\"Unit 01 - Root HTML Shell\">\n    <p>Create the root <code>index.html</code> surface before wiring browser persistence.</p>\n  </Card>\n  <Card title=\"Validation\" description=\"Manual browser verification\">\n    <p>Open the page locally, exercise the journal flow, and confirm no backend, build step, account, or network behavior appears.</p>\n  </Card>\n</CardGroup>\n"
+                r#"---
+title: "Plans"
+description: "Current source-grounded implementation plans."
+wikiKind: "plan"
+---
+
+<PlanHero status="active planning">
+  <h1>Plans</h1>
+  <p>Current source-grounded implementation plans for {title}.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: active planning</li>
+    <li>Active plan: <a href="/wiki/plans/mvp/index.mdx">{title} MVP Plan</a></li>
+    <li>Shape: single-stage MVP with three executable units</li>
+    <li>Current unit: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Unit 01 - Root HTML Shell</a></li>
+    <li>Next action: implement the self-contained root <code>index.html</code> shell.</li>
+    <li>Blockers: none from accepted import decisions.</li>
+    <li>Validation: repository checks plus manual browser verification of the local-only journal workflow.</li>
+  </ul>
+</PlanSummary>
+
+<CardGroup cols="3">
+  <Card title="Active plan" description="Source-grounded MVP for {title}">
+    <p>Execute Stage 01 as a static, local-only, dependency-free browser MVP.</p>
+  </Card>
+  <Card title="Current unit" description="Unit 01 - Root HTML Shell">
+    <p>Create the root <code>index.html</code> surface before wiring persistence.</p>
+  </Card>
+  <Card title="Ready when" description="Manual browser proof exists">
+    <p>The final unit records create, autosave, reload restore, clear-entry, and cleared reload behavior.</p>
+  </Card>
+</CardGroup>
+"#
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/index.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"{title} MVP Plan\"\ndescription: \"Source-grounded MVP plan compiled from import Q&amp;A decisions.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"active\">\n  <h1>{title} MVP Plan</h1>\n  <p>Source-grounded MVP plan compiled from accepted import Q&amp;A decisions.</p>\n</PlanHero>\n\n<PlanSummary>\n  <ul>\n    <li>Status: active</li>\n    <li>Shape: single-stage MVP</li>\n    <li>Current stage: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\">Stage 01 - Static MVP Foundation</a></li>\n    <li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Unit 01 - Root HTML Shell</a></li>\n    <li>Unknowns: no blocking implementation unknowns remain for the local-only MVP slice.</li>\n  </ul>\n</PlanSummary>\n\n<Columns cols=\"2\">\n  <Column>\n    <Steps>\n      <Step title=\"Stage 01 - Static MVP Foundation\">\n        <p>Build the confirmed static local-only MVP as one root <code>index.html</code> file.</p>\n      </Step>\n      <Step title=\"Unit 01 - Root HTML Shell\">\n        <p>Create semantic markup, embedded CSS, and the centered textarea workflow.</p>\n      </Step>\n      <Step title=\"Unit 02 - Local Persistence\">\n        <p>Implement <code>localStorage</code> restore, debounced autosave, and save-status feedback.</p>\n      </Step>\n      <Step title=\"Unit 03 - Clear Entry And Verification\">\n        <p>Implement clear-entry behavior and record manual browser verification.</p>\n      </Step>\n    </Steps>\n  </Column>\n  <Column>\n    <Evidence title=\"Accepted source decisions\">\n      <p>The visible plan preserves the accepted local-only MVP boundary. Full source and Q&amp;A context is preserved for agents in the Markdown derivative.</p>\n      <Visibility for=\"agents\">\n        {decision_summary}\n      </Visibility>\n    </Evidence>\n    <Decision title=\"Deferred Work\">\n      <p>Frameworks, backend services, accounts, sync, deployment automation, analytics, and external services are outside the accepted MVP decision.</p>\n    </Decision>\n  </Column>\n</Columns>\n"
+                r#"---
+title: "{title} MVP Plan"
+description: "Source-grounded MVP plan compiled from import Q&amp;A decisions."
+wikiKind: "plan"
+---
+
+<PlanHero status="active">
+  <h1>{title} MVP Plan</h1>
+  <p>Source-grounded MVP plan compiled from accepted import Q&amp;A decisions.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: active</li>
+    <li>Shape: single-stage MVP</li>
+    <li>Current stage: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx">Stage 01 - Static MVP Foundation</a></li>
+    <li>Current unit: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Unit 01 - Root HTML Shell</a></li>
+    <li>Unknowns: no blocking implementation unknowns remain for the local-only MVP slice.</li>
+  </ul>
+</PlanSummary>
+
+<Columns cols="2">
+  <Column>
+    <Steps>
+      <Step title="Unit 01 - Root HTML Shell">
+        <p>Create the root <code>index.html</code> surface and leave stable hooks for status and clear-entry behavior.</p>
+      </Step>
+      <Step title="Unit 02 - Local Persistence">
+        <p>Wire browser <code>localStorage</code> restore, debounced autosave, and save-status feedback.</p>
+      </Step>
+      <Step title="Unit 03 - Clear Entry And Verification">
+        <p>Finish clear-entry behavior and record the full manual browser acceptance path.</p>
+      </Step>
+    </Steps>
+  </Column>
+  <Column>
+    <TaskList title="Plan acceptance checks" description="How to know the MVP plan is ready to execute.">
+      <ul>
+        <li>Every unit names the file or browser surface it changes.</li>
+        <li>Every unit has a local-only guardrail and concrete verification path.</li>
+        <li>The final unit proves create, autosave, reload restore, clear-entry, and cleared reload behavior.</li>
+      </ul>
+    </TaskList>
+    <Evidence title="Accepted source decisions">
+      <p>The visible plan preserves the accepted local-only MVP boundary. Full source and Q&amp;A context is preserved for agents in the Markdown derivative.</p>
+      <Visibility for="agents">
+        {decision_summary}
+      </Visibility>
+    </Evidence>
+    <Decision title="Deferred Work">
+      <p>Frameworks, backend services, accounts, sync, deployment automation, analytics, and external services are outside the accepted MVP decision.</p>
+    </Decision>
+  </Column>
+</Columns>
+"#
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-static-mvp-foundation.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"Stage 01 - Static MVP Foundation\"\ndescription: \"Build the accepted static local-only MVP.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"planned\">\n  <h1>Stage 01 - Static MVP Foundation</h1>\n  <p>Stage goal: implement the source-decided {title} MVP as a single self-contained root <code>index.html</code> page using embedded HTML, CSS, and JavaScript.</p>\n</PlanHero>\n\n<CardGroup cols=\"3\">\n  <Card title=\"Unit 01\" description=\"Root HTML Shell\">\n    <p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx\">Create semantic markup, embedded CSS, embedded JavaScript, and the centered textarea workflow.</a></p>\n  </Card>\n  <Card title=\"Unit 02\" description=\"Local Persistence\">\n    <p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-persistence.mdx\">Implement <code>localStorage</code> restore, debounced autosave, and save-status feedback.</a></p>\n  </Card>\n  <Card title=\"Unit 03\" description=\"Clear Entry And Verification\">\n    <p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-clear-entry-and-verification.mdx\">Implement clear-entry behavior and record manual browser verification.</a></p>\n  </Card>\n</CardGroup>\n\n<Columns cols=\"2\">\n  <Column>\n    <Decision title=\"Dependencies\">\n      <p>Depends on the accepted source decision to keep the MVP static, local-only, dependency-free, and stored through browser <code>localStorage</code>.</p>\n    </Decision>\n    <Aside title=\"Local-only guardrail\">\n      <p>Do not add backend services, accounts, sync, analytics, deployment automation, network calls, package installs, or a build process.</p>\n    </Aside>\n  </Column>\n  <Column>\n    <Verification title=\"Stage verification\">\n      <TaskList title=\"Manual acceptance path\">\n        <ul>\n          <li>Open the root <code>index.html</code> directly in a browser.</li>\n          <li>Type a journal entry, wait through the debounce, and reload to confirm restore.</li>\n          <li>Clear the entry, reload again, and confirm the cleared state persists.</li>\n          <li>Confirm no backend, framework, build step, account, network, or external-service behavior was introduced.</li>\n        </ul>\n      </TaskList>\n    </Verification>\n  </Column>\n</Columns>\n\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when all three units are implemented, the root <code>index.html</code> workflow works locally, and verification is recorded in the relevant unit.</p>\n</section>\n"
+                r#"---
+title: "Stage 01 - Static MVP Foundation"
+description: "Build the accepted static local-only MVP."
+wikiKind: "plan"
+---
+
+<PlanHero status="planned">
+  <h1>Stage 01 - Static MVP Foundation</h1>
+  <p>Stage goal: implement the source-decided {title} MVP as a single self-contained root <code>index.html</code> page using embedded HTML, CSS, and JavaScript.</p>
+</PlanHero>
+
+<CardGroup cols="3">
+  <Card title="Build" description="One local journal surface">
+    <p><a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Create the root <code>index.html</code> shell, textarea workflow, status area, and clear-entry control.</a></p>
+  </Card>
+  <Card title="Persist" description="Browser-owned state">
+    <p><a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-persistence.mdx">Add <code>localStorage</code> restore, debounced autosave, and visible save status.</a></p>
+  </Card>
+  <Card title="Prove" description="Full local happy path">
+    <p><a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-clear-entry-and-verification.mdx">Verify create, reload restore, clear-entry, and cleared reload behavior.</a></p>
+  </Card>
+</CardGroup>
+
+<Columns cols="2">
+  <Column>
+    <Decision title="Stage boundary">
+      <p>Build a static, dependency-free, root <code>index.html</code> MVP stored through browser <code>localStorage</code>.</p>
+    </Decision>
+    <Aside title="Do not add">
+      <p>Backend services, accounts, sync, analytics, deployment automation, network calls, package installs, and build tooling stay out of this stage.</p>
+    </Aside>
+  </Column>
+  <Column>
+    <Verification title="Stage verification">
+      <TaskList title="Stage acceptance checks">
+        <ul>
+          <li>Open the root <code>index.html</code> directly in a browser.</li>
+          <li>Type a journal entry, wait through debounce, and reload to confirm restore.</li>
+          <li>Clear the entry, reload again, and confirm the cleared state persists.</li>
+          <li>Confirm the browser remains the only runtime and storage owner.</li>
+        </ul>
+      </TaskList>
+    </Verification>
+  </Column>
+</Columns>
+
+<section>
+  <h2>Completion Gate</h2>
+  <p>Complete when all three units pass the local happy path and the final unit records the verification result.</p>
+</section>
+"#
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx"
                 .to_string(),
             content: format!(
-                "---\ntitle: \"Unit 01 - Root HTML Shell\"\ndescription: \"Create the self-contained static journal shell.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"planned\">\n  <h1>Unit 01 - Root HTML Shell</h1>\n  <p>Intent: create the accepted MVP surface as a root <code>index.html</code> file with semantic markup, embedded CSS, embedded JavaScript, and a centered textarea workflow for {title}.</p>\n</PlanHero>\n\n<PlanSummary>\n  <ul>\n    <li>Status: planned</li>\n    <li>Completed artifact: root <code>index.html</code></li>\n    <li>Next unit: Unit 02 - Local Persistence</li>\n    <li>Blockers: none.</li>\n  </ul>\n</PlanSummary>\n\n<CardGroup cols=\"3\">\n  <Card title=\"Document shell\" description=\"Semantic root file\">\n    <p>Create the page title, main journal region, and responsive centered layout in the root <code>index.html</code>.</p>\n  </Card>\n  <Card title=\"Primary control\" description=\"Textarea workflow\">\n    <p>Make the textarea the obvious first interaction and leave space for save-status feedback.</p>\n  </Card>\n  <Card title=\"MVP boundary\" description=\"No build or backend\">\n    <p>Use embedded HTML, CSS, and JavaScript only. Do not introduce a framework, package install, server, account model, or external service.</p>\n  </Card>\n</CardGroup>\n\n<Columns cols=\"2\">\n  <Column>\n    <section>\n      <h2>Scope</h2>\n      <p>Build only the static document shell: page title, main journal region, textarea, save-status area, and clear-entry control. Do not add a framework, backend, build step, external services, or account model.</p>\n    </section>\n    <section>\n      <h2>Implementation Notes</h2>\n      <p>Use plain HTML, CSS, and JavaScript in one file. Keep the layout responsive and centered, and make the textarea the primary interaction.</p>\n    </section>\n    <Decision title=\"Dependencies\">\n      <p>Depends on the accepted static local-only MVP decision. Blockers: none.</p>\n    </Decision>\n  </Column>\n  <Column>\n    <TaskList title=\"Acceptance checks\" description=\"What should be true before moving to local persistence.\">\n      <ul>\n        <li>The root <code>index.html</code> opens directly in a browser.</li>\n        <li>The journal textarea is visible, usable, and centered as the primary interaction.</li>\n        <li>The save-status area and clear-entry control are present for later units.</li>\n        <li>No network request, build process, dependency install, account, or external service is required.</li>\n      </ul>\n    </TaskList>\n    <RequestExample title=\"Open target\">\n      <pre><code>open ./index.html</code></pre>\n    </RequestExample>\n    <ResponseExample title=\"Expected observation\">\n      <p>The static shell renders locally and is ready for <code>localStorage</code> wiring.</p>\n    </ResponseExample>\n  </Column>\n</Columns>\n\n<Evidence title=\"Accepted source decisions\">\n  <p>Source decisions are summarized visibly and preserved fully for agents.</p>\n  <Visibility for=\"agents\">\n    {decision_summary}\n  </Visibility>\n</Evidence>\n\n<Verification title=\"Verification\">\n  <p>Open the root <code>index.html</code> in a browser and confirm the page renders, the textarea is usable, controls are visible, and no network or build process is required.</p>\n</Verification>\n\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when the static shell renders from the project root and is ready for local persistence wiring.</p>\n</section>\n"
+                r#"---
+title: "Unit 01 - Root HTML Shell"
+description: "Create the self-contained static journal shell."
+wikiKind: "plan"
+---
+
+<PlanHero status="planned">
+  <h1>Unit 01 - Root HTML Shell</h1>
+  <p>Intent: create the accepted MVP surface as a root <code>index.html</code> file with semantic markup, embedded CSS, embedded JavaScript, and a centered textarea workflow for {title}.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: planned</li>
+    <li>Artifact: root <code>index.html</code></li>
+    <li>Next unit: Unit 02 - Local Persistence</li>
+    <li>Blockers: none</li>
+  </ul>
+</PlanSummary>
+
+<CardGroup cols="3">
+  <Card title="Build" description="Document shell">
+    <p>Create the page title, main journal region, textarea, save-status area, and clear-entry control.</p>
+  </Card>
+  <Card title="Where" description="Root artifact">
+    <p>Put all markup, CSS, and JavaScript in the project-root <code>index.html</code>.</p>
+  </Card>
+  <Card title="Ready when" description="Unit 02 can wire storage">
+    <p>The page opens directly in a browser and exposes stable textarea, status, and clear-entry elements.</p>
+  </Card>
+</CardGroup>
+
+<Columns cols="2">
+  <Column>
+    <section>
+      <h2>Scope</h2>
+      <p>Build only the static document shell for the accepted journal MVP: title, primary editor, save-status region, and clear-entry control.</p>
+    </section>
+    <section>
+      <h2>Implementation Notes</h2>
+      <p>Use plain HTML, CSS, and JavaScript in one file. Keep the layout responsive and make the textarea the primary interaction.</p>
+    </section>
+    <Aside title="Do not add">
+      <p>Frameworks, package installs, servers, accounts, external services, and network calls are outside this unit.</p>
+    </Aside>
+    <Decision title="Dependencies">
+      <p>Depends on the accepted static local-only MVP decision. Blockers: none.</p>
+    </Decision>
+  </Column>
+  <Column>
+    <TaskList title="Acceptance checks">
+      <ul>
+        <li>The root <code>index.html</code> opens directly in a browser.</li>
+        <li>The journal textarea is visible, usable, and centered as the primary interaction.</li>
+        <li>The save-status area and clear-entry control are present for later units.</li>
+        <li>No runtime beyond the browser is required.</li>
+      </ul>
+    </TaskList>
+    <CommandBlock title="Manual check"><pre><code>open ./index.html</code></pre></CommandBlock>
+    <Aside title="Unlocks next">
+      <p>Unit 02 can attach restore and autosave behavior to the textarea and save-status elements.</p>
+    </Aside>
+  </Column>
+</Columns>
+
+<Evidence title="Accepted source decisions">
+  <p>Source decisions are summarized visibly and preserved fully for agents.</p>
+  <Visibility for="agents">
+    {decision_summary}
+  </Visibility>
+</Evidence>
+
+<Verification title="Verification">
+  <p>Open the root <code>index.html</code> in a browser and confirm the page renders, the textarea is usable, controls are visible, and no network or build process is required.</p>
+</Verification>
+
+<section>
+  <h2>Completion Gate</h2>
+  <p>Complete when the static shell renders from the project root and is ready for local persistence wiring.</p>
+</section>
+"#
             ),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-persistence.mdx"
                 .to_string(),
-            content: "---\ntitle: \"Unit 02 - Local Persistence\"\ndescription: \"Implement load-on-open restore and debounced localStorage autosave.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"planned\">\n  <h1>Unit 02 - Local Persistence</h1>\n  <p>Intent: persist the journal entry locally with browser <code>localStorage</code> so the accepted MVP restores the previous entry on open and saves edits automatically.</p>\n</PlanHero>\n\n<CardGroup cols=\"3\">\n  <Card title=\"Storage key\" description=\"Stable browser-local state\">\n    <p>Define one explicit <code>localStorage</code> key for the journal entry and use it consistently for restore, autosave, and clear-entry setup.</p>\n  </Card>\n  <Card title=\"Restore\" description=\"Load on open\">\n    <p>During initialization, read the key and populate the textarea before the user starts typing.</p>\n  </Card>\n  <Card title=\"Autosave\" description=\"Debounced input handler\">\n    <p>Use a small debounce around <code>localStorage.setItem</code> and update visible save status after writes.</p>\n  </Card>\n</CardGroup>\n\n<Columns cols=\"2\">\n  <Column>\n    <section>\n      <h2>Scope</h2>\n      <p>Add a stable storage key, load-on-open restore, debounced autosave after textarea input, and user-visible save status. Keep all data local to the browser.</p>\n    </section>\n    <section>\n      <h2>Implementation Notes</h2>\n      <p>Use a small debounce timer around <code>localStorage.setItem</code>. Restore from the same key during initialization. Handle empty content consistently without adding backend, sync, accounts, analytics, or external calls. Preserve source decisions and unknowns in comments only when useful for future maintainers.</p>\n    </section>\n    <Decision title=\"Dependencies\">\n      <p>Depends on Unit 01's textarea and status elements. Blockers: none.</p>\n    </Decision>\n  </Column>\n  <Column>\n    <TaskList title=\"Acceptance checks\">\n      <ul>\n        <li>Typing in the textarea schedules a debounced save.</li>\n        <li>The save-status copy changes when content is saved.</li>\n        <li>Reloading the browser restores the same text from <code>localStorage</code>.</li>\n        <li>Browser dev tools show only local storage state, with no network, backend, framework, or build process involved.</li>\n      </ul>\n    </TaskList>\n    <Aside title=\"Failure mode to avoid\">\n      <p>Do not store the journal in memory only. The unit is incomplete unless a reload restores text from the browser's persistent local storage.</p>\n    </Aside>\n  </Column>\n</Columns>\n\n<Verification title=\"Verification\">\n  <p>Type a journal entry, wait through the debounce, reload the browser, and confirm the same text is restored from <code>localStorage</code>. Inspect behavior with browser dev tools if needed.</p>\n</Verification>\n\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when autosave and restore work without any backend, network, framework, or build step.</p>\n</section>\n".to_string(),
+            content: r#"---
+title: "Unit 02 - Local Persistence"
+description: "Implement load-on-open restore and debounced localStorage autosave."
+wikiKind: "plan"
+---
+
+<PlanHero status="planned">
+  <h1>Unit 02 - Local Persistence</h1>
+  <p>Intent: persist the journal entry locally with browser <code>localStorage</code> so the accepted MVP restores the previous entry on open and saves edits automatically.</p>
+</PlanHero>
+
+<CardGroup cols="3">
+  <Card title="Build" description="Persistence behavior">
+    <p>Add load-on-open restore, debounced autosave, and user-visible save status.</p>
+  </Card>
+  <Card title="Where" description="Browser local storage">
+    <p>Use one explicit <code>localStorage</code> key shared by restore, autosave, and clear-entry setup.</p>
+  </Card>
+  <Card title="Ready when" description="Reload restores content">
+    <p>Typing, waiting through debounce, and reloading brings the same journal entry back.</p>
+  </Card>
+</CardGroup>
+
+<Columns cols="2">
+  <Column>
+    <section>
+      <h2>Scope</h2>
+      <p>Add a stable storage key, load-on-open restore, debounced autosave after textarea input, and user-visible save status.</p>
+    </section>
+    <section>
+      <h2>Implementation Notes</h2>
+      <p>Use a small debounce timer around <code>localStorage.setItem</code>. Restore from the same key during initialization and handle empty content consistently.</p>
+    </section>
+    <Aside title="Do not add">
+      <p>Backend sync, accounts, analytics, external calls, framework state managers, and build tooling are outside this unit.</p>
+    </Aside>
+    <Decision title="Dependencies">
+      <p>Depends on Unit 01's textarea and status elements. Blockers: none.</p>
+    </Decision>
+  </Column>
+  <Column>
+    <TaskList title="Acceptance checks">
+      <ul>
+        <li>Typing in the textarea schedules a debounced save.</li>
+        <li>The save-status copy changes when content is saved.</li>
+        <li>Reloading the browser restores the same text from <code>localStorage</code>.</li>
+        <li>Browser dev tools show local storage as the only persistence layer.</li>
+      </ul>
+    </TaskList>
+    <Aside title="Unlocks next">
+      <p>Unit 03 can clear the textarea and the same storage key, then verify the cleared reload state.</p>
+    </Aside>
+  </Column>
+</Columns>
+
+<Verification title="Verification">
+  <p>Type a journal entry, wait through the debounce, reload the browser, and confirm the same text is restored from <code>localStorage</code>. Inspect behavior with browser dev tools if needed.</p>
+</Verification>
+
+<section>
+  <h2>Completion Gate</h2>
+  <p>Complete when autosave and restore work with the browser as the only runtime and persistence owner.</p>
+</section>
+"#
+            .to_string(),
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-clear-entry-and-verification.mdx"
                 .to_string(),
-            content: "---\ntitle: \"Unit 03 - Clear Entry And Verification\"\ndescription: \"Implement the clear-entry interaction and verify the MVP happy path.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero status=\"planned\">\n  <h1>Unit 03 - Clear Entry And Verification</h1>\n  <p>Intent: finish the static local-only MVP by adding clear-entry behavior and recording the manual verification path for the journal workflow.</p>\n</PlanHero>\n\n<Columns cols=\"2\">\n  <Column>\n    <section>\n      <h2>Scope</h2>\n      <p>Wire the clear-entry control to clear the textarea, update <code>localStorage</code>, return focus to the editor, and update save status. Verify the complete local-only happy path.</p>\n    </section>\n    <section>\n      <h2>Implementation Notes</h2>\n      <p>Keep the clear action immediate and predictable. It may ask for confirmation only if the source explicitly requires it; otherwise make the behavior simple for the MVP. Do not introduce unrequested storage, networking, account, framework, deployment, or external-service scope.</p>\n    </section>\n    <Decision title=\"Dependencies\">\n      <p>Depends on Unit 02's storage key and autosave behavior. Blockers: none.</p>\n    </Decision>\n  </Column>\n  <Column>\n    <TaskList title=\"Happy-path proof\">\n      <ul>\n        <li>Enter text and confirm the save-status area reports the autosaved state.</li>\n        <li>Reload once and confirm the journal entry is restored.</li>\n        <li>Activate Clear Entry and confirm the textarea is empty, focused, and saved.</li>\n        <li>Reload again and confirm the cleared state remains cleared.</li>\n        <li>Run the repository checks that apply to static HTML changes.</li>\n      </ul>\n    </TaskList>\n    <ResponseExample title=\"Verification note to record\">\n      <p>Manual browser verification passed for create, debounced autosave, reload restore, clear-entry, and cleared reload behavior with no unrequested backend, framework, build, account, network, or external service.</p>\n    </ResponseExample>\n  </Column>\n</Columns>\n\n<Verification title=\"Verification\">\n  <p>Enter text, confirm autosave, reload to confirm restore, activate Clear Entry, reload again, and confirm the entry remains cleared. Run the repository checks that apply to static HTML changes.</p>\n</Verification>\n\n<section>\n  <h2>Completion Gate</h2>\n  <p>Complete when the entire MVP happy path works locally and verification confirms no unrequested backend, framework, build, account, network, or external service was added.</p>\n</section>\n".to_string(),
+            content: r#"---
+title: "Unit 03 - Clear Entry And Verification"
+description: "Implement the clear-entry interaction and verify the MVP happy path."
+wikiKind: "plan"
+---
+
+<PlanHero status="planned">
+  <h1>Unit 03 - Clear Entry And Verification</h1>
+  <p>Intent: finish the static local-only MVP by adding clear-entry behavior and recording the manual verification path for the journal workflow.</p>
+</PlanHero>
+
+<CardGroup cols="3">
+  <Card title="Build" description="Clear-entry behavior">
+    <p>Clear the textarea, clear the <code>localStorage</code> value, return focus to the editor, and update save status.</p>
+  </Card>
+  <Card title="Where" description="Existing controls">
+    <p>Use Unit 01's clear-entry control and Unit 02's storage key; do not create a second persistence path.</p>
+  </Card>
+  <Card title="Ready when" description="MVP happy path is proven">
+    <p>Create, autosave, reload restore, clear-entry, and cleared reload behavior all pass manually.</p>
+  </Card>
+</CardGroup>
+
+<Columns cols="2">
+  <Column>
+    <section>
+      <h2>Scope</h2>
+      <p>Wire the clear-entry control to clear the textarea, update <code>localStorage</code>, return focus to the editor, and update save status.</p>
+    </section>
+    <section>
+      <h2>Implementation Notes</h2>
+      <p>Keep the clear action immediate and predictable. Ask for confirmation only if the imported source explicitly requires it.</p>
+    </section>
+    <Aside title="Do not add">
+      <p>Additional storage layers, networking, accounts, framework code, deployment scope, and external services stay outside the MVP.</p>
+    </Aside>
+    <Decision title="Dependencies">
+      <p>Depends on Unit 02's storage key and autosave behavior. Blockers: none.</p>
+    </Decision>
+  </Column>
+  <Column>
+    <TaskList title="Happy-path proof">
+      <ul>
+        <li>Enter text and confirm the save-status area reports the autosaved state.</li>
+        <li>Reload once and confirm the journal entry is restored.</li>
+        <li>Activate Clear Entry and confirm the textarea is empty, focused, and saved.</li>
+        <li>Reload again and confirm the cleared state remains cleared.</li>
+        <li>Run repository checks that apply to static HTML changes.</li>
+      </ul>
+    </TaskList>
+    <Aside title="Verification note to record">
+      <p>Manual browser verification should mention create, debounced autosave, reload restore, clear-entry, and cleared reload behavior.</p>
+    </Aside>
+  </Column>
+</Columns>
+
+<Verification title="Verification">
+  <p>Enter text, confirm autosave, reload to confirm restore, activate Clear Entry, reload again, and confirm the entry remains cleared. Run the repository checks that apply to static HTML changes.</p>
+</Verification>
+
+<section>
+  <h2>Completion Gate</h2>
+  <p>Complete when the full MVP happy path works locally and verification confirms the browser remains the only runtime and storage boundary.</p>
+</section>
+"#
+            .to_string(),
         },
     ]
 }
@@ -2365,8 +2712,11 @@ mod tests {
         assert!(joined.contains("<CardGroup cols=\"3\">"));
         assert!(joined.contains("<Columns cols=\"2\">"));
         assert!(joined.contains("<TaskList title=\"Acceptance checks\""));
-        assert!(joined.contains("<RequestExample title=\"Open target\">"));
-        assert!(joined.contains("<ResponseExample title=\"Verification note to record\">"));
+        assert!(joined.contains("<CommandBlock title=\"Manual check\">"));
+        assert!(joined.contains("<Aside title=\"Unlocks next\">"));
+        assert!(joined.contains("<Card title=\"Build\""));
+        assert!(joined.contains("<Card title=\"Where\""));
+        assert!(joined.contains("<Card title=\"Ready when\""));
         assert!(joined.contains("<h2>Implementation Notes</h2>"));
         assert!(joined.contains("<Evidence title=\"Accepted source decisions\">"));
         assert!(joined.contains("<Visibility for=\"agents\">"));

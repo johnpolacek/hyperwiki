@@ -108,17 +108,17 @@ export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onN
   }
   return (
     <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="relative mx-auto flex max-w-[72rem] flex-col gap-6 px-6 py-8 md:px-10">
+      <div className="relative mx-auto flex max-w-[68rem] flex-col gap-4 px-5 py-5 md:px-8">
         <TooltipProvider>
           {markdown ? (
-            <div className="pointer-events-none absolute right-6 top-8 z-10 md:right-10">
+            <div className="pointer-events-none absolute right-5 top-5 z-10 md:right-8">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     aria-label="Copy Markdown"
-                    className="pointer-events-auto"
+                    className="pointer-events-auto h-8 gap-1.5 px-2.5 text-xs"
                     disabled={!markdown.trim()}
-                    size="icon"
+                    size="sm"
                     type="button"
                     variant="outline"
                     onClick={copyMarkdown}
@@ -128,6 +128,7 @@ export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onN
                     ) : (
                       <Clipboard aria-hidden="true" data-icon="inline-start" />
                     )}
+                    <span>Copy MD</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
@@ -382,21 +383,21 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
       </a>
     );
   }
-  if (tag === "h1") return <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl" key={key}>{titleChildren}</h1>;
-  if (tag === "h2") return <h2 className="m-0 text-lg font-bold leading-tight" key={key}>{titleChildren}</h2>;
+  if (tag === "h1") return <h1 className="m-0 max-w-4xl text-xl font-bold leading-tight md:text-2xl" key={key}>{titleChildren}</h1>;
+  if (tag === "h2") return <h2 className="m-0 text-base font-bold leading-tight" key={key}>{titleChildren}</h2>;
   if (tag === "h3") return <h3 className="m-0 text-sm font-bold leading-snug" key={key}>{titleChildren}</h3>;
-  if (tag === "p") return <p className="m-0 text-[0.94rem] leading-7 text-muted-foreground" key={key}>{children}</p>;
+  if (tag === "p") return <p className="m-0 max-w-3xl text-sm leading-6 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
   if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
-  if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-secondary px-4 py-3 font-mono text-xs leading-6" key={key}>{children}</pre>;
+  if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-secondary px-3 py-2.5 font-mono text-xs leading-5" key={key}>{children}</pre>;
   if (tag === "table") return <div className="overflow-x-auto rounded-md border" key={key}><table className="w-full border-collapse text-sm">{children}</table></div>;
   if (tag === "thead") return <thead className="bg-secondary/70 text-foreground" key={key}>{children}</thead>;
   if (tag === "tbody") return <tbody className="divide-y" key={key}>{children}</tbody>;
   if (tag === "tr") return <tr key={key}>{children}</tr>;
   if (tag === "th") return <th className="px-3 py-2 text-left font-bold leading-6" key={key}>{children}</th>;
   if (tag === "td") return <td className="px-3 py-2 align-top leading-6 text-muted-foreground" key={key}>{children}</td>;
-  if (tag === "ul") return <ul className="m-0 flex list-disc flex-col gap-1.5 pb-3 pl-5 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ul>;
-  if (tag === "ol") return <ol className="m-0 flex list-decimal flex-col gap-1.5 pb-3 pl-5 text-sm font-normal leading-7 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ol>;
+  if (tag === "ul") return <ul className="m-0 flex list-disc flex-col gap-1 pb-2 pl-5 text-sm font-normal leading-6 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ul>;
+  if (tag === "ol") return <ol className="m-0 flex list-decimal flex-col gap-1 pb-2 pl-5 text-sm font-normal leading-6 text-muted-foreground marker:text-muted-foreground/65" key={key}>{children}</ol>;
   if (tag === "li") return <li className="pl-1 font-normal" key={key}>{children}</li>;
   if (tag === "dl") return <dl className={cn("grid gap-2", classTokens.has("summary") && "grid-cols-[auto_minmax(0,1fr)] rounded-md border bg-secondary/50 p-4 text-sm")} key={key}>{children}</dl>;
   if (tag === "dt") return <dt className="font-bold text-muted-foreground" key={key}>{children}</dt>;
@@ -410,8 +411,8 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   const isUnit = component === "PlanUnit" || classTokens.has("unit");
   const isPanel = classTokens.has("panel") || classTokens.has("decision-panel") || component === "Decision" || component === "Evidence" || component === "Verification" || component === "Callout";
 
-  if (isHero) return <section className="grid gap-5 border-b pb-8" key={key}>{children}</section>;
-  if (isSummary) return <section className="grid gap-3 rounded-md border bg-secondary/50 p-4" key={key}>{children}</section>;
+  if (isHero) return <section className="grid gap-3 border-b pb-5" key={key}>{children}</section>;
+  if (isSummary) return <section className="grid gap-2 rounded-md border bg-secondary/50 p-3" key={key}>{children}</section>;
   if (isStage) return <section className="grid gap-5 border-t pt-8" key={key}>{children}</section>;
   if (isUnit) return <article className="grid gap-3 py-1" key={key}>{children}</article>;
   if (isPanel) return <section className="grid gap-3 py-1" key={key}>{children}</section>;
@@ -441,7 +442,7 @@ function renderPlanComponent(
 
   if (component === "PlanHero") {
     return (
-      <section className="grid gap-4 border-b border-border/70 pb-6" key={key}>
+      <section className="grid gap-3 border-b border-border/70 pb-5 pr-28" key={key}>
         {renderComponentHeader(title, description, node.getAttribute("status"))}
         {children}
       </section>
@@ -450,7 +451,7 @@ function renderPlanComponent(
 
   if (component === "PlanSummary") {
     return (
-      <section className="bg-secondary/25 px-0 py-3" key={key}>
+      <section className="bg-secondary/25 px-0 py-2" key={key}>
         {renderSummaryGrid(node, key, onNavigate, path) || <div className="grid gap-2 px-1">{children}</div>}
       </section>
     );
@@ -468,14 +469,14 @@ function renderPlanComponent(
 
   if (component === "Card") {
     return (
-      <Card className="rounded-lg py-4 shadow-none" key={key}>
+      <Card className="rounded-md py-3 shadow-none" key={key}>
         {title || description ? (
-          <CardHeader className="px-4">
-            {title ? <CardTitle className="text-base leading-tight">{title}</CardTitle> : null}
-            {description ? <CardDescription>{description}</CardDescription> : null}
+          <CardHeader className="px-3">
+            {title ? <CardTitle className="text-sm leading-tight">{title}</CardTitle> : null}
+            {description ? <CardDescription className="text-xs leading-5">{description}</CardDescription> : null}
           </CardHeader>
         ) : null}
-        <CardContent className="grid gap-2 px-4">{children}</CardContent>
+        <CardContent className="grid gap-2 px-3">{children}</CardContent>
       </Card>
     );
   }
@@ -494,7 +495,7 @@ function renderPlanComponent(
 
   if (component === "Aside") {
     return (
-      <aside className="grid gap-2 rounded-lg border bg-secondary/25 p-4 text-sm" key={key}>
+      <aside className="grid gap-2 rounded-md border bg-secondary/25 p-3 text-sm" key={key}>
         {title ? <h3 className="m-0 text-sm font-bold leading-snug">{title}</h3> : null}
         {description ? <p className="m-0 leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
@@ -509,7 +510,7 @@ function renderPlanComponent(
   if (component === "Decision" || component === "Evidence" || component === "Verification") {
     return (
       <section className="grid gap-2 py-1" key={key}>
-        {title ? <h2 className="m-0 text-lg font-bold leading-tight">{title}</h2> : null}
+        {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
       </section>
@@ -522,7 +523,7 @@ function renderPlanComponent(
 
   if (component === "Frame") {
     return (
-      <div className="overflow-hidden rounded-lg border bg-card shadow-sm" key={key}>
+      <div className="overflow-hidden rounded-md border bg-card shadow-sm" key={key}>
         {title ? (
           <div className="flex items-center justify-between gap-3 border-b bg-secondary/50 px-4 py-2">
             <div className="text-sm font-semibold">{title}</div>
@@ -584,15 +585,15 @@ function renderPlanComponent(
 
   if (component === "TaskList") {
     return (
-      <Card className="rounded-lg py-4 shadow-none" key={key}>
-        <CardHeader className="px-5">
-          <CardTitle className="inline-flex items-center gap-2 text-base">
+      <Card className="rounded-md py-3 shadow-none" key={key}>
+        <CardHeader className="px-3">
+          <CardTitle className="inline-flex items-center gap-2 text-sm">
             <CheckCircle2 className="size-4 text-muted-foreground" />
             {title || "Tasks"}
           </CardTitle>
-          {description ? <CardDescription>{description}</CardDescription> : null}
+          {description ? <CardDescription className="text-xs leading-5">{description}</CardDescription> : null}
         </CardHeader>
-        <CardContent className="grid gap-3 px-5">{children}</CardContent>
+        <CardContent className="grid gap-2 px-3">{children}</CardContent>
       </Card>
     );
   }
@@ -608,14 +609,14 @@ function renderPlanComponent(
 
   if (component === "Tree") {
     return (
-      <Card className="rounded-lg py-4 shadow-none" key={key}>
+      <Card className="rounded-md py-3 shadow-none" key={key}>
         {title || description ? (
-          <CardHeader className="px-5">
-            {title ? <CardTitle className="text-base">{title}</CardTitle> : null}
+          <CardHeader className="px-3">
+            {title ? <CardTitle className="text-sm">{title}</CardTitle> : null}
             {description ? <CardDescription>{description}</CardDescription> : null}
           </CardHeader>
         ) : null}
-        <CardContent className="px-5">
+        <CardContent className="px-3">
           <div className="grid gap-1 rounded-md border bg-secondary/40 p-3 font-mono text-xs">{children}</div>
         </CardContent>
       </Card>
@@ -679,7 +680,7 @@ function renderSummaryGrid(node: Element, key: string, onNavigate: (path: string
       {items.map((item, index) => {
         const label = summaryItemLabel(item);
         return (
-          <div className="grid min-h-12 grid-cols-[8.5rem_minmax(0,1fr)] items-start gap-3 px-3 py-2 text-sm" key={`${key}-summary-${index}`}>
+          <div className="grid min-h-10 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3 px-3 py-1.5 text-sm" key={`${key}-summary-${index}`}>
             <dt className="font-mono text-xs leading-6 text-muted-foreground">{label || "Detail"}</dt>
             <dd className="m-0 min-w-0 leading-6 text-foreground">{summaryItemValue(item, label, `${key}-summary-${index}`, onNavigate, path)}</dd>
           </div>
@@ -720,8 +721,8 @@ function renderComponentHeader(title: string, description: string, status: strin
   return (
     <div className="grid gap-2">
       {status ? <Badge className="w-fit" variant={statusBadgeVariant(status)}>{status}</Badge> : null}
-      {title ? <h1 className="m-0 text-2xl font-bold leading-tight md:text-3xl">{title}</h1> : null}
-      {description ? <p className="m-0 max-w-3xl text-[0.94rem] leading-7 text-muted-foreground">{description}</p> : null}
+      {title ? <h1 className="m-0 max-w-4xl text-xl font-bold leading-tight md:text-2xl">{title}</h1> : null}
+      {description ? <p className="m-0 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p> : null}
     </div>
   );
 }
@@ -765,7 +766,7 @@ function renderExamplePanel(node: Element, component: string, children: ReactNod
   const title = componentTitle(node) || (component === "RequestExample" ? "Request" : "Response");
   const description = node.getAttribute("description") || "";
   return (
-    <section className="overflow-hidden rounded-lg border bg-card" key={key}>
+    <section className="overflow-hidden rounded-md border bg-card" key={key}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-secondary/50 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
           <Code2 aria-hidden="true" className="size-3.5 shrink-0" />
@@ -773,7 +774,7 @@ function renderExamplePanel(node: Element, component: string, children: ReactNod
         </div>
         <Badge variant="outline">{component === "RequestExample" ? "request" : "response"}</Badge>
       </div>
-      <div className="grid gap-3 p-4">
+      <div className="grid gap-2 p-3">
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         {children}
       </div>
@@ -786,7 +787,7 @@ function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
   const title = componentTitle(node);
   const language = node.getAttribute("language") || node.getAttribute("lang") || "";
   return (
-    <div className="overflow-hidden rounded-lg border bg-card" key={key}>
+    <div className="overflow-hidden rounded-md border bg-card" key={key}>
       <div className="flex items-center justify-between gap-3 border-b bg-secondary/50 px-3 py-2">
         <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-muted-foreground">
           <Code2 className="size-3.5 shrink-0" />
@@ -806,7 +807,7 @@ function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
         ) : null}
       </div>
       <ScrollArea className="max-h-[28rem]">
-        <pre className="m-0 p-4 font-mono text-xs leading-6">{children}</pre>
+        <pre className="m-0 p-3 font-mono text-xs leading-5">{children}</pre>
       </ScrollArea>
     </div>
   );

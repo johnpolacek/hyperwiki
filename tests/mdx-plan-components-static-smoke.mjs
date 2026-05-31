@@ -56,6 +56,7 @@ const requiredComponents = [
   "TreeFolder",
   "TreeFile",
   "CodeBlock",
+  "CommandBlock",
   "Visibility",
   "Tabs",
   "Tab",
@@ -76,10 +77,10 @@ if (!renderer.includes('audience.toLowerCase() === "agents" ? null')) {
 
 for (const visualContract of [
   "renderSummaryGrid",
-  "bg-secondary/25 px-0 py-3",
+  "bg-secondary/25 px-0 py-2",
   "grid gap-1",
   "grid gap-2 py-1",
-  "Copy Markdown",
+  "Copy MD",
   "validationWarnings",
 ]) {
   if (!renderer.includes(visualContract)) {

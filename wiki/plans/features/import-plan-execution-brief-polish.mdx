@@ -1,0 +1,32 @@
+---
+title: "Import Plan Execution Brief Polish"
+description: "Make generated static import plans read as dense execution briefs."
+wikiKind: "plan"
+---
+
+<PlanHero title="Import Plan Execution Brief Polish" status="complete" description="Tighten the generated static import plan content and renderer density so fresh imports feel like operational work briefs, not generic documentation." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact UI and generator polish</li>
+    <li>Completed unit: Unit 01 - Execution brief composition</li>
+    <li>Next action: dogfood a fresh static import and inspect generated unit pages in the app.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused import runtime tests, static smoke tests, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and frontend build.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Execution brief composition">
+  <p>Make plan pages denser and more task-oriented: compact hero spacing, tighter card/list typography, a visible Markdown copy action, earlier verification content, and generated unit pages that consistently answer what changes, where it changes, what must not change, how to verify, and what unlocks the next unit.</p>
+  <p>Replace API-flavored request/response examples in simple static import plans with manual check and command-oriented components, keeping request/response panels available for actual API, MCP, or contract documentation.</p>
+</PlanUnit>
+
+<Verification>
+  <ul>
+    <li>Completed: static import compiler tests assert execution-brief components and content.</li>
+    <li>Completed: renderer smoke tests assert the compact visual contract.</li>
+    <li>Completed: generated artifacts still pass import plan validation.</li>
+    <li>Completed: <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</Verification>

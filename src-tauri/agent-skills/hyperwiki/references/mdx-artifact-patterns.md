@@ -21,7 +21,7 @@ If a generated page reads like a prose dump, revise it into clearer sections, ta
 
 Plan MDX can use these built-in components without imports:
 
-`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 
 Use them conservatively:
 
@@ -84,6 +84,7 @@ Use for endpoints, Tauri commands, MCP tools/resources, generated schemas, or ev
 - `RequestExample` and `ResponseExample` for concrete examples.
 - `ParamField` and `ResponseField` for required fields and response shape.
 - `CodeBlock` for short schema or handler snippets.
+- `CommandBlock` for exact local commands or manual command-line checks.
 - `Verification` for contract tests and manual probes.
 
 ```mdx
@@ -113,7 +114,7 @@ Use for review, testing, release, or dogfood plans.
 
 - `PlanSummary` with current evidence, gaps, and next check.
 - `Columns` for automated checks vs manual checks.
-- `RequestExample` or `CodeBlock` for exact commands or local API probes.
+- `CommandBlock` for exact local commands and `RequestExample` or `CodeBlock` for local API probes.
 - `Update` entries for important verification events.
 
 ## Artifact Pattern Selector

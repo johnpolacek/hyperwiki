@@ -97,8 +97,11 @@ assert.match(runtime, /<PlanSummary>/);
 assert.match(runtime, /<CardGroup cols=\\"3\\">/);
 assert.match(runtime, /<Columns cols=\\"2\\">/);
 assert.match(runtime, /<TaskList title=\\"Acceptance checks\\"/);
-assert.match(runtime, /<RequestExample title=\\"Open target\\">/);
-assert.match(runtime, /<ResponseExample title=\\"Verification note to record\\">/);
+assert.match(runtime, /<CommandBlock title=\\"Manual check\\">/);
+assert.match(runtime, /<Aside title=\\"Unlocks next\\">/);
+assert.match(runtime, /<Card title=\\"Build\\"/);
+assert.match(runtime, /<Card title=\\"Where\\"/);
+assert.match(runtime, /<Card title=\\"Ready when\\"/);
 assert.match(runtime, /<h2>Implementation Notes<\/h2>/);
 
 console.log("import onboarding manager static smoke passed");

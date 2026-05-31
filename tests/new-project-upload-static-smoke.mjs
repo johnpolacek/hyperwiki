@@ -29,10 +29,10 @@ assert.ok(mdxRenderer.includes("renderCollapsedSourceContext"), "React MDX plan 
 assert.ok(mdxRenderer.includes("source-decision"), "React MDX plan renderer should wrap repaired source content in source-decision articles");
 assert.ok(mdxRenderer.includes("list-disc"), "React MDX plan renderer should restore unordered list bullets after Tailwind preflight");
 assert.ok(mdxRenderer.includes("list-decimal"), "React MDX plan renderer should restore ordered list markers after Tailwind preflight");
-assert.ok(mdxRenderer.includes("flex list-disc flex-col gap-1.5"), "React MDX plan renderer should keep unordered list spacing compact without space-y utilities");
-assert.ok(mdxRenderer.includes("pb-3 pl-5"), "React MDX plan renderer should keep list rhythm compact before following headings");
-assert.ok(mdxRenderer.includes("font-normal leading-7"), "React MDX plan renderer should keep list text consistent with summary prose");
-assert.ok(mdxRenderer.includes("flex-col gap-6"), "React MDX plan renderer should avoid double-counting section rhythm after list padding");
+assert.ok(mdxRenderer.includes("flex list-disc flex-col gap-1"), "React MDX plan renderer should keep unordered list spacing compact without space-y utilities");
+assert.ok(mdxRenderer.includes("pb-2 pl-5"), "React MDX plan renderer should keep list rhythm compact before following headings");
+assert.ok(mdxRenderer.includes("font-normal leading-6"), "React MDX plan renderer should keep list text consistent with summary prose");
+assert.ok(mdxRenderer.includes("flex-col gap-4"), "React MDX plan renderer should avoid double-counting section rhythm after list padding");
 assert.ok(mdxRenderer.includes('tag === "section") return <section className="grid gap-3"'), "React MDX plan renderer should keep section headings close to their own content");
 
 console.log("new project upload static smoke passed");
