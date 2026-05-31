@@ -2716,7 +2716,7 @@ function CommandBar({
           Resume Q&A
         </Button>
       ) : null}
-      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onSetSidePanelMode("modify")}>
+      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && activePlanState.isComplete} onClick={() => onSetSidePanelMode("modify")}>
         modify
       </Button>
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
