@@ -10,7 +10,7 @@ wikiKind: "plan"
   <ul>
     <li>Status: implementation in progress</li>
     <li>Shape: go-forward architecture plan</li>
-    <li>Current unit: Unit 07 - deterministic import MVP plan compiler complete</li>
+    <li>Current unit: Unit 08 - import planning Codex prewarm complete</li>
     <li>Decision: implement Candidate 1 as the base, borrow Candidate 5's harness concepts, and use Candidate 3 as the transport experiment path.</li>
     <li>Goal: no false stalls, fast first question, fast follow-up question, durable answer routing, and validated wiki artifacts before onboarding completion.</li>
     <li>Next action: dogfood a fresh Micro-Journal import and verify <code>hyperwiki-ready-to-plan</code> completes through compiled stage and unit artifacts without a hidden artifact-generation stall.</li>
@@ -37,6 +37,7 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding briefly wrote a conservative one-unit MVP plan from accepted decisions and imported source context. Dogfooding showed that this satisfied weak validators while failing Hyperwiki's stage/unit planning contract, so the go-forward path returns to explicit artifact generation with stronger validation and retryable failure on provider stalls.</li>
     <li>Corrective follow-up complete on 2026-05-30: ready-to-plan now starts the backend-owned artifact-generation run, the conservative runtime fallback was removed, the plan prompt embeds the Hyperwiki stage/unit contract, and validators reject generic confirmed-MVP placeholders, missing stage pages, and single-unit MVP plans.</li>
     <li>Corrective follow-up complete on 2026-05-30: dogfooding showed the backend-owned artifact-generation run could still fail when Codex emitted lifecycle events but no assistant text. Normal plan artifact creation now uses a deterministic Rust compiler, with Codex plan repair reserved for validation fallback only.</li>
+    <li>Corrective follow-up complete on 2026-05-31: import onboarding now pre-starts and initializes the persistent Codex app-server during app setup, warms imported-project threads after project creation or resume, exposes <code>/api/import-onboarding/prewarm</code>, and uses a shorter no-first-event fallback for warm app-server turns.</li>
   </ul>
 </section>
 <section>
@@ -199,6 +200,7 @@ wikiKind: "plan"
     <li>Unit 05 - Frontend simplification and UX polish: remove React-owned Codex protocol code, render backend snapshots and events, expose retry/cancel controls, and show specific progress states instead of generic stalled copy. Complete on 2026-05-29.</li>
     <li>Unit 06 - MVP artifact shape hardening: remove the one-unit conservative completion fallback, require stage and multi-unit artifacts, and keep provider stalls as retryable failures instead of completing with placeholder plans. Complete on 2026-05-30.</li>
     <li>Unit 07 - Deterministic import MVP plan compiler: compile the accepted import decisions and source evidence into validated stage and unit MDX artifacts in Rust, emit compiler progress events, and use Codex plan repair only after deterministic validation failure. Complete on 2026-05-30.</li>
+    <li>Unit 08 - Import planning Codex prewarm: start and initialize the persistent Codex app-server during Tauri app setup, warm imported-project threads before the first visible planning turn, shorten warm no-first-event fallback, and reduce duplicate start-status copy. Complete on 2026-05-31.</li>
   </ul>
 </section>
 <section>
@@ -211,6 +213,7 @@ wikiKind: "plan"
     <li>Unit 05 is complete when the import UI no longer shows the current generic 25-second stalled state for healthy quiet turns and all user-visible states come from backend snapshots or events. Implemented by binding the import Q&amp;A view to backend run status, showing the run phase in the activity panel, exposing cancel, and removing the old terminal-replay monitor from the import-planning route.</li>
     <li>Unit 06 is complete when <code>hyperwiki-ready-to-plan</code> chains to artifact generation, the runtime no longer contains the generic confirmed-MVP fallback, validators require an MVP stage page and at least two concrete unit pages, and static smoke coverage rejects the old fallback path.</li>
     <li>Unit 07 is complete when <code>hyperwiki-ready-to-plan</code> writes validated compiled plan artifacts without spawning the normal <code>PlanRepair</code> turn, the compiled Micro-Journal fixture contains root <code>index.html</code>, vanilla HTML/CSS/JS, <code>localStorage</code>, debounce, restore, clear-entry, and manual verification details, and provider stalls during hidden artifact generation are no longer on the happy path.</li>
+    <li>Unit 08 is complete when Codex provider startup is off the first import-planning critical path, imported-project thread prewarm is available through the backend, warm turns fall back faster when app-server emits no first event, and the visible activity stream no longer repeats identical generic start lines.</li>
   </ul>
 </section>
 <section>

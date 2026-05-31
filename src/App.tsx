@@ -451,6 +451,16 @@ interface ImportOnboardingStatusResponse {
   artifactValidation?: ImportPlanningArtifactValidation | null;
 }
 
+interface ImportOnboardingPrewarmResponse {
+  ok: boolean;
+  projectId: string;
+  providerReady: boolean;
+  threadReady: boolean;
+  threadId?: string | null;
+  elapsedMs: number;
+  error?: string | null;
+}
+
 interface ImportPlanningReadyToPlan {
   type: "hyperwiki-ready-to-plan";
   requestId: string;
@@ -852,6 +862,7 @@ function App() {
         setPendingImportProject(null);
         setActiveProject(project);
         setStatus("Imported project ready");
+        void prewarmImportOnboarding(project, "pending-import");
         void planImportedProject(project);
       } catch (error) {
         console.warn("[hyperwiki] import ui pending poll failed", error);
@@ -952,6 +963,7 @@ function App() {
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
     const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loadedWorkspace, loaded.pages);
+    if (isIncompleteImportProject(project)) void prewarmImportOnboarding(project, "switch-project");
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
     const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${landingPath}`;
@@ -1240,7 +1252,7 @@ function App() {
       setPlanningActivity("Answer sent to the planning agent");
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
         "Answer sent to the planning agent",
-        "Starting the next Codex import-planning turn",
+        "Preparing the next Codex import-planning turn",
       ]));
       clearPlanningQuestions();
       setPlanningInterviewStatus("waiting_for_question");
@@ -1384,6 +1396,17 @@ function App() {
     }
   }
 
+  async function prewarmImportOnboarding(project: ProjectRecord, reason: string) {
+    try {
+      const result = await hyperwikiApi.json<ImportOnboardingPrewarmResponse>(withProjectQuery("/api/import-onboarding/prewarm", project), {
+        method: "POST",
+      });
+      appendImportLog(`Imported Q&A prewarm ${reason} project=${project.id} provider=${result.providerReady} thread=${result.threadReady} elapsedMs=${result.elapsedMs}`);
+    } catch (error) {
+      appendImportLog(`Imported Q&A prewarm failed ${reason} project=${project.id}`, error);
+    }
+  }
+
   async function cancelActiveImportPlanningTurn() {
     const runId = activeImportPlanningRun?.runId || activeImportPlanningTurn.current?.runId || "";
     if (!activeProject) return;
@@ -1416,9 +1439,9 @@ function App() {
       const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
       openImportedPlanningWorkspace(project, projectRoute);
       setPlanningInterviewStatus("starting");
-      setPlanningActivity("Starting the planning agent");
+      setPlanningActivity("Preparing import planning");
       setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [
-        action === "answer" ? "Answer sent to the planning agent" : action === "retry" ? "Retrying import planning" : "Starting the planning agent",
+        action === "answer" ? "Answer sent to the planning agent" : action === "retry" ? "Retrying import planning" : "Preparing import planning",
         "Codex import-planning phase: starting",
       ]));
       setStatus("Imported project Q&A started");
@@ -1559,10 +1582,10 @@ function App() {
       const existingSessions = await loadSessionsForProject(project, projectScope);
       appendImportLog(`Imported Q&A turn start project=${project.id} request=${requestId} reason=${reason} previousSessions=${existingSessions.length} answerChars=${answer.length}`);
       setPlanningInterviewStatus("starting");
-      setPlanningActivity("Starting the planning agent");
+      setPlanningActivity("Preparing import planning");
       setActiveImportPlanningRun(null);
       importTurnSnapshotLineKeys.current.clear();
-      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Starting the planning agent"]));
+      setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Preparing import planning"]));
       openImportedPlanningWorkspace(project, projectRoute);
       await loadProjectData(project);
       const nextSessions = await loadSessionsForProject(project, projectScope);
@@ -2019,9 +2042,10 @@ function App() {
     setStatus(`Project created: ${project.name}`);
     setProjects((current) => withOptimisticProject(current, project));
     setPlanningInterviewStatus("starting");
-    setPlanningActivity("Starting the planning agent");
-    setPlanningWorkstream(["Starting the planning agent"]);
+    setPlanningActivity("Preparing import planning");
+    setPlanningWorkstream(["Preparing import planning"]);
     openImportedPlanningWorkspace(project);
+    void prewarmImportOnboarding(project, "create-project");
     void planImportedProject(project);
     void hyperwikiApi
       .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(project.id)}`)
@@ -5339,11 +5363,17 @@ function shouldAutoRepairImportPlanningDrift(requestId: string, text: string) {
   return futureWork || docsOnlyPlanIntent || compact.length > 0;
 }
 
+function planningWorkstreamLineKey(line: string) {
+  return line.trim().replace(/\s+/g, " ").replace(/[.]+$/g, "").toLowerCase();
+}
+
 function appendPlanningWorkstreamLines(current: string[], nextLines: string[], limit = importPlanningWorkstreamLimit) {
   const next = [...current];
   for (const line of nextLines) {
     const normalized = line.trim();
-    if (!normalized || next[next.length - 1] === normalized) continue;
+    if (!normalized) continue;
+    const previous = next[next.length - 1] || "";
+    if (planningWorkstreamLineKey(previous) === planningWorkstreamLineKey(normalized)) continue;
     next.push(normalized);
   }
   return next.slice(-limit);

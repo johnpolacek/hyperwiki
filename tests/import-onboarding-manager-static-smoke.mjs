@@ -41,6 +41,7 @@ assert.doesNotMatch(
 );
 
 for (const endpoint of [
+  "/api/import-onboarding/prewarm",
   "/api/import-onboarding/start",
   "/api/import-onboarding/status",
   "/api/import-onboarding/answer",
@@ -57,8 +58,14 @@ assert.match(codex, /run_exec_json_turn/);
 assert.match(codex, /codex-exec-json/);
 assert.match(codex, /exec_json_fallback/);
 assert.match(codex, /EXEC_JSON_FIRST_ASSISTANT_TIMEOUT_MESSAGE/);
+assert.match(codex, /CodexPrewarmResponse/);
+assert.match(codex, /spawn_codex_provider_prewarm/);
+assert.match(codex, /prewarm_import_thread/);
+assert.match(codex, /APP_SERVER_WARM_FIRST_EVENT_FALLBACK_AFTER/);
 
 assert.match(app, /interface ImportOnboardingStatusResponse/);
+assert.match(app, /interface ImportOnboardingPrewarmResponse/);
+assert.match(app, /prewarmImportOnboarding/);
 assert.match(app, /applyImportOnboardingStatus/);
 assert.match(app, /applyImportOnboardingEventLines/);
 assert.match(app, /startImportOnboardingRuntime/);

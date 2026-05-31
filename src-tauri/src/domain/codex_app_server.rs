@@ -98,6 +98,18 @@ pub struct CodexAdapterMetrics {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct CodexPrewarmResponse {
+    pub ok: bool,
+    pub project_id: String,
+    pub provider_ready: bool,
+    pub thread_ready: bool,
+    pub thread_id: Option<String>,
+    pub elapsed_ms: u128,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportOnboardingSessionRecord {
     pub project_id: String,
     pub session_id: String,
@@ -186,6 +198,7 @@ enum CodexAdapterEvent {
 const APP_SERVER_TURN_TIMEOUT: Duration = Duration::from_secs(120);
 const APP_SERVER_FIRST_EVENT_PROGRESS_AFTER: Duration = Duration::from_secs(3);
 const APP_SERVER_FIRST_EVENT_FALLBACK_AFTER: Duration = Duration::from_secs(10);
+const APP_SERVER_WARM_FIRST_EVENT_FALLBACK_AFTER: Duration = Duration::from_secs(4);
 const EXEC_JSON_TURN_TIMEOUT: Duration = Duration::from_secs(120);
 const EXEC_JSON_FIRST_ASSISTANT_PROGRESS_AFTER: Duration = Duration::from_secs(12);
 const EXEC_JSON_FIRST_ASSISTANT_TIMEOUT: Duration = Duration::from_secs(45);
@@ -208,6 +221,61 @@ fn import_threads() -> &'static Mutex<ImportThreadRegistry> {
 fn turn_runs() -> &'static Mutex<TurnRunRegistry> {
     static RUNS: OnceLock<Mutex<TurnRunRegistry>> = OnceLock::new();
     RUNS.get_or_init(|| Mutex::new(TurnRunRegistry::default()))
+}
+
+pub fn spawn_codex_provider_prewarm() {
+    thread::spawn(move || {
+        let start = Instant::now();
+        let result = app_server()
+            .lock()
+            .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))
+            .and_then(|mut server_guard| ensure_app_server(&mut server_guard).map(|_| ()));
+        match result {
+            Ok(()) => eprintln!(
+                "[hyperwiki] codex app-server prewarm complete elapsed_ms={}",
+                start.elapsed().as_millis()
+            ),
+            Err((status, error)) => eprintln!(
+                "[hyperwiki] codex app-server prewarm failed status={status} error={error}"
+            ),
+        }
+    });
+}
+
+pub fn spawn_import_thread_prewarm(project: crate::domain::projects::ProjectRecord) {
+    thread::spawn(move || {
+        let result = prewarm_import_thread(project);
+        match result {
+            Ok(response) => eprintln!(
+                "[hyperwiki] codex import thread prewarm complete project_id={} provider_ready={} thread_ready={} elapsed_ms={}",
+                response.project_id, response.provider_ready, response.thread_ready, response.elapsed_ms
+            ),
+            Err((status, error)) => {
+                eprintln!("[hyperwiki] codex import thread prewarm failed status={status} error={error}")
+            }
+        }
+    });
+}
+
+pub fn prewarm_import_thread(
+    project: crate::domain::projects::ProjectRecord,
+) -> Result<CodexPrewarmResponse, (u16, String)> {
+    let start = Instant::now();
+    let project_id = project.id.clone();
+    let mut server_guard = app_server()
+        .lock()
+        .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
+    let server = ensure_app_server(&mut server_guard)?;
+    let thread_id = ensure_import_thread(server, &project)?;
+    Ok(CodexPrewarmResponse {
+        ok: true,
+        project_id,
+        provider_ready: true,
+        thread_ready: true,
+        thread_id: Some(thread_id),
+        elapsed_ms: start.elapsed().as_millis(),
+        error: None,
+    })
 }
 
 pub fn start_import_planning_turn(
@@ -664,6 +732,32 @@ fn reset_app_server() {
     }
 }
 
+fn is_app_server_warm() -> bool {
+    let Ok(mut server_guard) = app_server().lock() else {
+        return false;
+    };
+    let Some(server) = server_guard.as_mut() else {
+        return false;
+    };
+    let alive = server
+        .child
+        .try_wait()
+        .map(|status| status.is_none())
+        .unwrap_or(false);
+    if !alive {
+        return false;
+    }
+    let (lock, _) = &*server.state;
+    lock.lock().map(|state| state.initialized).unwrap_or(false)
+}
+
+fn import_thread_id(project_id: &str) -> Option<String> {
+    import_threads()
+        .lock()
+        .ok()
+        .and_then(|threads| threads.by_project.get(project_id).cloned())
+}
+
 fn monotonic_id() -> u128 {
     static NEXT: AtomicU64 = AtomicU64::new(1);
     let counter = NEXT.fetch_add(1, Ordering::SeqCst);
@@ -690,6 +784,8 @@ pub fn run_import_planning_turn(
     } else {
         request.request_id.clone()
     };
+    let provider_was_warm = is_app_server_warm();
+    let thread_was_warm = import_thread_id(&project.id).is_some();
 
     let app_server_attempt = {
         let mut server_guard = app_server()
@@ -779,10 +875,16 @@ pub fn run_import_planning_turn(
             thread_ready_ms,
             turn_requested_ms,
         };
+        let first_event_fallback_after = if provider_was_warm && thread_was_warm {
+            APP_SERVER_WARM_FIRST_EVENT_FALLBACK_AFTER
+        } else {
+            APP_SERVER_FIRST_EVENT_FALLBACK_AFTER
+        };
         let result = server.wait_for_turn(
             &thread_id,
             before_index,
             APP_SERVER_TURN_TIMEOUT,
+            first_event_fallback_after,
             run_id,
             timing_marks,
             app.as_ref(),
@@ -1112,7 +1214,9 @@ fn run_exec_json_turn(
                         "assistant_idle",
                     ));
                 }
-                if text.trim().is_empty() && now.duration_since(start) >= EXEC_JSON_FIRST_ASSISTANT_TIMEOUT {
+                if text.trim().is_empty()
+                    && now.duration_since(start) >= EXEC_JSON_FIRST_ASSISTANT_TIMEOUT
+                {
                     let _ = child.kill();
                     update_run_snapshot(
                         run_id,
@@ -1314,13 +1418,7 @@ fn ensure_import_thread(
     server: &mut AppServer,
     project: &crate::domain::projects::ProjectRecord,
 ) -> Result<String, (u16, String)> {
-    if let Some(thread_id) = import_threads()
-        .lock()
-        .map_err(|_| (500, "Import thread registry lock is poisoned.".to_string()))?
-        .by_project
-        .get(&project.id)
-        .cloned()
-    {
+    if let Some(thread_id) = import_thread_id(&project.id) {
         return Ok(thread_id);
     }
     let request_id = server.next_request_id();
@@ -1522,6 +1620,7 @@ impl AppServer {
         thread_id: &str,
         before_index: usize,
         timeout: Duration,
+        first_event_fallback_after: Duration,
         run_id: &str,
         timing_marks: CodexAdapterTimingMarks,
         app: Option<&tauri::AppHandle>,
@@ -1667,7 +1766,7 @@ impl AppServer {
             }
             let elapsed = started_at.elapsed();
             let elapsed_ms = elapsed.as_millis();
-            if events == 0 && elapsed >= APP_SERVER_FIRST_EVENT_FALLBACK_AFTER {
+            if events == 0 && elapsed >= first_event_fallback_after {
                 update_run_snapshot(
                     run_id,
                     turn_snapshot(
@@ -1990,4 +2089,28 @@ struct TurnResult {
 #[allow(dead_code)]
 fn _path_for_debug(path: &Path) -> PathBuf {
     path.to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn prewarm_response_serializes_public_contract() {
+        let response = CodexPrewarmResponse {
+            ok: true,
+            project_id: "project-1".to_string(),
+            provider_ready: true,
+            thread_ready: true,
+            thread_id: Some("thread-1".to_string()),
+            elapsed_ms: 12,
+            error: None,
+        };
+        let value = serde_json::to_value(response).unwrap();
+        assert_eq!(value["projectId"], "project-1");
+        assert_eq!(value["providerReady"], true);
+        assert_eq!(value["threadReady"], true);
+        assert_eq!(value["threadId"], "thread-1");
+        assert_eq!(value["elapsedMs"], 12);
+    }
 }

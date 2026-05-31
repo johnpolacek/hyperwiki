@@ -135,6 +135,9 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                     result.project.id,
                     result.project.root.display()
                 );
+                crate::domain::codex_app_server::spawn_import_thread_prewarm(
+                    result.project.clone(),
+                );
                 json_response(200, &result)
             }
             Err((status, error)) => {
@@ -347,6 +350,16 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         };
         return match crate::domain::import_onboarding_runtime::start_import_onboarding(project, app)
         {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/prewarm") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding prewarm.");
+        };
+        return match crate::domain::codex_app_server::prewarm_import_thread(project) {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };

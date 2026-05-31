@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | import planning Codex prewarm</h2>
+  <ul>
+    <li>Added non-generative Codex prewarm for import onboarding: Hyperwiki now starts and initializes <code>codex app-server</code> during app setup and warms imported-project threads after project creation or resume.</li>
+    <li>Added <code>/api/import-onboarding/prewarm</code> and a shorter warm-turn no-first-event fallback before switching to <code>codex exec --json</code>.</li>
+    <li>Reduced duplicate planning activity lines by changing React's local placeholder copy to preparation language and normalizing consecutive workstream duplicates.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-30 implementation | static import plan richness</h2>
   <ul>
     <li>Updated the deterministic static-local import compiler so fresh Micro-Journal-style plans emit richer MDX structures: card groups, columns, task lists, aside notes, request/response examples, and titled verification blocks.</li>
