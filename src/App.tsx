@@ -2720,13 +2720,6 @@ function CommandBar({
           Resume Q&A
         </Button>
       ) : null}
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => onRunCommand("new-plan")}
-      >
-        + plan
-      </Button>
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onSetSidePanelMode("modify")}>
         modify
       </Button>
@@ -2735,6 +2728,13 @@ function CommandBar({
       </Button>
       <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
         run dev
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onRunCommand("new-plan")}
+      >
+        + plan
       </Button>
       {mode !== "closed" ? (
         <div className="absolute right-0 top-10 z-20 w-[28rem] border bg-popover p-3 text-popover-foreground shadow-lg">
