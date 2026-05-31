@@ -4540,10 +4540,9 @@ function TerminalPane(props: {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {liveSessions.map((session, index) => (
               <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)}>
-                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
+                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-3 text-xs">
                   <div className="min-w-0">
                     <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{session.name || session.role || `terminal ${index + 1}`}</p>
-                    <p className="m-0 truncate text-[10px] text-[#9da79f]">{session.cwd || session.command || session.shell || session.id}</p>
                   </div>
                   <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={() => props.onCloseSession(session.id)} title="Close terminal" aria-label="Close terminal">
                     <X aria-hidden="true" data-icon="inline-start" />
@@ -4819,7 +4818,7 @@ function XtermSession({
     };
   }, [activeProject, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session]);
 
-  return <div className="h-full min-h-0 bg-foreground p-2" ref={containerRef} />;
+  return <div className="h-full min-h-0 p-1" ref={containerRef} />;
 }
 
 function routeFromLocation(): ViewRoute {
