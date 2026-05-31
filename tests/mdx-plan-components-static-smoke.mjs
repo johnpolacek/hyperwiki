@@ -113,7 +113,8 @@ for (const contrastContract of [
 
 for (const generationContract of [
   "choose the planning composition pattern",
-  "CardGroup/Columns for alternatives or work tracks",
+  "full-width CardGroup cards for alternatives or work tracks",
+  "avoid multi-column plan layouts",
   "RequestExample/ResponseExample/ParamField/ResponseField for contracts",
 ]) {
   if (!app.includes(generationContract)) {

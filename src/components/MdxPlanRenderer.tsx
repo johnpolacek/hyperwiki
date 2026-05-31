@@ -819,24 +819,12 @@ function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
   );
 }
 
-function cardGroupClass(node: Element) {
-  const cols = node.getAttribute("cols") || node.getAttribute("columns") || "";
-  return cn(
-    "grid gap-3",
-    cols === "1" && "grid-cols-1",
-    cols !== "1" && cols !== "3" && "grid-cols-1 md:grid-cols-2",
-    cols === "3" && "grid-cols-1 md:grid-cols-3",
-  );
+function cardGroupClass(_node: Element) {
+  return "grid grid-cols-1 gap-3";
 }
 
-function columnsClass(node: Element) {
-  const cols = node.getAttribute("cols") || node.getAttribute("columns") || "";
-  return cn(
-    "grid gap-4",
-    cols === "1" && "grid-cols-1",
-    cols !== "1" && cols !== "3" && "grid-cols-1 md:grid-cols-2",
-    cols === "3" && "grid-cols-1 md:grid-cols-3",
-  );
+function columnsClass(_node: Element) {
+  return "grid grid-cols-1 gap-4";
 }
 
 function renderTabs(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {

@@ -1530,7 +1530,7 @@ fn plan_repair_prompt(
         "Apply the bundled Hyperwiki planning contract even though you cannot call a skill tool in this turn.",
         "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
         "Before writing artifacts, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, CardGroup/Columns for alternatives or work tracks, CommandBlock for exact local commands, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
+        "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Avoid multi-column plan layouts so generated briefs read as one full-width column.",
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
         "Do not dump long imported source bundles into visible paragraphs; summarize visibly and preserve full context in agent-only Visibility blocks.",
         "Required artifact paths: wiki/plans/index.mdx, wiki/plans/mvp/index.mdx, one wiki/plans/mvp/stage-01-*.mdx stage page, and at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages.",
@@ -1624,7 +1624,7 @@ wikiKind: "plan"
   </ul>
 </PlanSummary>
 
-<CardGroup cols="3">
+<CardGroup>
   <Card title="Active plan" description="Source-grounded MVP for {title}">
     <p>Execute Stage 01 as a static, local-only, dependency-free browser MVP.</p>
   </Card>
@@ -1662,7 +1662,7 @@ wikiKind: "plan"
   </ul>
 </PlanSummary>
 
-<Columns cols="2">
+<Columns>
   <Column>
     <Steps>
       <Step title="Unit 01 - Root HTML Shell">
@@ -1712,7 +1712,7 @@ wikiKind: "plan"
   <p>Stage goal: implement the source-decided {title} MVP as a single self-contained root <code>index.html</code> page using embedded HTML, CSS, and JavaScript.</p>
 </PlanHero>
 
-<CardGroup cols="3">
+<CardGroup>
   <Card title="Build" description="One local journal surface">
     <p><a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Create the root <code>index.html</code> shell, textarea workflow, status area, and clear-entry control.</a></p>
   </Card>
@@ -1724,7 +1724,7 @@ wikiKind: "plan"
   </Card>
 </CardGroup>
 
-<Columns cols="2">
+<Columns>
   <Column>
     <Decision title="Stage boundary">
       <p>Build a static, dependency-free, root <code>index.html</code> MVP stored through browser <code>localStorage</code>.</p>
@@ -1778,7 +1778,7 @@ wikiKind: "plan"
   </ul>
 </PlanSummary>
 
-<CardGroup cols="3">
+<CardGroup>
   <Card title="Build" description="Document shell">
     <p>Create the page title, main journal region, textarea, save-status area, and clear-entry control.</p>
   </Card>
@@ -1790,7 +1790,7 @@ wikiKind: "plan"
   </Card>
 </CardGroup>
 
-<Columns cols="2">
+<Columns>
   <Column>
     <section>
       <h2>Scope</h2>
@@ -1855,7 +1855,7 @@ wikiKind: "plan"
   <p>Intent: persist the journal entry locally with browser <code>localStorage</code> so the accepted MVP restores the previous entry on open and saves edits automatically.</p>
 </PlanHero>
 
-<CardGroup cols="3">
+<CardGroup>
   <Card title="Build" description="Persistence behavior">
     <p>Add load-on-open restore, debounced autosave, and user-visible save status.</p>
   </Card>
@@ -1867,7 +1867,7 @@ wikiKind: "plan"
   </Card>
 </CardGroup>
 
-<Columns cols="2">
+<Columns>
   <Column>
     <section>
       <h2>Scope</h2>
@@ -1924,7 +1924,7 @@ wikiKind: "plan"
   <p>Intent: finish the static local-only MVP by adding clear-entry behavior and recording the manual verification path for the journal workflow.</p>
 </PlanHero>
 
-<CardGroup cols="3">
+<CardGroup>
   <Card title="Build" description="Clear-entry behavior">
     <p>Clear the textarea, clear the <code>localStorage</code> value, return focus to the editor, and update save status.</p>
   </Card>
@@ -1936,7 +1936,7 @@ wikiKind: "plan"
   </Card>
 </CardGroup>
 
-<Columns cols="2">
+<Columns>
   <Column>
     <section>
       <h2>Scope</h2>
@@ -2709,8 +2709,10 @@ mod tests {
         assert!(joined.contains("manual browser verification"));
         assert!(joined.contains("<PlanHero"));
         assert!(joined.contains("<PlanSummary>"));
-        assert!(joined.contains("<CardGroup cols=\"3\">"));
-        assert!(joined.contains("<Columns cols=\"2\">"));
+        assert!(joined.contains("<CardGroup>"));
+        assert!(joined.contains("<Columns>"));
+        assert!(!joined.contains("<CardGroup cols=\"3\">"));
+        assert!(!joined.contains("<Columns cols=\"2\">"));
         assert!(joined.contains("<TaskList title=\"Acceptance checks\""));
         assert!(joined.contains("<CommandBlock title=\"Manual check\">"));
         assert!(joined.contains("<Aside title=\"Unlocks next\">"));

@@ -1836,11 +1836,11 @@ Agent-only text.
 <p>See <a href="./other.mdx">Other</a> and <a href="./missing.mdx">Missing</a>.</p>
 </ParamField>
 </Step>
-<CardGroup cols="2">
+<CardGroup>
 <Card title="Option A"><p>Use the local pipeline.</p></Card>
 <Card title="Option B"><p>Defer runtime changes.</p></Card>
 </CardGroup>
-<Columns cols="2">
+<Columns>
 <Column>
 <Aside title="Operator note"><p>Keep visible prose compact.</p></Aside>
 </Column>
