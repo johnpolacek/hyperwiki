@@ -4534,6 +4534,11 @@ function TerminalPane(props: {
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
             + cli
           </Button>
+          {activeSession ? (
+            <Button className="size-7 border-[#3a403b] bg-transparent text-[#eef2ec] hover:border-[#f0b7b1] hover:bg-transparent hover:text-[#f0b7b1]" size="icon" variant="outline" type="button" onClick={() => props.onCloseSession(activeSession.id)} title="Close current session" aria-label="Close current session">
+              <Square aria-hidden="true" data-icon="inline-start" />
+            </Button>
+          ) : null}
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

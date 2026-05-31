@@ -1,0 +1,34 @@
+---
+title: "Close Last Terminal Session"
+description: "Allow the visible terminal pane to close its final running agent or CLI session."
+wikiKind: "plan"
+---
+
+<h1>Close Last Terminal Session</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: completed</li>
+    <li>Shape: focused UI behavior fix</li>
+    <li>Current unit: expose a close-current-session action even when only one terminal is running.</li>
+  </ul>
+</section>
+<section>
+  <h2>Why</h2>
+  <p>Starting an agent with <code>+ agent</code> can leave exactly one visible terminal session. The backend can close that session, but the React terminal pane only exposes session controls when more than one live session exists, leaving users without an obvious close path.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Add a terminal-header close action for the active live session.</li>
+    <li>Keep the existing multi-session tab selection behavior unchanged.</li>
+    <li>After the final session closes, show the existing empty state: <code>No terminals running</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Passed: <code>pnpm run check</code>.</li>
+    <li>Not run: visual Tauri preview confirmation, because <code>pnpm dev</code> is a long-running desktop app command.</li>
+  </ul>
+</section>

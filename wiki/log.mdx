@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | close final terminal session</h2>
+  <ul>
+    <li>Added a terminal-header close action for the active live session so a single <code>+ agent</code> or <code>+ cli</code> terminal can be closed.</li>
+    <li>Kept multi-session tab selection unchanged; after the final session closes, the terminal pane returns to its existing empty state.</li>
+    <li>Validation: <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | reliable wiki Markdown zip save</h2>
   <ul>
     <li>Changed the sidebar wiki Markdown export action to save the generated zip through the Tauri backend instead of relying on a browser-style Blob download inside the desktop webview.</li>
