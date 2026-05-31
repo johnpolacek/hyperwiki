@@ -62,8 +62,11 @@ const app = appAssets.join("\n");
 if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
 }
-if (!app.includes("Modify Plan") || !app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
-  throw new Error("Command bar modify action must bundle the visible Modify Plan pane.");
+if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
+  throw new Error("Command bar modify action must not bundle the retired Modify Plan pane.");
+}
+if (!app.includes("Modify Plan is a planning/wiki-only operation.") || !app.includes("sessionId")) {
+  throw new Error("Command bar modify action must start a scoped agent handoff with the docs-only Modify Plan prompt.");
 }
 
 console.log("tauri static assets smoke test passed");

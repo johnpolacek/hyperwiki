@@ -1,0 +1,38 @@
+---
+title: "Direct Modify Plan Agent Handoff"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+status: "complete"
+---
+
+<PlanHero>
+  <h1>Direct Modify Plan Agent Handoff</h1>
+  <p>Replace the right-side Modify Plan form with an immediate docs-only agent handoff.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: small command workflow correction</li>
+    <li>Goal: make <code>modify</code> start or reuse Codex directly, wait for readiness, and submit the scoped Modify Plan prompt.</li>
+    <li>Boundary: Modify Plan may edit only planning wiki MDX files when directly needed for planning context.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Route the command-bar <code>modify</code> button directly to the tracked agent handoff instead of opening the retired right-side form.</li>
+    <li>Keep using the existing terminal session flow: start or reuse the scoped agent, wait for Codex prompt readiness, then paste and submit the composed prompt.</li>
+    <li>Send the selected agent <code>sessionId</code> with tracked prompt requests so the backend targets the exact live session it just prepared.</li>
+    <li>Keep Modify Plan instructions docs-only and restricted to app-visible planning wiki MDX files.</li>
+  </ul>
+</section>
+
+<Verification>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run smoke:tauri-static-assets</code></li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml agent_prompt_routes_only_to_command_backed_agent_session</code></li>
+  </ul>
+</Verification>

@@ -43,7 +43,7 @@ type ViewRoute =
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
-type SidePanelMode = "terminal" | "modify" | "new-plan" | "agent-activity";
+type SidePanelMode = "terminal" | "agent-activity";
 type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
 type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 
@@ -1352,6 +1352,7 @@ function App() {
             body: {
               prompt,
               currentPage,
+              sessionId: session.id,
               scope: scope.scope,
             },
           });
@@ -2181,7 +2182,6 @@ function App() {
           onRunCommand={runCommandAction}
           onAnswerPlanningQuestion={answerPlanningQuestion}
           onStartPlanCreation={startPlanCreation}
-          onSetSidePanelMode={setSidePanelMode}
           onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
           onSwitchProject={switchProject}
           planningActivity={planningActivity}
@@ -2208,8 +2208,6 @@ function App() {
             <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
             <AgentActivityPane agentRun={agentRun} onShowTerminal={() => setSidePanelMode("terminal")} />
           </>
-        ) : sidePanelMode === "modify" || sidePanelMode === "new-plan" ? (
-          <RightActionPane mode={sidePanelMode} onClose={() => setSidePanelMode("terminal")} onRunCommand={runCommandAction} />
         ) : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
@@ -2555,7 +2553,6 @@ function WorkspacePane(props: {
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetSidePanelMode: (mode: SidePanelMode) => void;
   onStartPlanCreation: (intent: string) => Promise<void>;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
@@ -2629,7 +2626,7 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} />
+          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -2715,13 +2712,11 @@ function CommandBar({
   canResumeImportPlanning,
   onResumeImportPlanning,
   onRunCommand,
-  onSetSidePanelMode,
 }: {
   activePlanState: PlanPageActionState;
   canResumeImportPlanning: boolean;
   onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onSetSidePanelMode: (mode: SidePanelMode) => void;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -2736,7 +2731,7 @@ function CommandBar({
           Resume Q&A
         </Button>
       ) : null}
-      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && activePlanState.isComplete} onClick={() => onSetSidePanelMode("modify")}>
+      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && activePlanState.isComplete} onClick={() => onRunCommand("modify")}>
         modify
       </Button>
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
@@ -4246,83 +4241,6 @@ function replaceManagedAgentsBlock(content: string, block: string) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function RightActionPane({
-  mode,
-  onClose,
-  onRunCommand,
-}: {
-  mode: "modify" | "new-plan";
-  onClose: () => void;
-  onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-}) {
-  const [modifyText, setModifyText] = useState("");
-  const [title, setTitle] = useState("");
-  const [intent, setIntent] = useState("");
-
-  return (
-    <aside className="min-h-0 overflow-auto border-l bg-background p-8 max-xl:hidden">
-      <section className="rounded-lg border bg-card p-8 shadow-[0_18px_44px_rgba(32,35,31,0.08)]">
-        {mode === "modify" ? (
-          <form
-            className="flex flex-col gap-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onRunCommand("modify", { prompt: modifyText });
-            }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="m-0 text-3xl font-bold">Modify Plan</h1>
-              <Button aria-label="Close Modify Plan" className="size-8" size="icon" title="Close Modify Plan" type="button" variant="ghost" onClick={onClose}>
-                <X aria-hidden="true" data-icon="inline-start" />
-              </Button>
-            </div>
-            <textarea
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onChange={(event) => setModifyText(event.target.value)}
-              placeholder="Describe the planning wiki change. This will not implement product code."
-              value={modifyText}
-            />
-            <p className="m-0 text-sm leading-6 text-muted-foreground">
-              Docs-only: Modify Plan is limited to app-visible wiki planning files.
-            </p>
-            <Button className="min-h-12 w-full" type="submit">
-              <Play aria-hidden="true" data-icon="inline-start" />
-              Send
-            </Button>
-          </form>
-        ) : (
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onRunCommand("new-plan", { title, intent, planType: "feature" });
-            }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="m-0 text-3xl font-bold">Create Plan</h1>
-              <Button aria-label="Close Create Plan" className="size-8" size="icon" title="Close Create Plan" type="button" variant="ghost" onClick={onClose}>
-                <X aria-hidden="true" data-icon="inline-start" />
-              </Button>
-            </div>
-            <label className="flex flex-col gap-1 text-sm font-bold">
-              Title
-              <input {...DISABLE_TEXT_CORRECTION_PROPS} className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTitle(event.target.value)} value={title} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-bold">
-              Intent
-              <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-48 rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setIntent(event.target.value)} value={intent} />
-            </label>
-            <Button className="min-h-12 w-full" type="submit">
-              + plan
-            </Button>
-          </form>
-        )}
-      </section>
-    </aside>
-  );
 }
 
 function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunState | null; onShowTerminal: () => void }) {

@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | direct modify plan agent handoff</h2>
+  <ul>
+    <li>Changed the command-bar <code>modify</code> action to start or reuse the scoped agent session immediately instead of opening the retired right-side Modify Plan form.</li>
+    <li>Kept the handoff docs-only and targeted tracked prompt submissions to the exact prepared agent session.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | terminal launch and focus reliability</h2>
   <ul>
     <li>Changed launch command submission from carriage return to newline after a longer shell-start delay so <code>codex --yolo</code> is less likely to sit unsubmitted at the prompt.</li>
