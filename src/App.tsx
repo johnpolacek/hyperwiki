@@ -2599,7 +2599,7 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onNavigate={props.onNavigate} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
+          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -2683,7 +2683,6 @@ function isMissingFileError(error: string) {
 function CommandBar({
   activePlanState,
   canResumeImportPlanning,
-  onNavigate,
   onResumeImportPlanning,
   onRunCommand,
   onSetSidePanelMode,
@@ -2692,7 +2691,6 @@ function CommandBar({
 }: {
   activePlanState: PlanPageActionState;
   canResumeImportPlanning: boolean;
-  onNavigate: (route: ViewRoute) => void;
   onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onSetSidePanelMode: (mode: SidePanelMode) => void;
@@ -2711,14 +2709,9 @@ function CommandBar({
 
   return (
     <div className="relative flex items-center gap-2">
-      {activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale) ? (
+      {activePlanState.isPlanPage && activePlanState.isComplete ? (
         <div className="flex min-w-0 items-center gap-2 rounded-md border bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">
           <span className="max-w-56 truncate">{activePlanState.message}</span>
-          {activePlanState.currentPath ? (
-            <button className="shrink-0 font-bold underline-offset-2 hover:underline" type="button" onClick={() => onNavigate({ kind: "wiki", path: activePlanState.currentPath })}>
-              Open current
-            </button>
-          ) : null}
         </div>
       ) : null}
       {canResumeImportPlanning ? (
@@ -5149,11 +5142,7 @@ function planPageActionState(path: string, pages: WikiPage[], workspace: Workspa
   const currentDisplayPath = displayWikiPath(currentPath);
   const isComplete = Boolean(page && isCompletedPage(page));
   const isStale = Boolean(isPlanPage && currentDisplayPath && displayPath !== currentDisplayPath && !displayPath.endsWith("/wiki/plans/index.mdx"));
-  const message = isComplete
-    ? "This unit is complete."
-    : isStale
-    ? "This is not the current active unit."
-    : "";
+  const message = isComplete ? "This unit is complete." : "";
   return {
     isPlanPage,
     isComplete,
