@@ -93,12 +93,19 @@ for (const visualContract of [
 
 for (const exportContract of [
   "/api/wiki/export-markdown-zip",
+  "/api/wiki/export-markdown-zip/download",
   "isReactRenderedMdxPath",
   "Download wiki Markdown zip",
+  "wikiExportStatus",
+  "isWikiExporting",
 ]) {
   if (!app.includes(exportContract)) {
     throw new Error(`App must expose the wiki Markdown export contract: ${exportContract}`);
   }
+}
+
+if (app.includes("downloadBase64File(") || app.includes("URL.createObjectURL")) {
+  throw new Error("Sidebar wiki Markdown export must use the desktop save endpoint, not a browser Blob download.");
 }
 
 if (app.includes("Download project skill")) {

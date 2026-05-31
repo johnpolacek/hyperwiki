@@ -139,11 +139,13 @@ interface WikiSourceResponse {
   validationWarnings?: WikiValidationWarning[];
 }
 
-interface WikiMarkdownZipExportResponse {
+interface WikiMarkdownZipDownloadResponse {
   filename: string;
-  mimeType: string;
-  base64: string;
+  path: string;
+  bytes: number;
   files?: Array<{ path: string; bytes: number }>;
+  revealed: boolean;
+  revealError?: string | null;
 }
 
 interface ProjectRecord {
@@ -607,6 +609,8 @@ function App() {
   const [planningActivity, setPlanningActivity] = useState("");
   const [planningWorkstream, setPlanningWorkstream] = useState<string[]>([]);
   const [activeImportPlanningRun, setActiveImportPlanningRun] = useState<ImportOnboardingRunRecord | null>(null);
+  const [isWikiExporting, setIsWikiExporting] = useState(false);
+  const [wikiExportStatus, setWikiExportStatus] = useState("");
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
@@ -2094,12 +2098,22 @@ function App() {
 
   async function downloadWikiMarkdownZip() {
     setStatus("Preparing wiki Markdown export");
+    setWikiExportStatus("Saving export...");
+    setIsWikiExporting(true);
     try {
-      const exportPayload = await hyperwikiApi.json<WikiMarkdownZipExportResponse>(withProjectQuery("/api/wiki/export-markdown-zip", activeProject));
-      downloadBase64File(exportPayload.filename || "hyperwiki-markdown-export.zip", exportPayload.mimeType || "application/zip", exportPayload.base64);
-      setStatus(`Wiki Markdown export ready${exportPayload.files?.length ? ` (${exportPayload.files.length} files)` : ""}`);
+      const exportPayload = await hyperwikiApi.json<WikiMarkdownZipDownloadResponse>(withProjectQuery("/api/wiki/export-markdown-zip/download", activeProject), {
+        method: "POST",
+      });
+      const fileCount = exportPayload.files?.length ? ` (${exportPayload.files.length} files)` : "";
+      const revealNote = exportPayload.revealError ? ` Saved to Downloads; reveal failed: ${exportPayload.revealError}` : "Saved to Downloads.";
+      setWikiExportStatus(`${revealNote}${fileCount}`);
+      setStatus(`Wiki Markdown export saved: ${exportPayload.filename}${fileCount}`);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not export wiki Markdown.");
+      const message = error instanceof Error ? error.message : "Could not export wiki Markdown.";
+      setWikiExportStatus(message);
+      setStatus(message);
+    } finally {
+      setIsWikiExporting(false);
     }
   }
 
@@ -2142,6 +2156,8 @@ function App() {
         {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
+            exportStatus={wikiExportStatus}
+            isExporting={isWikiExporting}
             model={sidebarModel}
             onCreatePlan={() => runCommandAction("new-plan")}
             onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
@@ -2364,6 +2380,8 @@ interface SidebarModel {
 
 function WikiSidebar(props: {
   currentPath: string;
+  exportStatus: string;
+  isExporting: boolean;
   model: SidebarModel;
   onCreatePlan: () => void;
   onDownloadWikiMarkdownZip: () => Promise<void>;
@@ -2381,13 +2399,14 @@ function WikiSidebar(props: {
               <Button
                 aria-label="Download wiki Markdown zip"
                 className="size-8"
+                disabled={props.isExporting}
                 size="icon"
                 title="Download wiki Markdown zip"
                 type="button"
                 variant="ghost"
                 onClick={() => void props.onDownloadWikiMarkdownZip()}
               >
-                <Download aria-hidden="true" data-icon="inline-start" />
+                {props.isExporting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Download aria-hidden="true" data-icon="inline-start" />}
               </Button>
               <Button size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
                 <Plus aria-hidden="true" data-icon="inline-start" />
@@ -2395,6 +2414,7 @@ function WikiSidebar(props: {
               </Button>
             </div>
           </div>
+          {props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
         </section>
         <details className="border-t bg-card p-3" open={false}>
@@ -5283,27 +5303,6 @@ function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
 
 function isReactRenderedMdxPath(path: string) {
   return displayWikiPath(path).startsWith("/wiki/") && path.endsWith(".mdx");
-}
-
-function downloadBase64File(filename: string, mimeType: string, base64: string) {
-  const binary = window.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  downloadBlob(filename, new Blob([bytes], { type: mimeType }));
-}
-
-function downloadBlob(filename: string, blob: Blob) {
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.rel = "noopener";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
 }
 
 function isIncompleteImportProject(project: ProjectRecord | null | undefined) {

@@ -3,7 +3,9 @@ use base64::Engine;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn surface() -> DomainSurface {
     DomainSurface {
@@ -156,6 +158,17 @@ pub struct WikiMarkdownZipExport {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct WikiMarkdownZipDownload {
+    pub filename: String,
+    pub path: String,
+    pub bytes: usize,
+    pub files: Vec<WikiMarkdownExportFile>,
+    pub revealed: bool,
+    pub reveal_error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct WikiSkillExport {
     pub filename: String,
     pub content: String,
@@ -272,24 +285,60 @@ pub fn wiki_project_skill(root: impl AsRef<Path>) -> WikiSkillExport {
 }
 
 pub fn wiki_markdown_zip_export(root: impl AsRef<Path>) -> WikiMarkdownZipExport {
+    let payload = wiki_markdown_zip_payload(root);
+    WikiMarkdownZipExport {
+        filename: "hyperwiki-markdown-export.zip".to_string(),
+        mime_type: "application/zip".to_string(),
+        base64: base64::engine::general_purpose::STANDARD.encode(payload.zip),
+        files: payload.files,
+    }
+}
+
+pub fn save_wiki_markdown_zip_to_downloads(
+    root: impl AsRef<Path>,
+    reveal: bool,
+) -> Result<WikiMarkdownZipDownload, String> {
+    let payload = wiki_markdown_zip_payload(root);
+    let filename = format!("hyperwiki-markdown-export-{}.zip", unix_time_ms());
+    let downloads_dir = downloads_dir()?;
+    fs::create_dir_all(&downloads_dir).map_err(|error| error.to_string())?;
+    let path = downloads_dir.join(&filename);
+    fs::write(&path, &payload.zip).map_err(|error| error.to_string())?;
+    let reveal_error = if reveal {
+        reveal_file(&path).err()
+    } else {
+        None
+    };
+    Ok(WikiMarkdownZipDownload {
+        filename,
+        path: path.to_string_lossy().to_string(),
+        bytes: payload.zip.len(),
+        files: payload.files,
+        revealed: reveal && reveal_error.is_none(),
+        reveal_error,
+    })
+}
+
+struct WikiMarkdownZipPayload {
+    zip: Vec<u8>,
+    files: Vec<WikiMarkdownExportFile>,
+}
+
+fn wiki_markdown_zip_payload(root: impl AsRef<Path>) -> WikiMarkdownZipPayload {
     let files = wiki_markdown_export_files(&root);
     let zip_entries = files
         .iter()
         .map(|(path, content)| (path.as_str(), content.as_bytes()))
         .collect::<Vec<_>>();
     let zip = zip_store(&zip_entries);
-    WikiMarkdownZipExport {
-        filename: "hyperwiki-markdown-export.zip".to_string(),
-        mime_type: "application/zip".to_string(),
-        base64: base64::engine::general_purpose::STANDARD.encode(zip),
-        files: files
-            .into_iter()
-            .map(|(path, content)| WikiMarkdownExportFile {
-                path,
-                bytes: content.len(),
-            })
-            .collect(),
-    }
+    let files = files
+        .into_iter()
+        .map(|(path, content)| WikiMarkdownExportFile {
+            path,
+            bytes: content.len(),
+        })
+        .collect();
+    WikiMarkdownZipPayload { zip, files }
 }
 
 fn wiki_markdown_export_files(root: impl AsRef<Path>) -> Vec<(String, String)> {
@@ -346,6 +395,49 @@ Use this skill to read the local Hyperwiki project wiki as canonical repo-visibl
         content.push('\n');
     }
     content.trim_end().to_string()
+}
+
+fn downloads_dir() -> Result<PathBuf, String> {
+    #[cfg(target_os = "windows")]
+    let home = std::env::var_os("USERPROFILE");
+    #[cfg(not(target_os = "windows"))]
+    let home = std::env::var_os("HOME");
+    let Some(home) = home else {
+        return Err("Could not resolve the Downloads folder.".to_string());
+    };
+    Ok(PathBuf::from(home).join("Downloads"))
+}
+
+fn reveal_file(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg("-R").arg(path).output();
+    #[cfg(target_os = "linux")]
+    let result = Command::new("xdg-open")
+        .arg(path.parent().unwrap_or_else(|| Path::new(".")))
+        .output();
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer")
+        .arg(format!("/select,{}", path.display()))
+        .output();
+    result
+        .map_err(|error| error.to_string())
+        .and_then(|output| {
+            output.status.success().then_some(()).ok_or_else(|| {
+                let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                if stderr.is_empty() {
+                    "Could not reveal the saved zip file.".to_string()
+                } else {
+                    stderr
+                }
+            })
+        })
+}
+
+fn unix_time_ms() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0)
 }
 
 fn zip_store(entries: &[(&str, &[u8])]) -> Vec<u8> {

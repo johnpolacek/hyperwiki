@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | reliable wiki Markdown zip save</h2>
+  <ul>
+    <li>Changed the sidebar wiki Markdown export action to save the generated zip through the Tauri backend instead of relying on a browser-style Blob download inside the desktop webview.</li>
+    <li>Added visible sidebar export feedback so save progress, success, and errors are shown next to the Plans heading.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | future plan modify access</h2>
   <ul>
     <li>Changed the command bar so future or otherwise non-current plan pages can still open Modify Plan.</li>
