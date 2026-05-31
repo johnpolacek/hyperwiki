@@ -93,14 +93,16 @@ for (const visualContract of [
 
 for (const exportContract of [
   "/api/wiki/export-markdown-zip",
-  "/api/wiki/skill.md",
   "isReactRenderedMdxPath",
   "Download wiki Markdown zip",
-  "Download project skill",
 ]) {
   if (!app.includes(exportContract)) {
     throw new Error(`App must expose the wiki Markdown export contract: ${exportContract}`);
   }
+}
+
+if (app.includes("Download project skill")) {
+  throw new Error("App must not expose a separate project skill download button.");
 }
 
 for (const contrastContract of [

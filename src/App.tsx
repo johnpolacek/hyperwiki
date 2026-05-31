@@ -7,7 +7,6 @@ import {
   Command,
   Download,
   ExternalLink,
-  FileCode2,
   FolderOpen,
   FolderGit2,
   GitBranch,
@@ -2103,17 +2102,6 @@ function App() {
     }
   }
 
-  async function downloadWikiSkill() {
-    setStatus("Preparing project skill");
-    try {
-      const content = await hyperwikiApi.text(withProjectQuery("/api/wiki/skill.md", activeProject));
-      downloadTextFile("SKILL.md", "text/markdown", content);
-      setStatus("Project skill export ready");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not export project skill.");
-    }
-  }
-
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute && route.kind !== "plan-create";
@@ -2154,6 +2142,7 @@ function App() {
           <WikiSidebar
             currentPath={currentWikiPath}
             model={sidebarModel}
+            onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
             onNavigate={(path) => navigate({ kind: "wiki", path })}
             route={route}
             workspace={workspace}
@@ -2166,8 +2155,6 @@ function App() {
           isLoading={isWikiLoading}
           onNavigate={navigate}
           onCreateProject={createProject}
-          onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
-          onDownloadWikiSkill={downloadWikiSkill}
           activeImportPlanningRun={activeImportPlanningRun}
           onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
           onPlanImportedProject={planImportedProject}
@@ -2375,6 +2362,7 @@ interface SidebarModel {
 function WikiSidebar(props: {
   currentPath: string;
   model: SidebarModel;
+  onDownloadWikiMarkdownZip: () => Promise<void>;
   onNavigate: (path: string) => void;
   route: ViewRoute;
   workspace: WorkspaceResponse | null;
@@ -2383,7 +2371,20 @@ function WikiSidebar(props: {
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
       <nav className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
-          <h2 className="mb-2 px-1 text-xs font-bold uppercase text-muted-foreground">Plans</h2>
+          <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
+            <h2 className="text-xs font-bold uppercase text-muted-foreground">Plans</h2>
+            <Button
+              aria-label="Download wiki Markdown zip"
+              className="size-8"
+              size="icon"
+              title="Download wiki Markdown zip"
+              type="button"
+              variant="ghost"
+              onClick={() => void props.onDownloadWikiMarkdownZip()}
+            >
+              <Download aria-hidden="true" data-icon="inline-start" />
+            </Button>
+          </div>
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
         </section>
         <details className="border-t bg-card p-3" open={false}>
@@ -2518,8 +2519,6 @@ function WorkspacePane(props: {
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
   onCancelImportPlanningTurn: () => Promise<void>;
-  onDownloadWikiMarkdownZip: () => Promise<void>;
-  onDownloadWikiSkill: () => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
@@ -2600,28 +2599,6 @@ function WorkspacePane(props: {
           <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Button
-            aria-label="Download wiki Markdown zip"
-            className="size-8"
-            size="icon"
-            title="Download wiki Markdown zip"
-            type="button"
-            variant="outline"
-            onClick={() => void props.onDownloadWikiMarkdownZip()}
-          >
-            <Download aria-hidden="true" data-icon="inline-start" />
-          </Button>
-          <Button
-            aria-label="Download project skill"
-            className="size-8"
-            size="icon"
-            title="Download project skill"
-            type="button"
-            variant="outline"
-            onClick={() => void props.onDownloadWikiSkill()}
-          >
-            <FileCode2 aria-hidden="true" data-icon="inline-start" />
-          </Button>
           <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onNavigate={props.onNavigate} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} onSetSidePanelMode={props.onSetSidePanelMode} reviewWorkflows={props.reviewWorkflows} wikiPath={props.wikiPath} />
         </div>
       </div>
@@ -5391,11 +5368,6 @@ function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
 
 function isReactRenderedMdxPath(path: string) {
   return displayWikiPath(path).startsWith("/wiki/") && path.endsWith(".mdx");
-}
-
-function downloadTextFile(filename: string, mimeType: string, content: string) {
-  const blob = new Blob([content], { type: mimeType });
-  downloadBlob(filename, blob);
 }
 
 function downloadBase64File(filename: string, mimeType: string, base64: string) {
