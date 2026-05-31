@@ -24,6 +24,7 @@ import {
   Square,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -2142,6 +2143,7 @@ function App() {
           <WikiSidebar
             currentPath={currentWikiPath}
             model={sidebarModel}
+            onCreatePlan={() => runCommandAction("new-plan")}
             onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
             onNavigate={(path) => navigate({ kind: "wiki", path })}
             route={route}
@@ -2191,7 +2193,7 @@ function App() {
             <AgentActivityPane agentRun={agentRun} onShowTerminal={() => setSidePanelMode("terminal")} />
           </>
         ) : sidePanelMode === "modify" || sidePanelMode === "new-plan" ? (
-          <RightActionPane mode={sidePanelMode} onRunCommand={runCommandAction} />
+          <RightActionPane mode={sidePanelMode} onClose={() => setSidePanelMode("terminal")} onRunCommand={runCommandAction} />
         ) : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
@@ -2362,6 +2364,7 @@ interface SidebarModel {
 function WikiSidebar(props: {
   currentPath: string;
   model: SidebarModel;
+  onCreatePlan: () => void;
   onDownloadWikiMarkdownZip: () => Promise<void>;
   onNavigate: (path: string) => void;
   route: ViewRoute;
@@ -2373,17 +2376,23 @@ function WikiSidebar(props: {
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
             <h2 className="text-xs font-bold uppercase text-muted-foreground">Plans</h2>
-            <Button
-              aria-label="Download wiki Markdown zip"
-              className="size-8"
-              size="icon"
-              title="Download wiki Markdown zip"
-              type="button"
-              variant="ghost"
-              onClick={() => void props.onDownloadWikiMarkdownZip()}
-            >
-              <Download aria-hidden="true" data-icon="inline-start" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                aria-label="Download wiki Markdown zip"
+                className="size-8"
+                size="icon"
+                title="Download wiki Markdown zip"
+                type="button"
+                variant="ghost"
+                onClick={() => void props.onDownloadWikiMarkdownZip()}
+              >
+                <Download aria-hidden="true" data-icon="inline-start" />
+              </Button>
+              <Button size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
+                <Plus aria-hidden="true" data-icon="inline-start" />
+                plan
+              </Button>
+            </div>
           </div>
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
         </section>
@@ -2728,13 +2737,6 @@ function CommandBar({
       </Button>
       <Button size="sm" variant="outline" onClick={() => setMode(mode === "worktree" ? "closed" : "worktree")}>
         run dev
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => onRunCommand("new-plan")}
-      >
-        + plan
       </Button>
       {mode !== "closed" ? (
         <div className="absolute right-0 top-10 z-20 w-[28rem] border bg-popover p-3 text-popover-foreground shadow-lg">
@@ -4320,9 +4322,11 @@ function escapeRegExp(value: string) {
 
 function RightActionPane({
   mode,
+  onClose,
   onRunCommand,
 }: {
   mode: "modify" | "new-plan";
+  onClose: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
 }) {
   const [modifyText, setModifyText] = useState("");
@@ -4340,7 +4344,12 @@ function RightActionPane({
               onRunCommand("modify", { prompt: modifyText });
             }}
           >
-            <h1 className="m-0 text-3xl font-bold">Modify Plan</h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="m-0 text-3xl font-bold">Modify Plan</h1>
+              <Button aria-label="Close Modify Plan" className="size-8" size="icon" title="Close Modify Plan" type="button" variant="ghost" onClick={onClose}>
+                <X aria-hidden="true" data-icon="inline-start" />
+              </Button>
+            </div>
             <textarea
               {...DISABLE_TEXT_CORRECTION_PROPS}
               className="min-h-[340px] rounded-md border bg-background p-4 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -4364,7 +4373,12 @@ function RightActionPane({
               onRunCommand("new-plan", { title, intent, planType: "feature" });
             }}
           >
-            <h1 className="m-0 text-3xl font-bold">Create Plan</h1>
+            <div className="flex items-start justify-between gap-4">
+              <h1 className="m-0 text-3xl font-bold">Create Plan</h1>
+              <Button aria-label="Close Create Plan" className="size-8" size="icon" title="Close Create Plan" type="button" variant="ghost" onClick={onClose}>
+                <X aria-hidden="true" data-icon="inline-start" />
+              </Button>
+            </div>
             <label className="flex flex-col gap-1 text-sm font-bold">
               Title
               <input {...DISABLE_TEXT_CORRECTION_PROPS} className="rounded-md border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring" onChange={(event) => setTitle(event.target.value)} value={title} />
