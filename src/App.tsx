@@ -4540,7 +4540,7 @@ function TerminalPane(props: {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {liveSessions.map((session, index) => (
               <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
-                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-1 text-xs">
+                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-2 text-xs">
                   <div className="min-w-0">
                     <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</p>
                   </div>
