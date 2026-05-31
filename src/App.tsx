@@ -4818,7 +4818,7 @@ function XtermSession({
     };
   }, [activeProject, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session]);
 
-  return <div className="h-full min-h-0 p-1" ref={containerRef} />;
+  return <div className="terminal-scrollbar-thin h-full min-h-0 p-1" ref={containerRef} />;
 }
 
 function routeFromLocation(): ViewRoute {

@@ -176,6 +176,23 @@
   src: url("/vendor/fonts/cormorant-garamond/CormorantGaramond-700.ttf") format("truetype");
 }
 
+.terminal-scrollbar-thin .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: #6b6f68 transparent;
+}
+
+.terminal-scrollbar-thin .xterm-viewport::-webkit-scrollbar {
+  width: 2px;
+}
+
+.terminal-scrollbar-thin .xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-scrollbar-thin .xterm-viewport::-webkit-scrollbar-thumb {
+  background: #6b6f68;
+}
+
 @font-face {
   font-family: "DM Sans";
   font-style: normal;
