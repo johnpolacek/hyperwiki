@@ -4424,7 +4424,6 @@ function TerminalPane(props: {
   sessions: SessionRecord[];
 }) {
   const liveSessions = props.sessions.filter(isLiveTerminalSession);
-  const activeSession = liveSessions.find((session) => session.id === props.activeSessionId) || liveSessions[0] || null;
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
@@ -4534,40 +4533,28 @@ function TerminalPane(props: {
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
             + cli
           </Button>
-          {activeSession ? (
-            <Button className="size-7 border-[#3a403b] bg-transparent text-[#eef2ec] hover:border-[#f0b7b1] hover:bg-transparent hover:text-[#f0b7b1]" size="icon" variant="outline" type="button" onClick={() => props.onCloseSession(activeSession.id)} title="Close current session" aria-label="Close current session">
-              <Square aria-hidden="true" data-icon="inline-start" />
-            </Button>
-          ) : null}
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {liveSessions.length ? (
-          <>
-            {liveSessions.length > 1 ? (
-              <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#2c302d] bg-[#151816] px-2 py-1.5 text-xs">
-                {liveSessions.map((session) => (
-                  <button
-                    className={cn(
-                      "max-w-44 truncate rounded border border-transparent px-2.5 py-1 text-left text-[#9da79f] transition-colors hover:border-[#3a403b] hover:text-[#eef2ec]",
-                      activeSession?.id === session.id && "border-[#8ea0ff] bg-[#8ea0ff]/15 text-[#eef2ec]",
-                    )}
-                    key={session.id}
-                    onClick={() => props.onSelectSession(session.id)}
-                    title={session.cwd || session.command || session.shell || session.id}
-                    type="button"
-                  >
-                    {session.name || session.role || "terminal"}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <div className="min-h-0 flex-1">
-              {activeSession ? (
-                <XtermSession activeProject={props.activeProject} key={activeSession.id} onTerminalText={props.onTerminalText} scope={props.scope} session={activeSession} />
-              ) : null}
-            </div>
-          </>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {liveSessions.map((session, index) => (
+              <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)}>
+                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
+                  <div className="min-w-0">
+                    <p className="m-0 truncate font-medium text-[#eef2ec]">{session.name || session.role || `terminal ${index + 1}`}</p>
+                    <p className="m-0 truncate text-[10px] text-[#9da79f]">{session.cwd || session.command || session.shell || session.id}</p>
+                  </div>
+                  <Button className="size-7 shrink-0 text-[#aeb8b0] hover:text-[#f0b7b1]" size="icon" variant="ghost" type="button" onClick={() => props.onCloseSession(session.id)} title="Close terminal" aria-label="Close terminal">
+                    <X aria-hidden="true" data-icon="inline-start" />
+                  </Button>
+                </header>
+                <div className="min-h-0 flex-1">
+                  <XtermSession activeProject={props.activeProject} onTerminalText={props.onTerminalText} scope={props.scope} session={session} />
+                </div>
+              </section>
+            ))}
+          </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
             No terminals running
@@ -4707,7 +4694,7 @@ function XtermSession({
   const fitRef = useRef<FitAddon | null>(null);
   const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
-  const hasWrittenTerminalDisplayRef = useRef(false);
+  const initialDisplayBufferRef = useRef<string | null>("");
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -4717,7 +4704,7 @@ function XtermSession({
     closedRef.current = false;
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
-    hasWrittenTerminalDisplayRef.current = false;
+    initialDisplayBufferRef.current = "";
     pendingRef.current = [];
     let hasLoadedReplay = false;
     let eventBuffer: TerminalOutputEventPayload[] = [];
@@ -4777,7 +4764,7 @@ function XtermSession({
       const bytes = Uint8Array.from(payload.bytes || []);
       if (!bytes.length) return;
       const text = terminalBytesToText(bytes);
-      const displayText = cleanInitialTerminalDisplayText(text, hasWrittenTerminalDisplayRef);
+      const displayText = cleanInitialTerminalDisplayText(text, initialDisplayBufferRef);
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
       if (displayText) terminal.write(displayText);
@@ -4799,7 +4786,7 @@ function XtermSession({
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
           const text = terminalBytesToText(bytes);
-          const displayText = cleanInitialTerminalDisplayText(text, hasWrittenTerminalDisplayRef);
+          const displayText = cleanInitialTerminalDisplayText(text, initialDisplayBufferRef);
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
           if (displayText) terminal.write(displayText);
@@ -6190,11 +6177,20 @@ function terminalBytesToText(bytes: Uint8Array) {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
-function cleanInitialTerminalDisplayText(data: string, hasWritten: { current: boolean }) {
-  if (hasWritten.current) return data;
-  const cleaned = data.replace(/^%[ \t]*(?:\r\n?|\n)/, "");
-  if (cleaned.length > 0) hasWritten.current = true;
-  return cleaned;
+function cleanInitialTerminalDisplayText(data: string, initialBuffer: { current: string | null }) {
+  if (initialBuffer.current === null) return data;
+  const combined = `${initialBuffer.current}${data}`;
+  const markerMatch = combined.match(/^\r?%[ \t]*(?:\r\n?|\n)/);
+  if (markerMatch) {
+    initialBuffer.current = null;
+    return combined.slice(markerMatch[0].length);
+  }
+  if (/^\r?%[ \t]*$/.test(combined)) {
+    initialBuffer.current = combined;
+    return "";
+  }
+  initialBuffer.current = null;
+  return combined;
 }
 
 function terminalTextForParsing(data: string) {

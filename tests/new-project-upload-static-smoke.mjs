@@ -36,6 +36,7 @@ assert.ok(mdxRenderer.includes("flex-col gap-4"), "React MDX plan renderer shoul
 assert.ok(mdxRenderer.includes('tag === "section") return <section className="grid gap-3"'), "React MDX plan renderer should keep section headings close to their own content");
 assert.ok(source.includes('|| "codex --yolo"'), "Agent launch fallback should preserve codex --yolo");
 assert.ok(source.includes("cleanInitialTerminalDisplayText"), "Terminal display should clean startup-only shell partial-line markers");
-assert.ok(source.includes("data.replace(/^%") && source.includes("hasWritten.current"), "Terminal display cleanup should be narrowly scoped to the initial zsh partial-line marker");
+assert.ok(source.includes("initialDisplayBufferRef") && source.includes("initialBuffer.current = combined"), "Terminal display cleanup should handle startup marker chunks split across xterm writes");
+assert.ok(source.includes("liveSessions.map((session, index)") && source.includes('aria-label="Close terminal"'), "Live terminal sessions should render as vertical split panes with per-pane close controls");
 
 console.log("new project upload static smoke passed");

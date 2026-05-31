@@ -1,0 +1,36 @@
+---
+title: "Terminal Vertical Splits And Startup Marker"
+description: "Render live terminal sessions as vertical splits with per-pane close controls and hide the startup zsh marker."
+wikiKind: "plan"
+---
+
+<h1>Terminal Vertical Splits And Startup Marker</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: completed</li>
+    <li>Shape: focused terminal UI behavior fix</li>
+    <li>Current unit: render each live terminal as a vertical pane with an upper-right close control.</li>
+  </ul>
+</section>
+<section>
+  <h2>Why</h2>
+  <p>The terminal panel should behave like a split workspace: <code>+ agent</code> and <code>+ cli</code> add visible vertical panes instead of hiding earlier sessions behind tabs. Each pane needs its own obvious close affordance. The startup-only zsh partial-line <code>%</code> marker should not appear as terminal content.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Replace the multi-session tab strip with a vertical stack of live terminal panes.</li>
+    <li>Move close to an <code>X</code> button in the upper-right corner of each terminal pane.</li>
+    <li>Buffer the first xterm display chunk until Hyperwiki can strip a startup-only zsh <code>%</code> marker even when it arrives split across chunks.</li>
+    <li>Preserve <code>codex --yolo</code> as the agent launch fallback.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Passed: static smoke coverage for terminal split and marker behavior.</li>
+    <li>Passed: <code>pnpm run check</code>.</li>
+    <li>Passed: <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</section>
