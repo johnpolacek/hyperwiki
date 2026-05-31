@@ -4540,9 +4540,9 @@ function TerminalPane(props: {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {liveSessions.map((session, index) => (
               <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
-                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-3 text-xs">
+                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] text-xs">
                   <div className="min-w-0">
-                    <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{session.name || session.role || `terminal ${index + 1}`}</p>
+                    <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</p>
                   </div>
                   <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={() => props.onCloseSession(session.id)} title="Close terminal" aria-label="Close terminal">
                     <X aria-hidden="true" data-icon="inline-start" />
@@ -5161,6 +5161,11 @@ function titleForPath(path: string, pages: WikiPage[]) {
 
 function isAgentSession(session: SessionRecord) {
   return session.role === "agent" || session.name?.toLowerCase().startsWith("agent");
+}
+
+function terminalPaneLabel(session: SessionRecord, index: number) {
+  const label = (session.role || session.name || `terminal ${index + 1}`).toLowerCase();
+  return `-- ${label} --`;
 }
 
 function isLiveTerminalSession(session: SessionRecord) {
