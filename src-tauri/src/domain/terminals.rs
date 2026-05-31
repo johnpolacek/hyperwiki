@@ -453,9 +453,9 @@ fn launch_recorded_command(writer: &mut dyn Write, command: Option<&str>) -> Res
     let Some(command) = command.map(str::trim).filter(|command| !command.is_empty()) else {
         return Ok(());
     };
-    thread::sleep(Duration::from_millis(150));
+    thread::sleep(Duration::from_millis(350));
     writer
-        .write_all(format!("{command}\r").as_bytes())
+        .write_all(format!("{command}\n").as_bytes())
         .and_then(|_| writer.flush())
         .map_err(|error| format!("Could not launch terminal command: {error}"))
 }

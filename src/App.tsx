@@ -4539,7 +4539,7 @@ function TerminalPane(props: {
         {liveSessions.length ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {liveSessions.map((session, index) => (
-              <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)}>
+              <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
                 <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-3 text-xs">
                   <div className="min-w-0">
                     <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{session.name || session.role || `terminal ${index + 1}`}</p>
@@ -4549,7 +4549,7 @@ function TerminalPane(props: {
                   </Button>
                 </header>
                 <div className="min-h-0 flex-1">
-                  <XtermSession activeProject={props.activeProject} onTerminalText={props.onTerminalText} scope={props.scope} session={session} />
+                  <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} scope={props.scope} session={session} />
                 </div>
               </section>
             ))}
@@ -4679,11 +4679,13 @@ function TerminalSessionTab(props: {
 
 function XtermSession({
   activeProject,
+  isActive,
   onTerminalText,
   scope,
   session,
 }: {
   activeProject: ProjectRecord | null;
+  isActive: boolean;
   onTerminalText: (sessionId: string, text: string) => void;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   session: SessionRecord;
@@ -4729,6 +4731,9 @@ function XtermSession({
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(new WebLinksAddon());
     terminal.open(container);
+    if (isActive) {
+      terminal.focus();
+    }
 
     const fit = () => {
       if (closedRef.current || container.clientWidth <= 0 || container.clientHeight <= 0) return;
@@ -4816,7 +4821,13 @@ function XtermSession({
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [activeProject, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session]);
+  }, [activeProject?.id, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session.id]);
+
+  useEffect(() => {
+    if (isActive) {
+      terminalRef.current?.focus();
+    }
+  }, [isActive]);
 
   return <div className="terminal-scrollbar-thin h-full min-h-0 p-1" ref={containerRef} />;
 }

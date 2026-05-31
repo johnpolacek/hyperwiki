@@ -42,5 +42,6 @@ assert.ok(source.includes("liveSessions.map((session, index)") && source.include
 assert.ok(source.includes("font-mono") && source.includes("lowercase") && source.includes("hover:bg-transparent hover:text-[#aeb8b0]"), "Terminal pane labels should be lowercase mono and close buttons should have no rollover color shift");
 assert.ok(source.includes("border-b border-[#2c302d] pl-3 text-xs") && source.includes('className="terminal-scrollbar-thin h-full min-h-0 p-1"'), "Terminal pane headers and xterm padding should match the compact chrome");
 assert.ok(source.includes("terminal-scrollbar-thin") && css.includes(".terminal-scrollbar-thin .xterm-viewport::-webkit-scrollbar") && css.includes("width: 2px"), "Terminal xterm scrollbar should be scoped and thin");
+assert.ok(source.includes("terminalRef.current?.focus()") && source.includes("session.id]"), "Active terminal panes should keep xterm focused without remounting on session-list refresh");
 
 console.log("new project upload static smoke passed");

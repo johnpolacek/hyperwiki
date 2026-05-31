@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | terminal launch and focus reliability</h2>
+  <ul>
+    <li>Changed launch command submission from carriage return to newline after a longer shell-start delay so <code>codex --yolo</code> is less likely to sit unsubmitted at the prompt.</li>
+    <li>Focused the active xterm pane and kept xterm instances mounted across session-list refreshes by depending on stable session IDs.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run test:tauri -- terminals</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | terminal vertical splits</h2>
   <ul>
     <li>Changed live terminal rendering so new agent and CLI sessions split the terminal pane vertically instead of hiding behind a tab strip.</li>
