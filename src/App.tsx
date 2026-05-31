@@ -5165,7 +5165,7 @@ function isAgentSession(session: SessionRecord) {
 
 function terminalPaneLabel(session: SessionRecord, index: number) {
   const label = (session.role || session.name || `terminal ${index + 1}`).toLowerCase();
-  return `-- ${label} --`;
+  return `${label} --`;
 }
 
 function isLiveTerminalSession(session: SessionRecord) {
