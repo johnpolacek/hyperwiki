@@ -1007,7 +1007,7 @@ function App() {
   }
 
   async function startTerminal(role: "agent" | "cli") {
-    const name = role === "agent" ? "Agent" : "Terminal";
+    const name = role;
     setStatus(`Starting ${name.toLowerCase()}`);
     try {
       const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
