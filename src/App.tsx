@@ -4182,7 +4182,7 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--primary": accent,
     "--primary-foreground": readableTextOn(accent),
     "--secondary": secondary,
-    "--secondary-foreground": foreground,
+    "--secondary-foreground": readableTextOn(secondary),
     "--muted": muted,
     "--muted-foreground": mutedForeground,
     "--accent": accent,

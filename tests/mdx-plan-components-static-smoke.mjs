@@ -102,6 +102,15 @@ for (const exportContract of [
   }
 }
 
+for (const contrastContract of [
+  '"--secondary-foreground": readableTextOn(secondary)',
+  'isSelected ? "bg-secondary text-secondary-foreground"',
+]) {
+  if (!app.includes(contrastContract)) {
+    throw new Error(`App must keep secondary surfaces readable across theme presets: ${contrastContract}`);
+  }
+}
+
 for (const generationContract of [
   "choose the planning composition pattern",
   "CardGroup/Columns for alternatives or work tracks",
