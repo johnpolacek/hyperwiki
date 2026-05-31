@@ -38,5 +38,6 @@ assert.ok(source.includes('|| "codex --yolo"'), "Agent launch fallback should pr
 assert.ok(source.includes("cleanInitialTerminalDisplayText"), "Terminal display should clean startup-only shell partial-line markers");
 assert.ok(source.includes("initialDisplayBufferRef") && source.includes("initialBuffer.current = combined"), "Terminal display cleanup should handle startup marker chunks split across xterm writes");
 assert.ok(source.includes("liveSessions.map((session, index)") && source.includes('aria-label="Close terminal"'), "Live terminal sessions should render as vertical split panes with per-pane close controls");
+assert.ok(source.includes("font-mono") && source.includes("lowercase") && source.includes("hover:bg-transparent hover:text-[#aeb8b0]"), "Terminal pane labels should be lowercase mono and close buttons should have no rollover color shift");
 
 console.log("new project upload static smoke passed");
