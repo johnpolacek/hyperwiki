@@ -1,0 +1,35 @@
+---
+title: "Codex Agent Launch Compatibility"
+description: "Normalize legacy Codex launch commands so visible agent terminals start reliably."
+wikiKind: "plan"
+---
+
+<h1>Codex Agent Launch Compatibility</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: completed</li>
+    <li>Shape: focused runtime compatibility fix</li>
+    <li>Current unit: replace legacy <code>codex --yolo</code> launches with current Codex flags at terminal startup.</li>
+  </ul>
+</section>
+<section>
+  <h2>Why</h2>
+  <p>Imported or older projects can still carry <code>agent.launchCommand: "codex --yolo"</code>. Current Codex exposes the explicit <code>--dangerously-bypass-approvals-and-sandbox</code> flag and supports <code>--no-alt-screen</code>, which is a better fit for Hyperwiki's embedded xterm panel because startup remains visible in normal scrollback.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Normalize Codex launch commands before sending them to the terminal backend.</li>
+    <li>Map legacy <code>--yolo</code> to <code>--dangerously-bypass-approvals-and-sandbox</code>.</li>
+    <li>Add <code>--no-alt-screen</code> for Codex interactive launches unless the command already includes it.</li>
+    <li>Keep non-Codex agent commands unchanged.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Passed: static smoke coverage for the command normalization behavior.</li>
+    <li>Passed: <code>pnpm run check</code>.</li>
+  </ul>
+</section>

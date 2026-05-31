@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | Codex terminal launch compatibility</h2>
+  <ul>
+    <li>Normalized Codex agent launch commands before terminal startup so legacy <code>codex --yolo</code> becomes the current explicit bypass flag.</li>
+    <li>Added <code>--no-alt-screen</code> to Codex agent terminals so startup remains visible inside Hyperwiki's embedded xterm panel.</li>
+    <li>Validation: <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | git init main branch</h2>
   <ul>
     <li>Changed Git onboarding for fresh projects to initialize repositories with <code>main</code> as the initial branch instead of inheriting each machine's Git default.</li>

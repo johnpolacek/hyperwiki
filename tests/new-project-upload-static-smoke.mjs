@@ -34,5 +34,9 @@ assert.ok(mdxRenderer.includes("pb-2 pl-5"), "React MDX plan renderer should kee
 assert.ok(mdxRenderer.includes("font-normal leading-6"), "React MDX plan renderer should keep list text consistent with summary prose");
 assert.ok(mdxRenderer.includes("flex-col gap-4"), "React MDX plan renderer should avoid double-counting section rhythm after list padding");
 assert.ok(mdxRenderer.includes('tag === "section") return <section className="grid gap-3"'), "React MDX plan renderer should keep section headings close to their own content");
+assert.ok(source.includes("function normalizeAgentLaunchCommand(command: string)"), "Agent launch commands should be normalized before starting terminal sessions");
+assert.ok(source.includes("--yolo(?=\\s|$)"), "Legacy codex --yolo should not be sent directly to current Codex");
+assert.ok(source.includes("--dangerously-bypass-approvals-and-sandbox"), "Legacy codex --yolo should map to the current explicit bypass flag");
+assert.ok(source.includes("--no-alt-screen"), "Codex agent terminals should use inline mode inside embedded xterm");
 
 console.log("new project upload static smoke passed");
