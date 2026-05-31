@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clipboard,
+  Copy,
   Code2,
   FileText,
   Folder,
@@ -129,9 +130,9 @@ export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onN
                     {copyStatus === "Markdown copied" ? (
                       <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
                     ) : (
-                      <Clipboard aria-hidden="true" data-icon="inline-start" />
+                      <Copy aria-hidden="true" data-icon="inline-start" />
                     )}
-                    <span>Copy MD</span>
+                    <span>Copy</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
@@ -417,7 +418,7 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   const isUnit = component === "PlanUnit" || classTokens.has("unit");
   const isPanel = classTokens.has("panel") || classTokens.has("decision-panel") || component === "Decision" || component === "Evidence" || component === "Verification" || component === "Callout";
 
-  if (isHero) return <section className="grid gap-3 border-b pb-5" key={key}>{children}</section>;
+  if (isHero) return <section className="grid gap-3 pb-5" key={key}>{children}</section>;
   if (isSummary) return <section className="grid gap-2 rounded-md border bg-secondary/50 p-3" key={key}>{children}</section>;
   if (isStage) return <section className="grid gap-5 border-t pt-8" key={key}>{children}</section>;
   if (isUnit) return <article className="grid gap-3 py-1" key={key}>{children}</article>;
@@ -448,7 +449,7 @@ function renderPlanComponent(
 
   if (component === "PlanHero") {
     return (
-      <section className="grid gap-3 border-b border-border/70 pb-5 pr-28" key={key}>
+      <section className="grid gap-3 pb-5 pr-28" key={key}>
         {renderComponentHeader(title, description, node.getAttribute("status"))}
         {children}
       </section>
