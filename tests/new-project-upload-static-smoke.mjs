@@ -40,7 +40,7 @@ assert.ok(source.includes("cleanInitialTerminalDisplayText"), "Terminal display 
 assert.ok(source.includes("initialDisplayBufferRef") && source.includes("initialBuffer.current = combined"), "Terminal display cleanup should handle startup marker chunks split across xterm writes");
 assert.ok(source.includes("liveSessions.map((session, index)") && source.includes('aria-label="Close terminal"'), "Live terminal sessions should render as vertical split panes with per-pane close controls");
 assert.ok(source.includes("font-mono") && source.includes("lowercase") && source.includes("hover:bg-transparent hover:text-[#aeb8b0]"), "Terminal pane labels should be lowercase mono and close buttons should have no rollover color shift");
-assert.ok(source.includes("border-b border-[#2c302d] text-xs") && source.includes('className="terminal-scrollbar-thin h-full min-h-0 p-1"'), "Terminal pane headers and xterm padding should match the compact chrome");
+assert.ok(source.includes("border-b border-[#2c302d] pl-1 text-xs") && source.includes('className="terminal-scrollbar-thin h-full min-h-0 p-1"'), "Terminal pane headers and xterm padding should match the compact chrome");
 assert.ok(source.includes("terminal-scrollbar-thin") && css.includes(".terminal-scrollbar-thin .xterm-viewport::-webkit-scrollbar") && css.includes("width: 2px"), "Terminal xterm scrollbar should be scoped and thin");
 assert.ok(source.includes("terminalRef.current?.focus()") && source.includes("session.id]"), "Active terminal panes should keep xterm focused without remounting on session-list refresh");
 assert.ok(source.includes('const name = role;'), "New CLI sessions should be named cli instead of Terminal");
