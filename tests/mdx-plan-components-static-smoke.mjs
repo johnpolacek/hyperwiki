@@ -82,6 +82,8 @@ for (const visualContract of [
   "grid gap-2 py-1",
   "Copy MD",
   "validationWarnings",
+  "inlineCodeClassName",
+  "bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground",
 ]) {
   if (!renderer.includes(visualContract)) {
     throw new Error(`MDX plan renderer must keep the compact working-brief visual contract: ${visualContract}`);

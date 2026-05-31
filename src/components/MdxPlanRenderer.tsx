@@ -90,6 +90,9 @@ const componentTags = [
   "Tooltip",
 ];
 
+const inlineCodeClassName =
+  "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
+
 export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onNavigate, path }: MdxPlanRendererProps) {
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path), [source, onNavigate, path]);
   const [copyStatus, setCopyStatus] = useState("");
@@ -363,7 +366,7 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   }
 
   if (component === "CommandBlock") {
-    return <pre className="overflow-auto rounded-md border bg-secondary px-4 py-3 font-mono text-xs leading-6" key={key}>{children}</pre>;
+    return <pre className="overflow-auto rounded-md border bg-muted px-4 py-3 font-mono text-xs leading-6 text-foreground" key={key}>{children}</pre>;
   }
   if (tag === "a") {
     const href = node.getAttribute("href") || "";
@@ -388,8 +391,11 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "h3") return <h3 className="m-0 text-sm font-bold leading-snug" key={key}>{titleChildren}</h3>;
   if (tag === "p") return <p className="m-0 max-w-3xl text-sm leading-6 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
-  if (tag === "code") return <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[0.9em]" key={key}>{children}</code>;
-  if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-secondary px-3 py-2.5 font-mono text-xs leading-5" key={key}>{children}</pre>;
+  if (tag === "code") {
+    const isPreformatted = node.parentElement?.tagName.toLowerCase() === "pre";
+    return <code className={isPreformatted ? "font-mono text-foreground" : inlineCodeClassName} key={key}>{children}</code>;
+  }
+  if (tag === "pre") return <pre className="overflow-auto rounded-md border bg-muted px-3 py-2.5 font-mono text-xs leading-5 text-foreground" key={key}>{children}</pre>;
   if (tag === "table") return <div className="overflow-x-auto rounded-md border" key={key}><table className="w-full border-collapse text-sm">{children}</table></div>;
   if (tag === "thead") return <thead className="bg-secondary/70 text-foreground" key={key}>{children}</thead>;
   if (tag === "tbody") return <tbody className="divide-y" key={key}>{children}</tbody>;
@@ -751,7 +757,7 @@ function renderFieldComponent(node: Element, component: string, children: ReactN
   return (
     <div className="grid gap-2 rounded-lg border bg-card p-4" key={key}>
       <div className="flex flex-wrap items-center gap-2">
-        <code className="rounded bg-secondary px-1.5 py-0.5 font-mono text-sm">{name}</code>
+        <code className={cn(inlineCodeClassName, "text-sm")}>{name}</code>
         {type ? <Badge variant="secondary">{type}</Badge> : null}
         {required ? <Badge>required</Badge> : null}
         {deprecated ? <Badge variant="destructive">deprecated</Badge> : null}
