@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | git init main branch</h2>
+  <ul>
+    <li>Changed Git onboarding for fresh projects to initialize repositories with <code>main</code> as the initial branch instead of inheriting each machine's Git default.</li>
+    <li>Added Rust regression coverage that the initialized repo context reports branch <code>main</code>.</li>
+    <li>Validation: <code>pnpm run test:tauri -- git::tests::initializes_git_and_creates_baseline_commit</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | close final terminal session</h2>
   <ul>
     <li>Added a terminal-header close action for the active live session so a single <code>+ agent</code> or <code>+ cli</code> terminal can be closed.</li>

@@ -1,0 +1,41 @@
+---
+title: "Git Init Main Branch"
+description: "Ensure Hyperwiki Git onboarding creates new repositories on main."
+wikiKind: "plan"
+---
+
+<h1>Git Init Main Branch</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused Git onboarding behavior fix</li>
+    <li>Current unit: make new Git repositories initialize with <code>main</code> as the first branch.</li>
+  </ul>
+</section>
+<section>
+  <h2>Result</h2>
+  <ul>
+    <li>Git onboarding now runs <code>git init --initial-branch=main</code> for fresh repositories.</li>
+    <li>The focused Rust regression test asserts the initialized repo context reports <code>main</code>.</li>
+    <li>Validation: <code>pnpm run test:tauri -- git::tests::initializes_git_and_creates_baseline_commit</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Why</h2>
+  <p>Hyperwiki's Git onboarding currently delegates the initial branch name to the user's global Git configuration. New projects should be predictable and use <code>main</code> regardless of machine defaults.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Update Rust Git onboarding to initialize repositories with <code>main</code> explicitly.</li>
+    <li>Add test coverage that the initialized repo context reports <code>main</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run the focused Rust Git domain tests.</li>
+    <li>Run the repository check script if the focused test passes.</li>
+  </ul>
+</section>
