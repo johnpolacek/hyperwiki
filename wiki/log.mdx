@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 fix | Codex MCP startup readiness</h2>
+  <ul>
+    <li>Changed agent prompt readiness to wait up to 30 seconds instead of timing out during normal Codex MCP startup.</li>
+    <li>Prevented Modify Plan prompt submission while the Codex terminal is still reporting <code>Starting MCP servers</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 fix | MVP sidebar stage-only nesting</h2>
   <ul>
     <li>Changed the sidebar plan tree so <code>wiki/plans/mvp/index.mdx</code> only nests stage pages.</li>

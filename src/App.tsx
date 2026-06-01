@@ -6191,12 +6191,12 @@ async function sendPasteSubmitInput(sessionId: string, message: string) {
 async function waitForAgentPromptReady(sessionId: string) {
   const startedAt = Date.now();
   let lastText = "";
-  for (let attempt = 0; attempt < 30; attempt += 1) {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     try {
       const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
       const bytes = Uint8Array.from(replay.bytes || []);
       const plain = terminalTextForParsing(terminalBytesToText(bytes));
-      lastText = plain.slice(-240);
+      lastText = plain.slice(-500);
       if (isAgentPromptReady(plain)) return true;
     } catch (error) {
       lastText = error instanceof Error ? error.message : String(error);
@@ -6209,7 +6209,18 @@ async function waitForAgentPromptReady(sessionId: string) {
 
 function isAgentPromptReady(text: string) {
   const normalized = text.replace(/\s+/g, " ");
+  if (isAgentMcpStartupInProgress(normalized)) return false;
   return /\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}") || normalized.includes("›Implement {feature}");
+}
+
+function isAgentMcpStartupInProgress(text: string) {
+  const lastPrompt = Math.max(text.lastIndexOf("›"), text.lastIndexOf("\u203a"));
+  const tail = (lastPrompt === -1 ? text : text.slice(lastPrompt)).toLowerCase();
+  const startupIndex = tail.lastIndexOf("starting mcp servers");
+  if (startupIndex === -1) return false;
+  const startupTail = tail.slice(startupIndex);
+  if (/starting mcp servers\s*\(\s*2\s*\/\s*2\s*\)/i.test(startupTail)) return false;
+  return /starting mcp servers|servers\s*\(\s*[01]\s*\/\s*2\s*\)|codex_apps|computer-use/.test(startupTail);
 }
 
 async function sendResize(sessionId: string, cols: number, rows: number) {
