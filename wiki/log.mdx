@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-01 fix | execute targets current unit</h2>
+  <ul>
+    <li>Changed the command bar Execute action to resolve its prompt page and terminal scope from the current unit instead of the visible wiki page.</li>
+    <li>Kept Modify scoped to the visible planning page and its prewarmed modify session behavior.</li>
+    <li>Changed Execute to start a fresh general agent session so it cannot reuse a visible Modify session.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-01 implementation | lowercase product language</h2>
   <ul>
     <li>Made lowercase <code>hyperwiki</code> the canonical product spelling across app copy, Tauri metadata, generated scaffolds, bundled skill guidance, README, and wiki history.</li>

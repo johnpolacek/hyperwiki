@@ -1,0 +1,36 @@
+---
+title: "Execute Current Unit Target"
+description: "Fix Execute so it targets the current unit even from another visible plan page."
+wikiKind: "plan"
+---
+
+<h1>Execute Current Unit Target</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused command behavior fix</li>
+    <li>Current unit: complete</li>
+    <li>Next action: verify Execute starts a fresh agent against the current unit from a non-current plan page.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Execute should always run the current unit. A user can inspect or modify another plan page, but the Execute button must not silently do nothing merely because that visible page is not the current work item.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Resolve Execute prompts from the current work path already computed for the plan tree.</li>
+    <li>Scope Execute terminals to that current unit's plan root instead of the visible stale page.</li>
+    <li>Start a fresh general agent session for Execute while preserving Modify's prewarmed <code>purpose="modify"</code> session behavior.</li>
+    <li>Keep Execute disabled only when there is no resolvable current work page or the resolved current page is complete.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Static smoke coverage guards against stale-page Execute disabling.</li>
+    <li>Static smoke coverage confirms Execute uses the resolved current unit path and starts a fresh general agent session.</li>
+  </ul>
+</section>

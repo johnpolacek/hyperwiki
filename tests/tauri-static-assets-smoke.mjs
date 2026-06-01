@@ -84,6 +84,15 @@ if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("a
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
   throw new Error("Modify Plan prompts must normalize paths, derive visible unit context, and reduce runtime dirty-state noise.");
 }
+if (appSource.includes("activePlanState.isComplete || activePlanState.isStale")) {
+  throw new Error("Execute must not be disabled only because the visible plan page is stale.");
+}
+if (!appSource.includes('const executionPage = action === "execute-main" ? activePlanState.currentPath || normalizedCurrentPage : normalizedCurrentPage') || !appSource.includes('const executionScope = action === "execute-main" ? scopeForRoute({ kind: "wiki", path: executionPage }) : terminalScope')) {
+  throw new Error("Execute must target the resolved current unit path and scope, not the stale visible page.");
+}
+if (!appSource.includes('action === "modify" ? { panelMode: "terminal" } : { forceNewSession: true, panelMode: "terminal" }')) {
+  throw new Error("Execute must start a fresh general agent session while Modify keeps its prewarmed session behavior.");
+}
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
 }

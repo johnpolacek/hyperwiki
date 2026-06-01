@@ -120,6 +120,7 @@ interface PlanPageActionState {
   isPlanPage: boolean;
   isComplete: boolean;
   isStale: boolean;
+  canExecute: boolean;
   currentPath: string;
   message: string;
 }
@@ -2064,17 +2065,19 @@ function App() {
     try {
       if (action === "execute-main" || action === "modify") {
         const normalizedCurrentPage = displayWikiPath(currentWikiPath);
-        const prompt = workflowPrompt(action, workspace, wikiPages, normalizedCurrentPage, payload?.prompt || "");
+        const executionPage = action === "execute-main" ? activePlanState.currentPath || normalizedCurrentPage : normalizedCurrentPage;
+        const executionScope = action === "execute-main" ? scopeForRoute({ kind: "wiki", path: executionPage }) : terminalScope;
+        const prompt = workflowPrompt(action, workspace, wikiPages, executionPage, payload?.prompt || "");
         await sendTrackedAgentPrompt(
           action === "modify" ? "modify" : "execute",
           action === "modify" ? "Modify Plan" : "Execute Unit",
           prompt,
-          normalizedCurrentPage,
-          terminalScope,
+          executionPage,
+          executionScope,
           layout,
           sessions,
           undefined,
-          action === "modify" ? { panelMode: "terminal" } : undefined,
+          action === "modify" ? { panelMode: "terminal" } : { forceNewSession: true, panelMode: "terminal" },
         );
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
@@ -2956,7 +2959,7 @@ function CommandBar({
       <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && activePlanState.isComplete} onClick={() => onRunCommand("modify")}>
         modify
       </Button>
-      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && (activePlanState.isComplete || activePlanState.isStale)} onClick={() => onRunCommand("execute-main")}>
+      <Button size="sm" variant="outline" disabled={!activePlanState.canExecute} onClick={() => onRunCommand("execute-main")}>
         execute
       </Button>
     </div>
@@ -5243,13 +5246,16 @@ function planPageActionState(path: string, pages: WikiPage[], workspace: Workspa
   const roots = sorted.filter((candidate) => isTopLevelPlanPage(candidate) && !isCompletedTopLevelPlanPage(candidate));
   const currentPath = currentPlanWorkPath(sorted, roots, workspace);
   const currentDisplayPath = displayWikiPath(currentPath);
+  const currentPage = pages.find((candidate) => displayWikiPath(candidate.path) === currentDisplayPath);
   const isComplete = Boolean(page && isCompletedPage(page));
   const isStale = Boolean(isPlanPage && currentDisplayPath && displayPath !== currentDisplayPath && !displayPath.endsWith("/wiki/plans/index.mdx"));
+  const canExecute = Boolean(currentDisplayPath && currentDisplayPath !== defaultWikiPath && currentPage && !isCompletedPage(currentPage));
   const message = isComplete ? "This unit is complete." : "";
   return {
     isPlanPage,
     isComplete,
     isStale,
+    canExecute,
     currentPath,
     message,
   };
