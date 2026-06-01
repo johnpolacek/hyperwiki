@@ -65,7 +65,7 @@ if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source"
 if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
   throw new Error("Command bar modify action must not bundle the retired Modify Plan pane.");
 }
-if (!app.includes("Modify Plan is a planning/wiki-only operation.") || !app.includes("sessionId") || !app.includes("forceNew")) {
+if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("forceNew")) {
   throw new Error("Command bar modify action must start a fresh visible agent terminal with the docs-only Modify Plan prompt.");
 }
 

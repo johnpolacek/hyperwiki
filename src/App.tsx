@@ -5557,19 +5557,18 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
   const unitTitle = status.current || "No current unit resolved";
   const unitPath = status.currentPath || "";
   if (action === "modify") {
-    const normalizedRequest = userRequest.trim() || "No additional user change text was supplied. Inspect the visible planning page and make only necessary planning/wiki updates.";
+    const initialRequest = userRequest.trim();
     return [
-      "Modify Plan is a planning/wiki-only operation.",
+      "We are executing \"Modify Plan\" which is a strictly planning/wiki-only operation.",
       "",
-      `Visible page path: ${visiblePath}`,
+      "The user will request changes to the current plan. Inspect the current planning page and related planning pages.",
+      "",
+      "Wait for the user to specify what plan modifications they would like to make then make changes to only necessary planning/wiki files, plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context.",
+      "",
+      `Current planning page: ${visiblePath}`,
       `Current unit: ${unitTitle}`,
       `Current unit path: ${unitPath || "none"}`,
-      "",
-      "User requested planning change:",
-      normalizedRequest,
-      "",
-      "Allowed files:",
-      "- Edit only app-visible planning/wiki MDX files under wiki/, especially wiki/plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context.",
+      ...(initialRequest ? ["", "Initial user-supplied modification request:", initialRequest] : []),
       "",
       "Hard restrictions:",
       "- Do not implement product code from this Modify Plan request.",
@@ -5577,13 +5576,6 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
       "- Do not change src/**, app/**, components/**, lib/**, public/**, tests/**, package manifests, lockfiles, build config, runtime config, or generated application assets.",
       "- Do not run ahead into Execute Unit behavior. If the requested change requires code, update the plan to describe that execution work and stop.",
       "- If you discover existing non-wiki changes, report them clearly and leave them untouched.",
-      "",
-      "Instructions:",
-      "- Inspect the visible planning page and relevant wiki index/log context before editing.",
-      "- Keep the change scoped to the user's requested planning modification.",
-      "- Update durable wiki context only when the evidence supports it.",
-      "- Run only relevant documentation/static checks when useful; do not use Modify Plan as a reason to build or change product code.",
-      "- Summarize exactly which wiki planning files changed.",
     ].join("\n");
   }
   return [
