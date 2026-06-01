@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 fix | modify plan prompt refinement</h2>
+  <ul>
+    <li>Kept prewarmed Modify Plan Codex sessions but shortened the standby prompt and removed the no-edit check instruction conflict.</li>
+    <li>Changed Modify Plan prompts to use repo-relative wiki paths, derive current unit context from the visible unit page, and treat <code>.hyperwiki/</code> runtime state as non-blocking noise.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | prewarmed modify codex sessions</h2>
   <ul>
     <li>Added hidden <code>purpose="modify"</code> Codex agent sessions for active plan scopes so Modify Plan can reuse a prestarted <code>codex --yolo</code> TUI.</li>

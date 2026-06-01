@@ -66,7 +66,7 @@ if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source"
 if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
   throw new Error("Command bar modify action must not bundle the retired Modify Plan pane.");
 }
-if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("purpose") || !app.includes("standby")) {
+if (!app.includes("Mode: Modify Plan, planning/wiki-only.") || !app.includes("Standby behavior: do not edit files or run checks") || !app.includes("sessionId") || !app.includes("purpose") || !app.includes("standby")) {
   throw new Error("Command bar modify action must promote a prewarmed modify agent with the docs-only Modify Plan prompt.");
 }
 if (!appSource.includes('purpose: "modify"') || !appSource.includes('visibility: "standby"') || !appSource.includes("isVisibleLiveTerminalSession")) {
@@ -81,8 +81,11 @@ if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint ch
 if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("attempt < 120") || !appSource.includes("promptAfterStartup")) {
   throw new Error("Agent prompt readiness must wait through Codex MCP startup before submitting Modify Plan prompts.");
 }
-if (!appSource.includes("No concrete modification request was supplied yet") || !appSource.includes("Do not keep exploring after that readiness message")) {
-  throw new Error("Modify Plan without an initial request must stop after agent orientation instead of looking frozen.");
+if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
+  throw new Error("Modify Plan prompts must normalize paths, derive visible unit context, and reduce runtime dirty-state noise.");
+}
+if (appSource.includes("Run relevant checks before finishing.")) {
+  throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
 }
 if (!appSource.includes('parentPath.endsWith("/wiki/plans/mvp/index.mdx")') || !appSource.includes('/^\\/wiki\\/plans\\/mvp\\/stage-\\d+[^/]*\\.mdx$/.test(candidatePath)')) {
   throw new Error("MVP plan sidebar root must only nest stage pages, not stray generated support pages.");

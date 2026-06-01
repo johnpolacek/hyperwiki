@@ -1184,7 +1184,7 @@ fn send_agent_prompt(
         &format!("Repo root: {}", project.root.display()),
         &format!("Current wiki page: {current_page}"),
         "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
-        "Keep durable project knowledge in wiki/ MDX pages and Git-visible files. Run relevant checks before finishing.",
+        "Keep durable project knowledge in wiki/ MDX pages and Git-visible files. If you edit files, run relevant checks before finishing.",
         "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
         "",
         prompt,

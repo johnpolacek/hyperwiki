@@ -1480,7 +1480,7 @@ function App() {
           method: "POST",
           body: {
             prompt,
-            currentPage,
+            currentPage: displayWikiPath(currentPage),
             requestId: options.requestId || "",
             sessionId: session.id,
             scope: scope.scope,
@@ -1534,7 +1534,7 @@ function App() {
             method: "POST",
             body: {
               prompt,
-              currentPage,
+              currentPage: displayWikiPath(currentPage),
               sessionId: session.id,
               scope: scope.scope,
             },
@@ -2063,12 +2063,13 @@ function App() {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main" || action === "modify") {
-        const prompt = workflowPrompt(action, workspace, currentWikiPath, payload?.prompt || "");
+        const normalizedCurrentPage = displayWikiPath(currentWikiPath);
+        const prompt = workflowPrompt(action, workspace, wikiPages, normalizedCurrentPage, payload?.prompt || "");
         await sendTrackedAgentPrompt(
           action === "modify" ? "modify" : "execute",
           action === "modify" ? "Modify Plan" : "Execute Unit",
           prompt,
-          currentWikiPath,
+          normalizedCurrentPage,
           terminalScope,
           layout,
           sessions,
@@ -5783,40 +5784,39 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
   ].join("\n");
 }
 
-function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, visiblePath: string, userRequest = "") {
-  const status = workspace?.status || {};
-  const unitTitle = status.current || "No current unit resolved";
-  const unitPath = status.currentPath || "";
+function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, userRequest = "") {
+  const context = planningPromptContext(workspace, pages, visiblePath, action === "modify");
   if (action === "modify") {
     const initialRequest = userRequest.trim();
     return [
-      "We are executing \"Modify Plan\" which is a strictly planning/wiki-only operation.",
+      "Mode: Modify Plan, planning/wiki-only.",
       "",
-      "The user will request changes to the current plan. Inspect the current planning page and related planning pages.",
+      initialRequest ? "Task: apply the requested plan modification." : "Task: no modification request yet. Inspect only the current planning page and nearby planning context, then stop with a concise ready message.",
       "",
-      initialRequest
-        ? "Apply the user-supplied plan modification request to only necessary planning/wiki files, plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context."
-        : "No concrete modification request was supplied yet. Inspect the current planning page and nearby planning context, then stop after a concise message that says you are ready for the requested plan modification. Do not keep exploring after that readiness message.",
+      "Current context:",
+      `- Planning page: ${context.planningPage}`,
+      `- Current unit: ${context.unitTitle}`,
+      `- Current unit path: ${context.unitPath || "none"}`,
+      ...(initialRequest ? ["", "Requested modification:", initialRequest] : ["", "Standby behavior: do not edit files or run checks until the user provides the requested modification."]),
       "",
-      `Current planning page: ${visiblePath}`,
-      `Current unit: ${unitTitle}`,
-      `Current unit path: ${unitPath || "none"}`,
-      ...(initialRequest ? ["", "Initial user-supplied modification request:", initialRequest] : []),
+      "Allowed files when editing:",
+      "- wiki/plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, wiki/AGENTS.mdx.",
       "",
-      "Hard restrictions:",
-      "- Do not implement product code from this Modify Plan request.",
-      "- Do not create, edit, delete, format, or commit files outside the allowed wiki planning files.",
-      "- Do not change src/**, app/**, components/**, lib/**, public/**, tests/**, package manifests, lockfiles, build config, runtime config, or generated application assets.",
+      "Restrictions:",
+      "- Do not implement product code, format product code, or change src/**, app/**, components/**, lib/**, public/**, tests/**, package manifests, lockfiles, build config, runtime config, or generated application assets.",
       "- Do not run ahead into Execute Unit behavior. If the requested change requires code, update the plan to describe that execution work and stop.",
-      "- If you discover existing non-wiki changes, report them clearly and leave them untouched.",
+      "- If you edit files, run relevant checks before finishing.",
+      "- Report only repo-visible non-wiki changes as a caution; leave .hyperwiki/ runtime/session state alone and do not treat it as a blocker.",
     ].join("\n");
   }
+  const unitTitle = context.unitTitle;
+  const unitPath = context.unitPath;
   return [
     "Execute exactly one hyperwiki unit on main.",
     "",
     `Execution unit: ${unitTitle}`,
     `Execution unit path: ${unitPath || "none"}`,
-    `Visible page path: ${visiblePath}`,
+    `Visible page path: ${context.planningPage}`,
     "",
     "Instructions:",
     "- Work in the current main checkout.",
@@ -5827,6 +5827,24 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
+}
+
+function planningPromptContext(workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, preferVisibleUnit: boolean) {
+  const planningPage = displayWikiPath(visiblePath);
+  const visiblePage = pages.find((page) => displayWikiPath(page.path) === planningPage);
+  if (preferVisibleUnit && visiblePage && isUnitPage(visiblePage)) {
+    return {
+      planningPage,
+      unitTitle: cleanPageTitle(visiblePage),
+      unitPath: planningPage,
+    };
+  }
+  const status = workspace?.status || {};
+  return {
+    planningPage,
+    unitTitle: status.current || "No current unit resolved",
+    unitPath: status.currentPath ? displayWikiPath(status.currentPath) : "",
+  };
 }
 
 function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }) {
