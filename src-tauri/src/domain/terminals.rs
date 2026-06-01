@@ -8,7 +8,6 @@ use std::path::Path;
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Emitter;
 
@@ -220,6 +219,7 @@ impl TerminalManager {
             })
             .map_err(|error| format!("Could not open PTY: {error}"))?;
         let mut command = CommandBuilder::new(&shell);
+        configure_pty_shell_command(&mut command, launch_command.as_deref());
         command.cwd(root);
         command.env("TERM", "xterm-256color");
         let child = pair
@@ -235,10 +235,8 @@ impl TerminalManager {
             .master
             .take_writer()
             .map_err(|error| format!("Could not open PTY input: {error}"))?;
-        let mut writer = writer;
         let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
         capture_output(reader, Arc::clone(&output), id.to_string(), app);
-        launch_recorded_command(writer.as_mut(), launch_command.as_deref())?;
         let registry = SessionRegistry::new(root);
         let session = registry
             .upsert(
@@ -248,7 +246,7 @@ impl TerminalManager {
                     status: Some("active".to_string()),
                     mode: Some("pty".to_string()),
                     role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
-                    command: request.command,
+                    command: launch_command,
                     shell: Some(shell),
                     pid: child.process_id(),
                     cwd: Some(root.to_path_buf()),
@@ -287,7 +285,9 @@ impl TerminalManager {
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
         let launch_command = request.command.clone();
-        let mut child = Command::new(&shell)
+        let mut command = Command::new(&shell);
+        configure_std_shell_command(&mut command, launch_command.as_deref());
+        let mut child = command
             .current_dir(root)
             .env("TERM", "xterm-256color")
             .stdin(Stdio::piped())
@@ -314,10 +314,7 @@ impl TerminalManager {
         if let Some(stderr) = child.stderr.take() {
             capture_output(stderr, Arc::clone(&output), id.to_string(), app.clone());
         }
-        let mut stdin = child.stdin.take();
-        if let Some(writer) = stdin.as_mut() {
-            launch_recorded_command(writer, launch_command.as_deref())?;
-        }
+        let stdin = child.stdin.take();
         let registry = SessionRegistry::new(root);
         let session = registry
             .upsert(
@@ -327,7 +324,7 @@ impl TerminalManager {
                     status: Some("active".to_string()),
                     mode: Some("pipe-fallback".to_string()),
                     role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
-                    command: request.command,
+                    command: launch_command,
                     shell: Some(shell),
                     pid: Some(child.id()),
                     cwd: Some(root.to_path_buf()),
@@ -449,15 +446,30 @@ impl Default for TerminalManager {
     }
 }
 
-fn launch_recorded_command(writer: &mut dyn Write, command: Option<&str>) -> Result<(), String> {
-    let Some(command) = command.map(str::trim).filter(|command| !command.is_empty()) else {
-        return Ok(());
+fn configure_pty_shell_command(command: &mut CommandBuilder, launch_command: Option<&str>) {
+    let Some(script) = terminal_launch_script(launch_command) else {
+        return;
     };
-    thread::sleep(Duration::from_millis(350));
-    writer
-        .write_all(format!("{command}\n").as_bytes())
-        .and_then(|_| writer.flush())
-        .map_err(|error| format!("Could not launch terminal command: {error}"))
+    command.arg("-l");
+    command.arg("-i");
+    command.arg("-c");
+    command.arg(script);
+}
+
+fn configure_std_shell_command(command: &mut Command, launch_command: Option<&str>) {
+    let Some(script) = terminal_launch_script(launch_command) else {
+        return;
+    };
+    command.arg("-l").arg("-i").arg("-c").arg(script);
+}
+
+fn terminal_launch_script(command: Option<&str>) -> Option<String> {
+    let command = command
+        .map(str::trim)
+        .filter(|command| !command.is_empty())?;
+    Some(format!(
+        "{command}\nstatus=$?\nif [ $status -ne 0 ]; then printf '\\n[hyperwiki] launch command exited with status %s\\n' \"$status\"; fi\nexec \"${{SHELL:-/bin/sh}}\" -l"
+    ))
 }
 
 impl TerminalProcess {
