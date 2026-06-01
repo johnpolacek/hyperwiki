@@ -723,7 +723,17 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 .as_deref()
                 .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
                 .unwrap_or(serde_json::Value::Null);
-            return match registry.rename(id, body["name"].as_str().unwrap_or_default()) {
+            let result = if body.get("visibility").is_some() || body.get("purpose").is_some() {
+                registry.update_runtime_metadata(
+                    id,
+                    body["name"].as_str().map(str::to_string),
+                    body["visibility"].as_str().map(str::to_string),
+                    body["purpose"].as_str().map(str::to_string),
+                )
+            } else {
+                registry.rename(id, body["name"].as_str().unwrap_or_default())
+            };
+            return match result {
                 Ok(session) => {
                     json_response(200, &crate::domain::sessions::SessionResponse { session })
                 }
@@ -758,6 +768,8 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 scope: None,
                 scope_kind: None,
                 plan_path: None,
+                visibility: None,
+                purpose: None,
             });
         let mut manager = terminal_manager()
             .lock()

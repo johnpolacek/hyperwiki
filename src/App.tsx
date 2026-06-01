@@ -303,6 +303,8 @@ interface SessionRecord {
   scope?: string;
   scopeKind?: string;
   planPath?: string | null;
+  visibility?: "visible" | "standby" | string;
+  purpose?: "modify" | string | null;
   connectedClients?: number;
   retained?: boolean;
   reconnectable?: boolean;
@@ -312,6 +314,10 @@ interface SessionRecord {
 
 interface SessionsResponse {
   sessions?: SessionRecord[];
+}
+
+interface SessionResponse {
+  session: SessionRecord;
 }
 
 interface TerminalStartResponse {
@@ -623,6 +629,7 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("terminal");
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
+  const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const [resumedImportPlanningProjectId, setResumedImportPlanningProjectId] = useState<string | null>(null);
   const baseDataRequestId = useRef(0);
@@ -666,6 +673,7 @@ function App() {
     && hasImportedSource(wikiPages)
     && !hasGeneratedPlanPages(wikiPages);
   const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages, workspace), [currentWikiPath, wikiPages, workspace]);
+  const activePlanScopeComplete = useMemo(() => planScopeIsComplete(terminalScope, wikiPages), [terminalScope.scope, terminalScope.scopeKind, terminalScope.planPath, wikiPages]);
 
   useEffect(() => {
     applyAppTheme(settings?.theme);
@@ -930,6 +938,25 @@ function App() {
     void loadSessions();
   }, [terminalScope, activeProject, hasLoadedProjects]);
 
+  useEffect(() => {
+    if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete) return;
+    void prewarmModifySessionForScope(activeProject, layout, terminalScope, sessions);
+  }, [activeProject?.id, activePlanScopeComplete, layout, sessions, terminalScope.scope, terminalScope.scopeKind]);
+
+  useEffect(() => {
+    if (!activeProject || terminalScope.scopeKind !== "plan" || !activePlanScopeComplete) return;
+    const closable = sessions.filter((session) =>
+      isModifySession(session)
+      && isLiveTerminalSession(session)
+      && session.scope === terminalScope.scope
+      && (isStandbySession(session) || !agentRun || agentRun.sessionId !== session.id || agentRun.phase === "complete" || agentRun.phase === "blocked")
+    );
+    for (const session of closable) {
+      appendImportLog(`Closing completed-plan modify session project=${activeProject.id} session=${session.id} scope=${terminalScope.scope}`);
+      void closeSessionQuietly(activeProject, session.id);
+    }
+  }, [activeProject?.id, activePlanScopeComplete, agentRun?.phase, agentRun?.sessionId, sessions, terminalScope.scope, terminalScope.scopeKind]);
+
   async function loadBaseData() {
     const requestId = baseDataRequestId.current + 1;
     baseDataRequestId.current = requestId;
@@ -1044,7 +1071,7 @@ function App() {
     try {
       const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`, activeProject));
       const nextSessions = response.sessions || [];
-      const liveSessions = nextSessions.filter(isLiveTerminalSession);
+      const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
       setSessions(nextSessions);
       setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
     } catch {
@@ -1142,7 +1169,7 @@ function App() {
     const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(scope.scope)}`, project));
     const nextSessions = response.sessions || [];
     appendImportLog(`Loaded sessions project=${project.id} scope=${scope.scope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
-    const liveSessions = nextSessions.filter(isLiveTerminalSession);
+    const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
     setSessions(nextSessions);
     setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
     return nextSessions;
@@ -1153,14 +1180,26 @@ function App() {
     projectLayout: LayoutResponse | null,
     scope = terminalScope,
     knownSessions = sessions,
-    options: { commandOverride?: string; forceNew?: boolean } = {},
+    options: { commandOverride?: string; forceNew?: boolean; purpose?: string; visibility?: "visible" | "standby"; promote?: boolean } = {},
   ) {
     if (!project) {
       throw new Error("Project not found for agent planning.");
     }
-    const existing = knownSessions.find(isAgentSession);
+    const matchingSessions = knownSessions.filter((session) =>
+      isAgentSession(session)
+      && (!options.purpose || session.purpose === options.purpose)
+      && session.scope === scope.scope
+    );
+    const visibleExisting = matchingSessions.find((session) => session.command && isVisibleLiveTerminalSession(session));
+    const standbyExisting = matchingSessions.find((session) => session.command && isLiveTerminalSession(session));
+    const existing = options.purpose ? (visibleExisting || standbyExisting) : knownSessions.find((session) => isAgentSession(session) && !isStandbySession(session) && session.scope === scope.scope);
     if (existing?.command && isLiveTerminalSession(existing) && !options.forceNew) {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length}`);
+      if (options.promote && isStandbySession(existing)) {
+        const promoted = await promoteSession(project, existing.id);
+        setActiveSessionId(promoted.id);
+        return promoted;
+      }
       setActiveSessionId(existing.id);
       return existing;
     }
@@ -1180,12 +1219,44 @@ function App() {
         scope: scope.scope,
         scopeKind: scope.scopeKind,
         planPath: scope.planPath,
+        visibility: options.visibility || "visible",
+        purpose: options.purpose || null,
       },
     });
     appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""}`);
     setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
-    setActiveSessionId(started.session.id);
+    if (!isStandbySession(started.session)) setActiveSessionId(started.session.id);
     return started.session;
+  }
+
+  async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: { scope: string; scopeKind: string; planPath: string | null }, knownSessions: SessionRecord[]) {
+    const key = `${project.id}:${scope.scope}`;
+    if (prewarmingModifySessions.current.has(key)) return;
+    if (knownSessions.some((session) => isModifySession(session) && session.scope === scope.scope && isLiveTerminalSession(session))) return;
+    const command = agentLaunchCommand(projectLayout);
+    if (!command) return;
+    prewarmingModifySessions.current.add(key);
+    try {
+      appendImportLog(`Prewarming modify agent project=${project.id} scope=${scope.scope}`);
+      const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { commandOverride: command, purpose: "modify", visibility: "standby" });
+      const ready = await waitForAgentPromptReady(session.id);
+      appendImportLog(`Prewarmed modify agent project=${project.id} session=${session.id} scope=${scope.scope} ready=${ready}`);
+      await loadSessionsForProject(project, scope);
+    } catch (error) {
+      appendImportLog(`Prewarm modify agent failed project=${project.id} scope=${scope.scope}`, error);
+    } finally {
+      prewarmingModifySessions.current.delete(key);
+    }
+  }
+
+  async function promoteSession(project: ProjectRecord, sessionId: string) {
+    const response = await hyperwikiApi.json<SessionResponse>(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, project), {
+      method: "PATCH",
+      body: { visibility: "visible", purpose: "modify" },
+    });
+    const promoted = response.session;
+    setSessions((current) => current.map((session) => session.id === promoted.id ? promoted : session));
+    return promoted;
   }
 
   async function sendAgentPrompt(prompt: string) {
@@ -1439,7 +1510,7 @@ function App() {
   ) {
     const runId = existingRunId || startAgentRun(kind, label, options.panelMode);
     try {
-      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession });
+      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: kind === "modify" ? "modify" : undefined, promote: kind === "modify" });
       updateAgentRun(runId, {
         sessionId: session.id,
         phase: "waiting",
@@ -2002,7 +2073,7 @@ function App() {
           layout,
           sessions,
           undefined,
-          action === "modify" ? { forceNewSession: true, panelMode: "terminal" } : undefined,
+          action === "modify" ? { panelMode: "terminal" } : undefined,
         );
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
@@ -2077,6 +2148,18 @@ function App() {
       setStatus("Session closed");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function closeSessionQuietly(project: ProjectRecord, sessionId: string) {
+    try {
+      let response = await hyperwikiApi.request(withProjectQuery(`/api/terminal/${encodeURIComponent(sessionId)}`, project), { method: "DELETE" });
+      if (!response.ok) {
+        response = await hyperwikiApi.request(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, project), { method: "DELETE" });
+      }
+      if (response.ok) await loadSessionsForProject(project, terminalScope);
+    } catch (error) {
+      appendImportLog(`Quiet session close failed project=${project.id} session=${sessionId}`, error);
     }
   }
 
@@ -4479,7 +4562,7 @@ function TerminalPane(props: {
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
-  const liveSessions = props.sessions.filter(isLiveTerminalSession);
+  const liveSessions = props.sessions.filter(isVisibleLiveTerminalSession);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
@@ -4629,7 +4712,7 @@ function HeadlessTerminalListener({
   onTerminalText: (sessionId: string, text: string) => void;
   sessions: SessionRecord[];
 }) {
-  const agentSession = sessions.find(isAgentSession) || null;
+  const agentSession = sessions.find((session) => isAgentSession(session) && !isStandbySession(session)) || null;
   useEffect(() => {
     if (!activeProject || !agentSession) return;
     const session = agentSession;
@@ -5171,6 +5254,13 @@ function planPageActionState(path: string, pages: WikiPage[], workspace: Workspa
   };
 }
 
+function planScopeIsComplete(scope: { scope: string; scopeKind: string; planPath: string | null }, pages: WikiPage[]) {
+  if (scope.scopeKind !== "plan" || !scope.planPath) return false;
+  const scopePath = displayWikiPath(scope.planPath);
+  const page = pages.find((candidate) => displayWikiPath(candidate.path) === scopePath);
+  return Boolean(page && isCompletedPage(page));
+}
+
 function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: WorkspaceResponse | null) {
   const derived = firstIncompleteWorkPath(pages, roots);
   if (derived && derived !== defaultWikiPath) return derived;
@@ -5230,6 +5320,14 @@ function isAgentSession(session: SessionRecord) {
   return session.role === "agent" || session.name?.toLowerCase().startsWith("agent");
 }
 
+function isModifySession(session: SessionRecord) {
+  return isAgentSession(session) && session.purpose === "modify";
+}
+
+function isStandbySession(session: SessionRecord) {
+  return session.visibility === "standby";
+}
+
 function terminalPaneLabel(session: SessionRecord, index: number) {
   const label = (session.role || session.name || `terminal ${index + 1}`).toLowerCase();
   return `${label} --`;
@@ -5237,6 +5335,10 @@ function terminalPaneLabel(session: SessionRecord, index: number) {
 
 function isLiveTerminalSession(session: SessionRecord) {
   return session.status === "active";
+}
+
+function isVisibleLiveTerminalSession(session: SessionRecord) {
+  return isLiveTerminalSession(session) && !isStandbySession(session);
 }
 
 function hasImportedSource(pages: WikiPage[]) {

@@ -41,6 +41,8 @@ pub struct TerminalStartRequest {
     pub scope_kind: Option<String>,
     #[serde(alias = "plan_path")]
     pub plan_path: Option<String>,
+    pub visibility: Option<String>,
+    pub purpose: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -152,6 +154,8 @@ impl TerminalManager {
                     &id,
                     SessionUpdates {
                         status: Some("active".to_string()),
+                        visibility: request.visibility.clone(),
+                        purpose: request.purpose.clone(),
                         connected_clients: Some(1),
                         last_attached_at: Some(timestamp()),
                         ..SessionUpdates::default()
@@ -186,6 +190,8 @@ impl TerminalManager {
                     &id,
                     SessionUpdates {
                         status: Some("active".to_string()),
+                        visibility: request.visibility.clone(),
+                        purpose: request.purpose.clone(),
                         connected_clients: Some(1),
                         last_attached_at: Some(timestamp()),
                         ..SessionUpdates::default()
@@ -253,6 +259,8 @@ impl TerminalManager {
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
                     plan_path: request.plan_path,
+                    visibility: request.visibility,
+                    purpose: request.purpose,
                     connected_clients: Some(1),
                     last_attached_at: Some(timestamp()),
                     ..SessionUpdates::default()
@@ -331,6 +339,8 @@ impl TerminalManager {
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
                     plan_path: request.plan_path,
+                    visibility: request.visibility,
+                    purpose: request.purpose,
                     connected_clients: Some(1),
                     last_attached_at: Some(timestamp()),
                     ..SessionUpdates::default()
@@ -633,6 +643,8 @@ mod tests {
                     scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     scope_kind: Some("plan".to_string()),
                     plan_path: Some("/wiki/plans/index.mdx".to_string()),
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
@@ -656,6 +668,8 @@ mod tests {
                     scope: None,
                     scope_kind: None,
                     plan_path: None,
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
@@ -692,6 +706,8 @@ mod tests {
                     scope: None,
                     scope_kind: None,
                     plan_path: None,
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
@@ -737,6 +753,16 @@ mod tests {
         assert_eq!(camel.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
         assert_eq!(snake.scope_kind.as_deref(), Some("plan"));
         assert_eq!(snake.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
+    }
+
+    #[test]
+    fn terminal_start_request_accepts_standby_metadata() {
+        let request: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.mdx","visibility":"standby","purpose":"modify"}"#,
+        )
+        .unwrap();
+        assert_eq!(request.visibility.as_deref(), Some("standby"));
+        assert_eq!(request.purpose.as_deref(), Some("modify"));
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {

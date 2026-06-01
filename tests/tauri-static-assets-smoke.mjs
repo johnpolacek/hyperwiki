@@ -66,8 +66,14 @@ if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source"
 if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
   throw new Error("Command bar modify action must not bundle the retired Modify Plan pane.");
 }
-if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("forceNew")) {
-  throw new Error("Command bar modify action must start a fresh visible agent terminal with the docs-only Modify Plan prompt.");
+if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("purpose") || !app.includes("standby")) {
+  throw new Error("Command bar modify action must promote a prewarmed modify agent with the docs-only Modify Plan prompt.");
+}
+if (!appSource.includes('purpose: "modify"') || !appSource.includes('visibility: "standby"') || !appSource.includes("isVisibleLiveTerminalSession")) {
+  throw new Error("Modify prewarm must keep standby sessions hidden until promotion.");
+}
+if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
+  throw new Error("Modify must reuse the plan's prewarmed modify session instead of forcing a fresh launch.");
 }
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");

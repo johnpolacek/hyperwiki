@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | prewarmed modify codex sessions</h2>
+  <ul>
+    <li>Added hidden <code>purpose="modify"</code> Codex agent sessions for active plan scopes so Modify Plan can reuse a prestarted <code>codex --yolo</code> TUI.</li>
+    <li>Changed Modify Plan to promote and target the plan's modify session by exact <code>sessionId</code> instead of forcing a new visible agent launch.</li>
+    <li>Kept Execute, Review, and manual agent launches on the existing visible terminal workflow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 fix | direct agent command launch</h2>
   <ul>
     <li>Changed command-backed terminal sessions to start the configured launch command as the shell's initial command instead of typing it into a newly opened prompt.</li>
