@@ -1090,7 +1090,7 @@ function App() {
     await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
   }
 
-  function startAgentRun(kind: AgentRunKind, label: string) {
+  function startAgentRun(kind: AgentRunKind, label: string, panelMode: SidePanelMode = kind === "execute" ? "terminal" : "agent-activity") {
     const run: AgentRunState = {
       id: `${kind}-${Date.now()}`,
       kind,
@@ -1104,7 +1104,7 @@ function App() {
       startedAt: Date.now(),
     };
     setAgentRun(run);
-    setSidePanelMode(kind === "execute" ? "terminal" : "agent-activity");
+    setSidePanelMode(panelMode);
     return run.id;
   }
 
@@ -1324,10 +1324,20 @@ function App() {
     throw lastError instanceof Error ? lastError : new Error("Agent unavailable.");
   }
 
-  async function sendTrackedAgentPrompt(kind: AgentRunKind, label: string, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, existingRunId?: string) {
-    const runId = existingRunId || startAgentRun(kind, label);
+  async function sendTrackedAgentPrompt(
+    kind: AgentRunKind,
+    label: string,
+    prompt: string,
+    currentPage = currentWikiPath,
+    scope = terminalScope,
+    projectLayout = layout,
+    knownSessions = sessions,
+    existingRunId?: string,
+    options: { forceNewSession?: boolean; panelMode?: SidePanelMode } = {},
+  ) {
+    const runId = existingRunId || startAgentRun(kind, label, options.panelMode);
     try {
-      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions);
+      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession });
       updateAgentRun(runId, {
         sessionId: session.id,
         phase: "waiting",
@@ -1881,7 +1891,17 @@ function App() {
     try {
       if (action === "execute-main" || action === "modify") {
         const prompt = workflowPrompt(action, workspace, currentWikiPath, payload?.prompt || "");
-        await sendTrackedAgentPrompt(action === "modify" ? "modify" : "execute", action === "modify" ? "Modify Plan" : "Execute Unit", prompt);
+        await sendTrackedAgentPrompt(
+          action === "modify" ? "modify" : "execute",
+          action === "modify" ? "Modify Plan" : "Execute Unit",
+          prompt,
+          currentWikiPath,
+          terminalScope,
+          layout,
+          sessions,
+          undefined,
+          action === "modify" ? { forceNewSession: true, panelMode: "terminal" } : undefined,
+        );
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
       if (action === "execute-worktree") {
