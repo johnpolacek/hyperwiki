@@ -69,6 +69,9 @@ if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning
 if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("forceNew")) {
   throw new Error("Command bar modify action must start a fresh visible agent terminal with the docs-only Modify Plan prompt.");
 }
+if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
+  throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
+}
 if (!appSource.includes("terminalPlanRootPath(route.path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
   throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
 }

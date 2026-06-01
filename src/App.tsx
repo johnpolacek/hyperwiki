@@ -128,6 +128,12 @@ interface WikiListResponse {
   pages?: WikiPage[];
 }
 
+interface WikiFingerprintResponse {
+  fingerprint: string;
+  fileCount: number;
+  latestModifiedMs?: number | null;
+}
+
 interface WikiSourceResponse {
   path: string;
   source: string;
@@ -629,6 +635,8 @@ function App() {
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
   const loggedPlanningQuestionIds = useRef(new Set<string>());
+  const wikiFingerprintRef = useRef("");
+  const wikiRefreshInFlight = useRef(false);
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
@@ -833,6 +841,38 @@ function App() {
   }, [route, activeProject, hasLoadedProjects, hasRegisteredProjects]);
 
   useEffect(() => {
+    wikiFingerprintRef.current = "";
+    if (!hasLoadedProjects || (hasRegisteredProjects && !activeProject)) return;
+    void checkWikiFingerprint("project-change");
+  }, [activeProject?.id, hasLoadedProjects, hasRegisteredProjects]);
+
+  useEffect(() => {
+    const shouldMonitor = sessions.some((session) => isAgentSession(session) && isLiveTerminalSession(session))
+      && (terminalScope.scopeKind === "plan" || terminalScope.scopeKind === "plan-create");
+    if (!shouldMonitor) return;
+    void checkWikiFingerprint("agent-monitor-start");
+    const timer = window.setInterval(() => {
+      void checkWikiFingerprint("agent-monitor");
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [activeProject?.id, sessions, terminalScope.scope, terminalScope.scopeKind]);
+
+  useEffect(() => {
+    function handleFocusRefresh() {
+      void checkWikiFingerprint("focus");
+    }
+    function handleVisibilityRefresh() {
+      if (document.visibilityState === "visible") void checkWikiFingerprint("visibility");
+    }
+    window.addEventListener("focus", handleFocusRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityRefresh);
+    return () => {
+      window.removeEventListener("focus", handleFocusRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityRefresh);
+    };
+  }, [activeProject?.id, route]);
+
+  useEffect(() => {
     if (!wikiError || !activeProject || !isMissingFileError(wikiError)) return;
     setStatus("Active project is unavailable");
     setUnavailableProjectIds((current) => new Set(current).add(activeProject.id));
@@ -935,6 +975,68 @@ function App() {
 
     const rejected = [wikiResult, projectsResult, workspaceResult, previewResult, settingsResult, layoutResult, reviewResult, repoResult].find((result) => result.status === "rejected");
     setStatus(rejected ? "Some workspace data is unavailable" : "Workspace loaded");
+  }
+
+  async function checkWikiFingerprint(reason: string) {
+    if (hasLoadedProjects && hasRegisteredProjects && !activeProject) return;
+    try {
+      const result = await hyperwikiApi.json<WikiFingerprintResponse>(withProjectQuery("/api/wiki/fingerprint", activeProject));
+      if (!result.fingerprint) return;
+      if (!wikiFingerprintRef.current) {
+        wikiFingerprintRef.current = result.fingerprint;
+        appendImportLog(`Wiki fingerprint initialized reason=${reason} files=${result.fileCount}`);
+        return;
+      }
+      if (wikiFingerprintRef.current === result.fingerprint) return;
+      const previous = wikiFingerprintRef.current;
+      wikiFingerprintRef.current = result.fingerprint;
+      appendImportLog(`Wiki fingerprint changed reason=${reason} previous=${previous} next=${result.fingerprint} files=${result.fileCount}`);
+      await refreshWikiStateFromDisk(reason);
+    } catch (error) {
+      appendImportLog(`Wiki fingerprint check failed reason=${reason}`, error);
+    }
+  }
+
+  async function refreshWikiStateFromDisk(reason: string) {
+    if (wikiRefreshInFlight.current) return;
+    wikiRefreshInFlight.current = true;
+    try {
+      const [wikiResult, workspaceResult] = await Promise.allSettled([
+        hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", activeProject)),
+        hyperwikiApi.json<WorkspaceResponse>(withProjectQuery("/api/workspace", activeProject)),
+      ]);
+      const nextPages = wikiResult.status === "fulfilled" ? wikiResult.value.pages || [] : wikiPages;
+      const nextWorkspace = workspaceResult.status === "fulfilled" ? workspaceResult.value : workspace;
+      if (wikiResult.status === "fulfilled") setWikiPages(nextPages);
+      if (workspaceResult.status === "fulfilled") setWorkspace(nextWorkspace);
+      if (route.kind === "wiki") {
+        const displayPath = displayWikiPath(route.path);
+        const visiblePageExists = nextPages.some((page) => displayWikiPath(page.path) === displayPath);
+        if (!visiblePageExists && displayPath !== defaultWikiPath) {
+          const landingPath = planLandingPath(nextWorkspace, nextPages);
+          const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
+          setRoute(nextRoute);
+          window.history.replaceState(null, "", urlForRoute(nextRoute, activeProject));
+        } else {
+          await reloadVisibleWikiPage(route.path);
+        }
+      }
+      setStatus(reason === "focus" || reason === "visibility" ? "Wiki refreshed" : "Wiki changes loaded");
+    } finally {
+      wikiRefreshInFlight.current = false;
+    }
+  }
+
+  async function reloadVisibleWikiPage(path: string) {
+    if (!isReactRenderedMdxPath(path)) {
+      const html = await hyperwikiApi.text(wikiRequestPath(path, activeProject));
+      setWikiHtml(html);
+      setWikiSource(null);
+      return;
+    }
+    const source = await hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(path)}`, activeProject));
+    setWikiHtml("");
+    setWikiSource(source);
   }
 
   async function loadSessions() {

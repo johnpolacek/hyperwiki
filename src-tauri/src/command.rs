@@ -294,6 +294,19 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .unwrap_or_else(|| ".".into());
         return text_response(200, crate::domain::wiki::wiki_llms_txt(project_root));
     }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/fingerprint") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(200, &crate::domain::wiki::wiki_fingerprint(project_root));
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki/source") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -1579,6 +1592,40 @@ mod tests {
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
         assert!(response.text.contains("/wiki/index.mdx"));
+    }
+
+    #[test]
+    fn wiki_fingerprint_endpoint_returns_current_checkout_fingerprint() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-fingerprint");
+        let home = temp_root("command-wiki-fingerprint-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Command Wiki</h1>").unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("feature.mdx"),
+            "<h1>Feature</h1>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/fingerprint".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert_eq!(response.status, 200);
+        assert!(response.text.contains("\"fingerprint\""));
+        assert!(response.text.contains("\"fileCount\":2"));
     }
 
     #[test]

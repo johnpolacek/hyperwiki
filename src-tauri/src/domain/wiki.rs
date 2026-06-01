@@ -46,6 +46,14 @@ pub struct WikiPageList {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct WikiFingerprint {
+    pub fingerprint: String,
+    pub file_count: usize,
+    pub latest_modified_ms: Option<u128>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct WikiSource {
     pub path: String,
     pub source: String,
@@ -190,6 +198,41 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
         .collect::<Vec<_>>();
     pages.sort_by(|left, right| left.path.cmp(&right.path));
     WikiPageList { pages }
+}
+
+pub fn wiki_fingerprint(root: impl AsRef<Path>) -> WikiFingerprint {
+    let wiki_root = root.as_ref().join("wiki");
+    if !wiki_root.is_dir() {
+        return WikiFingerprint {
+            fingerprint: "empty".to_string(),
+            file_count: 0,
+            latest_modified_ms: None,
+        };
+    }
+    let mut files = Vec::new();
+    collect_wiki_files(&wiki_root, &mut files);
+    let mut entries = files
+        .iter()
+        .filter_map(|full_path| {
+            let relative = full_path.strip_prefix(&wiki_root).ok().map(slash_path)?;
+            let metadata = fs::metadata(full_path).ok()?;
+            let modified_ms = metadata
+                .modified()
+                .ok()
+                .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+                .map(|duration| duration.as_millis())
+                .unwrap_or(0);
+            Some((relative, metadata.len(), modified_ms))
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|left, right| left.0.cmp(&right.0));
+    let latest_modified_ms = entries.iter().map(|entry| entry.2).max();
+    let fingerprint = stable_wiki_fingerprint(&entries);
+    WikiFingerprint {
+        fingerprint,
+        file_count: entries.len(),
+        latest_modified_ms,
+    }
 }
 
 pub fn read_wiki_page(root: impl AsRef<Path>, request_path: &str) -> Result<String, String> {
@@ -755,6 +798,25 @@ fn collect_wiki_files(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
         }
         files.push(full_path);
     }
+}
+
+fn stable_wiki_fingerprint(entries: &[(String, u64, u128)]) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for (path, size, modified_ms) in entries {
+        for byte in path.as_bytes() {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        for byte in size.to_le_bytes() {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        for byte in modified_ms.to_le_bytes() {
+            hash ^= u64::from(byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+    }
+    format!("{:016x}-{}", hash, entries.len())
 }
 
 fn known_relative_paths(base_root: &Path, files: &[std::path::PathBuf]) -> HashSet<String> {
@@ -1846,7 +1908,8 @@ fn slash_path(path: &Path) -> String {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::thread::sleep;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     #[test]
     fn lists_wiki_pages_with_titles_summary_and_status() {
@@ -2032,6 +2095,45 @@ Agent-only text.
         let pages = list_wiki_pages(&root, Some("project-1")).pages;
         assert_eq!(pages[0].path, "/projects/project-1/wiki/source-index.mdx");
         assert_eq!(pages[0].title, "Source Index");
+    }
+
+    #[test]
+    fn wiki_fingerprint_changes_when_mdx_files_change() {
+        let root = temp_root("wiki-fingerprint-change");
+        let wiki = root.join("wiki").join("plans");
+        fs::create_dir_all(&wiki).unwrap();
+        let page = wiki.join("feature.mdx");
+        fs::write(&page, "<h1>Feature</h1>").unwrap();
+
+        let initial = wiki_fingerprint(&root);
+        sleep(Duration::from_millis(2));
+        fs::write(&page, "<h1>Feature Updated</h1>").unwrap();
+        let updated = wiki_fingerprint(&root);
+        fs::write(wiki.join("unit-01-test.mdx"), "<h1>Unit 01</h1>").unwrap();
+        let added = wiki_fingerprint(&root);
+        fs::remove_file(page).unwrap();
+        let removed = wiki_fingerprint(&root);
+
+        assert_ne!(initial.fingerprint, updated.fingerprint);
+        assert_ne!(updated.fingerprint, added.fingerprint);
+        assert_ne!(added.fingerprint, removed.fingerprint);
+        assert_eq!(initial.file_count, 1);
+        assert_eq!(added.file_count, 2);
+        assert_eq!(removed.file_count, 1);
+    }
+
+    #[test]
+    fn wiki_fingerprint_ignores_non_mdx_files() {
+        let root = temp_root("wiki-fingerprint-ignore");
+        let wiki = root.join("wiki");
+        fs::create_dir_all(&wiki).unwrap();
+        fs::write(wiki.join("index.mdx"), "<h1>Home</h1>").unwrap();
+        let initial = wiki_fingerprint(&root);
+        fs::write(wiki.join("notes.txt"), "not a page").unwrap();
+        let ignored = wiki_fingerprint(&root);
+
+        assert_eq!(initial.fingerprint, ignored.fingerprint);
+        assert_eq!(ignored.file_count, 1);
     }
 
     #[test]

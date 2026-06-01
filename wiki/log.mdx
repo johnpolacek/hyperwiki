@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | live wiki sidebar refresh</h2>
+  <ul>
+    <li>Added a Tauri wiki fingerprint endpoint for <code>wiki/**/*.mdx</code> changes.</li>
+    <li>Changed the React shell to refresh wiki pages, workspace status, and the visible wiki page when plan-agent activity or focus return detects a changed fingerprint.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | plan-root terminal scope correction</h2>
   <ul>
     <li>Changed terminal scope derivation so plan unit pages use their parent plan or stage root before loading sessions.</li>
