@@ -2270,6 +2270,20 @@ function TopBar(props: {
   status: string;
   workspace: WorkspaceResponse | null;
 }) {
+  const projectsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!props.isProjectsOpen) return;
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+      if (projectsMenuRef.current?.contains(event.target as Node)) return;
+      props.setIsProjectsOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown);
+    return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  }, [props.isProjectsOpen, props.setIsProjectsOpen]);
+
   return (
     <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
@@ -2283,11 +2297,13 @@ function TopBar(props: {
         ) : null}
       </button>
       <div className="relative flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={() => props.setIsProjectsOpen(!props.isProjectsOpen)}>
-          <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
-          Projects
-        </Button>
-        {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onClose={() => props.setIsProjectsOpen(false)} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} /> : null}
+        <div className="relative" ref={projectsMenuRef}>
+          <Button size="sm" variant="outline" onClick={() => props.setIsProjectsOpen(!props.isProjectsOpen)}>
+            <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
+            Projects
+          </Button>
+          {props.isProjectsOpen ? <ProjectsPopover groups={props.projectGroups} onClose={() => props.setIsProjectsOpen(false)} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} /> : null}
+        </div>
         <Button size="sm" variant="outline" onClick={() => props.onNavigate({ kind: "settings" })}>
           <Settings aria-hidden="true" data-icon="inline-start" />
           Settings
