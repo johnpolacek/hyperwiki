@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 fix | stale terminal session cleanup</h2>
+  <ul>
+    <li>Changed session listing to persist stale active or detached terminal records as closed when no live terminal process exists, then omit them from the live terminal response.</li>
+    <li>Changed xterm rendering to strip Codex display synchronization control sequences while keeping parsing and replay behavior intact.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 fix | modify-plan waiting state</h2>
   <ul>
     <li>Hardened Codex readiness so a prompt is accepted only after the latest input prompt appears after MCP startup.</li>

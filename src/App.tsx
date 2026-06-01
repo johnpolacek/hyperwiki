@@ -4752,6 +4752,7 @@ function XtermSession({
   const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
   const initialDisplayBufferRef = useRef<string | null>("");
+  const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
 
@@ -4762,6 +4763,7 @@ function XtermSession({
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
     initialDisplayBufferRef.current = "";
+    displayControlCarryRef.current.current = "";
     pendingRef.current = [];
     let hasLoadedReplay = false;
     let eventBuffer: TerminalOutputEventPayload[] = [];
@@ -4824,7 +4826,10 @@ function XtermSession({
       const bytes = Uint8Array.from(payload.bytes || []);
       if (!bytes.length) return;
       const text = terminalBytesToText(bytes);
-      const displayText = cleanInitialTerminalDisplayText(text, initialDisplayBufferRef);
+      const displayText = cleanInitialTerminalDisplayText(
+        terminalDisplayTextForXterm(text, displayControlCarryRef.current),
+        initialDisplayBufferRef
+      );
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
       if (displayText) terminal.write(displayText);
@@ -4846,7 +4851,10 @@ function XtermSession({
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
           const text = terminalBytesToText(bytes);
-          const displayText = cleanInitialTerminalDisplayText(text, initialDisplayBufferRef);
+          const displayText = cleanInitialTerminalDisplayText(
+            terminalDisplayTextForXterm(text, displayControlCarryRef.current),
+            initialDisplayBufferRef
+          );
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
           if (displayText) terminal.write(displayText);
@@ -6282,6 +6290,10 @@ function cleanInitialTerminalDisplayText(data: string, initialBuffer: { current:
   }
   initialBuffer.current = null;
   return combined;
+}
+
+function terminalDisplayTextForXterm(data: string, carry: { current: string }) {
+  return stripTerminalDisplayControlSequences(data, carry);
 }
 
 function terminalTextForParsing(data: string) {

@@ -223,6 +223,8 @@ impl SessionRegistry {
             id,
             SessionUpdates {
                 status: Some("closed".to_string()),
+                connected_clients: Some(0),
+                reconnectable: Some(false),
                 ..SessionUpdates::default()
             },
         )

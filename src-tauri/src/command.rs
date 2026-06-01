@@ -651,8 +651,8 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| ".".into());
         let scope = query_param(&request.path, "scope");
-        let mut sessions = crate::domain::sessions::SessionRegistry::new(&project_root)
-            .list(scope.as_deref(), true);
+        let registry = crate::domain::sessions::SessionRegistry::new(&project_root);
+        let mut sessions = registry.list(scope.as_deref(), true);
         let manager = terminal_manager()
             .lock()
             .unwrap_or_else(|error| error.into_inner());
@@ -662,10 +662,27 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 session.status = "active".to_string();
                 session.connected_clients = session.connected_clients.max(1);
             } else if session.status == "active" {
-                session.status = "detached".to_string();
+                if let Ok(closed) = registry.close(&session.id) {
+                    *session = closed;
+                } else {
+                    session.status = "closed".to_string();
+                    session.connected_clients = 0;
+                }
+            } else if session.status == "detached" {
+                if let Ok(closed) = registry.close(&session.id) {
+                    *session = closed;
+                } else {
+                    session.status = "closed".to_string();
+                    session.connected_clients = 0;
+                }
+            }
+            if session.status == "closed" {
                 session.connected_clients = 0;
             }
         }
+        sessions
+            .sessions
+            .retain(|session| session.status != "closed");
         return json_response(200, &sessions);
     }
     if request.method == "POST" && request.path.starts_with("/api/sessions/prune") {
@@ -2012,7 +2029,7 @@ mod tests {
     }
 
     #[test]
-    fn sessions_endpoint_lists_and_mutates_current_checkout_sessions() {
+    fn sessions_endpoint_closes_stale_persisted_active_sessions() {
         let _guard = env_lock();
         let previous_dir = std::env::current_dir().unwrap();
         let previous_home = std::env::var_os("HYPERWIKI_HOME");
@@ -2039,16 +2056,7 @@ mod tests {
             method: "GET".to_string(),
             body: None,
         });
-        let rename = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions/agent-one".to_string(),
-            method: "PATCH".to_string(),
-            body: Some("{\"name\":\"agent renamed\"}".to_string()),
-        });
-        let export = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions/agent-one/export".to_string(),
-            method: "POST".to_string(),
-            body: None,
-        });
+        let persisted_after_list = registry.list(None, false);
 
         std::env::set_current_dir(previous_dir).unwrap();
         match previous_home {
@@ -2056,9 +2064,11 @@ mod tests {
             None => std::env::remove_var("HYPERWIKI_HOME"),
         }
         assert!(list.ok);
-        assert!(list.text.contains("agent-one"));
-        assert!(rename.text.contains("agent renamed"));
-        assert!(export.text.contains("runtime-only"));
+        assert!(!list.text.contains("agent-one"));
+        assert_eq!(
+            persisted_after_list.sessions[0].status, "closed",
+            "stale active sessions must be persisted closed"
+        );
     }
 
     #[test]

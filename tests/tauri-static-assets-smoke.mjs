@@ -84,5 +84,8 @@ if (!appSource.includes('parentPath.endsWith("/wiki/plans/mvp/index.mdx")') || !
 if (!appSource.includes("terminalPlanRootPath(route.path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
   throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
 }
+if (!appSource.includes("terminalDisplayTextForXterm") || !appSource.includes("displayControlCarryRef") || !appSource.includes("stripTerminalDisplayControlSequences(data, carry)")) {
+  throw new Error("Xterm rendering must strip Codex display control sequences with carry-over across output chunks.");
+}
 
 console.log("tauri static assets smoke test passed");
