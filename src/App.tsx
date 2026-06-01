@@ -5684,7 +5684,9 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
       "",
       "The user will request changes to the current plan. Inspect the current planning page and related planning pages.",
       "",
-      "Wait for the user to specify what plan modifications they would like to make then make changes to only necessary planning/wiki files, plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context.",
+      initialRequest
+        ? "Apply the user-supplied plan modification request to only necessary planning/wiki files, plans/**/*.mdx, wiki/index.mdx, wiki/log.mdx, wiki/sources.mdx, and wiki/AGENTS.mdx when directly needed for planning context."
+        : "No concrete modification request was supplied yet. Inspect the current planning page and nearby planning context, then stop after a concise message that says you are ready for the requested plan modification. Do not keep exploring after that readiness message.",
       "",
       `Current planning page: ${visiblePath}`,
       `Current unit: ${unitTitle}`,
@@ -6210,7 +6212,11 @@ async function waitForAgentPromptReady(sessionId: string) {
 function isAgentPromptReady(text: string) {
   const normalized = text.replace(/\s+/g, " ");
   if (isAgentMcpStartupInProgress(normalized)) return false;
-  return /\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}") || normalized.includes("›Implement {feature}");
+  if (normalized.includes("starting mcp servers") && !normalized.match(/starting mcp servers\s*\(\s*2\s*\/\s*2\s*\)/i)) return false;
+  const lastStartup = normalized.toLowerCase().lastIndexOf("starting mcp servers");
+  const lastPrompt = Math.max(normalized.lastIndexOf("›"), normalized.lastIndexOf("\u203a"));
+  const promptAfterStartup = lastPrompt !== -1 && lastPrompt > lastStartup;
+  return promptAfterStartup && (/\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}") || normalized.includes("›Implement {feature}"));
 }
 
 function isAgentMcpStartupInProgress(text: string) {
