@@ -24,6 +24,7 @@ wikiKind: "plan"
       <h2>Implementation</h2>
       <ul>
         <li>Resolve terminal scope from the active route: feature plans use their plan page, MVP units use their parent stage, and overview or non-plan routes use their own runtime scopes.</li>
+        <li>Corrective note: plan unit pages now normalize to their parent plan or stage root before loading sessions, so selecting sibling units does not swap the terminal panel.</li>
         <li>Detach terminal UI on scope changes without deleting or killing server sessions.</li>
         <li>Keep PTY and pipe fallback processes alive after WebSocket disconnects, with bounded replay for reattached browser panels.</li>
         <li>Route agent prompts and review workflow submissions to the current scope's active agent session.</li>
@@ -34,6 +35,7 @@ wikiKind: "plan"
       <h2>Verification</h2>
       <ul>
         <li>Different plans show independent terminal sets.</li>
+        <li>Sibling units inside the same parent plan or stage show the same terminal set.</li>
         <li>Returning to a plan reattaches the original terminal process.</li>
         <li>Explicit close still terminates a terminal and removes it from future restores.</li>
         <li>Project and worktree switches preserve isolation by project root.</li>

@@ -5665,9 +5665,17 @@ function scopeForRoute(route: ViewRoute) {
     return { scope: route.kind, scopeKind: "app", planPath: null };
   }
   if (route.path.includes("/plans/")) {
-    return { scope: route.path, scopeKind: "plan", planPath: route.path };
+    const planPath = terminalPlanRootPath(route.path);
+    return { scope: planPath, scopeKind: "plan", planPath };
   }
   return { scope: route.path, scopeKind: "wiki", planPath: null };
+}
+
+function terminalPlanRootPath(path: string) {
+  const normalized = path.split(/[?#]/)[0] || path;
+  const unitChild = normalized.match(/^(.*)\/unit-\d+[^/]*\.mdx$/);
+  if (unitChild) return `${unitChild[1]}.mdx`;
+  return normalized;
 }
 
 function trimPlanningQuestionBuffer(text: string) {

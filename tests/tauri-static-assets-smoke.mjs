@@ -45,6 +45,7 @@ for (const asset of forbiddenAssets) {
 }
 
 const index = await readFile(path.resolve("dist/index.html"), "utf8");
+const appSource = await readFile(path.resolve("src/App.tsx"), "utf8");
 const distAssets = await readdir(path.resolve("dist/assets"));
 if (!distAssets.some((asset) => /^index-.*\.js$/.test(asset)) || !distAssets.some((asset) => /^index-.*\.css$/.test(asset))) {
   throw new Error("Vite build must emit hashed app JS and CSS assets for the Tauri bundle.");
@@ -67,6 +68,9 @@ if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning
 }
 if (!app.includes("We are executing") || !app.includes("strictly planning/wiki-only operation") || !app.includes("sessionId") || !app.includes("forceNew")) {
   throw new Error("Command bar modify action must start a fresh visible agent terminal with the docs-only Modify Plan prompt.");
+}
+if (!appSource.includes("terminalPlanRootPath(route.path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
+  throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
 }
 
 console.log("tauri static assets smoke test passed");

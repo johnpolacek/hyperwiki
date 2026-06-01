@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 implementation | plan-root terminal scope correction</h2>
+  <ul>
+    <li>Changed terminal scope derivation so plan unit pages use their parent plan or stage root before loading sessions.</li>
+    <li>Kept different plans and stages isolated while preventing sibling unit navigation from swapping the visible terminal panel.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | direct modify plan agent handoff</h2>
   <ul>
     <li>Changed the command-bar <code>modify</code> action to open a fresh scoped agent terminal immediately instead of opening the retired right-side Modify Plan form.</li>
