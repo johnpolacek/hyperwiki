@@ -1,0 +1,21 @@
+---
+title: "Unit 05 - MCP Server Transport"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 05 - MCP Server Transport</h1>
+<p><a href="/wiki/plans/mvp/stage-07-agent-native-verification.mdx">Stage 07 - Agent-native Verification</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Add a local stdio MCP server transport for the Stage 07 project contract, current plan, source index, verification loops, guardrails, and review workflows.</li>
+    <li>Expose read-only resources and read-only tools first; do not expose terminal prompt submission over MCP in this unit.</li>
+    <li>Keep behavior local-first and rooted in the same Localhost Tooling trust boundary as the HTTP API.</li>
+    <li>Implemented: <code>hyperwiki mcp</code> starts a local stdio MCP server using Content-Length framed JSON-RPC messages.</li>
+    <li>Implemented: the transport exposes read-only MCP resources and read-only tools for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>Deferred: terminal prompt submission and review workflow execution remain out of the MCP server until action permissions are designed.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:mcp-transport</code>.</li>
+  </ul>
+</section>

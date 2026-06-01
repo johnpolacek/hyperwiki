@@ -741,6 +741,7 @@ mod tests {
             available: true,
             last_opened_at: None,
             active,
+            import_planning: None,
         }
     }
 

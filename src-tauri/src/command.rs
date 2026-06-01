@@ -17,8 +17,15 @@ pub struct HyperwikiResponse {
     pub text: String,
 }
 
+static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+pub fn set_app_handle(app: tauri::AppHandle) {
+    let _ = APP_HANDLE.set(app);
+}
+
 #[tauri::command]
 pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
+    let app = APP_HANDLE.get().cloned();
     if request.path == "/api/settings" {
         let store = crate::domain::settings::SettingsStore::from_environment();
         if request.method == "GET" {
@@ -84,11 +91,17 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
     }
     if request.method == "GET" && request.path.starts_with("/api/projects") {
         let active_id = query_param(&request.path, "project");
-        return json_response(
-            200,
-            &crate::domain::projects::ProjectRegistry::from_environment()
-                .list(active_id.as_deref()),
+        let list =
+            crate::domain::projects::ProjectRegistry::from_environment().list(active_id.as_deref());
+        eprintln!(
+            "[hyperwiki] projects list active_id={:?} projects={} checkouts={} groups={} active={:?}",
+            active_id,
+            list.projects.len(),
+            list.checkouts.len(),
+            list.project_groups.len(),
+            list.active_project_id
         );
+        return json_response(200, &list);
     }
     if request.method == "POST" && request.path.starts_with("/api/projects/create") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
@@ -103,11 +116,34 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 summary: None,
                 document: None,
                 document_type: None,
+                source_documents: Vec::new(),
+                planning_answers: std::collections::BTreeMap::new(),
                 initialize_git: None,
+                install_agent_skills: None,
+                agent_launch_command: None,
             });
+        eprintln!(
+            "[hyperwiki] import create start title={:?} document_bytes={} document_type={:?}",
+            body.title,
+            body.document.as_deref().map(str::len).unwrap_or(0),
+            body.document_type
+        );
         return match crate::domain::projects::create_project_from_dashboard(&registry, body) {
-            Ok(result) => json_response(200, &result),
-            Err((status, error)) => error_response(status, error),
+            Ok(result) => {
+                eprintln!(
+                    "[hyperwiki] import create ok project_id={} root={}",
+                    result.project.id,
+                    result.project.root.display()
+                );
+                crate::domain::codex_app_server::spawn_import_thread_prewarm(
+                    result.project.clone(),
+                );
+                json_response(200, &result)
+            }
+            Err((status, error)) => {
+                eprintln!("[hyperwiki] import create error status={status} error={error}");
+                error_response(status, error)
+            }
         };
     }
     if request.method == "DELETE" && request.path.starts_with("/api/projects/") {
@@ -175,6 +211,121 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => json_response(200, &serde_json::Value::Null),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/export-markdown-zip") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::wiki::wiki_markdown_zip_export(project_root),
+        );
+    }
+    if request.method == "POST"
+        && request
+            .path
+            .starts_with("/api/wiki/export-markdown-zip/download")
+    {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let reveal = query_param(&request.path, "reveal").as_deref() != Some("false");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::save_wiki_markdown_zip_to_downloads(project_root, reveal)
+        {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(500, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/skill.md") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return text_response(200, crate::domain::wiki::wiki_project_skill(project_root).content);
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/page-markdown") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let source_path = query_param(&request.path, "path")
+            .and_then(|path| percent_decode_path_segment(&path))
+            .unwrap_or_else(|| "/wiki/index.mdx".to_string());
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::wiki_page_markdown(project_root, &source_path) {
+            Ok(source) => json_response(200, &source),
+            Err(error) => error_response(404, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/llms.txt") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return text_response(200, crate::domain::wiki::wiki_llms_txt(project_root));
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/fingerprint") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(200, &crate::domain::wiki::wiki_fingerprint(project_root));
+    }
+    if request.method == "GET" && request.path.starts_with("/api/wiki/source") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let source_path = query_param(&request.path, "path")
+            .and_then(|path| percent_decode_path_segment(&path))
+            .unwrap_or_else(|| "/wiki/index.mdx".to_string());
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::read_wiki_source(project_root, &source_path) {
+            Ok(source) => json_response(200, &source),
+            Err(error) => error_response(404, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
@@ -196,47 +347,200 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
-    if request.method == "POST" && request.path.starts_with("/api/plans/clarify") {
-        let project = resolve_request_project(&request.path).or_else(current_project_record);
-        let parsed = request
-            .body
-            .as_deref()
-            .and_then(|body| {
-                serde_json::from_str::<crate::domain::plan_creation::PlanClarifyRequest>(body).ok()
-            })
-            .unwrap_or(crate::domain::plan_creation::PlanClarifyRequest {
-                title: String::new(),
-                intent: String::new(),
-                plan_type: String::new(),
-                answers: Vec::new(),
-            });
-        return json_response(
-            200,
-            &crate::domain::plan_creation::clarify_plan_for_root(
-                project.as_ref().map(|project| project.root.as_path()),
-                parsed,
-            ),
-        );
-    }
-    if request.method == "POST" && request.path.starts_with("/api/plans/create") {
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/clarify") {
         let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
         else {
-            return error_response(404, "Project not found for plan creation.");
+            eprintln!(
+                "[hyperwiki] import planning clarify error status=404 path={}",
+                request.path
+            );
+            return error_response(404, "Project not found for import planning.");
         };
         let parsed = request
             .body
             .as_deref()
             .and_then(|body| {
-                serde_json::from_str::<crate::domain::plan_creation::PlanCreateRequest>(body).ok()
+                serde_json::from_str::<crate::domain::import_planning::ImportPlanningRequest>(body)
+                    .ok()
             })
-            .unwrap_or(crate::domain::plan_creation::PlanCreateRequest {
-                title: String::new(),
-                intent: String::new(),
-                plan_type: String::new(),
+            .unwrap_or(crate::domain::import_planning::ImportPlanningRequest {
+                plan_title: String::new(),
                 answers: Vec::new(),
-                allow_deferred_unknowns: false,
             });
-        return match crate::domain::plan_creation::create_plan(&project.root, parsed) {
+        eprintln!(
+            "[hyperwiki] import planning clarify start project_id={} root={} answers={}",
+            project.id,
+            project.root.display(),
+            parsed.answers.len()
+        );
+        return json_response(
+            200,
+            &crate::domain::import_planning::clarify_import_plan(&project.root, parsed),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/start") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::start_import_onboarding(project, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/prewarm") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding prewarm.");
+        };
+        return match crate::domain::codex_app_server::prewarm_import_thread(project) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-onboarding/status") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::import_onboarding_status(&project) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-onboarding/events") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::import_onboarding_events(&project) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/answer") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        let Some(parsed) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<
+                crate::domain::import_onboarding_runtime::ImportOnboardingAnswerRequest,
+            >(body)
+            .ok()
+        }) else {
+            return error_response(400, "Invalid import onboarding answer request.");
+        };
+        return match crate::domain::import_onboarding_runtime::answer_import_onboarding(
+            project, parsed, app,
+        ) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/retry") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::retry_import_onboarding(project, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-onboarding/cancel") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import onboarding.");
+        };
+        return match crate::domain::import_onboarding_runtime::cancel_import_onboarding(
+            project, app,
+        ) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-planning/status") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        return json_response(
+            200,
+            &crate::domain::import_planning::import_planning_status(&project.root),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/question") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::import_planning::HumanInputCheckpointRequest>(
+                body,
+            )
+            .ok()
+        });
+        let Some(parsed) = parsed else {
+            return error_response(400, "Invalid import planning question checkpoint.");
+        };
+        return match crate::domain::import_planning::record_human_input_request(
+            &project.root,
+            parsed,
+        ) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/answer") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed =
+            request
+                .body
+                .as_deref()
+                .and_then(|body| {
+                    serde_json::from_str::<
+                        crate::domain::import_planning::ImportPlanningProgressRequest,
+                    >(body)
+                    .ok()
+                })
+                .unwrap_or(
+                    crate::domain::import_planning::ImportPlanningProgressRequest {
+                        question: None,
+                        answer: String::new(),
+                        request_id: String::new(),
+                    },
+                );
+        return match crate::domain::import_planning::record_import_planning_answer(
+            &project.root,
+            parsed,
+        ) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/create-plan") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for import planning.");
+        };
+        let parsed = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::import_planning::ImportPlanningRequest>(body)
+                    .ok()
+            })
+            .unwrap_or(crate::domain::import_planning::ImportPlanningRequest {
+                plan_title: String::new(),
+                answers: Vec::new(),
+            });
+        return match crate::domain::import_planning::create_import_plan(&project.root, parsed) {
             Ok(result) => json_response(200, &result),
             Err((status, error)) => error_response(status, error),
         };
@@ -347,11 +651,39 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| ".".into());
         let scope = query_param(&request.path, "scope");
-        return json_response(
-            200,
-            &crate::domain::sessions::SessionRegistry::new(&project_root)
-                .list(scope.as_deref(), true),
-        );
+        let registry = crate::domain::sessions::SessionRegistry::new(&project_root);
+        let mut sessions = registry.list(scope.as_deref(), true);
+        let manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        for session in sessions.sessions.iter_mut() {
+            let is_live = manager.diagnostics(&session.id).live;
+            if is_live {
+                session.status = "active".to_string();
+                session.connected_clients = session.connected_clients.max(1);
+            } else if session.status == "active" {
+                if let Ok(closed) = registry.close(&session.id) {
+                    *session = closed;
+                } else {
+                    session.status = "closed".to_string();
+                    session.connected_clients = 0;
+                }
+            } else if session.status == "detached" {
+                if let Ok(closed) = registry.close(&session.id) {
+                    *session = closed;
+                } else {
+                    session.status = "closed".to_string();
+                    session.connected_clients = 0;
+                }
+            }
+            if session.status == "closed" {
+                session.connected_clients = 0;
+            }
+        }
+        sessions
+            .sessions
+            .retain(|session| session.status != "closed");
+        return json_response(200, &sessions);
     }
     if request.method == "POST" && request.path.starts_with("/api/sessions/prune") {
         let project_root = resolve_request_project(&request.path)
@@ -391,7 +723,17 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 .as_deref()
                 .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
                 .unwrap_or(serde_json::Value::Null);
-            return match registry.rename(id, body["name"].as_str().unwrap_or_default()) {
+            let result = if body.get("visibility").is_some() || body.get("purpose").is_some() {
+                registry.update_runtime_metadata(
+                    id,
+                    body["name"].as_str().map(str::to_string),
+                    body["visibility"].as_str().map(str::to_string),
+                    body["purpose"].as_str().map(str::to_string),
+                )
+            } else {
+                registry.rename(id, body["name"].as_str().unwrap_or_default())
+            };
+            return match result {
                 Ok(session) => {
                     json_response(200, &crate::domain::sessions::SessionResponse { session })
                 }
@@ -426,11 +768,13 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 scope: None,
                 scope_kind: None,
                 plan_path: None,
+                visibility: None,
+                purpose: None,
             });
         let mut manager = terminal_manager()
             .lock()
             .unwrap_or_else(|error| error.into_inner());
-        return match manager.start_session(project_root, parsed) {
+        return match manager.start_session_with_app(project_root, parsed, app) {
             Ok(result) => json_response(200, &result),
             Err(error) => error_response(500, error),
         };
@@ -488,6 +832,12 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 Err(error) => error_response(404, error),
             };
         }
+        if request.method == "GET" && action == "replay" {
+            return match manager.replay(id) {
+                Ok(result) => json_response(200, &result),
+                Err(error) => error_response(404, error),
+            };
+        }
         if request.method == "DELETE" {
             return match manager.close(id) {
                 Ok(session) => {
@@ -508,6 +858,64 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
             .unwrap_or(serde_json::Value::Null);
         return match send_agent_prompt(&project, &body) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn-retry") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for import planning retry.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::codex_app_server::CodexTurnRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::codex_app_server::CodexTurnRequest {
+                prompt: String::new(),
+                current_page: String::new(),
+                request_id: String::new(),
+            });
+        return match crate::domain::codex_app_server::retry_import_planning_turn(project, body, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn-cancel") {
+        let run_id = query_param(&request.path, "runId").unwrap_or_default();
+        return match crate::domain::codex_app_server::cancel_import_planning_turn(&run_id, app) {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/import-planning/turn") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for import planning turn.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| {
+                serde_json::from_str::<crate::domain::codex_app_server::CodexTurnRequest>(body).ok()
+            })
+            .unwrap_or(crate::domain::codex_app_server::CodexTurnRequest {
+                prompt: String::new(),
+                current_page: String::new(),
+                request_id: String::new(),
+            });
+        return match crate::domain::codex_app_server::start_import_planning_turn(project, body, app)
+        {
+            Ok(value) => json_response(200, &value),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/import-planning/turn-status") {
+        let run_id = query_param(&request.path, "runId").unwrap_or_default();
+        return match crate::domain::codex_app_server::import_planning_turn_status(&run_id) {
             Ok(value) => json_response(200, &value),
             Err((status, error)) => error_response(status, error),
         };
@@ -549,7 +957,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         }
         let prompt_body = serde_json::json!({
             "prompt": prepared.prompt.clone().unwrap_or_default(),
-            "currentPage": current_page.unwrap_or("/wiki/plans/index.html"),
+            "currentPage": current_page.unwrap_or("/wiki/plans/index.mdx"),
             "scope": body["scope"].as_str().unwrap_or_default()
         });
         return match send_agent_prompt(&project, &prompt_body) {
@@ -654,8 +1062,29 @@ fn query_param(path: &str, key: &str) -> Option<String> {
     let query = path.split_once('?')?.1;
     query.split('&').find_map(|pair| {
         let (left, right) = pair.split_once('=')?;
-        (left == key).then(|| right.to_string())
+        (left == key)
+            .then(|| percent_decode_path_segment(right).unwrap_or_else(|| right.to_string()))
     })
+}
+
+fn percent_decode_path_segment(value: &str) -> Option<String> {
+    let mut output = String::new();
+    let mut chars = value.as_bytes().iter().copied();
+    while let Some(byte) = chars.next() {
+        if byte == b'%' {
+            let high = chars.next()?;
+            let low = chars.next()?;
+            let hex = [high, low];
+            let text = std::str::from_utf8(&hex).ok()?;
+            let decoded = u8::from_str_radix(text, 16).ok()?;
+            output.push(decoded as char);
+        } else if byte == b'+' {
+            output.push(' ');
+        } else {
+            output.push(byte as char);
+        }
+    }
+    Some(output)
 }
 
 fn path_project_id(path: &str) -> Option<String> {
@@ -680,13 +1109,16 @@ fn current_project_record() -> Option<crate::domain::projects::ProjectRecord> {
     info.available
         .then_some(crate::domain::projects::ProjectRecord {
             id: "current".to_string(),
-            root,
+            root: root.clone(),
             name: info.name,
             project_slug: "current".to_string(),
             worktree_slug: "main".to_string(),
             last_opened_at: None,
             available: true,
             active: false,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &root,
+            )),
         })
 }
 
@@ -704,22 +1136,46 @@ fn send_agent_prompt(
         return Err((400, "Prompt is required.".to_string()));
     }
     let scope = body["scope"].as_str().unwrap_or_default();
+    let requested_session_id = body["sessionId"].as_str().unwrap_or_default();
+    let request_id = body["requestId"].as_str().unwrap_or_default();
     let sessions = crate::domain::sessions::SessionRegistry::new(&project.root).list(None, false);
-    let Some(agent_session) = sessions.sessions.into_iter().rev().find(|session| {
-        (session.status == "active" || session.status == "detached")
-            && session.role == "agent"
-            && (scope.is_empty() || session.scope == scope)
-            && session
-                .command
-                .as_deref()
-                .map(str::trim)
-                .is_some_and(|command| !command.is_empty())
-    }) else {
+    let mut manager = terminal_manager()
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    let agent_session = if requested_session_id.is_empty() {
+        sessions.sessions.into_iter().rev().find(|session| {
+            (session.status == "active" || session.status == "detached")
+                && session.role == "agent"
+                && (scope.is_empty() || session.scope == scope)
+                && session
+                    .command
+                    .as_deref()
+                    .map(str::trim)
+                    .is_some_and(|command| !command.is_empty())
+                && manager.diagnostics(&session.id).live
+        })
+    } else {
+        sessions.sessions.into_iter().find(|session| {
+            session.id == requested_session_id
+                && (session.status == "active" || session.status == "detached")
+                && session.role == "agent"
+                && session
+                    .command
+                    .as_deref()
+                    .map(str::trim)
+                    .is_some_and(|command| !command.is_empty())
+        })
+    };
+    let Some(agent_session) = agent_session else {
         return Err((409, "No active agent session is available.".to_string()));
     };
+    let before = manager.diagnostics(&agent_session.id);
+    if !requested_session_id.is_empty() && !before.live {
+        return Err((409, "Requested agent session is not live.".to_string()));
+    }
     let current_page = body["currentPage"]
         .as_str()
-        .unwrap_or("/wiki/plans/index.html");
+        .unwrap_or("/wiki/plans/index.mdx");
     let message = [
         "",
         "Please handle this hyperwiki workspace request.",
@@ -728,24 +1184,44 @@ fn send_agent_prompt(
         &format!("Repo root: {}", project.root.display()),
         &format!("Current wiki page: {current_page}"),
         "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
-        "Keep durable project knowledge in wiki/ HTML pages and Git-visible files. Run relevant checks before finishing.",
+        "Keep durable project knowledge in wiki/ MDX pages and Git-visible files. If you edit files, run relevant checks before finishing.",
         "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
         "",
         prompt,
         "",
     ]
     .join("\n");
-    let mut manager = terminal_manager()
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
+    let paste = codex_paste_input(&message);
     manager
-        .write(&agent_session.id, &codex_paste_input(&message))
+        .write(&agent_session.id, &paste)
         .map_err(|error| (409, error))?;
     manager
         .write(&agent_session.id, "\r")
         .map_err(|error| (409, error))?;
+    let after = manager.diagnostics(&agent_session.id);
+    eprintln!(
+        "[hyperwiki] agent prompt routed request_id={} project_id={} requested_session={} selected_session={} scope={} prompt_chars={} paste_bytes={} before_seq={:?} after_seq={:?} live={}",
+        request_id,
+        project.id,
+        requested_session_id,
+        agent_session.id,
+        scope,
+        prompt.chars().count(),
+        paste.len() + 1,
+        before.replay_seq,
+        after.replay_seq,
+        after.live
+    );
     Ok(serde_json::json!({
         "ok": true,
+        "requestId": request_id,
+        "requestedSessionId": requested_session_id,
+        "scope": scope,
+        "promptChars": prompt.chars().count(),
+        "pasteBytes": paste.len() + 1,
+        "beforeReplaySeq": before.replay_seq,
+        "afterReplaySeq": after.replay_seq,
+        "live": after.live,
         "session": {
             "id": agent_session.id,
             "name": agent_session.name
@@ -1061,12 +1537,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("log.html"),
+            root.join("wiki").join("log.mdx"),
             "<h1>Log</h1><h2>Entry</h2>",
         )
         .unwrap();
@@ -1126,11 +1602,7 @@ mod tests {
         let root = temp_root("command-wiki");
         let home = temp_root("command-wiki-home");
         fs::create_dir_all(root.join("wiki")).unwrap();
-        fs::write(
-            root.join("wiki").join("index.html"),
-            "<h1>Command Wiki</h1>",
-        )
-        .unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Command Wiki</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
 
@@ -1148,15 +1620,259 @@ mod tests {
         assert!(response.ok);
         assert_eq!(response.status, 200);
         assert!(response.text.contains("Command Wiki"));
-        assert!(response.text.contains("/wiki/index.html"));
+        assert!(response.text.contains("/wiki/index.mdx"));
     }
 
     #[test]
-    fn plan_creation_endpoints_clarify_and_create_project_plan() {
+    fn wiki_fingerprint_endpoint_returns_current_checkout_fingerprint() {
         let _guard = env_lock();
-        let root = temp_root("command-plan-create");
-        let home = temp_root("command-plan-create-home");
-        make_hyperwiki_project(&root, "Plan Create Command");
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-fingerprint");
+        let home = temp_root("command-wiki-fingerprint-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Command Wiki</h1>").unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("feature.mdx"),
+            "<h1>Feature</h1>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/fingerprint".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert_eq!(response.status, 200);
+        assert!(response.text.contains("\"fingerprint\""));
+        assert!(response.text.contains("\"fileCount\":2"));
+    }
+
+    #[test]
+    fn wiki_source_endpoint_returns_exact_source_and_markdown() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-source");
+        let home = temp_root("command-wiki-source-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "---\ntitle: \"Sample\"\n---\n\n<PlanHero><h1>Sample</h1></PlanHero>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/source?path=%2Fwiki%2Fplans%2Fsample.mdx".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("<PlanHero>"));
+        assert!(response.text.contains("\"markdown\":\"# Sample\""));
+    }
+
+    #[test]
+    fn wiki_page_markdown_endpoint_returns_markdown_export() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-markdown");
+        let home = temp_root("command-wiki-markdown-home");
+        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("sample.mdx"),
+            "<h1>Sample</h1><p>Markdown export.</p>",
+        )
+        .unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/page-markdown?path=%2Fwiki%2Fplans%2Fsample.mdx".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("\"markdown\":\"# Sample"));
+        assert!(response.text.contains("Markdown export."));
+    }
+
+    #[test]
+    fn wiki_llms_txt_endpoint_returns_project_export() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-llms");
+        let home = temp_root("command-wiki-llms-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/llms.txt".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("# Hyperwiki Project Wiki"));
+        assert!(response.text.contains("- [Home](/wiki/index.mdx)"));
+    }
+
+    #[test]
+    fn wiki_markdown_zip_endpoint_returns_download_payload() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-zip");
+        let home = temp_root("command-wiki-zip-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/export-markdown-zip".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("\"filename\":\"hyperwiki-markdown-export.zip\""));
+        assert!(response.text.contains("\"mimeType\":\"application/zip\""));
+        assert!(response.text.contains("\"path\":\"SKILL.md\""));
+    }
+
+    #[test]
+    fn wiki_markdown_zip_download_endpoint_writes_to_downloads() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let previous_user_home = std::env::var_os("HOME");
+        let previous_user_profile = std::env::var_os("USERPROFILE");
+        let root = temp_root("command-wiki-zip-download");
+        let home = temp_root("command-wiki-zip-download-home");
+        let user_home = temp_root("command-wiki-user-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_var("HOME", &user_home);
+        std::env::set_var("USERPROFILE", &user_home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/export-markdown-zip/download?reveal=false".to_string(),
+            method: "POST".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        match previous_user_home {
+            Some(value) => std::env::set_var("HOME", value),
+            None => std::env::remove_var("HOME"),
+        }
+        match previous_user_profile {
+            Some(value) => std::env::set_var("USERPROFILE", value),
+            None => std::env::remove_var("USERPROFILE"),
+        }
+
+        assert!(response.ok, "{}", response.text);
+        let value: serde_json::Value = serde_json::from_str(&response.text).unwrap();
+        let path = std::path::PathBuf::from(value["path"].as_str().unwrap());
+        assert!(path.starts_with(user_home.join("Downloads")));
+        assert!(path.exists());
+        assert_eq!(value["revealed"], false);
+        assert!(value["filename"]
+            .as_str()
+            .unwrap()
+            .starts_with("hyperwiki-markdown-export-"));
+        assert!(fs::read(path).unwrap().starts_with(b"PK\x03\x04"));
+    }
+
+    #[test]
+    fn wiki_skill_endpoint_returns_generated_skill_markdown() {
+        let _guard = env_lock();
+        let previous_dir = std::env::current_dir().unwrap();
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let root = temp_root("command-wiki-skill");
+        let home = temp_root("command-wiki-skill-home");
+        fs::create_dir_all(root.join("wiki")).unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_current_dir(&root).unwrap();
+
+        let response = hyperwiki_request(HyperwikiRequest {
+            path: "/api/wiki/skill.md".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        assert!(response.ok, "{}", response.text);
+        assert!(response.text.contains("name: hyperwiki-project-context"));
+        assert!(response.text.contains("/api/wiki/export-markdown-zip"));
+    }
+
+    #[test]
+    fn import_planning_endpoints_gate_and_create_detailed_imported_plan_units() {
+        let _guard = env_lock();
+        let root = temp_root("command-import-planning");
+        let home = temp_root("command-import-planning-home");
+        make_hyperwiki_project(&root, "RouteChat");
+        fs::create_dir_all(root.join("wiki").join("sources")).unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("prd.mdx"),
+            "<h1>Product Brief</h1><section class=\"summary\"><h2>Summary</h2><ul><li>RouteChat gives spontaneous guided audio tours.</li></ul></section><section><h2>Problem</h2><p>Most tours require planning.</p></section><section><h2>MVP</h2><ul><li>Generates narration from current location.</li></ul></section><section><h2>Promotion Criteria</h2><ul><li>A safety model for driving and transit use.</li></ul></section>",
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("sources").join("import.mdx"),
+            "<h1>Source Import</h1><p>RouteChat gives spontaneous guided audio tours.</p>",
+        )
+        .unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
         let project = crate::domain::projects::ProjectRegistry::from_environment()
@@ -1164,26 +1880,64 @@ mod tests {
             .unwrap();
 
         let clarify = hyperwiki_request(HyperwikiRequest {
-            path: format!("/api/plans/clarify?project={}", project.id),
+            path: format!("/api/import-planning/clarify?project={}", project.id),
             method: "POST".to_string(),
-            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[]}".to_string()),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[]}".to_string()),
         });
         assert!(clarify.ok);
         assert!(clarify.text.contains("\"ready\":false"));
-        assert!(clarify.text.contains("\"questions\""));
+        assert!(clarify.text.contains("\"questions\":[]"));
+        assert!(clarify
+            .text
+            .contains("questions are produced by the visible agent"));
 
-        let create = hyperwiki_request(HyperwikiRequest {
-            path: format!("/api/plans/create?project={}", project.id),
-            method: "POST".to_string(),
-            body: Some("{\"title\":\"Import CSV\",\"intent\":\"Let users import rows.\",\"planType\":\"feature\",\"answers\":[{\"id\":\"desired-outcome\",\"answer\":\"Visible import workflow.\"},{\"id\":\"success-example\",\"answer\":\"Open import, choose file, preview, commit.\"},{\"id\":\"scope-boundary\",\"answer\":\"CSV import only; no scheduled sync.\"},{\"id\":\"affected-surfaces\",\"answer\":\"Planning page and import route.\"},{\"id\":\"acceptance-checks\",\"answer\":\"Rust and UI smoke tests.\"},{\"id\":\"clarity-risks\",\"answer\":\"Malformed rows and duplicate customers.\"}]}".to_string()),
+        let status = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/status?project={}", project.id),
+            method: "GET".to_string(),
+            body: None,
         });
-        assert!(create.ok, "{}", create.text);
+        assert!(status.ok);
+        assert!(status.text.contains("\"status\":\"incomplete\""));
+
+        let answer = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/answer?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"question\":{\"id\":\"agent-question\",\"label\":\"Agent Question\",\"prompt\":\"Which RouteChat slice should prove the product first?\",\"impact\":\"blocking\",\"rationale\":\"Asked after reading raw source.\"},\"answer\":\"Walking tours first.\"}".to_string()),
+        });
+        assert!(answer.ok, "{}", answer.text);
+        assert!(answer.text.contains("\"answeredCount\":1"));
         assert!(root
             .join("wiki")
-            .join("plans")
-            .join("features")
-            .join("import-csv.html")
+            .join("sources")
+            .join("import-qna.mdx")
             .exists());
+
+        let blocked = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/create-plan?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[]}".to_string()),
+        });
+        assert_eq!(blocked.status, 409);
+
+        let missing_stack = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/create-plan?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
+        });
+        assert_eq!(missing_stack.status, 409);
+        assert!(missing_stack
+            .text
+            .contains("plans are created by the visible agent"));
+
+        let create = hyperwiki_request(HyperwikiRequest {
+            path: format!("/api/import-planning/create-plan?project={}", project.id),
+            method: "POST".to_string(),
+            body: Some("{\"planTitle\":\"RouteChat Imported Plan\",\"answers\":[{\"id\":\"first-mode\",\"answer\":\"Walking tours first.\"},{\"id\":\"platform\",\"answer\":\"Mobile web prototype.\"},{\"id\":\"frontend-stack\",\"answer\":\"React, Vite, TypeScript, and Tailwind for the mobile web UI.\"},{\"id\":\"backend-runtime\",\"answer\":\"Client-first prototype with a small Node route handler only if provider proxying is required.\"},{\"id\":\"data-storage\",\"answer\":\"Browser local storage for demo route state; no database in the first milestone.\"},{\"id\":\"auth-users\",\"answer\":\"No accounts in the first demo.\"},{\"id\":\"services-integrations\",\"answer\":\"Mock route feed plus Gemini API integration; defer maps SDK billing setup.\"},{\"id\":\"location-source\",\"answer\":\"Simulated routes first, live GPS later.\"},{\"id\":\"narration-output\",\"answer\":\"Text plus audio playback.\"},{\"id\":\"provider\",\"answer\":\"Gemini default behind a provider wrapper.\"},{\"id\":\"dev-commands\",\"answer\":\"pnpm install, pnpm dev, pnpm run build, pnpm run check, and GEMINI_API_KEY for provider calls.\"},{\"id\":\"safety-privacy\",\"answer\":\"No driving interactions in the first demo; no precise route retention without consent.\"},{\"id\":\"non-goals\",\"answer\":\"No saved tours, accounts, or multi-mode support.\"},{\"id\":\"success-criteria\",\"answer\":\"A demo route produces useful narration and passes safety review.\"}]}".to_string()),
+        });
+        assert_eq!(create.status, 409);
+        assert!(create
+            .text
+            .contains("plans are created by the visible agent"));
     }
 
     #[test]
@@ -1202,7 +1956,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Command Wiki Page</h1>",
         )
         .unwrap();
@@ -1212,7 +1966,7 @@ mod tests {
         std::env::set_current_dir(&unrelated).unwrap();
 
         let response = hyperwiki_request(HyperwikiRequest {
-            path: format!("/projects/{}/wiki/index.html", project.id),
+            path: format!("/projects/{}/wiki/index.mdx", project.id),
             method: "GET".to_string(),
             body: None,
         });
@@ -1287,14 +2041,14 @@ mod tests {
     }
 
     #[test]
-    fn sessions_endpoint_lists_and_mutates_current_checkout_sessions() {
+    fn sessions_endpoint_closes_stale_persisted_active_sessions() {
         let _guard = env_lock();
         let previous_dir = std::env::current_dir().unwrap();
         let previous_home = std::env::var_os("HYPERWIKI_HOME");
         let root = temp_root("command-sessions");
         let home = temp_root("command-sessions-home");
         fs::create_dir_all(root.join("wiki")).unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Sessions</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Sessions</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
         let registry = crate::domain::sessions::SessionRegistry::new(&root);
@@ -1303,27 +2057,18 @@ mod tests {
                 "agent-one",
                 crate::domain::sessions::SessionUpdates {
                     name: Some("agent".to_string()),
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     ..crate::domain::sessions::SessionUpdates::default()
                 },
             )
             .unwrap();
 
         let list = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions?scope=plan:/wiki/plans/index.html".to_string(),
+            path: "/api/sessions?scope=plan:/wiki/plans/index.mdx".to_string(),
             method: "GET".to_string(),
             body: None,
         });
-        let rename = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions/agent-one".to_string(),
-            method: "PATCH".to_string(),
-            body: Some("{\"name\":\"agent renamed\"}".to_string()),
-        });
-        let export = hyperwiki_request(HyperwikiRequest {
-            path: "/api/sessions/agent-one/export".to_string(),
-            method: "POST".to_string(),
-            body: None,
-        });
+        let persisted_after_list = registry.list(None, false);
 
         std::env::set_current_dir(previous_dir).unwrap();
         match previous_home {
@@ -1331,9 +2076,11 @@ mod tests {
             None => std::env::remove_var("HYPERWIKI_HOME"),
         }
         assert!(list.ok);
-        assert!(list.text.contains("agent-one"));
-        assert!(rename.text.contains("agent renamed"));
-        assert!(export.text.contains("runtime-only"));
+        assert!(!list.text.contains("agent-one"));
+        assert_eq!(
+            persisted_after_list.sessions[0].status, "closed",
+            "stale active sessions must be persisted closed"
+        );
     }
 
     #[test]
@@ -1349,14 +2096,23 @@ mod tests {
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"terminal-command\",\"name\":\"cli\"}".to_string()),
+            body: Some(
+                "{\"id\":\"terminal-command\",\"name\":\"cli\",\"command\":\"printf tauri-terminal-launch\\\\n\"}"
+                    .to_string(),
+            ),
         });
         let write = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/terminal-command/write".to_string(),
             method: "POST".to_string(),
             body: Some("{\"input\":\"printf tauri-terminal-command\\\\n\\n\"}".to_string()),
         });
+        let launch_output = wait_for_terminal_output("terminal-command", "tauri-terminal-launch");
         let output = wait_for_terminal_output("terminal-command", "tauri-terminal-command");
+        let replay = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/terminal-command/replay".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/terminal-command".to_string(),
             method: "DELETE".to_string(),
@@ -1374,7 +2130,11 @@ mod tests {
                 || start.text.contains("\"mode\":\"pipe-fallback\"")
         );
         assert!(write.ok);
+        assert!(launch_output.contains("tauri-terminal-launch"));
         assert!(output.contains("tauri-terminal-command"));
+        assert!(replay.ok);
+        assert!(replay.text.contains("\"sessionId\":\"terminal-command\""));
+        assert!(replay.text.contains("\"bytes\""));
         assert!(close.ok);
         assert!(close.text.contains("\"status\":\"closed\""));
     }
@@ -1393,11 +2153,7 @@ mod tests {
             "{\"project\":{\"name\":\"Agent Prompt\"}}",
         )
         .unwrap();
-        fs::write(
-            root.join("wiki").join("index.html"),
-            "<h1>Agent Prompt</h1>",
-        )
-        .unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Agent Prompt</h1>").unwrap();
         std::env::set_var("HYPERWIKI_HOME", &home);
         std::env::set_current_dir(&root).unwrap();
 
@@ -1409,17 +2165,32 @@ mod tests {
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"agent-command\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"id\":\"agent-command\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let routed = hyperwiki_request(HyperwikiRequest {
             path: "/api/agent/prompt".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"prompt\":\"Do the thing\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
+        });
+        let explicitly_routed = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the exact thing\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"agent-command\",\"requestId\":\"test-answer-1\"}".to_string()),
+        });
+        let missing_requested = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the missing thing\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"missing-agent\",\"requestId\":\"test-answer-missing\"}".to_string()),
         });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/agent-command".to_string(),
             method: "DELETE".to_string(),
             body: None,
+        });
+        let stale_requested = hyperwiki_request(HyperwikiRequest {
+            path: "/api/agent/prompt".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"prompt\":\"Do the stale thing\",\"scope\":\"plan:/wiki/plans/index.mdx\",\"sessionId\":\"agent-command\",\"requestId\":\"test-answer-stale\"}".to_string()),
         });
 
         std::env::set_current_dir(previous_dir).unwrap();
@@ -1432,7 +2203,19 @@ mod tests {
         assert!(start.ok);
         assert!(routed.ok);
         assert!(routed.text.contains("\"id\":\"agent-command\""));
+        assert!(explicitly_routed.ok);
+        assert!(explicitly_routed
+            .text
+            .contains("\"requestedSessionId\":\"agent-command\""));
+        assert!(explicitly_routed
+            .text
+            .contains("\"requestId\":\"test-answer-1\""));
+        assert!(explicitly_routed.text.contains("\"live\":true"));
+        assert!(!missing_requested.ok);
+        assert_eq!(missing_requested.status, 409);
         assert!(close.ok);
+        assert!(!stale_requested.ok);
+        assert_eq!(stale_requested.status, 409);
     }
 
     #[test]
@@ -1454,22 +2237,22 @@ mod tests {
         let prepared = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"dryRun\":true}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"dryRun\":true}".to_string()),
         });
         let unrouted = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let start = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/start".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"id\":\"review-agent\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"id\":\"review-agent\",\"name\":\"agent\",\"role\":\"agent\",\"command\":\"codex --yolo\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let routed = hyperwiki_request(HyperwikiRequest {
             path: "/api/review-workflows/run".to_string(),
             method: "POST".to_string(),
-            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.html\",\"scope\":\"plan:/wiki/plans/index.html\"}".to_string()),
+            body: Some("{\"workflowId\":\"security-review\",\"currentPage\":\"/wiki/plans/index.mdx\",\"scope\":\"plan:/wiki/plans/index.mdx\"}".to_string()),
         });
         let close = hyperwiki_request(HyperwikiRequest {
             path: "/api/terminal/review-agent".to_string(),
@@ -1526,9 +2309,9 @@ mod tests {
             format!("{{\"projectName\":\"{name}\"}}"),
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();

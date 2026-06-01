@@ -1,0 +1,18 @@
+---
+title: "Unit 02 - Launch Reliability And Ergonomics"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 02 - Launch Reliability And Ergonomics</h1>
+<p><a href="/wiki/plans/mvp/stage-04-one-command-launch.mdx">Stage 04 - One-command Local Launch</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Handle common local startup cases: port selection or conflict reporting, server readiness, browser-open failures, clean shutdown, and repeated invocation while a server is already running.</li>
+    <li>Document the command in the development workflow and generated project guidance so new users can discover it before reading source code.</li>
+    <li>Acceptance: repeated dogfood launches are predictable, failures are actionable, and the command output includes the workspace URL.</li>
+    <li>Implemented: launch attaches to an existing hyperwiki server on the selected port when <code>/api/health</code> identifies it, and supports dry-run opener behavior for CI.</li>
+  </ul>
+</section>

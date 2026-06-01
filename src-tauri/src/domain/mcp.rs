@@ -324,19 +324,19 @@ fn resource_payload(root: &Path, uri: &str) -> Result<Value, (i32, String)> {
 fn mcp_resources() -> Vec<McpResource> {
     vec![
         resource("hyperwiki://project-contract", "Project Contract", "Machine-readable project facts, current plan state, source briefs, guardrails, verification loops, layout, wiki pages, and runtime boundaries.", "localhost-tooling", "/api/project-contract", "$"),
-        resource("hyperwiki://current-plan", "Current Plan", "Current planning dashboard status and active plan/unit path derived from repo-visible wiki HTML.", "canonical-wiki", "/api/project-contract", "$.plan"),
+        resource("hyperwiki://current-plan", "Current Plan", "Current plans index status, source path, and Markdown derivative derived from repo-visible MDX.", "canonical-wiki", "/api/project-contract", "$.plan"),
         resource("hyperwiki://source-index", "Source Index", "Source index and generated source briefs that define durable product and technical context.", "canonical-wiki", "/api/project-contract", "$.sources"),
         resource("hyperwiki://verification-loops", "Verification Loops", "Configured or inferred verification loops plus latest local runtime evidence.", "runtime-evidence", "/api/verification", "$"),
         resource("hyperwiki://guardrails", "Guardrails", "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.", "localhost-tooling", "/api/guardrails", "$"),
         resource("hyperwiki://review-workflows", "Review Workflows", "Named agent review workflows for diff, architecture consistency, security, and test-gap review.", "runtime-only-until-recorded", "/api/review-workflows", "$"),
-        resource("hyperwiki://wiki-pages", "Wiki Pages", "Repo-visible HTML wiki page index for canonical project knowledge.", "canonical-wiki", "/api/wiki", "$.wiki"),
+        resource("hyperwiki://wiki-pages", "Wiki Pages", "Repo-visible MDX wiki page index for canonical project knowledge.", "canonical-wiki", "/api/wiki", "$.wiki"),
     ]
 }
 
 fn mcp_tools(contract: &crate::domain::verification::ProjectContract) -> Vec<McpTool> {
     vec![
         tool("get_project_contract", "Get Project Contract", "Return the complete machine-readable project contract.", true, true, false, "localhost-tooling", None, json!({ "method": "GET", "endpoint": "/api/project-contract" }), object_schema(json!({}), vec![]), contract),
-        tool("get_current_plan", "Get Current Plan", "Return the active plan and current unit derived from the wiki.", true, true, false, "canonical-wiki", None, json!({ "method": "GET", "endpoint": "/api/project-contract", "responsePath": "$.plan" }), object_schema(json!({}), vec![]), contract),
+        tool("get_current_plan", "Get Current Plan", "Return the active plan, current unit, source path, and Markdown derivative derived from the wiki.", true, true, false, "canonical-wiki", None, json!({ "method": "GET", "endpoint": "/api/project-contract", "responsePath": "$.plan" }), object_schema(json!({}), vec![]), contract),
         tool("list_verification_loops", "List Verification Loops", "Return verification loops and latest local runtime evidence.", true, true, false, "runtime-evidence", None, json!({ "method": "GET", "endpoint": "/api/verification" }), object_schema(json!({}), vec![]), contract),
         tool("list_review_workflows", "List Review Workflows", "Return available named agent review workflows.", true, true, false, "runtime-only-until-recorded", None, json!({ "method": "GET", "endpoint": "/api/review-workflows" }), object_schema(json!({}), vec![]), contract),
         tool("prepare_review_workflow", "Prepare Review Workflow", "Build a project-contract-aware review prompt without sending it to a terminal session.", false, true, false, "runtime-evidence", None, json!({ "method": "POST", "endpoint": "/api/review-workflows/run", "fixedBody": { "dryRun": true } }), object_schema(json!({
@@ -365,7 +365,7 @@ fn mcp_tools(contract: &crate::domain::verification::ProjectContract) -> Vec<Mcp
             },
             "scope": {
                 "type": "string",
-                "description": "Optional terminal scope to target, such as plan:/wiki/plans/index.html."
+                "description": "Optional terminal scope to target, such as plan:/wiki/plans/index.mdx."
             }
         }), vec!["prompt"]), contract),
     ]
@@ -608,9 +608,9 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current unit: Unit 01</li></ul></section>",
         )
         .unwrap();

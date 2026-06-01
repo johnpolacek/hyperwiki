@@ -1,0 +1,46 @@
+---
+title: "Sidebar Keyboard Navigation"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Sidebar Keyboard Navigation</h1>
+    <section className="summary" aria-labelledby="summary">
+      <h2 id="summary">Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Shape: compact feature plan</li>
+        <li>Current unit: Unit 01 - Roving Sidebar Focus</li>
+        <li>Next action: none; implementation and verification are complete.</li>
+        <li>Blockers: none</li>
+        <li>Validation: <code>pnpm check</code>, <code>pnpm smoke:browser</code>, and manual browser review.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Intent</h2>
+      <p>Make the workspace sidebar navigable with arrow keys so Plans, nested plan groups, and the Project group can be traversed without tabbing through every link.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Add roving focus across visible sidebar rows.</li>
+        <li>Use tree-style keys: Up, Down, Left, Right, Home, End, Enter, and Space.</li>
+        <li>Keep activation explicit: arrowing moves focus or expands groups, while Enter, Space, and click activate links.</li>
+        <li>Preserve current sidebar layout, active-page styling, completion styling, and plan tree open-state behavior.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Unit 01 - Roving Sidebar Focus</h2>
+      <ul>
+        <li>Install keyboard handling after the dynamic sidebar renders from <code>/api/wiki</code>.</li>
+        <li>Keep one visible sidebar row in the Tab order and move focus internally with arrow keys.</li>
+        <li>Expose expandable row state with <code>aria-expanded</code> while preserving native <code>details</code> behavior.</li>
+        <li>Add browser smoke coverage for traversal, expand/collapse, activation, and Project group participation.</li>
+      </ul>
+      <h3>Verification</h3>
+      <ul>
+        <li>Passed: <code>pnpm check</code>.</li>
+        <li>Passed: <code>pnpm smoke:browser</code>.</li>
+        <li>Completed: agent-browser preview snapshot against <code>http://127.0.0.1:4177/workspace/#/wiki/plans/mvp/stage-01-foundation.mdx</code>.</li>
+      </ul>
+    </section>

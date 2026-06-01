@@ -161,6 +161,9 @@ pub struct ContractPlan {
     pub dashboard: WorkspacePlan,
     pub status: WorkspaceStatus,
     pub current_path: String,
+    pub source_path: String,
+    pub format: String,
+    pub markdown: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -262,9 +265,9 @@ struct RunRecord {
 
 pub fn workspace_summary(root: impl AsRef<Path>) -> WorkspaceSummary {
     let root = root.as_ref();
-    let plan_dashboard = html_summary(root, "wiki/plans/index.html");
+    let plan_dashboard = html_summary(root, "wiki/plans/index.mdx");
     let wiki_pages = crate::domain::wiki::list_wiki_pages(root, None).pages;
-    let log_entries = html_headings(root, "wiki/log.html", "h2", 5);
+    let log_entries = html_headings(root, "wiki/log.mdx", "h2", 5);
     let source_briefs = source_brief_summary(root);
     let status = workspace_status(&plan_dashboard.summary, &log_entries, &wiki_pages);
     WorkspaceSummary {
@@ -274,16 +277,16 @@ pub fn workspace_summary(root: impl AsRef<Path>) -> WorkspaceSummary {
             } else {
                 plan_dashboard.title
             },
-            path: "/wiki/plans/index.html".to_string(),
+            path: "/wiki/plans/index.mdx".to_string(),
             summary: plan_dashboard.summary,
         },
         status,
         log: WorkspaceLog {
-            path: "/wiki/log.html".to_string(),
+            path: "/wiki/log.mdx".to_string(),
             entries: log_entries,
         },
         sources: WorkspaceSources {
-            path: "/wiki/sources.html".to_string(),
+            path: "/wiki/sources.mdx".to_string(),
             briefs: source_briefs,
         },
         verification: verification_loops(root),
@@ -309,7 +312,7 @@ pub fn guardrail_summary(root: impl AsRef<Path>) -> GuardrailSummary {
             value: "Dev server binds to localhost addresses and keeps the developer's machine, repo files, Git state, terminal sessions, credentials, and environment variables inside the local trust boundary.".to_string(),
         },
         canonical: vec![
-            guardrail_path("Wiki truth", "wiki/", "Repo-visible HTML docs, plans, source briefs, and project log."),
+            guardrail_path("Wiki truth", "wiki/", "Repo-visible MDX docs, plans, source briefs, and project log."),
             guardrail_path("Git truth", ".git", "Durable implementation history and reviewable changes."),
         ],
         runtime: vec![
@@ -353,14 +356,26 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
             .sessions
             .unwrap_or_else(|| ".hyperwiki/sessions".to_string()),
     };
+    let current_path = if workspace.status.current_path.is_empty() {
+        workspace.plan.path.clone()
+    } else {
+        workspace.status.current_path.clone()
+    };
+    let current_source = crate::domain::wiki::read_wiki_source(root, &current_path).ok();
+    let current_markdown = current_source
+        .as_ref()
+        .map(|source| redact_external_urls(&source.markdown))
+        .unwrap_or_default();
     let plan = ContractPlan {
         dashboard: workspace.plan.clone(),
         status: workspace.status.clone(),
-        current_path: if workspace.status.current_path.is_empty() {
-            workspace.plan.path.clone()
-        } else {
-            workspace.status.current_path.clone()
-        },
+        current_path,
+        source_path: current_source
+            .as_ref()
+            .map(|source| source.path.clone())
+            .unwrap_or_default(),
+        format: "mdx".to_string(),
+        markdown: current_markdown,
     };
     let agent = ContractAgent {
         launch_command: config
@@ -384,14 +399,14 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         repo: crate::domain::git::repo_context(root),
         plan,
         sources: ContractSources {
-            index_path: "/wiki/sources.html".to_string(),
+            index_path: "/wiki/sources.mdx".to_string(),
             briefs: workspace.sources.briefs.clone(),
         },
         verification,
         guardrails: guardrail_summary(root),
         layout: workspace.layout,
         wiki: ContractWiki {
-            index_path: "/wiki/index.html".to_string(),
+            index_path: "/wiki/index.mdx".to_string(),
             pages: crate::domain::wiki::list_wiki_pages(root, None).pages,
         },
         agent,
@@ -401,6 +416,47 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
     };
     contract.agent_context = agent_context_from_contract(&contract);
     contract
+}
+
+fn redact_external_urls(markdown: &str) -> String {
+    let mut output = String::with_capacity(markdown.len());
+    let mut token = String::new();
+    for ch in markdown.chars() {
+        if ch.is_whitespace() {
+            output.push_str(&redact_external_url_token(&token));
+            token.clear();
+            output.push(ch);
+        } else {
+            token.push(ch);
+        }
+    }
+    output.push_str(&redact_external_url_token(&token));
+    output
+}
+
+fn redact_external_url_token(token: &str) -> String {
+    let trimmed = token.trim_matches(|ch: char| matches!(ch, ')' | '(' | ',' | ';' | '.'));
+    if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
+        return token.to_string();
+    }
+    let Some(host) = url_host(trimmed) else {
+        return "[external-url]".to_string();
+    };
+    if host == "localhost" || host == "127.0.0.1" || host.ends_with(".localhost") {
+        token.to_string()
+    } else {
+        token.replace(trimmed, "[external-url]")
+    }
+}
+
+fn url_host(url: &str) -> Option<&str> {
+    let rest = url
+        .strip_prefix("https://")
+        .or_else(|| url.strip_prefix("http://"))?;
+    let end = rest
+        .find(|ch| matches!(ch, '/' | ':' | '?' | '#'))
+        .unwrap_or(rest.len());
+    rest.get(..end).filter(|host| !host.is_empty())
 }
 
 fn verification_loops(root: impl AsRef<Path>) -> Vec<VerificationLoop> {
@@ -685,7 +741,7 @@ fn source_brief_summary(root: &Path) -> Vec<SourceBrief> {
     let mut briefs = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
-        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("html") {
+        if !path.is_file() || path.extension().and_then(|value| value.to_str()) != Some("mdx") {
             continue;
         }
         let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
@@ -856,7 +912,7 @@ fn display_wiki_path(path: &str) -> String {
 }
 
 fn title_from_path(path: &str) -> String {
-    path.trim_end_matches(".html")
+    path.trim_end_matches(".mdx")
         .split('-')
         .map(|part| {
             let mut chars = part.chars();
@@ -933,6 +989,20 @@ fn agent_context_from_contract(contract: &ProjectContract) -> String {
                 &contract.plan.current_path
             }
         ),
+        format!(
+            "Current plan source: {}",
+            if contract.plan.source_path.is_empty() {
+                "Unknown"
+            } else {
+                &contract.plan.source_path
+            }
+        ),
+        "Current plan Markdown:".to_string(),
+        if contract.plan.markdown.is_empty() {
+            "- Not available".to_string()
+        } else {
+            contract.plan.markdown.clone()
+        },
         format!(
             "Boundary: {}; canonical truth lives in {}.",
             contract.boundary,
@@ -1064,7 +1134,7 @@ mod tests {
             .verification
             .iter()
             .any(|loop_item| loop_item.id == "manual-dogfood"));
-        assert_eq!(workspace.plan.path, "/wiki/plans/index.html");
+        assert_eq!(workspace.plan.path, "/wiki/plans/index.mdx");
     }
 
     #[test]
@@ -1089,6 +1159,17 @@ mod tests {
     }
 
     #[test]
+    fn project_contract_markdown_redaction_preserves_local_urls_and_whitespace() {
+        let markdown = "See https://github.com/example/repo\nUse http://127.0.0.1:3000 and https://branch.hyperwiki.localhost/path.";
+        let redacted = redact_external_urls(markdown);
+
+        assert_eq!(
+            redacted,
+            "See [external-url]\nUse http://127.0.0.1:3000 and https://branch.hyperwiki.localhost/path."
+        );
+    }
+
+    #[test]
     fn project_contract_composes_agent_context_and_project_facts() {
         let root = temp_root("contract");
         make_project(&root);
@@ -1097,7 +1178,7 @@ mod tests {
             root.join(".hyperwiki").join("config.json"),
             serde_json::json!({
                 "projectName": "Contract Smoke",
-                "canonicalWiki": "html",
+                "canonicalWiki": "mdx",
                 "agent": { "launchCommand": "codex --yolo" }
             })
             .to_string(),
@@ -1113,12 +1194,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Home</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("sources").join("prd.html"),
+            root.join("wiki").join("sources").join("prd.mdx"),
             "<h1>PRD</h1><section class=\"summary\"><ul><li>Source brief</li></ul></section>",
         )
         .unwrap();
@@ -1129,14 +1210,17 @@ mod tests {
         assert_eq!(contract.kind, "hyperwiki.project-contract");
         assert_eq!(contract.boundary, "localhost-tooling");
         assert_eq!(contract.project.name, "Contract Smoke");
-        assert_eq!(contract.project.canonical_wiki, "html");
-        assert_eq!(contract.plan.dashboard.path, "/wiki/plans/index.html");
-        assert_eq!(contract.sources.index_path, "/wiki/sources.html");
+        assert_eq!(contract.project.canonical_wiki, "mdx");
+        assert_eq!(contract.plan.dashboard.path, "/wiki/plans/index.mdx");
+        assert_eq!(contract.plan.source_path, "/wiki/plans/index.mdx");
+        assert_eq!(contract.plan.format, "mdx");
+        assert!(contract.plan.markdown.contains("Current stage: Stage 01"));
+        assert_eq!(contract.sources.index_path, "/wiki/sources.mdx");
         assert!(contract
             .sources
             .briefs
             .iter()
-            .any(|brief| brief.path == "/wiki/sources/prd.html"));
+            .any(|brief| brief.path == "/wiki/sources/prd.mdx"));
         assert!(contract
             .verification
             .loops
@@ -1151,9 +1235,10 @@ mod tests {
             .wiki
             .pages
             .iter()
-            .any(|page| page.path == "/wiki/index.html"));
+            .any(|page| page.path == "/wiki/index.mdx"));
         assert_eq!(contract.agent.launch_command, "codex --yolo");
         assert!(contract.agent_context.contains("Project: Contract Smoke"));
+        assert!(contract.agent_context.contains("Current plan Markdown:"));
         assert!(contract.agent_context.contains("Verification loops:"));
     }
 
@@ -1166,12 +1251,12 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li><li>Added baseline.</li></ul></section>",
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("log.html"),
+            root.join("wiki").join("log.mdx"),
             "<h1>Log</h1><h2>Latest entry</h2>",
         )
         .unwrap();

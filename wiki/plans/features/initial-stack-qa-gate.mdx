@@ -1,0 +1,33 @@
+---
+title: "Initial Stack Q&A Gate"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+status: "complete"
+---
+
+<h1>Initial Stack Q&amp;A Gate</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Goal: make the initial project Q&amp;A explicitly resolve frontend, backend, data, auth, services, provider, and verification stack decisions before plan generation.</li>
+    <li>Current unit: complete</li>
+    <li>Validation: <code>pnpm run check</code>, targeted import-planning Rust tests, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Keep <code>$grill-with-docs</code> engaged for the interview style.</li>
+    <li>Add explicit stack completeness requirements to agent planning prompts.</li>
+    <li>Extend deterministic import planning with required stack questions and carry those answers into the technical foundation unit.</li>
+  </ul>
+</section>
+<Verification>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code></li>
+    <li><code>pnpm run smoke:tauri-static-assets</code></li>
+  </ul>
+</Verification>

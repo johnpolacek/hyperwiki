@@ -1,0 +1,43 @@
+---
+title: "Visible Agent Activity Feed"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Visible Agent Activity Feed</h1>
+
+<section>
+  <h2>Status</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective UI plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: continue dogfooding agent handoffs and refine feed parsing when new terminal output patterns appear.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>Modify, Execute, worktree, and review handoffs should show a clear live feed of what the agent is doing instead of switching to a raw terminal view that can look idle while Codex is working.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Add a tracked agent-run state for handoff phase, current activity, feed lines, and outcome.</li>
+    <li>Render a simplified Agent Activity pane by default after agent handoffs, with raw terminal available as an explicit secondary view.</li>
+    <li>Reuse terminal event parsing to populate a full scrollable feed and a copy-friendly troubleshooting transcript while suppressing spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
+    <li>Treat remaining manual/provider gates as outcome detail after a completed agent run instead of classifying the whole handoff as blocked.</li>
+    <li>Disable normal Modify and Execute actions for completed or stale plan pages and show an Open current action when active work exists.</li>
+    <li>Constrain Modify Plan handoffs to planning/wiki edits only. The textarea request is wrapped in an explicit docs-only prompt so agents update app-visible wiki planning files rather than implementing product code, changing dependencies, or running ahead into execution.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run <code>pnpm run check</code>.</li>
+    <li>Run <code>pnpm run smoke:tauri-static-assets</code>.</li>
+    <li>Use <code>agent-browser</code> against the existing Vite preview to confirm the workspace shell still renders.</li>
+  </ul>
+</section>

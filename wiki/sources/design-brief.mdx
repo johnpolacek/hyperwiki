@@ -1,0 +1,24 @@
+---
+title: "Design Brief"
+description: "Hyperwiki source page."
+wikiKind: "source"
+---
+
+<h1>Design Brief</h1>
+<h2>Status</h2>
+<ul>
+  <li>Last reviewed: 2026-05-22</li>
+  <li>Evidence basis: product definition, dogfood plan, Stage 07 workspace implementation, browser smoke coverage, and the React/shadcn/MDX rewrite readiness plan</li>
+  <li>Confidence: high</li>
+</ul>
+<h2>Interface Principles</h2>
+<ul>
+  <li>Dense, quiet, work-focused local development surface.</li>
+  <li>Wiki navigation and terminal panels must remain scannable together.</li>
+  <li>Agent automation must be visible as a named terminal panel and driven by explicit project configuration.</li>
+  <li>Repo files and Git are canonical, so the UI should reveal file paths and runtime boundaries.</li>
+  <li>The Projects page should stay compact and work-focused, surfacing registered projects and direct project import as operational controls rather than a marketing-style landing page.</li>
+  <li>Plan pages should feel executable from the command bar: breadcrumbs orient the user, Modify routes scoped plan edits to the agent, Execute starts main or worktree implementation, and completed pages hide action controls.</li>
+  <li>Sidebar navigation should keep plans primary, chronological, and compact while pinning Project links to the bottom as supporting context.</li>
+  <li>The frontend rewrite should use shadcn/ui as a disciplined component source system and Tailwind v4 semantic tokens, not as decorative styling. The repo-local shadcn and Tailwind design-system skills are required preflight context for implementation agents.</li>
+</ul>

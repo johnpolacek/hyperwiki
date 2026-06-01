@@ -1,0 +1,29 @@
+---
+title: "Theme Inter Font Replacement"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Theme Inter Font Replacement</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact theme preset maintenance</li>
+    <li>Current unit: complete</li>
+    <li>Next action: none.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> font loading check for Rethink Sans and Figtree.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Built-in themes should no longer use Inter. Presets that previously selected Inter now use Rethink Sans, Daybreak uses Figtree, and the built-in preset font families are bundled so theme tokens and preset tiles resolve to real local font faces instead of falling through to system UI.</p>
+</section>
+<section>
+  <h2>Deep Dive Result</h2>
+  <p>The theme token path was already correct: settings presets normalize into <code>--docs-serif-font</code>, Tailwind v4 maps <code>--font-sans</code> to that CSS variable, and React surfaces inherit <code>font-family: var(--font-sans)</code>. The missing layer was font availability. Without local <code>@font-face</code> declarations, WebKit displayed the named token in Settings but rendered the system fallback.</p>
+</section>
+<section>
+  <h2>Follow-Up</h2>
+  <p>The Edit Theme controls now include a compact font summary so the active Body, Sidebar, Mono, and Terminal font names are visible while editing presets. Preset picker tiles render each preset's name in its own body font and slug in its own mono font, independent of the currently active theme.</p>
+</section>

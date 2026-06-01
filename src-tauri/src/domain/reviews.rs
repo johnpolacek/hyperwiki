@@ -123,7 +123,7 @@ pub fn prepare_review_workflow(
     let contract = crate::domain::verification::project_contract(root.as_ref());
     let current_page = current_page.unwrap_or_else(|| {
         if contract.plan.current_path.is_empty() {
-            "/wiki/plans/index.html"
+            "/wiki/plans/index.mdx"
         } else {
             contract.plan.current_path.as_str()
         }
@@ -183,6 +183,13 @@ fn review_workflow_prompt(
         String::new(),
         "Project contract:".to_string(),
         contract.agent_context.clone(),
+        String::new(),
+        "Current plan Markdown source:".to_string(),
+        if contract.plan.markdown.is_empty() {
+            "- Not available".to_string()
+        } else {
+            contract.plan.markdown.clone()
+        },
         String::new(),
         "Review instructions:".to_string(),
         instructions,
@@ -285,7 +292,7 @@ mod tests {
             let prepared = prepare_review_workflow(
                 &root,
                 workflow_id,
-                Some("/wiki/plans/index.html"),
+                Some("/wiki/plans/index.mdx"),
                 true,
             )
             .unwrap();
@@ -298,6 +305,7 @@ mod tests {
             assert!(prompt.contains(&format!("Workflow: {label}")));
             assert!(prompt.contains("Project: Review Test"));
             assert!(prompt.contains("Current plan:"));
+            assert!(prompt.contains("Current plan Markdown source:"));
             assert!(prompt.contains("Verification loops:"));
             assert!(prompt.contains(
                 "Do not edit wiki files, commit, or change code unless the user explicitly asks"
@@ -313,9 +321,9 @@ mod tests {
             "{\"projectName\":\"Review Test\"}",
         )
         .unwrap();
-        fs::write(root.join("wiki").join("index.html"), "<h1>Home</h1>").unwrap();
+        fs::write(root.join("wiki").join("index.mdx"), "<h1>Home</h1>").unwrap();
         fs::write(
-            root.join("wiki").join("plans").join("index.html"),
+            root.join("wiki").join("plans").join("index.mdx"),
             "<h1>Plans</h1><section class=\"summary\"><ul><li>Status: active</li></ul></section>",
         )
         .unwrap();

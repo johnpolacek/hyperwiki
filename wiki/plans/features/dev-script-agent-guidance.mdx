@@ -1,0 +1,31 @@
+---
+title: "Dev Script Agent Guidance"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Dev Script Agent Guidance</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Goal: make new-project and Execute handoffs explicitly require a runnable package dev script when building app previews.</li>
+        <li>Current unit: none</li>
+        <li>Validation: <code>pnpm run check</code> and <code>pnpm run smoke:init</code>.</li>
+      </ul>
+    </section>
+    <h2>Intent</h2>
+    <p>Agents working on generated projects should not infer dev-preview setup from scattered docs. If the project is an app or previewable site, the handoff should explicitly tell the agent to create or update <code>package.json</code> with a runnable <code>dev</code> script, preferably backed by Portless.</p>
+    <h2>Scope</h2>
+    <ul>
+      <li>Update new-project handoff prompts.</li>
+      <li>Update Execute prompts for main and worktree implementation.</li>
+      <li>Update generated <code>AGENTS.md</code>, development page, and technical brief defaults.</li>
+      <li>Keep existing Portless wrapping behavior for repositories that already have a <code>dev</code> script.</li>
+    </ul>
+    <h2>Outcome</h2>
+    <ul>
+      <li>New Project handoffs now tell agents to create or update <code>package.json</code> with a runnable <code>dev</code> script for previewable apps.</li>
+      <li>Execute handoffs now repeat the same requirement for main and worktree implementation.</li>
+      <li>Generated project guidance now names Portless-backed <code>dev</code> scripts and <code>dev:app</code> as the preferred structure.</li>
+    </ul>

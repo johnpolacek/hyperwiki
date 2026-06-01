@@ -1,0 +1,31 @@
+---
+title: "Static Import Plan Richness"
+description: "Make deterministic static import plans use rich MDX planning components."
+wikiKind: "plan"
+---
+
+<PlanHero title="Static Import Plan Richness" status="complete" description="Upgrade the static-local import compiler so simple projects still produce visually rich, executable planning docs." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact fix plan</li>
+    <li>Completed unit: Unit 01 - Rich static plan templates</li>
+    <li>Next action: dogfood a fresh static/local import and inspect the generated stage and unit pages in the app.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused import runtime tests, import planning validation, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Rich static plan templates">
+  <p>Change the Rust-owned static-local MVP compiler to emit richer MDX structures for stage and unit pages, including cards, task lists, columns, examples, and titled verification blocks where those structures make planning content easier to scan.</p>
+  <p>Keep the generated docs source-grounded and executable: the minimal project should still mention <code>index.html</code>, browser <code>localStorage</code>, debounced autosave, clear-entry behavior, local-only constraints, dependencies, and manual browser acceptance checks.</p>
+</PlanUnit>
+
+<Verification>
+  <ul>
+    <li>Completed: focused compiler tests assert the static-local artifacts contain rich MDX components.</li>
+    <li>Completed: generated artifacts still pass import artifact validation.</li>
+    <li>Completed: <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</Verification>

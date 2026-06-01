@@ -1,0 +1,38 @@
+---
+title: "Prewarmed Modify Codex Sessions"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+status: "complete"
+---
+
+<PlanHero>
+  <h1>Prewarmed Modify Codex Sessions</h1>
+  <p>Keep a hidden Codex Modify session ready for the active plan so Modify Plan does not wait for the Codex TUI startup path.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: terminal-session latency reduction</li>
+    <li>Goal: prewarm one hidden <code>codex --yolo</code> modify session for the active plan scope, promote it when Modify is clicked, and reuse it for later Modify requests in that plan.</li>
+    <li>Boundary: v1 only changes Modify Plan handoffs; Execute, Review, and manual <code>+ agent</code> behavior remain visible-session workflows.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Add runtime session metadata for <code>visibility</code> and <code>purpose</code> so prewarmed sessions are live and prompt-addressable while hidden from terminal panes.</li>
+    <li>Start or reuse a hidden <code>purpose="modify"</code> agent for the current plan scope after active plan navigation.</li>
+    <li>Promote the hidden modify session to visible when Modify runs, target it by exact <code>sessionId</code>, and keep it as the ongoing modify session for that plan.</li>
+    <li>Keep visited incomplete plan modify sessions alive; close modify sessions for completed plan scopes when they are not mid-run.</li>
+  </ul>
+</section>
+
+<Verification>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run smoke:tauri-static-assets</code></li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml sessions terminal agent_prompt</code></li>
+  </ul>
+</Verification>

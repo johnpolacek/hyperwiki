@@ -1,0 +1,93 @@
+---
+title: "Import Idea Document Navigation"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Import Idea Document Navigation</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact corrective feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: finish the worktree after reviewing the branch against updated <code>origin/main</code>.</li>
+    <li>Blockers: none</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:ideas</code>, and targeted browser import verification against the worktree dev server passed. Full <code>pnpm run smoke:browser</code> reached an unrelated terminal-selection assertion failure after the idea import assertions passed.</li>
+  </ul>
+</section>
+<section>
+  <h2>Problem</h2>
+  <p>The Dashboard idea import currently starts an agent with instructions to create <code>wiki/ideas/&lt;slug&gt;.mdx</code>. When importing an idea document, the expected product behavior is for hyperwiki itself to create a new idea document and navigate to it.</p>
+  <p>This plan changes idea import from an agent handoff into deterministic app behavior while preserving project import as an agent-assisted workflow unless explicitly changed later.</p>
+</section>
+<section>
+  <h2>Intended Outcome</h2>
+  <ul>
+    <li>Selecting or entering an idea document from the Dashboard creates a new HTML idea page under <code>wiki/ideas/</code>.</li>
+    <li>The app navigates to the newly-created idea page after creation so the user can review and continue from the canonical document.</li>
+    <li>The created page is visible in the Ideas list and keeps the existing idea promotion action.</li>
+    <li>Failures are shown as Dashboard status without starting an unrelated agent session.</li>
+  </ul>
+</section>
+<section>
+  <h2>Confirmed Decisions</h2>
+  <ul>
+    <li>Imported HTML should be kept nearly as-is inside the wiki layout.</li>
+    <li>Imported Markdown should be converted to HTML for the created idea page.</li>
+    <li>Slug collisions should auto-suffix the new page path instead of overwriting or blocking.</li>
+    <li>Successful creation should navigate directly and automatically to <code>/wiki/ideas/&lt;slug&gt;.mdx</code> in the current workspace frame.</li>
+    <li>The form can clear after success; navigation away from the Dashboard is the visible outcome.</li>
+    <li>Typed manual ideas and file imports should both use the same create-and-navigate flow when the form is valid.</li>
+  </ul>
+</section>
+<section>
+  <h2>Likely Implementation</h2>
+  <ul>
+    <li>Add a local HTTP endpoint such as <code>POST /api/ideas/create</code> in <code>src/server.js</code>.</li>
+    <li>Accept title, imported content, and document type from the Dashboard; validate required fields and keep writes constrained to <code>wiki/ideas/</code>.</li>
+    <li>Generate a unique slug if <code>wiki/ideas/&lt;slug&gt;.mdx</code> already exists.</li>
+    <li>Render imported Markdown into HTML and preserve imported HTML content nearly as provided inside the existing wiki HTML layout.</li>
+    <li>Replace <code>handOffIdeaMarkdown</code> in <code>public/app.js</code> with an API call, list refresh, and navigation to the returned idea URL.</li>
+    <li>Update <code>tests/ideas-smoke.mjs</code> and <code>tests/browser-smoke.mjs</code> so coverage expects page creation and navigation rather than agent handoff text.</li>
+  </ul>
+</section>
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>No change to idea promotion into full projects.</li>
+    <li>No change to Dashboard project import unless a later decision says project imports should also become deterministic.</li>
+    <li>No new database or hidden idea store; ideas remain repo-visible HTML files under <code>wiki/ideas/</code>.</li>
+    <li>No broad redesign of Dashboard layout or idea page styling.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Result</h2>
+  <ul>
+    <li>Added <code>POST /api/ideas/create</code> for deterministic idea page creation under <code>wiki/ideas/</code>.</li>
+    <li>Dashboard idea submit and file import now create the idea directly, refresh the Dashboard data, and navigate to the new idea page.</li>
+    <li>Markdown imports are converted to HTML; HTML imports preserve the imported body/main content inside the wiki layout.</li>
+    <li>Duplicate idea titles auto-suffix the generated slug.</li>
+    <li>Server smoke coverage now checks creation, suffixing, Markdown conversion, HTML preservation, and validation errors.</li>
+  </ul>
+</section>
+<section>
+  <h2>Acceptance Criteria</h2>
+  <ul>
+    <li>Creating an idea from typed content writes a unique HTML page under <code>wiki/ideas/</code> and navigates to it.</li>
+    <li>Creating an idea from imported Markdown or HTML infers the title, writes the page, and navigates to it.</li>
+    <li>Imported HTML content is preserved nearly as-is inside the idea page layout; imported Markdown is converted to HTML.</li>
+    <li>Duplicate titles produce an auto-suffixed slug rather than overwriting an existing idea.</li>
+    <li>The API rejects paths or titles that would escape <code>wiki/ideas/</code>.</li>
+    <li>Existing idea listing and promotion behavior continue to work for created idea pages.</li>
+    <li>Automated smoke coverage proves the create-and-navigate behavior in both server-level and browser-level flows.</li>
+  </ul>
+</section>
+  <section>
+      <h2>Finish</h2>
+      <ul>
+        <li>Finish date: 2026-05-14</li>
+        <li>Branch: <code>feature/import-idea-document-navigation</code></li>
+        <li>Finish policy: merge</li>
+      </ul>
+    </section>

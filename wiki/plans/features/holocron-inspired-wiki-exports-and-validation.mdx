@@ -1,0 +1,55 @@
+---
+title: "Holocron-Inspired Wiki Exports and Validation"
+description: "Selective local-first wiki export and validation improvements inspired by Holocron."
+wikiKind: "plan"
+---
+
+<PlanHero title="Holocron-Inspired Wiki Exports and Validation" status="complete" description="Adopt the high-value local wiki patterns from the Holocron assessment without adopting Holocron's runtime." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: Unit 01 - local Markdown exports and wiki index enrichment complete</li>
+    <li>Next action: defer AST-based MDX processing, search indexing, zip export, and virtual reference pages to future plans.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused Rust wiki/API tests, TypeScript check/static smoke, frontend build, and Rust cargo check passed.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Intent</h2>
+  <p>Improve Hyperwiki's agent-readable local wiki surface using the Holocron assessment's conservative recommendations while preserving Tauri/Rust ownership, repo-local files, and local-only trust boundaries.</p>
+</section>
+
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Expose per-page Markdown through a local API alias that is explicit about Markdown output.</li>
+    <li>Add a local <code>llms.txt</code>-style wiki export assembled from repo-visible MDX pages and their Markdown derivatives.</li>
+    <li>Enrich the Rust wiki page index with parsed frontmatter, headings, wiki links, and validation warnings for unresolved internal links.</li>
+    <li>Add an app-visible copy-as-Markdown action for React-rendered plan pages.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>No Holocron runtime dependency, Spiceflow/RSC shell, deploy target, hosted docs model, or <code>docs.json</code> canonical structure.</li>
+    <li>No arbitrary MDX/TSX imports or full AST pipeline in this unit.</li>
+    <li>No zip export until the page/index export model is proven useful.</li>
+  </ul>
+</section>
+
+<PlanUnit title="Unit 01 - Local Markdown Exports and Wiki Index Enrichment">
+  <p>Implement the smallest durable product slice from the assessment: agent-readable local exports, first-class metadata on the wiki index, broken-link warnings, and a copy-as-Markdown button for plan pages.</p>
+  <Verification>
+    <ul>
+      <li>Passed: <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>.</li>
+      <li>Passed: <code>pnpm run check</code>.</li>
+      <li>Passed: <code>pnpm run build:frontend</code>.</li>
+      <li>Passed: <code>pnpm run check:tauri</code>.</li>
+      <li>Attempted: frontend-only Vite preview through <code>agent-browser</code>; it reached the app shell but wiki content could not load without the Tauri command transport.</li>
+    </ul>
+  </Verification>
+</PlanUnit>

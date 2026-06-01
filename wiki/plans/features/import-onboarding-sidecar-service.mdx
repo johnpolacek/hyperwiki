@@ -1,0 +1,105 @@
+---
+title: "Import Onboarding Sidecar Service"
+description: "Evaluate a separate local sidecar service for imported-project Q&A, run lifecycle, events, and Codex orchestration."
+wikiKind: "plan"
+---
+
+<h1>Import Onboarding Sidecar Service</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: candidate architecture plan</li>
+    <li>Candidate: 2 - Separate sidecar service over local HTTP, Unix socket, or named pipe</li>
+    <li>Goal: move import onboarding into a long-lived local engine process with stable run IDs, event streaming, recovery, and human-input endpoints.</li>
+    <li>Next action: compare this candidate against the in-process backend state machine and other architecture candidates before implementation selection.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Introduce a dedicated local sidecar service that owns imported-project onboarding runs independently of the Tauri webview lifecycle. The Tauri app becomes a client of this service, subscribing to events and sending answers, while the sidecar owns sessions, Codex communication, run state, cancellation, retries, and durable onboarding state.</p>
+  <p>This candidate is inspired by engine-first systems such as Tandem and opencode, but scoped only to the import onboarding problem unless implementation evidence shows the broader engine boundary is worth adopting.</p>
+</section>
+<section>
+  <h2>Architecture</h2>
+  <ul>
+    <li>Add a local <code>hyperwiki-engine</code> or import-onboarding sidecar process launched by Tauri on app startup or first use.</li>
+    <li>The sidecar exposes a narrow local API for onboarding sessions, runs, answers, cancellation, health, and event streaming.</li>
+    <li>Use local HTTP plus server-sent events for the first experiment because it is easiest to inspect and test; keep Unix socket or named pipe as a security and port-collision alternative.</li>
+    <li>Bind to loopback only when HTTP is used, with a per-user local capability token if the endpoint is reachable from outside Tauri.</li>
+    <li>Keep Codex behind a sidecar-owned adapter. The sidecar can use persistent <code>codex app-server</code>, <code>codex exec --json</code>, or future Codex daemon attachment without React knowing which transport won.</li>
+    <li>Store runtime state under ignored <code>.hyperwiki/state/</code> or the app-level Hyperwiki state root, not in React memory.</li>
+  </ul>
+</section>
+<section>
+  <h2>API Contract</h2>
+  <ul>
+    <li><code>GET /health</code> returns readiness, phase, build, selected transport, and last startup error.</li>
+    <li><code>POST /projects/{projectId}/import-onboarding/session</code> creates or resumes the onboarding session.</li>
+    <li><code>POST /import-onboarding/{sessionId}/run</code> starts the next Codex-backed onboarding run and returns <code>runId</code> plus an event stream path.</li>
+    <li><code>GET /import-onboarding/{sessionId}/run</code> returns the active run, current state, and reattach path after app reload or stream reconnect.</li>
+    <li><code>POST /import-onboarding/{sessionId}/answer</code> records a user answer and starts or schedules the next run.</li>
+    <li><code>POST /import-onboarding/{sessionId}/run/{runId}/cancel</code> cancels the active run by run ID.</li>
+    <li><code>GET /event?sessionId=...&amp;runId=...</code> streams normalized onboarding events.</li>
+  </ul>
+</section>
+<section>
+  <h2>Event Model</h2>
+  <ul>
+    <li>Emit typed events for run started, progress, assistant delta, question ready, answer recorded, plan generation started, plan ready, retryable failure, run failed, run cancelled, and run completed.</li>
+    <li>Include <code>sessionId</code>, <code>runId</code>, <code>projectId</code>, monotonic event sequence, timestamp, and correlation ID in every event.</li>
+    <li>On reconnect, clients fetch the active run and reattach to the event stream. The service emits a fresh state snapshot before live events.</li>
+    <li>Do not require React to infer canonical state from event tails. The service remains the source of truth.</li>
+  </ul>
+</section>
+<section>
+  <h2>Lifecycle</h2>
+  <ul>
+    <li>Tauri resolves the sidecar binary, selects the transport, starts the process, and polls health until ready.</li>
+    <li>If the preferred port is busy, local HTTP can fall back to an ephemeral port recorded in Tauri runtime state.</li>
+    <li>The sidecar should survive webview reloads. Tauri owns shutdown for app-owned sidecars and attaches to an existing compatible service when configured.</li>
+    <li>Add a circuit breaker around sidecar startup and event subscription failures so the UI shows a clear degraded state instead of looping silently.</li>
+    <li>Keep logs structured with <code>sessionId</code>, <code>runId</code>, <code>projectId</code>, transport, and phase.</li>
+  </ul>
+</section>
+<section>
+  <h2>Flow</h2>
+  <ul>
+    <li>Import creates or selects a Hyperwiki project, then Tauri asks the sidecar to create or resume an onboarding session.</li>
+    <li>The sidecar loads compact imported-source context and starts the first run.</li>
+    <li>React subscribes to the run event stream and renders progress until a question-ready event arrives.</li>
+    <li>React submits the answer to the sidecar. The sidecar writes durable Q&amp;A, starts the follow-up run, and streams the next state.</li>
+    <li>Codex generates final MDX plan docs when no blocking decisions remain. The sidecar validates actual wiki files before emitting plan ready.</li>
+  </ul>
+</section>
+<section>
+  <h2>Tradeoffs</h2>
+  <ul>
+    <li>Benefits: clean process isolation, reload-safe sessions, easier event-stream debugging, potential reuse by future CLI or web clients, and a clearer engine boundary.</li>
+    <li>Costs: more packaging, lifecycle, auth, port/socket, versioning, logging, and integration-test complexity than an in-process Tauri backend manager.</li>
+    <li>Risk: this may overbuild the import onboarding fix if Hyperwiki does not need multiple clients or a shared engine boundary soon.</li>
+    <li>Mitigation: scope the first slice to import onboarding only, with a narrow API and no broad engine rewrite.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Sidecar starts once, reports healthy, and remains available across webview reloads.</li>
+    <li>Fresh import creates an onboarding session, starts a run, and streams progress immediately.</li>
+    <li>First and follow-up questions appear through events without React parsing Codex output.</li>
+    <li>Active run can be recovered through <code>GET /import-onboarding/{sessionId}/run</code> and reattached after reconnect.</li>
+    <li>Concurrent start attempts return the active run instead of spawning duplicate Codex work.</li>
+    <li>Cancel-by-run-ID stops a run and leaves the session in a retryable or idle state.</li>
+    <li>Port conflict, sidecar crash, and malformed Codex output produce explicit UI states.</li>
+    <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, sidecar unit tests, and a local import-onboarding event-stream smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Best user experience remains the primary criterion, followed by implementation simplicity.</li>
+    <li>Codex remains responsible for generated MVP plan docs.</li>
+    <li>The sidecar boundary is only worth choosing if reload safety, stream observability, and future client reuse outweigh packaging and lifecycle cost.</li>
+    <li>Structured streaming, progressive context, human-input bridging, and artifact-contract validation remain separate comparison dimensions that can be layered onto this candidate.</li>
+  </ul>
+</section>

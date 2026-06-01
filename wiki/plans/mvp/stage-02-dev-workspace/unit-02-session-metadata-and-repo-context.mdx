@@ -1,0 +1,19 @@
+---
+title: "Unit 02 - Session Metadata And Repo Context"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 02 - Session Metadata And Repo Context</h1>
+<p><a href="/wiki/plans/mvp/stage-02-dev-workspace.mdx">Stage 02 - HTML Wiki and Dev Workspace</a></p>
+<section className="summary">
+  <h2>Summary</h2>
+<ul>
+    <li>Status: complete</li>
+    <li>Persist transparent terminal/session metadata under <code>.hyperwiki/sessions/</code> without treating it as canonical project truth.</li>
+    <li>Add terminal lifecycle controls for close, restart, rename, and status reporting.</li>
+    <li>Add visible repo context: root path, branch, dirty status, and whether the workspace is running in a Git worktree.</li>
+    <li>Expose this context through local-only JSON endpoints used by the workspace UI.</li>
+    <li>Verification: <code>npm run check</code>, <code>npm run smoke:browser</code>, repo context endpoint smoke test, session metadata endpoint smoke test, direct WebSocket session metadata smoke test.</li>
+  </ul>
+</section>

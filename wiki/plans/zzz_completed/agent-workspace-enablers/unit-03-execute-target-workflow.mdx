@@ -1,0 +1,37 @@
+---
+title: "Unit 03 - Execute Target Workflow"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 03 - Execute Target Workflow</h1>
+    <p><a href="/wiki/plans/zzz_completed/agent-workspace-enablers.mdx">Agent Workspace Enablers</a></p>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>The workspace opens with terminal controls visible but no active terminals; Execute starts agent work intentionally from the current wiki context.</li>
+        <li>Execute targets support main checkout and worktree handoff, including <code>parallel-dev-worktrees</code> guidance and Portless preview links.</li>
+        <li>Verification: covered by <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, and browser smoke assertions for lazy terminals, Execute menu behavior, prompts, and preview links.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Goal</h2>
+      <p>Start work intentionally from the current wiki context instead of opening terminals on workspace load.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Add an Execute menu with main and worktree targets.</li>
+        <li>Create agent terminals lazily and run the dev log collapsed after execution starts.</li>
+        <li>Prepare initialized projects with Portless and parallel worktree guidance.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification</h2>
+      <ul>
+        <li><code>pnpm run check</code>.</li>
+        <li><code>pnpm run smoke:launch</code>.</li>
+        <li><code>pnpm run smoke:browser</code>.</li>
+      </ul>
+    </section>

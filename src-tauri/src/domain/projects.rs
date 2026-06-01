@@ -47,6 +47,8 @@ pub struct ProjectRecord {
     pub last_opened_at: Option<String>,
     #[serde(default)]
     pub active: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub import_planning: Option<crate::domain::import_planning::ImportPlanningStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -77,7 +79,36 @@ pub struct ProjectCreateRequest {
     #[serde(default)]
     pub document_type: Option<String>,
     #[serde(default)]
+    pub source_documents: Vec<SourceDocument>,
+    #[serde(default)]
+    pub planning_answers: BTreeMap<String, PlanningAnswer>,
+    #[serde(default)]
     pub initialize_git: Option<bool>,
+    #[serde(default)]
+    pub install_agent_skills: Option<bool>,
+    #[serde(default)]
+    pub agent_launch_command: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceDocument {
+    pub name: String,
+    pub document_type: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanningAnswer {
+    #[serde(default)]
+    pub value: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub detail: String,
+    #[serde(default)]
+    pub tradeoff: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -160,6 +191,9 @@ impl ProjectRegistry {
             available: true,
             last_opened_at: Some(now_isoish()),
             active: false,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &project.root,
+            )),
         };
         registry.projects = prune_missing_worktrees(with_unique_slugs(
             std::iter::once(record.clone())
@@ -176,7 +210,7 @@ impl ProjectRegistry {
     }
 
     pub fn list(&self, active_id: Option<&str>) -> ProjectList {
-        let records = with_unique_slugs(self.read_raw().projects);
+        let records = self.available_records();
         let projects_to_list = prune_missing_worktrees(records);
         let mut projects = Vec::new();
 
@@ -203,6 +237,9 @@ impl ProjectRegistry {
                 worktree_slug,
                 available: project.available,
                 active: false,
+                import_planning: project
+                    .available
+                    .then(|| crate::domain::import_planning::import_planning_status(&item.root)),
                 ..item
             });
         }
@@ -230,7 +267,7 @@ impl ProjectRegistry {
         project_slug: &str,
         worktree_slug: Option<&str>,
     ) -> Option<ProjectRecord> {
-        let projects = with_unique_slugs(self.read_raw().projects);
+        let projects = self.available_records();
         let record = projects
             .iter()
             .find(|item| {
@@ -242,12 +279,18 @@ impl ProjectRegistry {
         project.available.then_some(ProjectRecord {
             name: project.name,
             available: true,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &record.root,
+            )),
             ..record
         })
     }
 
     pub fn resolve(&self, id: Option<&str>, fallback_root: Option<&Path>) -> Option<ProjectRecord> {
-        let registry = self.read_raw();
+        let registry = RegistryFile {
+            version: 1,
+            projects: self.available_records(),
+        };
         let fallback = fallback_root.and_then(|root| {
             registry
                 .projects
@@ -263,8 +306,21 @@ impl ProjectRegistry {
         project.available.then_some(ProjectRecord {
             name: project.name,
             available: true,
+            import_planning: Some(crate::domain::import_planning::import_planning_status(
+                &record.root,
+            )),
             ..record
         })
+    }
+
+    fn available_records(&self) -> Vec<ProjectRecord> {
+        let mut registry = self.read_raw();
+        let before = registry.projects.len();
+        registry.projects = prune_unavailable_records(with_unique_slugs(registry.projects));
+        if registry.projects.len() != before {
+            let _ = write_registry_file(&self.file_path, &registry);
+        }
+        registry.projects
     }
 
     pub fn remove(&self, id: &str, delete_files: bool) -> Result<Option<ProjectRecord>, String> {
@@ -321,7 +377,7 @@ pub fn create_project_from_dashboard(
     registry: &ProjectRegistry,
     request: ProjectCreateRequest,
 ) -> Result<ProjectCreateResponse, (u16, String)> {
-    let title = request.title.trim();
+    let title = request.title.trim().to_string();
     if title.is_empty() {
         return Err((400, "Project title is required.".to_string()));
     }
@@ -331,23 +387,31 @@ pub fn create_project_from_dashboard(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("Imported from Dashboard markdown.");
-    let project_root = unique_project_root(title).map_err(|error| (500, error))?;
+    let source_documents = normalized_source_documents(&request);
+    let (source_document, source_document_type) = combined_source_document(&source_documents);
+    let source_facts = SourceFacts::from_document(&source_document, &source_document_type, summary);
+    let initialize_git = request.initialize_git;
+    let project_root = unique_project_root(&title).map_err(|error| (500, error))?;
     fs::create_dir_all(&project_root).map_err(|error| (500, error.to_string()))?;
     init_hyperwiki_project(
         &project_root,
         InitProjectOptions {
-            project_name: title.to_string(),
-            summary: summary.to_string(),
-            source_document: request.document.unwrap_or_default(),
-            source_document_type: request.document_type.unwrap_or_default(),
-            agent_launch_command: String::new(),
+            project_name: title.clone(),
+            summary: source_facts.summary.clone(),
+            source_document,
+            source_document_type,
+            source_documents,
+            source_facts,
+            planning_answers: request.planning_answers,
+            agent_launch_command: request.agent_launch_command.unwrap_or_default(),
             dev_command: String::new(),
             package_scripts: Vec::new(),
+            install_agent_skills: request.install_agent_skills.unwrap_or(true),
             overwrite: false,
         },
     )
     .map_err(|error| (500, error))?;
-    let git = if request.initialize_git == Some(false) {
+    let git = if initialize_git == Some(false) {
         crate::domain::git::GitInitResult {
             status: "skipped".to_string(),
             git_root: None,
@@ -380,10 +444,138 @@ pub struct InitProjectOptions {
     pub summary: String,
     pub source_document: String,
     pub source_document_type: String,
+    pub source_documents: Vec<SourceDocument>,
+    pub source_facts: SourceFacts,
+    pub planning_answers: BTreeMap<String, PlanningAnswer>,
     pub agent_launch_command: String,
     pub dev_command: String,
     pub package_scripts: Vec<String>,
+    pub install_agent_skills: bool,
     pub overwrite: bool,
+}
+
+fn normalized_source_documents(request: &ProjectCreateRequest) -> Vec<SourceDocument> {
+    let mut documents = request
+        .source_documents
+        .iter()
+        .cloned()
+        .filter_map(|document| {
+            let content = document.content.trim().to_string();
+            if content.is_empty() {
+                return None;
+            }
+            let name = document.name.trim();
+            Some(SourceDocument {
+                name: if name.is_empty() {
+                    "Imported source".to_string()
+                } else {
+                    name.to_string()
+                },
+                document_type: normalized_document_type(&document.document_type),
+                content,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if documents.is_empty() {
+        if let Some(document) = &request.document {
+            let content = document.trim().to_string();
+            if !content.is_empty() {
+                documents.push(SourceDocument {
+                    name: "Imported source".to_string(),
+                    document_type: normalized_document_type(
+                        request.document_type.as_deref().unwrap_or_default(),
+                    ),
+                    content,
+                });
+            }
+        }
+    }
+
+    documents
+}
+
+fn normalized_document_type(document_type: &str) -> String {
+    if document_type.eq_ignore_ascii_case("html") {
+        "html".to_string()
+    } else {
+        "markdown".to_string()
+    }
+}
+
+fn combined_source_document(documents: &[SourceDocument]) -> (String, String) {
+    if documents.is_empty() {
+        return (String::new(), String::new());
+    }
+    if documents.len() == 1 {
+        return (
+            documents[0].content.clone(),
+            documents[0].document_type.clone(),
+        );
+    }
+    let combined = documents
+        .iter()
+        .map(|document| {
+            format!(
+                "# Imported file: {}\n\nSource type: {}\n\n{}",
+                document.name,
+                document.document_type,
+                combined_document_content(document)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n---\n\n");
+    (combined, "markdown".to_string())
+}
+
+fn combined_document_content(document: &SourceDocument) -> String {
+    if !document.document_type.eq_ignore_ascii_case("html") {
+        return document.content.clone();
+    }
+    html_sections(&document.content)
+        .into_iter()
+        .map(|section| {
+            let mut content = format!("## {}", section.heading);
+            if section.items.is_empty() {
+                content.push_str("\n\n");
+                content.push_str(&remove_heading_prefix(&section.text, &section.heading));
+            } else {
+                for item in section.items {
+                    content.push_str("\n- ");
+                    content.push_str(&item);
+                }
+            }
+            content
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+struct BundledAgentSkillFile {
+    relative_path: &'static str,
+    bytes: &'static [u8],
+}
+
+struct BundledAgentSkill {
+    name: &'static str,
+    source: &'static str,
+    source_type: &'static str,
+    skill_path: &'static str,
+    computed_hash: &'static str,
+    files: &'static [BundledAgentSkillFile],
+}
+
+include!(concat!(env!("OUT_DIR"), "/bundled_agent_skills.rs"));
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SourceFacts {
+    pub summary: String,
+    pub problem: String,
+    pub idea: String,
+    pub shape: String,
+    pub mvp: Vec<String>,
+    pub promotion: Vec<String>,
+    pub features: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -408,7 +600,7 @@ pub fn init_hyperwiki_project(
             "{}\n",
             serde_json::to_string_pretty(&serde_json::json!({
                 "projectName": options.project_name,
-                "canonicalWiki": "html",
+                "canonicalWiki": "mdx",
                 "dev": {
                     "host": "127.0.0.1",
                     "port": 4177,
@@ -437,6 +629,9 @@ pub fn init_hyperwiki_project(
         &agents_markdown(&options),
         options.overwrite,
     )?;
+    if options.install_agent_skills {
+        install_agent_skills(root, options.overwrite)?;
+    }
     write_basic_wiki(root, &options)?;
     Ok(())
 }
@@ -589,6 +784,13 @@ fn prune_missing_worktrees(projects: Vec<ProjectRecord>) -> Vec<ProjectRecord> {
         .collect()
 }
 
+fn prune_unavailable_records(projects: Vec<ProjectRecord>) -> Vec<ProjectRecord> {
+    projects
+        .into_iter()
+        .filter(|project| project_from_root(&project.root).available)
+        .collect()
+}
+
 fn grouped_projects(projects: &[ProjectRecord], active_id: Option<&str>) -> Vec<ProjectRecord> {
     let mut groups: BTreeMap<String, Vec<ProjectRecord>> = BTreeMap::new();
     for project in projects {
@@ -719,17 +921,20 @@ fn unique_project_root(title: &str) -> Result<PathBuf, String> {
 }
 
 fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
+    if !options.source_document.trim().is_empty() {
+        return write_import_wiki(root, options);
+    }
     let pages = [
-        ("wiki/index.html", index_page(options)),
-        ("wiki/AGENTS.html", wiki_agent_page(options)),
-        ("wiki/log.html", log_page(options)),
-        ("wiki/sources.html", sources_page(options)),
+        ("wiki/index.mdx", index_page(options)),
+        ("wiki/AGENTS.mdx", wiki_agent_page(options)),
+        ("wiki/log.mdx", log_page(options)),
+        ("wiki/sources.mdx", sources_page(options)),
         (
-            "wiki/scaffold-contract.html",
+            "wiki/scaffold-contract.mdx",
             scaffold_contract_page(options),
         ),
         (
-            "wiki/roadmap.html",
+            "wiki/roadmap.mdx",
             simple_page(
                 options,
                 "Roadmap",
@@ -737,17 +942,17 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/architecture.html",
+            "wiki/architecture.mdx",
             simple_page(
                 options,
                 "Architecture",
                 "Document the project architecture as implementation evidence grows.",
             ),
         ),
-        ("wiki/dev.html", dev_page(options)),
-        ("wiki/plans/index.html", plans_index_page(options)),
+        ("wiki/dev.mdx", dev_page(options)),
+        ("wiki/plans/index.mdx", plans_index_page(options)),
         (
-            "wiki/plans/mvp/index.html",
+            "wiki/plans/mvp/index.mdx",
             simple_page(
                 options,
                 "MVP Plan",
@@ -755,7 +960,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/implementation-spec.html",
+            "wiki/plans/mvp/implementation-spec.mdx",
             simple_page(
                 options,
                 "Implementation Spec",
@@ -763,11 +968,11 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation.html",
+            "wiki/plans/mvp/stage-01-foundation.mdx",
             stage_page(options),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.mdx",
             unit_page(
                 options,
                 "Unit 01 - Confirm Project Direction",
@@ -775,7 +980,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.mdx",
             unit_page(
                 options,
                 "Unit 02 - Review Repository Setup",
@@ -783,7 +988,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.mdx",
             unit_page(
                 options,
                 "Unit 03 - Update Source Briefs",
@@ -791,7 +996,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html",
+            "wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.mdx",
             unit_page(
                 options,
                 "Unit 04 - Define First Implementation Unit",
@@ -799,7 +1004,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace.html",
+            "wiki/plans/mvp/stage-02-dev-workspace.mdx",
             simple_page(
                 options,
                 "Stage 02 - First Implementation Track",
@@ -807,7 +1012,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-01-implement-first-slice.mdx",
             unit_page(
                 options,
                 "Unit 01 - Implement First Slice",
@@ -815,7 +1020,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-02-sync-plan-status.mdx",
             unit_page(
                 options,
                 "Unit 02 - Sync Plan Status",
@@ -823,7 +1028,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-03-record-validation.mdx",
             unit_page(
                 options,
                 "Unit 03 - Record Validation",
@@ -831,7 +1036,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.html",
+            "wiki/plans/mvp/stage-02-dev-workspace/unit-04-preserve-canonical-truth.mdx",
             unit_page(
                 options,
                 "Unit 04 - Preserve Canonical Truth",
@@ -839,7 +1044,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening.mdx",
             simple_page(
                 options,
                 "Stage 03 - Hardening And Release Readiness",
@@ -847,7 +1052,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-close-verification-gaps.mdx",
             unit_page(
                 options,
                 "Unit 01 - Close Verification Gaps",
@@ -855,7 +1060,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-harden-workflows.mdx",
             unit_page(
                 options,
                 "Unit 02 - Harden Workflows",
@@ -863,7 +1068,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-update-durable-docs.mdx",
             unit_page(
                 options,
                 "Unit 03 - Update Durable Docs",
@@ -871,7 +1076,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.html",
+            "wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-record-handoff-notes.mdx",
             unit_page(
                 options,
                 "Unit 04 - Record Handoff Notes",
@@ -879,24 +1084,64 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
             ),
         ),
         (
-            "wiki/sources/prd.html",
+            "wiki/sources/prd.mdx",
             source_page(options, "Product Brief"),
         ),
         (
-            "wiki/sources/technical-brief.html",
+            "wiki/sources/technical-brief.mdx",
             source_page(options, "Technical Brief"),
         ),
         (
-            "wiki/sources/design-brief.html",
+            "wiki/sources/design-brief.mdx",
             source_page(options, "Design Brief"),
         ),
-        (
-            "wiki/sources/planning-interview.html",
-            source_page(options, "Planning Interview"),
-        ),
-        ("wiki/sources/import.html", import_page(options)),
+        ("wiki/sources/import.mdx", import_page(options)),
     ];
     for (relative, content) in pages {
+        write_if_safe(&root.join(relative), &content, options.overwrite)?;
+    }
+    Ok(())
+}
+
+fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
+    let pages = vec![
+        ("wiki/index.mdx", index_page(options)),
+        ("wiki/AGENTS.mdx", wiki_agent_page(options)),
+        ("wiki/log.mdx", log_page(options)),
+        ("wiki/sources.mdx", sources_page(options)),
+        (
+            "wiki/scaffold-contract.mdx",
+            scaffold_contract_page(options),
+        ),
+        ("wiki/roadmap.mdx", import_roadmap_page(options)),
+        (
+            "wiki/architecture.mdx",
+            simple_page(
+                options,
+                "Architecture",
+                "Architecture is intentionally unset until source-grounded Q&A confirms stack, data, integration, privacy, and runtime decisions.",
+            ),
+        ),
+        ("wiki/dev.mdx", dev_page(options)),
+        ("wiki/plans/index.mdx", plans_index_page(options)),
+        (
+            "wiki/sources/prd.mdx",
+            product_brief_page(options),
+        ),
+        (
+            "wiki/sources/technical-brief.mdx",
+            technical_brief_page(options),
+        ),
+        (
+            "wiki/sources/design-brief.mdx",
+            design_brief_page(options),
+        ),
+        ("wiki/sources/import.mdx", import_page(options)),
+    ];
+    for (relative, content) in pages {
+        write_if_safe(&root.join(relative), &content, options.overwrite)?;
+    }
+    for (relative, content) in imported_source_pages(options) {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
     }
     Ok(())
@@ -910,6 +1155,75 @@ fn write_if_safe(path: &Path, content: &str, overwrite: bool) -> Result<(), Stri
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
     fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn write_bytes_if_safe(path: &Path, content: &[u8], overwrite: bool) -> Result<(), String> {
+    if path.exists() && !overwrite {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    fs::write(path, content).map_err(|error| error.to_string())
+}
+
+fn install_agent_skills(root: &Path, overwrite: bool) -> Result<(), String> {
+    for skill in BUNDLED_AGENT_SKILLS {
+        for file in skill.files {
+            write_bytes_if_safe(
+                &root
+                    .join(".agents")
+                    .join("skills")
+                    .join(skill.name)
+                    .join(file.relative_path),
+                file.bytes,
+                overwrite,
+            )?;
+        }
+    }
+    merge_skills_lock(root, overwrite)
+}
+
+fn merge_skills_lock(root: &Path, overwrite: bool) -> Result<(), String> {
+    let lock_path = root.join("skills-lock.json");
+    let mut lock = fs::read_to_string(&lock_path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .filter(|value| value.is_object())
+        .unwrap_or_else(|| serde_json::json!({ "version": 1, "skills": {} }));
+
+    if !lock["version"].is_number() {
+        lock["version"] = serde_json::json!(1);
+    }
+    if !lock["skills"].is_object() {
+        lock["skills"] = serde_json::json!({});
+    }
+
+    let skills = lock["skills"]
+        .as_object_mut()
+        .ok_or_else(|| "Could not merge skills-lock.json.".to_string())?;
+    for skill in BUNDLED_AGENT_SKILLS {
+        if overwrite || !skills.contains_key(skill.name) {
+            skills.insert(
+                skill.name.to_string(),
+                serde_json::json!({
+                    "source": skill.source,
+                    "sourceType": skill.source_type,
+                    "skillPath": skill.skill_path,
+                    "computedHash": skill.computed_hash
+                }),
+            );
+        }
+    }
+
+    write_if_safe(
+        &lock_path,
+        &format!(
+            "{}\n",
+            serde_json::to_string_pretty(&lock).map_err(|error| error.to_string())?
+        ),
+        true,
+    )
 }
 
 fn layout_panels(options: &InitProjectOptions) -> Result<Vec<serde_json::Value>, String> {
@@ -953,56 +1267,58 @@ fn remove_directory_contents(directory: &Path) -> Result<(), String> {
 }
 
 fn layout(options: &InitProjectOptions, title: &str, body: &str) -> String {
+    let body = body.replace(" class=", " className=");
     format!(
-        r#"<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{} - {}</title>
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="stylesheet" href="/assets/wiki.css">
-</head>
-<body>
-  <header class="wiki-header">
-    <a href="/wiki/index.html">{}</a>
-    <nav>
-      <a href="/wiki/architecture.html">Architecture</a>
-      <a href="/wiki/dev.html">Dev</a>
-      <a href="/wiki/plans/index.html">Plans</a>
-      <a href="/wiki/log.html">Log</a>
-      <a href="/wiki/sources.html">Sources</a>
-    </nav>
-  </header>
-  <main class="wiki-page">
-    {body}
-  </main>
-</body>
-</html>
+        r#"---
+title: "{}"
+description: "{}"
+wikiKind: "page"
+---
+
+{body}
 "#,
         escape_html(title),
-        escape_html(&options.project_name),
-        escape_html(&options.project_name),
+        escape_html(&format!("{title} for {}", options.project_name)),
     )
 }
 
 fn index_page(options: &InitProjectOptions) -> String {
+    let plan_link = if options.source_document.trim().is_empty() {
+        "<li><a href=\"/wiki/plans/mvp/index.mdx\">MVP plan</a></li>"
+    } else {
+        "<li><a href=\"/wiki/plans/index.mdx\">Plans</a></li>"
+    };
     layout(
         options,
         "Home",
         &format!(
-            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul><li><a href=\"/wiki/plans/mvp/index.html\">MVP plan</a></li><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li></ul></section>",
+            "<h1>{}</h1><p>{}</p><section><h2>Core Pages</h2><ul>{}<li><a href=\"/wiki/sources/prd.mdx\">Product brief</a></li></ul></section>",
             escape_html(&options.project_name),
-            escape_html(&options.summary)
+            escape_html(&options.summary),
+            plan_link
         ),
     )
 }
 
 fn plans_index_page(options: &InitProjectOptions) -> String {
+    if !options.source_document.trim().is_empty() {
+        return layout(
+            options,
+            "Plans",
+            "<h1>Plans</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul>\
+<li>Status: planning</li>\
+<li>Current stage: none; source-grounded Q&amp;A has not produced a real implementation stage yet.</li>\
+<li>Current unit: none; do not execute product code until the agent creates a detailed unit with verification.</li>\
+	<li>Next action: run the agent-led source review from <code>wiki/sources/import.mdx</code>, ask focused questions in the agent terminal if needed, then create a decision-complete plan.</li>\
+</ul></section>\
+<section><h2>Planning Rule</h2><p>This imported project intentionally has no generated MVP stage tree yet. Stages and units must be created only after the source has been reviewed and the user has answered detailed Q&amp;A for maximum clarity.</p></section>",
+        );
+    }
     layout(
         options,
         "Plans",
-        "<h1>Planning Dashboard</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.html\">Stage 01 - Project Direction And Setup</a></li></ul>",
+        "<h1>Plans</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>Current stage: Stage 01 - Project Direction And Setup</li><li>Current unit: Unit 01 - Confirm Project Direction</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation.mdx\">Stage 01 - Project Direction And Setup</a></li></ul>",
     )
 }
 
@@ -1010,7 +1326,7 @@ fn stage_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Stage 01 - Project Direction And Setup",
-        "<h1>Stage 01 - Project Direction And Setup</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.html\">Unit 01 - Confirm Project Direction</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.html\">Unit 02 - Review Repository Setup</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.html\">Unit 03 - Update Source Briefs</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.html\">Unit 04 - Define First Implementation Unit</a></li></ul>",
+        "<h1>Stage 01 - Project Direction And Setup</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li></ul></section><ul><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-01-confirm-project-direction.mdx\">Unit 01 - Confirm Project Direction</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-02-review-repository-setup.mdx\">Unit 02 - Review Repository Setup</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-03-update-source-briefs.mdx\">Unit 03 - Update Source Briefs</a></li><li><a href=\"/wiki/plans/mvp/stage-01-foundation/unit-04-define-first-implementation-unit.mdx\">Unit 04 - Define First Implementation Unit</a></li></ul>",
     )
 }
 
@@ -1019,8 +1335,14 @@ fn unit_page(options: &InitProjectOptions, title: &str, summary: &str) -> String
         options,
         title,
         &format!(
-            "<h1>{}</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>",
+            "<h1>{}</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>Status: active</li><li>{}</li></ul></section>\
+<section><h2>Intent</h2><p>{}</p></section>\
+<section><h2>Scope</h2><ul><li>Confirm the concrete work for this unit before editing product code.</li><li>Keep changes bounded to evidence from the source briefs, repository, and user decisions.</li></ul></section>\
+<section><h2>Implementation Notes</h2><ul><li>Read <code>wiki/index.mdx</code>, <code>wiki/sources.mdx</code>, and relevant source briefs before execution.</li><li>Update this unit if implementation discoveries change scope, blockers, or verification.</li></ul></section>\
+<section><h2>Verification</h2><ul><li>Record the command, manual check, or explicit deferral that proves this unit is complete.</li><li>Do not mark the unit complete until verification evidence is captured.</li></ul></section>",
             escape_html(title),
+            escape_html(summary),
             escape_html(summary)
         ),
     )
@@ -1038,9 +1360,100 @@ fn source_page(options: &InitProjectOptions, title: &str) -> String {
     )
 }
 
+fn product_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Product Brief",
+        &format!(
+            "<h1>Product Brief</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>{}</li></ul></section>\
+<section><h2>Problem</h2><p>{}</p></section>\
+<section><h2>Idea</h2><p>{}</p></section>\
+<section><h2>MVP</h2>{}</section>\
+<section><h2>Promotion Criteria</h2>{}</section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: medium until Q&amp;A confirms scope.</li></ul></section>",
+            escape_html(&facts.summary),
+            escape_html(or_unknown(&facts.problem)),
+            escape_html(or_unknown(&facts.idea)),
+            html_list_or_unknown(&facts.mvp),
+            html_list_or_unknown(&facts.promotion)
+        ),
+    )
+}
+
+fn technical_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Technical Brief",
+        &format!(
+            "<h1>Technical Brief</h1>\
+	<section class=\"summary\"><h2>Summary</h2><ul><li>Technical decisions are not final until source review and focused Q&amp;A confirm implementation constraints.</li></ul></section>\
+<section><h2>Known Implementation Signals</h2>{}</section>\
+<section><h2>Technical Unknowns For Q&amp;A</h2><ul>\
+<li>Target platform, app shell, storage model, and deployment path.</li>\
+<li>External APIs, model providers, location or device capabilities, and privacy boundaries.</li>\
+<li>Automated test strategy, manual acceptance flow, and preview/runtime commands.</li>\
+</ul></section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: low until Q&amp;A confirms stack and runtime decisions.</li></ul></section>",
+            html_list_or_unknown(&facts.features)
+        ),
+    )
+}
+
+fn design_brief_page(options: &InitProjectOptions) -> String {
+    let facts = &options.source_facts;
+    layout(
+        options,
+        "Design Brief",
+        &format!(
+            "<h1>Design Brief</h1>\
+<section class=\"summary\"><h2>Summary</h2><ul><li>{}</li></ul></section>\
+<section><h2>Interaction Signals</h2>{}</section>\
+<section><h2>Design Unknowns For Q&amp;A</h2><ul>\
+<li>Primary user flow, first-run experience, and core screen sequence.</li>\
+<li>Accessibility and safety requirements for the intended context of use.</li>\
+<li>Manual validation steps for key UX and responsive states.</li>\
+</ul></section>\
+<section><h2>Status</h2><ul><li>Last reviewed: import time</li><li>Evidence basis: imported source document</li><li>Confidence: medium for intent, low for concrete UI until Q&amp;A.</li></ul></section>",
+            escape_html(&facts.summary),
+            html_list_or_unknown(&facts.mvp)
+        ),
+    )
+}
+
+fn import_roadmap_page(options: &InitProjectOptions) -> String {
+    layout(
+        options,
+        "Roadmap",
+        "<h1>Roadmap</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Status: planning intake</li><li>Next action: complete detailed Q&amp;A before creating implementation stages or units.</li></ul></section><p>The imported source defines product intent, but implementation sequencing is intentionally deferred until focused agent Q&amp;A resolves key decisions.</p>",
+    )
+}
+
 fn import_page(options: &InitProjectOptions) -> String {
     let body = if options.source_document.is_empty() {
         "<h1>Source Import</h1><p>No source document was imported.</p>".to_string()
+    } else if options.source_documents.len() > 1 {
+        let links = options
+            .source_documents
+            .iter()
+            .enumerate()
+            .map(|(index, document)| {
+                format!(
+                    "<li><a href=\"/wiki/sources/imported/{}\">{}</a> <span>({})</span></li>",
+                    escape_html(&imported_source_filename(index, &document.name)),
+                    escape_html(&document.name),
+                    escape_html(&document.document_type)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("");
+        format!(
+            "<h1>Source Import</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Imported {} source documents as one ordered planning bundle.</li><li>Existing source extraction used the combined bundle in selection order.</li></ul></section><section><h2>Imported Documents</h2><ol>{}</ol></section>",
+            options.source_documents.len(),
+            links
+        )
     } else {
         format!(
             "<h1>Source Import</h1><p>Type: {}</p><pre>{}</pre>",
@@ -1049,6 +1462,399 @@ fn import_page(options: &InitProjectOptions) -> String {
         )
     };
     layout(options, "Source Import", &body)
+}
+
+fn imported_source_pages(options: &InitProjectOptions) -> Vec<(String, String)> {
+    if options.source_documents.len() <= 1 {
+        return Vec::new();
+    }
+    options
+        .source_documents
+        .iter()
+        .enumerate()
+        .map(|(index, document)| {
+            let title = format!("Imported Source - {}", document.name);
+            let body = format!(
+                "<h1>{}</h1><p>Type: {}</p><pre>{}</pre>",
+                escape_html(&title),
+                escape_html(&document.document_type),
+                escape_html(&document.content)
+            );
+            (
+                format!(
+                    "wiki/sources/imported/{}",
+                    imported_source_filename(index, &document.name)
+                ),
+                layout(options, &title, &body),
+            )
+        })
+        .collect()
+}
+
+fn imported_source_filename(index: usize, name: &str) -> String {
+    let stem = name
+        .rsplit_once('.')
+        .map(|(stem, _)| stem)
+        .unwrap_or(name)
+        .trim();
+    let slug = slugify(stem);
+    format!(
+        "{:02}-{}.mdx",
+        index + 1,
+        if slug.is_empty() { "source" } else { &slug }
+    )
+}
+
+impl SourceFacts {
+    fn from_document(document: &str, document_type: &str, fallback_summary: &str) -> Self {
+        let sections = if document_type.eq_ignore_ascii_case("html") {
+            html_sections(document)
+        } else {
+            markdown_sections(document)
+        };
+        let problem = section_text(&sections, &["problem"]);
+        let idea = section_text(&sections, &["idea", "overview"]);
+        let shape = section_text(&sections, &["shape", "product shape"]);
+        let mvp = section_items(&sections, &["mvp", "minimum viable product"]);
+        let promotion = section_items(
+            &sections,
+            &[
+                "promotion",
+                "promotion criteria",
+                "validation",
+                "success criteria",
+            ],
+        );
+        let features = section_items(&sections, &["idea", "shape", "core features", "features"]);
+        let meta_description = html_meta_description(document);
+        let lead = lead_text(document, document_type);
+        let summary = first_non_empty([
+            meta_description.as_str(),
+            lead.as_str(),
+            problem.as_str(),
+            fallback_summary,
+            "Imported project source.",
+        ]);
+        Self {
+            summary: truncate_summary(&summary),
+            problem,
+            idea,
+            shape,
+            mvp,
+            promotion,
+            features,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct SourceSection {
+    heading: String,
+    text: String,
+    items: Vec<String>,
+}
+
+fn html_sections(html: &str) -> Vec<SourceSection> {
+    let mut sections = Vec::new();
+    let mut rest = html;
+    while let Some(start) = find_ci(rest, "<section") {
+        rest = &rest[start..];
+        let Some(open_end) = rest.find('>') else {
+            break;
+        };
+        rest = &rest[open_end + 1..];
+        let Some(end) = find_ci(rest, "</section>") else {
+            break;
+        };
+        let raw = &rest[..end];
+        let heading = first_heading(raw);
+        if !heading.is_empty() {
+            sections.push(SourceSection {
+                heading: normalize_heading(&heading),
+                text: html_to_text(raw),
+                items: html_list_items(raw),
+            });
+        }
+        rest = &rest[end + "</section>".len()..];
+    }
+    if sections.is_empty() {
+        let text = html_to_text(html);
+        if !text.is_empty() {
+            sections.push(SourceSection {
+                heading: "source".to_string(),
+                text,
+                items: Vec::new(),
+            });
+        }
+    }
+    sections
+}
+
+fn markdown_sections(markdown: &str) -> Vec<SourceSection> {
+    let mut sections = Vec::new();
+    let mut current: Option<SourceSection> = None;
+    for line in markdown.lines() {
+        if let Some(title) = line.trim_start().strip_prefix('#') {
+            if line.trim_start().starts_with('#') {
+                if let Some(section) = current.take() {
+                    sections.push(section);
+                }
+                current = Some(SourceSection {
+                    heading: normalize_heading(title.trim_start_matches('#').trim()),
+                    text: String::new(),
+                    items: Vec::new(),
+                });
+                continue;
+            }
+        }
+        if let Some(section) = current.as_mut() {
+            let trimmed = line.trim();
+            if let Some(item) = trimmed
+                .strip_prefix("- ")
+                .or_else(|| trimmed.strip_prefix("* "))
+            {
+                section.items.push(item.trim().to_string());
+            }
+            if !trimmed.is_empty() {
+                if !section.text.is_empty() {
+                    section.text.push(' ');
+                }
+                section
+                    .text
+                    .push_str(trimmed.trim_start_matches("- ").trim_start_matches("* "));
+            }
+        }
+    }
+    if let Some(section) = current {
+        sections.push(section);
+    }
+    sections
+}
+
+fn first_heading(html: &str) -> String {
+    for tag in ["h1", "h2", "h3", "h4", "h5", "h6"] {
+        let open = format!("<{tag}");
+        let close = format!("</{tag}>");
+        if let Some(start) = find_ci(html, &open) {
+            let after = &html[start..];
+            let Some(open_end) = after.find('>') else {
+                continue;
+            };
+            let content = &after[open_end + 1..];
+            let Some(end) = find_ci(content, &close) else {
+                continue;
+            };
+            return html_to_text(&content[..end]);
+        }
+    }
+    String::new()
+}
+
+fn html_list_items(html: &str) -> Vec<String> {
+    let mut items = Vec::new();
+    let mut rest = html;
+    while let Some(start) = find_ci(rest, "<li") {
+        rest = &rest[start..];
+        let Some(open_end) = rest.find('>') else {
+            break;
+        };
+        rest = &rest[open_end + 1..];
+        let Some(end) = find_ci(rest, "</li>") else {
+            break;
+        };
+        let item = html_to_text(&rest[..end]);
+        if !item.is_empty() {
+            items.push(item);
+        }
+        rest = &rest[end + "</li>".len()..];
+    }
+    items
+}
+
+fn html_to_text(html: &str) -> String {
+    let mut text = String::new();
+    let mut in_tag = false;
+    for ch in html.chars() {
+        match ch {
+            '<' => {
+                in_tag = true;
+                text.push(' ');
+            }
+            '>' => {
+                in_tag = false;
+                text.push(' ');
+            }
+            _ if !in_tag => text.push(ch),
+            _ => {}
+        }
+    }
+    decode_entities(&collapse_whitespace(&text))
+}
+
+fn html_meta_description(html: &str) -> String {
+    let Some(meta_start) = find_ci(html, "name=\"description\"") else {
+        return String::new();
+    };
+    let before = &html[..meta_start];
+    let tag_start = before.rfind('<').unwrap_or(meta_start);
+    let after = &html[meta_start..];
+    let tag_end = after
+        .find('>')
+        .map(|index| meta_start + index)
+        .unwrap_or(html.len());
+    let tag = &html[tag_start..tag_end];
+    for marker in ["content=\"", "content='"] {
+        if let Some(start) = find_ci(tag, marker) {
+            let quote = marker.chars().last().unwrap_or('"');
+            let value = &tag[start + marker.len()..];
+            if let Some(end) = value.find(quote) {
+                return decode_entities(&value[..end]);
+            }
+        }
+    }
+    String::new()
+}
+
+fn lead_text(document: &str, document_type: &str) -> String {
+    if document_type.eq_ignore_ascii_case("html") {
+        if let Some(start) = find_ci(document, "<p") {
+            let after = &document[start..];
+            if let Some(open_end) = after.find('>') {
+                let content = &after[open_end + 1..];
+                if let Some(end) = find_ci(content, "</p>") {
+                    return html_to_text(&content[..end]);
+                }
+            }
+        }
+        return html_to_text(document);
+    }
+    collapse_whitespace(
+        document
+            .lines()
+            .find(|line| !line.trim().is_empty())
+            .unwrap_or(""),
+    )
+}
+
+fn section_text(sections: &[SourceSection], headings: &[&str]) -> String {
+    let normalized = headings
+        .iter()
+        .map(|heading| normalize_heading(heading))
+        .collect::<Vec<_>>();
+    sections
+        .iter()
+        .find(|section| normalized.iter().any(|heading| heading == &section.heading))
+        .map(|section| remove_heading_prefix(&section.text, &section.heading))
+        .unwrap_or_default()
+}
+
+fn section_items(sections: &[SourceSection], headings: &[&str]) -> Vec<String> {
+    let normalized = headings
+        .iter()
+        .map(|heading| normalize_heading(heading))
+        .collect::<Vec<_>>();
+    sections
+        .iter()
+        .filter(|section| normalized.iter().any(|heading| heading == &section.heading))
+        .flat_map(|section| {
+            if section.items.is_empty() {
+                vec![remove_heading_prefix(&section.text, &section.heading)]
+            } else {
+                section.items.clone()
+            }
+        })
+        .filter(|item| !item.trim().is_empty())
+        .collect()
+}
+
+fn remove_heading_prefix(text: &str, heading: &str) -> String {
+    let text = collapse_whitespace(text);
+    let plain_heading = heading.replace(' ', "");
+    if normalize_heading(&text).starts_with(heading) && text.len() > heading.len() {
+        text[heading.len()..].trim().to_string()
+    } else if normalize_heading(&text)
+        .replace(' ', "")
+        .starts_with(&plain_heading)
+    {
+        text
+    } else {
+        text
+    }
+}
+
+fn normalize_heading(value: &str) -> String {
+    collapse_whitespace(
+        &value
+            .chars()
+            .map(|ch| {
+                if ch.is_ascii_alphanumeric() {
+                    ch.to_ascii_lowercase()
+                } else {
+                    ' '
+                }
+            })
+            .collect::<String>(),
+    )
+}
+
+fn find_ci(haystack: &str, needle: &str) -> Option<usize> {
+    haystack.to_lowercase().find(&needle.to_lowercase())
+}
+
+fn collapse_whitespace(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn decode_entities(value: &str) -> String {
+    value
+        .replace("&quot;", "\"")
+        .replace("&#34;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+}
+
+fn first_non_empty<const N: usize>(values: [&str; N]) -> String {
+    values
+        .iter()
+        .map(|value| value.trim())
+        .find(|value| !value.is_empty() && !value.starts_with("<!doctype"))
+        .unwrap_or("Imported project source.")
+        .to_string()
+}
+
+fn truncate_summary(value: &str) -> String {
+    let clean = collapse_whitespace(value);
+    if clean.len() > 220 {
+        format!("{}...", clean[..217].trim())
+    } else {
+        clean
+    }
+}
+
+fn or_unknown(value: &str) -> &str {
+    if value.trim().is_empty() {
+        "Unknown; resolve through source review and focused agent Q&amp;A."
+    } else {
+        value
+    }
+}
+
+fn html_list_or_unknown(items: &[String]) -> String {
+    if items.is_empty() {
+        return "<p>Unknown; resolve through source review and focused agent Q&amp;A.</p>"
+            .to_string();
+    }
+    format!(
+        "<ul>{}</ul>",
+        items
+            .iter()
+            .map(|item| format!("<li>{}</li>", escape_html(item)))
+            .collect::<Vec<_>>()
+            .join("")
+    )
 }
 
 fn simple_page(options: &InitProjectOptions, title: &str, text: &str) -> String {
@@ -1067,7 +1873,7 @@ fn scaffold_contract_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Scaffold Contract",
-        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for HTML-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.html</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.html</code> for wiki agent guidance.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
+        "<h1>Scaffold Contract</h1><p>Hyperwiki scaffold conventions for MDX-first project wikis.</p><ul><li>Use lowercase <code>wiki/sources.mdx</code> as the source index.</li><li>Use app-visible <code>wiki/AGENTS.mdx</code> for wiki agent guidance.</li><li>Render plan pages from exact MDX source; agent-facing current-plan resources should use the Markdown derivative exposed by <code>/api/wiki/source</code> and the project contract.</li><li>Serve wiki styling from <code>/assets/wiki.css</code>.</li><li>Keep runtime state under ignored <code>.hyperwiki/state</code> and <code>.hyperwiki/sessions</code>.</li></ul>",
     )
 }
 
@@ -1097,7 +1903,7 @@ fn log_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Log",
-        "<h1>Project Log</h1><article><h2>bootstrap | initialize HTML-first project wiki</h2><ul><li>Mode: bootstrap_new.</li><li>Canonical wiki format: HTML.</li></ul></article>",
+        "<h1>Project Log</h1><article><h2>bootstrap | initialize MDX-first project wiki</h2><ul><li>Mode: bootstrap_new.</li><li>Canonical wiki format: MDX.</li></ul></article>",
     )
 }
 
@@ -1105,7 +1911,7 @@ fn sources_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Sources",
-        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.html</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.html\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.html\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.html\">Design brief</a></li><li><a href=\"/wiki/sources/planning-interview.html\">Planning interview</a></li><li><a href=\"/wiki/sources/import.html\">Imported source</a></li></ul>",
+        "<h1>Sources</h1><section class=\"summary\"><h2>Summary</h2><ul><li>Source index for this Hyperwiki project.</li><li>Canonical source index path: lowercase <code>wiki/sources.mdx</code>.</li></ul></section><ul><li><a href=\"/wiki/sources/prd.mdx\">Product brief</a></li><li><a href=\"/wiki/sources/technical-brief.mdx\">Technical brief</a></li><li><a href=\"/wiki/sources/design-brief.mdx\">Design brief</a></li><li><a href=\"/wiki/sources/import.mdx\">Imported source</a></li></ul>",
     )
 }
 
@@ -1113,13 +1919,13 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
     layout(
         options,
         "Wiki Agent Guide",
-        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.html before project-specific work and use wiki/sources.html as the source index.</p>",
+        "<h1>Wiki Agent Guide</h1><p>Read wiki/index.mdx before project-specific work and use wiki/sources.mdx as the source index. For active plans, prefer the project contract or <code>/api/wiki/source</code> Markdown derivative over rendered app HTML.</p><section><h2>Repo-local Skills</h2><p>New Hyperwiki projects include repo-local agent skills under <code>.agents/skills/</code> unless initialization used <code>--no-skills</code>. Use <code>hyperwiki</code> for wiki maintenance, <code>grill-with-docs</code> for plan and domain-language stress tests, <code>parallel-dev-worktrees</code> and <code>portless</code> for branch-local previews, <code>frontend-design</code> and <code>make-interfaces-feel-better</code> for substantial UI work and polish, and <code>shadcn</code> plus <code>tailwind-design-system</code> for React, shadcn/ui, or Tailwind changes.</p></section>",
     )
 }
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.html` before project-specific work and use `wiki/sources.html` as the source index.\n\nDo not add a duplicate `wiki/Sources.html`; Hyperwiki uses lowercase `wiki/sources.html`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; Hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -1258,6 +2064,63 @@ mod tests {
     }
 
     #[test]
+    fn prunes_unavailable_project_records_from_list_and_registry() {
+        let home = temp_root("prune-unavailable");
+        let missing = home.join("Routechat");
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![record(
+                    "routechat",
+                    &missing,
+                    "routechat",
+                    "routechat",
+                    "main",
+                )],
+            },
+        )
+        .unwrap();
+
+        let registry = ProjectRegistry::new(&home);
+        let list = registry.list(Some("routechat"));
+
+        assert!(list.projects.is_empty());
+        assert!(list.checkouts.is_empty());
+        assert!(list.project_groups.is_empty());
+        assert_eq!(list.active_project_id, None);
+        assert!(registry.read_raw().projects.is_empty());
+    }
+
+    #[test]
+    fn does_not_resolve_unavailable_project_by_id_or_slug() {
+        let home = temp_root("resolve-unavailable");
+        let missing = home.join("Routechat");
+        write_registry_file(
+            &home.join("projects.json"),
+            &RegistryFile {
+                version: 1,
+                projects: vec![record(
+                    "routechat",
+                    &missing,
+                    "routechat",
+                    "routechat",
+                    "main",
+                )],
+            },
+        )
+        .unwrap();
+
+        let registry = ProjectRegistry::new(&home);
+
+        assert!(registry.resolve(Some("routechat"), None).is_none());
+        assert!(registry
+            .resolve_by_slug("routechat", Some("main"))
+            .is_none());
+        assert!(registry.read_raw().projects.is_empty());
+    }
+
+    #[test]
     fn resolves_by_project_and_worktree_slug() {
         let home = temp_root("resolve");
         let main = home.join("Resolve Project");
@@ -1349,7 +2212,11 @@ mod tests {
                 summary: Some("A Markdown pattern library.".to_string()),
                 document: Some("# Source\n".to_string()),
                 document_type: Some("markdown".to_string()),
+                source_documents: Vec::new(),
+                planning_answers: BTreeMap::new(),
                 initialize_git: Some(true),
+                install_agent_skills: None,
+                agent_launch_command: Some("codex --yolo".to_string()),
             },
         )
         .unwrap();
@@ -1366,45 +2233,277 @@ mod tests {
             .project
             .root
             .join("wiki")
-            .join("index.html")
+            .join("index.mdx")
             .is_file());
         assert!(created
             .project
             .root
             .join("wiki")
-            .join("plans")
-            .join("mvp")
-            .join("stage-01-foundation.html")
+            .join("sources")
+            .join("import.mdx")
             .is_file());
-        assert!(created
+        assert!(!created
             .project
             .root
             .join("wiki")
             .join("plans")
             .join("mvp")
-            .join("stage-03-dogfood-hardening")
-            .join("unit-04-record-handoff-notes.html")
-            .is_file());
+            .exists());
+        let plans = fs::read_to_string(
+            created
+                .project
+                .root
+                .join("wiki")
+                .join("plans")
+                .join("index.mdx"),
+        )
+        .unwrap();
+        assert!(plans.contains("Status: planning"));
+        assert!(plans.contains("no generated MVP stage tree"));
         let agents = fs::read_to_string(created.project.root.join("AGENTS.md")).unwrap();
+        let config =
+            fs::read_to_string(created.project.root.join(".hyperwiki").join("config.json"))
+                .unwrap();
         let sources =
-            fs::read_to_string(created.project.root.join("wiki").join("sources.html")).unwrap();
+            fs::read_to_string(created.project.root.join("wiki").join("sources.mdx")).unwrap();
         let contract = fs::read_to_string(
             created
                 .project
                 .root
                 .join("wiki")
-                .join("scaffold-contract.html"),
+                .join("scaffold-contract.mdx"),
         )
         .unwrap();
-        assert!(agents.contains("Do not add a duplicate `wiki/Sources.html`"));
+        assert!(agents.contains("Do not add a duplicate `wiki/Sources.mdx`"));
+        assert!(agents.contains("/api/wiki/source"));
         assert!(agents.contains("Portless-backed `dev` script"));
-        assert!(sources.contains("lowercase <code>wiki/sources.html</code>"));
-        assert!(contract.contains("wiki/AGENTS.html"));
+        assert!(config.contains("\"launchCommand\": \"codex --yolo\""));
+        assert!(sources.contains("lowercase <code>wiki/sources.mdx</code>"));
+        assert!(contract.contains("wiki/AGENTS.mdx"));
+        assert!(contract.contains("/api/wiki/source"));
+        assert_default_skills_installed(&created.project.root);
         assert!(registry
             .list(Some(&created.project.id))
             .checkouts
             .iter()
             .any(|project| project.id == created.project.id));
+    }
+
+    #[test]
+    fn imported_html_project_keeps_source_context_and_defers_plan_units() {
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let projects_dir = temp_root("routechat-import-projects-dir");
+        let home = temp_root("routechat-import-home");
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let registry = ProjectRegistry::new(&home);
+        let mut planning_answers = BTreeMap::new();
+        planning_answers.insert(
+            "promise".to_string(),
+            PlanningAnswer {
+                value: "Generate live location narration first".to_string(),
+                label: "Live narration".to_string(),
+                detail: "Focus the first plan on the core route-aware audio loop.".to_string(),
+                tradeoff: "Safety and privacy need early decisions.".to_string(),
+            },
+        );
+
+        let created = create_project_from_dashboard(
+            &registry,
+            ProjectCreateRequest {
+                title: "RouteChat".to_string(),
+                summary: Some("<!doctype html> <html lang=\"en\"> <head>".to_string()),
+                document: Some(
+                    r#"<!doctype html>
+<html lang="en">
+<head><meta name="description" content="RouteChat is an app that gives you a spontaneous guided audio tour wherever you are."></head>
+<body>
+<section id="problem"><h2>Problem</h2><p>Most tours require planning, fixed routes, tickets, or a specific destination.</p></section>
+<section id="idea"><h2>Idea</h2><p>RouteChat is a location-aware voice companion for travelers and curious locals.</p><ul><li>The key interaction is just start talking to me about where I am.</li><li>Driving mode should be hands-free and non-distracting.</li></ul></section>
+<section id="mvp"><h2>MVP</h2><ul><li>Generates narration from current latitude, longitude, movement direction, speed, selected mode, and recent narration history.</li><li>Lets users choose a tone, ask follow-up questions, pause, replay, and switch modes by voice.</li></ul></section>
+<section id="promotion"><h2>Promotion Criteria</h2><ul><li>A working prototype that can generate interesting narration from live location data.</li><li>A strong hands-free voice interaction design.</li></ul></section>
+</body>
+</html>"#
+                        .to_string(),
+                ),
+                document_type: Some("html".to_string()),
+                source_documents: Vec::new(),
+                planning_answers,
+                initialize_git: Some(false),
+                install_agent_skills: None,
+                agent_launch_command: None,
+            },
+        )
+        .unwrap();
+
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+
+        let root = created.project.root;
+        let index = fs::read_to_string(root.join("wiki").join("index.mdx")).unwrap();
+        let prd = fs::read_to_string(root.join("wiki").join("sources").join("prd.mdx")).unwrap();
+        let plans = fs::read_to_string(root.join("wiki").join("plans").join("index.mdx")).unwrap();
+
+        assert!(index.contains("spontaneous guided audio tour"));
+        assert!(!index.contains("&lt;!doctype html&gt;"));
+        assert!(prd.contains("Most tours require planning"));
+        assert!(prd.contains("Generates narration from current latitude"));
+        assert!(prd.contains("hands-free voice interaction"));
+        assert!(plans.contains("Status: planning"));
+        assert!(plans.contains("no generated MVP stage tree"));
+        assert!(!root
+            .join("wiki")
+            .join("sources")
+            .join("planning-interview.mdx")
+            .exists());
+        assert!(!root.join("wiki").join("plans").join("mvp").exists());
+    }
+
+    #[test]
+    fn multi_document_import_writes_bundle_index_and_imported_source_pages() {
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let projects_dir = temp_root("multi-import-projects-dir");
+        let home = temp_root("multi-import-home");
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let registry = ProjectRegistry::new(&home);
+
+        let created = create_project_from_dashboard(
+            &registry,
+            ProjectCreateRequest {
+                title: "Bundle Import".to_string(),
+                summary: Some("Imported bundle.".to_string()),
+                document: None,
+                document_type: None,
+                source_documents: vec![
+                    SourceDocument {
+                        name: "01-product.md".to_string(),
+                        document_type: "markdown".to_string(),
+                        content: "# Idea\n\n- First selected product signal.\n".to_string(),
+                    },
+                    SourceDocument {
+                        name: "02-design.html".to_string(),
+                        document_type: "html".to_string(),
+                        content: "<section><h2>Idea</h2><ul><li>Second selected design signal.</li></ul></section>".to_string(),
+                    },
+                ],
+                planning_answers: BTreeMap::new(),
+                initialize_git: Some(false),
+                install_agent_skills: None,
+                agent_launch_command: None,
+            },
+        )
+        .unwrap();
+
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+
+        let root = created.project.root;
+        let import =
+            fs::read_to_string(root.join("wiki").join("sources").join("import.mdx")).unwrap();
+        let first = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("imported")
+                .join("01-01-product.mdx"),
+        )
+        .unwrap();
+        let second = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("imported")
+                .join("02-02-design.mdx"),
+        )
+        .unwrap();
+        let technical = fs::read_to_string(
+            root.join("wiki")
+                .join("sources")
+                .join("technical-brief.mdx"),
+        )
+        .unwrap();
+
+        assert!(import.contains("Imported 2 source documents"));
+        assert!(import.contains("/wiki/sources/imported/01-01-product.mdx"));
+        assert!(import.contains("/wiki/sources/imported/02-02-design.mdx"));
+        assert!(first.contains("First selected product signal."));
+        assert!(second.contains("&lt;section&gt;&lt;h2&gt;Idea&lt;/h2&gt;"));
+        let first_index = technical.find("First selected product signal").unwrap();
+        let second_index = technical.find("Second selected design signal").unwrap();
+        assert!(first_index < second_index);
+    }
+
+    #[test]
+    fn init_installs_default_agent_skills_and_lockfile() {
+        let root = temp_root("init-agent-skills");
+
+        init_hyperwiki_project(&root, init_options("Skill Project")).unwrap();
+
+        assert_default_skills_installed(&root);
+        let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+        assert!(agents.contains("Repo-local agent skills are installed"));
+        let wiki_agents = fs::read_to_string(root.join("wiki").join("AGENTS.mdx")).unwrap();
+        assert!(wiki_agents.contains(".agents/skills/"));
+    }
+
+    #[test]
+    fn init_can_skip_agent_skills() {
+        let root = temp_root("init-no-agent-skills");
+        let mut options = init_options("No Skills Project");
+        options.install_agent_skills = false;
+
+        init_hyperwiki_project(&root, options).unwrap();
+
+        assert!(!root.join(".agents").join("skills").exists());
+        assert!(!root.join("skills-lock.json").exists());
+    }
+
+    #[test]
+    fn init_preserves_existing_agent_skills_and_lock_entries_without_overwrite() {
+        let root = temp_root("init-preserve-agent-skills");
+        let custom_skill = root.join(".agents").join("skills").join("shadcn");
+        fs::create_dir_all(&custom_skill).unwrap();
+        fs::write(custom_skill.join("SKILL.md"), "custom shadcn").unwrap();
+        fs::write(
+            root.join("skills-lock.json"),
+            serde_json::to_string_pretty(&serde_json::json!({
+                "version": 1,
+                "skills": {
+                    "shadcn": {
+                        "source": "custom/source",
+                        "sourceType": "local",
+                        "skillPath": "SKILL.md",
+                        "computedHash": "custom"
+                    },
+                    "custom-skill": {
+                        "source": "custom/other",
+                        "sourceType": "local",
+                        "skillPath": "SKILL.md",
+                        "computedHash": "other"
+                    }
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        init_hyperwiki_project(&root, init_options("Preserve Skills")).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(
+                root.join(".agents")
+                    .join("skills")
+                    .join("shadcn")
+                    .join("SKILL.md")
+            )
+            .unwrap(),
+            "custom shadcn"
+        );
+        let lock = skills_lock(&root);
+        assert_eq!(lock["skills"]["shadcn"]["source"], "custom/source");
+        assert_eq!(lock["skills"]["custom-skill"]["source"], "custom/other");
+        assert!(lock["skills"]["hyperwiki"].is_object());
     }
 
     #[test]
@@ -1525,6 +2624,7 @@ mod tests {
             available: true,
             last_opened_at: None,
             active: false,
+            import_planning: None,
         }
     }
 
@@ -1536,6 +2636,50 @@ mod tests {
             serde_json::json!({ "projectName": name }).to_string(),
         )
         .unwrap();
+    }
+
+    fn init_options(project_name: &str) -> InitProjectOptions {
+        InitProjectOptions {
+            project_name: project_name.to_string(),
+            summary: "Test project summary.".to_string(),
+            source_document: String::new(),
+            source_document_type: String::new(),
+            source_documents: Vec::new(),
+            source_facts: SourceFacts {
+                summary: "Test project summary.".to_string(),
+                ..Default::default()
+            },
+            planning_answers: BTreeMap::new(),
+            agent_launch_command: String::new(),
+            dev_command: String::new(),
+            package_scripts: Vec::new(),
+            install_agent_skills: true,
+            overwrite: false,
+        }
+    }
+
+    fn assert_default_skills_installed(root: &Path) {
+        let lock = skills_lock(root);
+        for skill in BUNDLED_AGENT_SKILLS {
+            assert!(
+                root.join(".agents")
+                    .join("skills")
+                    .join(skill.name)
+                    .join("SKILL.md")
+                    .is_file(),
+                "{} should have SKILL.md",
+                skill.name
+            );
+            assert!(
+                lock["skills"][skill.name].is_object(),
+                "{} should be in skills-lock.json",
+                skill.name
+            );
+        }
+    }
+
+    fn skills_lock(root: &Path) -> serde_json::Value {
+        serde_json::from_str(&fs::read_to_string(root.join("skills-lock.json")).unwrap()).unwrap()
     }
 
     fn temp_root(label: &str) -> PathBuf {

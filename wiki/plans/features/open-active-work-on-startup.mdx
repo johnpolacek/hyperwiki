@@ -1,0 +1,39 @@
+---
+title: "Open Active Work On Startup"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Open Active Work On Startup</h1>
+
+<section>
+  <h2>Status</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: design a dedicated All Plans Done state later, when there is no active or fallback plan work.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>Opening Hyperwiki should land on active work, not the Plans index. The normal target is the active Plan &gt; Stage &gt; Unit. If no active unit is recorded, Hyperwiki should choose the first incomplete unit, stage, or plan in sidebar order. The Plans index remains available only as an imported-project planning intake surface until a future All Plans Done state exists.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Added React landing-path resolution from workspace current path plus the existing plan tree ordering.</li>
+    <li>Redirected normal startup from <code>/wiki/plans/index.mdx</code> to active or first available work when the route is not imported-planning intake.</li>
+    <li>Changed project switching and the brand home button to use the resolved work path instead of the Plans index.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run <code>pnpm run check</code>.</li>
+    <li>Run <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</section>

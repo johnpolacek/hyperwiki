@@ -1,0 +1,24 @@
+---
+title: "Import Q&A Answer Routing Diagnostics"
+description: "Make imported project Q&A answer routing observable and session-specific."
+wikiKind: "plan"
+---
+
+<h1>Import Q&amp;A Answer Routing Diagnostics</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Completed unit: Unit 01 - Explicit Session Answer Routing</li>
+    <li>Verification: <code>pnpm run check</code> and <code>cargo test agent_prompt --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Unit 01 - Explicit Session Answer Routing</h2>
+  <p>Imported Q&amp;A currently persists answer 1 but can stall before question 2. Route answers through the exact live terminal session that emitted the question, reject stale retained sessions, and log replay/parser evidence after answer submission.</p>
+  <h3>Verification</h3>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>cargo test agent_prompt --manifest-path src-tauri/Cargo.toml</code></li>
+  </ul>
+</section>

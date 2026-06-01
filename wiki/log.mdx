@@ -1,0 +1,2097 @@
+---
+title: "Project Log"
+description: "Hyperwiki page page."
+wikiKind: "page"
+---
+
+<h1>Project Log</h1>
+<p>Git owns routine implementation history. This log owns durable project-context history.</p>
+<article>
+  <h2>2026-05-31 fix | modify plan prompt refinement</h2>
+  <ul>
+    <li>Kept prewarmed Modify Plan Codex sessions but shortened the standby prompt and removed the no-edit check instruction conflict.</li>
+    <li>Changed Modify Plan prompts to use repo-relative wiki paths, derive current unit context from the visible unit page, and treat <code>.hyperwiki/</code> runtime state as non-blocking noise.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | prewarmed modify codex sessions</h2>
+  <ul>
+    <li>Added hidden <code>purpose="modify"</code> Codex agent sessions for active plan scopes so Modify Plan can reuse a prestarted <code>codex --yolo</code> TUI.</li>
+    <li>Changed Modify Plan to promote and target the plan's modify session by exact <code>sessionId</code> instead of forcing a new visible agent launch.</li>
+    <li>Kept Execute, Review, and manual agent launches on the existing visible terminal workflow.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 fix | direct agent command launch</h2>
+  <ul>
+    <li>Changed command-backed terminal sessions to start the configured launch command as the shell's initial command instead of typing it into a newly opened prompt.</li>
+    <li>Prevents agent terminals from appearing stuck at <code>codex --yolo</code> when shell startup timing swallows or delays the submitted newline.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 fix | stale terminal session cleanup</h2>
+  <ul>
+    <li>Changed session listing to persist stale active or detached terminal records as closed when no live terminal process exists, then omit them from the live terminal response.</li>
+    <li>Changed xterm rendering to strip Codex display synchronization control sequences while keeping parsing and replay behavior intact.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 fix | modify-plan waiting state</h2>
+  <ul>
+    <li>Hardened Codex readiness so a prompt is accepted only after the latest input prompt appears after MCP startup.</li>
+    <li>Changed no-request Modify Plan handoffs to stop after a concise ready-for-modification message instead of continuing background exploration.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 fix | Codex MCP startup readiness</h2>
+  <ul>
+    <li>Changed agent prompt readiness to wait up to 30 seconds instead of timing out during normal Codex MCP startup.</li>
+    <li>Prevented Modify Plan prompt submission while the Codex terminal is still reporting <code>Starting MCP servers</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 fix | MVP sidebar stage-only nesting</h2>
+  <ul>
+    <li>Changed the sidebar plan tree so <code>wiki/plans/mvp/index.mdx</code> only nests stage pages.</li>
+    <li>Prevents stray generated support pages such as <code>past-entries.mdx</code> from appearing as siblings outside the nested stage/unit plan navigation.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | live wiki sidebar refresh</h2>
+  <ul>
+    <li>Added a Tauri wiki fingerprint endpoint for <code>wiki/**/*.mdx</code> changes.</li>
+    <li>Changed the React shell to refresh wiki pages, workspace status, and the visible wiki page when plan-agent activity or focus return detects a changed fingerprint.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | plan-root terminal scope correction</h2>
+  <ul>
+    <li>Changed terminal scope derivation so plan unit pages use their parent plan or stage root before loading sessions.</li>
+    <li>Kept different plans and stages isolated while preventing sibling unit navigation from swapping the visible terminal panel.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | direct modify plan agent handoff</h2>
+  <ul>
+    <li>Changed the command-bar <code>modify</code> action to open a fresh scoped agent terminal immediately instead of opening the retired right-side Modify Plan form.</li>
+    <li>Kept the terminal panel visible, kept the handoff docs-only, and targeted tracked prompt submissions to the exact newly prepared agent session.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | terminal launch and focus reliability</h2>
+  <ul>
+    <li>Changed launch command submission from carriage return to newline after a longer shell-start delay so <code>codex --yolo</code> is less likely to sit unsubmitted at the prompt.</li>
+    <li>Focused the active xterm pane and kept xterm instances mounted across session-list refreshes by depending on stable session IDs.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run test:tauri -- terminals</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | terminal vertical splits</h2>
+  <ul>
+    <li>Changed live terminal rendering so new agent and CLI sessions split the terminal pane vertically instead of hiding behind a tab strip.</li>
+    <li>Moved terminal close controls into each terminal pane's upper-right corner as an <code>X</code> button.</li>
+    <li>Buffered the first terminal display chunk so zsh's startup-only partial-line <code>%</code> marker is stripped even when it arrives before its newline.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | terminal startup marker cleanup</h2>
+  <ul>
+    <li>Preserved the <code>codex --yolo</code> agent launch fallback and removed the command normalization that rewrote it.</li>
+    <li>Added a narrow xterm display cleanup for zsh's startup-only partial-line <code>%</code> marker before the first terminal content is rendered.</li>
+    <li>Validation: <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | git init main branch</h2>
+  <ul>
+    <li>Changed Git onboarding for fresh projects to initialize repositories with <code>main</code> as the initial branch instead of inheriting each machine's Git default.</li>
+    <li>Added Rust regression coverage that the initialized repo context reports branch <code>main</code>.</li>
+    <li>Validation: <code>pnpm run test:tauri -- git::tests::initializes_git_and_creates_baseline_commit</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | close final terminal session</h2>
+  <ul>
+    <li>Added a terminal-header close action for the active live session so a single <code>+ agent</code> or <code>+ cli</code> terminal can be closed.</li>
+    <li>Kept multi-session tab selection unchanged; after the final session closes, the terminal pane returns to its existing empty state.</li>
+    <li>Validation: <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | reliable wiki Markdown zip save</h2>
+  <ul>
+    <li>Changed the sidebar wiki Markdown export action to save the generated zip through the Tauri backend instead of relying on a browser-style Blob download inside the desktop webview.</li>
+    <li>Added visible sidebar export feedback so save progress, success, and errors are shown next to the Plans heading.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | future plan modify access</h2>
+  <ul>
+    <li>Changed the command bar so future or otherwise non-current plan pages can still open Modify Plan.</li>
+    <li>Kept Execute disabled for completed or non-current plan pages.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | terminal header action cleanup</h2>
+  <ul>
+    <li>Moved the Run Dev action from the document command bar to the terminal panel header, beside the worktree controls.</li>
+    <li>Shortened the terminal thinking-effort label to Think and the medium option label to Med.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | sidebar plan action and panel close</h2>
+  <ul>
+    <li>Moved the New Plan action out of the document command bar and into the top of the left Plans sidebar.</li>
+    <li>Added close controls to the right-side Modify Plan and Create Plan panels so users can return to the terminal view.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | stale unit prompt removal</h2>
+  <ul>
+    <li>Removed the command-bar prompt that said a visible page was not the current active unit and offered an Open current action.</li>
+    <li>Kept stale or completed plan pages from enabling normal Modify and Execute actions.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | sidebar wiki export action</h2>
+  <ul>
+    <li>Moved the wiki Markdown zip download action from the document header to the top-right of the left sidebar, inline with the Plans heading.</li>
+    <li>Removed the separate Download project skill button from the app UI while keeping the Markdown zip export as the visible wiki export action.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | single-column plan briefs</h2>
+  <ul>
+    <li>Changed React MDX plan rendering so <code>CardGroup</code> and <code>Columns</code> always stack as one full-width column instead of becoming multi-column grids on wider viewports.</li>
+    <li>Updated import plan-generation prompts and deterministic static-local templates to avoid multi-column plan layouts in fresh generated plans.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | import plan execution brief polish</h2>
+  <ul>
+    <li>Tightened React MDX plan rendering for operational planning pages: smaller hero scale, denser cards/checklists, tighter prose rhythm, and a compact visible <code>Copy MD</code> action.</li>
+    <li>Reworked deterministic static-local import templates around execution-brief grammar: build, where, ready when, do not add, acceptance checks, manual command checks, unlocks next, verification, and completion gate.</li>
+    <li>Replaced API-flavored request/response panels in simple static import plans with <code>CommandBlock</code> and <code>Aside</code> components, while preserving request/response components for real contract docs.</li>
+    <li>Validation: focused import runtime/planning tests, static smoke tests, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-31 implementation | import planning Codex prewarm</h2>
+  <ul>
+    <li>Added non-generative Codex prewarm for import onboarding: Hyperwiki now starts and initializes <code>codex app-server</code> during app setup and warms imported-project threads after project creation or resume.</li>
+    <li>Added <code>/api/import-onboarding/prewarm</code> and a shorter warm-turn no-first-event fallback before switching to <code>codex exec --json</code>.</li>
+    <li>Reduced duplicate planning activity lines by changing React's local placeholder copy to preparation language and normalizing consecutive workstream duplicates.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | static import plan richness</h2>
+  <ul>
+    <li>Updated the deterministic static-local import compiler so fresh Micro-Journal-style plans emit richer MDX structures: card groups, columns, task lists, aside notes, request/response examples, and titled verification blocks.</li>
+    <li>Preserved the executable planning contract for <code>index.html</code>, browser <code>localStorage</code>, debounced autosave, clear-entry behavior, local-only guardrails, dependencies, and manual browser verification.</li>
+    <li>Validation: focused import runtime/planning tests, <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | import plan detail quality gate</h2>
+  <ul>
+    <li>Added source-keyword-aware validation for generated imported-project unit pages, rejecting generic unit titles, generic source-decision prose, thin <code>Run checks</code> verification, and unit pages that do not visibly reuse concrete imported source terms.</li>
+    <li>Updated the deterministic generic import compiler so fallback stage and unit pages use source-derived focus terms, concrete scope, source-specific dependencies, and manual acceptance checks.</li>
+    <li>Validation: focused import planning/runtime tests, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | rich planning MDX composition</h2>
+  <ul>
+    <li>Added Holocron-inspired planning structures <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to Hyperwiki's local MDX plan renderer and Rust wiki document pipeline.</li>
+    <li>Updated plan-generation prompts and Hyperwiki skill guidance to choose a composition pattern before writing plans and to use richer components for alternatives, work tracks, contracts, and secondary context.</li>
+    <li>Validation: <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | wiki document pipeline</h2>
+  <ul>
+    <li>Introduced a parsed Rust <code>WikiDocument</code> pipeline for Hyperwiki's trusted local MDX dialect, producing frontmatter, AST-style body nodes, headings, wiki links, component references, Markdown derivatives, and validation warnings from one document pass.</li>
+    <li>Changed wiki source, page index, page Markdown, <code>llms.txt</code>, Markdown zip, and generated skill exports to consume the shared document pipeline instead of separate heading/link/Markdown scans.</li>
+    <li>Extended wiki page/source payloads with <code>componentRefs</code> so future search, validation, and component documentation can reason about MDX component usage.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | wiki Markdown export completion</h2>
+  <ul>
+    <li>Added a local <code>/api/wiki/export-markdown-zip</code> endpoint that returns a base64 zip payload containing Markdown derivatives, <code>llms.txt</code>, and a generated project <code>SKILL.md</code>.</li>
+    <li>Added <code>/api/wiki/skill.md</code> for direct generated skill export without writing generated files back into the repository.</li>
+    <li>Added wiki header download actions for the Markdown zip and project skill, and routed all MDX wiki pages through the React renderer so non-plan pages also expose Copy Markdown and validation warnings.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | Holocron-inspired wiki exports and validation</h2>
+  <ul>
+    <li>Added local-first wiki Markdown export surfaces through <code>/api/wiki/page-markdown</code> and <code>/api/wiki/llms.txt</code> without adopting Holocron's runtime, docs shell, hosting model, or <code>docs.json</code> structure.</li>
+    <li>Enriched the Rust wiki index and source payloads with frontmatter, headings, wiki links, and broken-link validation warnings so navigation, agent context, and future guardrails can consume structured page metadata.</li>
+    <li>Added a copy-as-Markdown action and validation-warning display to React-rendered plan pages using the existing Markdown derivative contract.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run check:tauri</code>. A frontend-only Vite preview reached the app shell through <code>agent-browser</code>, but wiki content could not load without the Tauri command transport.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | MDX plan visual polish</h2>
+  <ul>
+    <li>Reworked MDX plan rendering from oversized stacked cards into a more compact working-brief layout with a metadata grid, left-ruled sections, tighter typography, and restrained evidence, decision, and verification panels.</li>
+    <li>Changed generated import unit templates so routine sections such as Scope, Implementation Notes, and Completion Gate stay as semantic sections instead of every heading becoming a full <code>PlanUnit</code> card.</li>
+    <li>Updated plan creation prompts, import repair prompts, and bundled Hyperwiki skill references to explain when to use MDX plan components and when to leave ordinary content as semantic sections.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, <code>pnpm run build:frontend</code>, and an <code>agent-browser</code> visual preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | plan generation component guidance</h2>
+  <ul>
+    <li>Updated regular plan creation prompts, import artifact repair prompts, and bundled Hyperwiki skill references to advertise the built-in MDX plan component vocabulary.</li>
+    <li>Changed the deterministic import MVP compiler to emit <code>PlanHero</code>, <code>PlanSummary</code>, <code>PlanUnit</code>, <code>Evidence</code>, <code>Decision</code>, <code>Verification</code>, <code>Steps</code>, and <code>Visibility for="agents"</code> directly.</li>
+    <li>Moved long imported source and Q&amp;A summaries out of visible paragraphs and into agent-only visibility blocks so generated plans stay readable in the app while preserving context in Markdown derivatives.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 implementation | shadcn MDX plan components</h2>
+  <ul>
+    <li>Added Hyperwiki-owned MDX plan components inspired by Holocron's component vocabulary without adding Holocron runtime dependencies.</li>
+    <li>Installed focused shadcn/ui primitives for cards, badges, alerts, tabs, accordions, separators, tooltips, scroll areas, and collapsibles.</li>
+    <li>Extended the trusted React MDX renderer with plan wrappers for decisions, evidence, verification, callouts, panels, frames, steps, prompts, updates, task lists, fields, trees, code blocks, tabs, accordions, badges, and human or agent visibility.</li>
+    <li>Extended Rust Markdown derivatives so visual wrappers do not leak into agent context, field/step context remains useful, and <code>Visibility for="humans"</code> is excluded from agent-facing Markdown while <code>Visibility for="agents"</code> is preserved.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, and a temporary Vite shell smoke through <code>agent-browser</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 fix | deterministic import MVP plan compiler</h2>
+  <ul>
+    <li>Replaced the normal post-<code>hyperwiki-ready-to-plan</code> hidden artifact-generation turn with a Rust-owned compiler that writes source-grounded stage and unit MDX artifacts directly through the existing safe plan-artifact path.</li>
+    <li>Added compiler progress events for start, compiled artifact paths, writes, and validation success, while preserving Codex <code>PlanRepair</code> only for validation fallback and manual retry paths.</li>
+    <li>Added focused Micro-Journal coverage proving compiled artifacts include root <code>index.html</code>, vanilla HTML/CSS/JS, <code>localStorage</code>, debounce, restore, clear-entry, and manual verification details, and updated static smoke coverage to reject the old normal <code>PlanRepair</code> handoff.</li>
+    <li>Verified with focused <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>pnpm run smoke:import-onboarding-manager</code>, <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-30 fix | import onboarding MVP artifact shape</h2>
+  <ul>
+    <li>Removed the conservative one-unit runtime fallback that completed imported-project onboarding with a generic <code>Unit 01 - Confirmed MVP Slice</code> plan after <code>hyperwiki-ready-to-plan</code>.</li>
+    <li>Changed ready-to-plan handling to start the backend-owned <code>hyperwiki-plan-artifacts</code> generation run and leave provider stalls as retryable failures instead of committing placeholder plans.</li>
+    <li>Strengthened import artifact validation so MVP plans require a stage page, at least two concrete executable unit pages, Plans index current-work fields, unit handoff sections, and no confirmed-MVP placeholder wording.</li>
+    <li>Updated static smoke coverage to assert the artifact-generation contract and reject the old direct completion fallback.</li>
+    <li>Verified with focused <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code> and <code>import_onboarding_runtime</code>, plus <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding direct plan completion</h2>
+  <ul>
+    <li>Removed the second hidden Codex plan-artifact turn from the normal imported-project onboarding path.</li>
+    <li>After Codex emits <code>hyperwiki-ready-to-plan</code>, the Rust runtime now immediately writes a conservative MVP plan from accepted decisions and imported source context, then validates the allowed plan files before completing onboarding.</li>
+    <li>This addresses dogfood runs where Q&amp;A succeeded but the post-decision artifact turn stayed quiet long enough to feel hung.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding plan fallback</h2>
+  <ul>
+    <li>Added a runtime-owned completion fallback for imports that have already reached a valid <code>hyperwiki-ready-to-plan</code> decision state but whose hidden Codex plan-artifact turn stalls or times out before assistant text.</li>
+    <li>The fallback writes only conservative MVP plan artifacts under <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code>, using accepted import decisions and source context rather than asking another hidden repair turn to finish.</li>
+    <li>The existing generated-plan safe path checks and MDX artifact validator still gate onboarding completion.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 refactor | import onboarding virtual artifacts</h2>
+  <ul>
+    <li>Changed import plan generation to use a DeepAgents-style virtual artifact contract: Codex now returns structured <code>hyperwiki-plan-artifacts</code> JSON instead of being asked to write wiki files directly.</li>
+    <li>Added runtime parsing, safe path validation, and MDX artifact writes for generated MVP plan files under <code>wiki/plans/</code>, followed by the existing deterministic artifact validator.</li>
+    <li>Restricted plan artifact writes to <code>wiki/plans/index.mdx</code> and <code>wiki/plans/mvp/**/*.mdx</code> so hidden agent output cannot modify product code or unrelated wiki state.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding run finalizer</h2>
+  <ul>
+    <li>Matched the Tandem-style <code>finish_if_match</code> lifecycle pattern for import onboarding active runs.</li>
+    <li>Fixed the background run finalizer so a parent question turn cannot clear a newly chained child plan turn from the active-run registry.</li>
+    <li>Added a regression test proving a parent finalizer leaves the child run active.</li>
+    <li>Verified with <code>pnpm run test:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding chained plan turn</h2>
+  <ul>
+    <li>Fixed a runtime transition bug where a <code>hyperwiki-ready-to-plan</code> response completed the question turn but the internal active-run guard prevented the chained plan-generation turn from starting.</li>
+    <li>Applied the same release-before-chain behavior to repair and plan-repair transitions so backend-owned follow-up turns can start without waiting for a manual retry.</li>
+    <li>Added a focused runtime regression test for active-run release before chained turns.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, focused preview retry, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 refactor | import onboarding runtime ownership</h2>
+  <ul>
+    <li>Added a Rust-owned import onboarding runtime layer with persisted sessions, runs, append-only event logs, and per-run checkpoints under ignored <code>.hyperwiki/state/import-onboarding/runtime/</code>.</li>
+    <li>Moved imported-project Q&amp;A start, answer, retry, cancel, status, and event access to <code>/api/import-onboarding/*</code> endpoints while keeping the existing Codex adapter as the provider layer.</li>
+    <li>Changed the React import Q&amp;A view to render runtime status/events and submit answers by pending request ID instead of driving Codex turn prompts and repair timing itself.</li>
+    <li>Updated static smoke coverage to assert the runtime boundary and event visibility contract.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding turn contracts</h2>
+  <ul>
+    <li>Split imported-project onboarding into Codex-authored decision turns and separate plan-generation turns using a structured <code>hyperwiki-ready-to-plan</code> signal.</li>
+    <li>Removed automatic deterministic local question fallbacks from the normal path so Codex remains responsible for authored questions and final plan content.</li>
+    <li>Added bounded exec JSON no-assistant snapshots and timeout semantics so lifecycle events and command execution cannot keep a turn waiting indefinitely without assistant text.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding cumulative activity</h2>
+  <ul>
+    <li>Changed the imported Planning Q&amp;A activity pane to remain visible alongside active questions when prior run output exists.</li>
+    <li>Raised the import-planning workstream retention from a short rolling tail to a larger session log and stopped replacing the log on normal completion.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding repair no-text fallback</h2>
+  <ul>
+    <li>Extended the fast no-text local follow-up fallback to repair turns, not only direct answer turns.</li>
+    <li>Changed the backend-run cancel reason and diagnostics to treat answer and repair turn stalls as the same follow-up no-text failure class.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding post-answer no-text fallback</h2>
+  <ul>
+    <li>Added a fast local follow-up question when a post-answer Codex turn enters exec JSON fallback but produces no assistant text inside the bounded window.</li>
+    <li>Cancelled the slow backend run before showing the local follow-up so import onboarding does not wait for the full exec fallback timeout.</li>
+    <li>Deduped repeated backend snapshot lines in the Planning Q&amp;A activity stream so the same <code>thread.started</code> and <code>turn.started</code> events do not keep repainting.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding answer-turn drift repair</h2>
+  <ul>
+    <li>Added a bounded repair turn when an answer follow-up completes with future-tense plan-writing prose but no parseable planning question and no generated plan artifacts.</li>
+    <li>Tightened import-planning prompts so Codex must either write the MVP plan files immediately or emit exactly one <code>hyperwiki-question</code> JSON object instead of narrating intended wiki updates.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 implementation | import onboarding Unit 05</h2>
+  <ul>
+    <li>Removed the obsolete React-owned import turn monitor and stopped mounting the headless terminal listener on the imported-project planning intake route.</li>
+    <li>Changed the Planning Q&amp;A view to render active backend run snapshots, including the current run phase, as the visible progress source between questions.</li>
+    <li>Added a cancel control wired to the backend import-planning cancel route so a running onboarding turn can be stopped without reloading the app.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 implementation | import onboarding Unit 04</h2>
+  <ul>
+    <li>Added staged import artifact records under ignored <code>.hyperwiki/state/import-onboarding/staged-artifacts.json</code> for generated plan files discovered under <code>wiki/plans/</code>.</li>
+    <li>Added deterministic artifact validation for MDX frontmatter, <code>wikiKind: "plan"</code>, titles, nested plan index, executable units, source grounding, and unit verification guidance.</li>
+    <li>Changed import planning status so delayed or reload-discovered plan files report <code>complete</code> only after validation passes, or <code>needsRepair</code> with repair prompt details when validation fails.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code> and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding first-question recovery</h2>
+  <ul>
+    <li>Hardened the imported-project first-question prompt so Codex is explicitly forbidden from command, file, wiki, or plan-writing behavior in the question-script turn.</li>
+    <li>Added a local first-question fallback when the initial/retry turn produces assistant text, command events, or plan-writing drift without a parseable <code>hyperwiki-question</code>.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding active-turn race</h2>
+  <ul>
+    <li>Changed import-planning polling to keep following the backend run ID when the frontend active-turn ref is stale, instead of failing the turn as superseded.</li>
+    <li>Changed active-turn cleanup to clear only the matching request, preventing older import flows from clearing a newer active turn.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding exec fallback completion</h2>
+  <ul>
+    <li>Changed <code>codex exec --json</code> fallback to recover when assistant text arrives but <code>turn.completed</code> never follows, returning the last assistant message after an idle window instead of timing out the import turn.</li>
+    <li>Aligned exec fallback sandboxing with the app-server adapter and surfaced the assistant text tail in the visible Q&amp;A activity stream.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>HYPERWIKI_CODEX_ADAPTER_SMOKE_TRANSPORTS=exec pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding activity visibility</h2>
+  <ul>
+    <li>Added readable Codex transport event summaries to import-planning turn snapshots so the intake UI can show which app-server or exec JSON events arrived.</li>
+    <li>Changed the imported-project Q&amp;A activity pane to keep a stable rolling workstream between questions and avoid clearing a newly revealed question during answer handoff.</li>
+    <li>Verified with <code>pnpm run check:tauri</code> and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 fix | import onboarding first-event fallback</h2>
+  <ul>
+    <li>Changed import onboarding so an accepted but silent <code>codex app-server</code> turn falls back to <code>codex exec --json</code> after a short first-event window.</li>
+    <li>Added backend run snapshots and UI copy for the <code>exec_json_fallback</code> phase so the user sees transport recovery instead of an indefinite first-event wait.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, <code>pnpm run smoke:import-onboarding-manager</code>, and <code>HYPERWIKI_CODEX_ADAPTER_SMOKE_TRANSPORTS=exec pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 implementation | import onboarding Unit 03</h2>
+  <ul>
+    <li>Added durable human-input checkpoints for imported-project planning questions under ignored <code>.hyperwiki/state/import-onboarding/</code> runtime state.</li>
+    <li>Changed import planning status to restore a pending checkpointed question and answer submissions to include request IDs.</li>
+    <li>Changed answer persistence to reject stale request/question combinations before writing <code>wiki/sources/import-qna.mdx</code>.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code>, <code>pnpm run check</code>, <code>pnpm run smoke:import-onboarding-manager</code>, and <code>pnpm run smoke:codex-adapter</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 implementation | import onboarding Unit 02</h2>
+  <ul>
+    <li>Added backend-owned import onboarding session and run records around Codex import-planning turns.</li>
+    <li>Added typed <code>import-onboarding://event</code> emissions, duplicate request joining, session/run metadata in status responses, and explicit retry and cancel command routes.</li>
+    <li>Added a static smoke for the manager surface and wired it into <code>pnpm run check</code>.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, and <code>pnpm run smoke:import-onboarding-manager</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-29 implementation | import onboarding Unit 01</h2>
+  <ul>
+    <li>Implemented the Codex adapter baseline for import onboarding with normalized app-server events and timing metrics on turn snapshots and responses.</li>
+    <li>Added <code>pnpm run smoke:codex-adapter</code> to compare persistent <code>codex app-server</code> with <code>codex exec --json</code> on the same prompt fixture.</li>
+    <li>Changed the previous 25-second no-assistant-text failure into a visible waiting phase until the total turn deadline, so quiet-but-alive Codex turns no longer become immediate stalled states.</li>
+    <li>Verified with <code>pnpm run check:tauri</code>, <code>pnpm run check</code>, <code>pnpm run smoke:codex-adapter</code>, and <code>pnpm run smoke:codex-app-server</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-28 plan | stronger import Q&amp;A protocol</h2>
+  <ul>
+    <li>Added a corrective plan to make Codex app-server import Q&amp;A observable, bounded, and retryable.</li>
+    <li>Captured research-spike takeaways from OpenHarness, Pydantic AI, LangGraph, OpenHands, and Cline.</li>
+    <li>Implemented running app-server snapshots, partial question parsing, retryable stalled/schema-mismatch UI states, and one-question initial prompts.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-28 fix | codex app-server import Q&amp;A</h2>
+  <ul>
+    <li>Changed imported-project Planning Q&amp;A to use a persistent Codex app-server JSON-RPC thread before falling back to terminal prompt injection.</li>
+    <li>Kept Codex 5.5 low-thinking overrides on the new transport and restored one-question-at-a-time import prompts.</li>
+    <li>Follow-up: removed experimental app-server fields from the import-turn payload and stopped silently falling back to fresh terminal sessions when app-server fails.</li>
+    <li>Follow-up: moved app-server import turns to background jobs with status polling so a long Codex turn cannot freeze the Tauri app shell.</li>
+    <li>Follow-up: changed the first import turn to generate a compact AI-authored question script from inline source context, then reveal scripted questions locally so normal answers no longer restart Codex.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-28 fix | faster import Q&amp;A turns</h2>
+  <ul>
+    <li>Changed imported-project planning turns to force Codex 5.5 low thinking and use compact state for intermediate Q&amp;A prompts.</li>
+    <li>Added <code>wiki/sources/import-state.mdx</code> persistence and support for batched independent planning questions.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>cargo test import_planning --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-27 fix | import Q&amp;A fresh turns</h2>
+  <ul>
+    <li>Changed imported-project planning so the first question and every answered question start a fresh request-scoped agent turn.</li>
+    <li>Changed question parsing to track active turn request ids, ignore stale candidates, remove prompt-text plan path completion, and expose timeout retry state.</li>
+    <li>Verified with <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-27 fix | import Q&amp;A answer routing diagnostics</h2>
+  <ul>
+    <li>Changed imported-project planning answers to route through the exact live agent session that emitted the active question.</li>
+    <li>Added backend routing diagnostics and frontend replay/parser probe logs so a post-answer stall can be traced to session selection, terminal output, or question extraction.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>cargo test agent_prompt --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-27 implementation | multiple project doc import</h2>
+  <ul>
+    <li>Changed New Project upload to accept multiple Markdown, MDX, HTML, and HTM files and send an ordered <code>sourceDocuments</code> bundle during project creation.</li>
+    <li>Changed imported project scaffolding to combine bundle content for source fact extraction while preserving <code>wiki/sources/import.mdx</code> as the canonical import marker.</li>
+    <li>Added generated provenance pages under <code>wiki/sources/imported/</code> for multi-document imports.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-27 fix | replace Inter in themes</h2>
+  <ul>
+    <li>Changed built-in theme presets that used Inter to use Rethink Sans through the shared theme font helper.</li>
+    <li>Bundled Rethink Sans and Figtree font files, registered them in the React Tailwind stylesheet and wiki stylesheet, and added static asset smoke coverage for the new font assets.</li>
+    <li>Verified that Tailwind's <code>--font-sans</code> resolves through <code>--docs-serif-font</code> and that browser font loading succeeds for both Rethink Sans and Figtree.</li>
+    <li>Follow-up: changed Daybreak to use Figtree, added visible font-name summaries to the Edit Theme controls, and made preset picker tiles render each preset's label and slug in that preset's own body and mono fonts.</li>
+    <li>Bundled the remaining built-in preset display font families so examples such as Archive render as EB Garamond plus Source Code Pro instead of system fallback.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-27 fix | settings theme autosave</h2>
+  <ul>
+    <li>Changed Settings theme editing so preset, mode, color, font, terminal, and valid advanced JSON changes apply to the app theme immediately and autosave through the existing settings endpoint.</li>
+    <li>Replaced the theme editor Cancel/Save Theme controls with Revert and Done; Revert restores the editor-open baseline and Done flushes pending autosave work before returning to Settings.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a live Vite source check against the running dev server.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 fix | modify plan docs-only boundary</h2>
+  <ul>
+    <li>Changed Modify Plan handoffs so the textarea request is wrapped in an explicit planning/wiki-only prompt instead of being sent directly to the agent.</li>
+    <li>Limited Modify Plan instructions to app-visible wiki planning files and explicitly prohibited product code, dependency, config, test, asset, and execution-unit changes.</li>
+    <li>Updated the Modify Plan panel copy and static asset smoke assertion to label the action as docs-only.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 fix | visible agent activity feed</h2>
+  <ul>
+    <li>Changed Modify, Execute, worktree, and review handoffs to show a simplified live agent activity feed by default, with raw terminal available as a secondary view.</li>
+    <li>Changed the feed from a truncated rolling summary to a full scrollable run feed with a copyable troubleshooting transcript.</li>
+    <li>Added completed and stale plan-page guards so normal Modify and Execute actions are disabled when the visible plan is not the current active work.</li>
+    <li>Refined feed outcome parsing so successful runs with a remaining manual/provider gate finish as complete with a clear pending-gate note instead of a clipped blocked outcome.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> shell render check against the existing Vite preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 fix | open active work on startup</h2>
+  <ul>
+    <li>Stopped normal app startup, project switching, and the brand home action from landing on the Plans index when active or first available plan work exists.</li>
+    <li>Kept <code>/wiki/plans/index.mdx</code> as the imported-project planning intake route until a future All Plans Done state is designed.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 implementation | initial stack Q&amp;A gate</h2>
+  <ul>
+    <li>Kept <code>$grill-with-docs</code> engaged for imported-project and plan-creation interviews while making technical-stack completeness explicit in Hyperwiki's own prompts.</li>
+    <li>Extended deterministic import planning with required frontend, backend/runtime, persistence, auth, services, provider, and local command questions.</li>
+    <li>Updated generated technical-foundation units so stack decisions carry into implementation and verification instructions.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 maintenance | plans index reframe</h2>
+  <ul>
+    <li>Renamed the user-facing <code>/wiki/plans/index.mdx</code> surface to Plans while preserving the canonical route for project contracts, MCP current-plan context, imports, generated scaffolds, review prompts, and terminal scoping.</li>
+    <li>Updated generated project/import templates, Hyperwiki skill references, active plan docs, and import-planning smoke expectations to use Plans index language.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code>; the WebDriver smoke skipped on macOS WKWebView.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-26 fix | restore modify page pane</h2>
+  <ul>
+    <li>Reconnected the React command-bar <code>modify</code> action to the existing right-side Modify Page prompt.</li>
+    <li>Made the terminal the default side panel and return target for submitted agent prompts.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | document focus icon placement</h2>
+  <ul>
+    <li>Moved the workspace expand/restore control to the left of the current plan document title.</li>
+    <li>Changed the control to an icon-only button with accessible labels so the command bar has more horizontal room.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | compact plan title separators</h2>
+  <ul>
+    <li>Normalized displayed Stage and Unit titles from hyphen separators to colon separators so plan headings and navigation labels use less horizontal space.</li>
+    <li>Applied the change as render-time display formatting, preserving source MDX files.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | tighter document heading scale</h2>
+  <ul>
+    <li>Reduced React MDX plan heading sizes again so unit pages keep a prose-document rhythm in both normal and expanded workspace layouts.</li>
+    <li>Kept code, table, list, and inline-code typography unchanged.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | document scale and focus mode</h2>
+  <ul>
+    <li>Reduced React MDX document heading scale so unit pages read as docs rather than oversized hero pages.</li>
+    <li>Added an expand/restore control to the workspace document header that hides the left wiki sidebar and right terminal pane for full-width reading.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> preview check for the expand/restore control.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | compact sidebar tree spacing</h2>
+  <ul>
+    <li>Reduced the horizontal depth step and internal grid columns for nested plan sidebar rows so Stage and Unit labels have more usable width.</li>
+    <li>Kept the fixed disclosure, status-dot, and label columns introduced for consistent Plan &gt; Stage &gt; Unit alignment.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 fix | sidebar tree indentation</h2>
+  <ul>
+    <li>Reworked React plan sidebar rows to use a fixed grid for disclosure, current-status dot, and label columns at every depth.</li>
+    <li>Leaf unit rows now reserve the disclosure column, keeping Plan, Stage, and Unit labels aligned in a predictable hierarchy.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 fix | nested plan sidebar navigation</h2>
+  <ul>
+    <li>Restored explicit expand/collapse controls for parent plan rows in the React sidebar instead of relying on nested summary/button behavior.</li>
+    <li>Updated plan-tree path matching so generic plan directories, legacy stage-directory unit files, and documented <code>units/stage-XX/</code> unit files render as Plan &gt; Stage &gt; Unit.</li>
+    <li>Hardened the imported-project planning prompt so future MVP plans must write separate stage and unit files instead of collapsing them into headings inside <code>wiki/plans/mvp/index.mdx</code>.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 fix | wiki prose typography</h2>
+  <ul>
+    <li>Restored the React shell font split so normal wiki, sidebar, workspace, and terminal chrome text use the active docs primary font instead of inheriting the mono stack.</li>
+    <li>Kept mono styling for code surfaces, JSON textareas, and xterm output through the active docs mono and terminal font variables.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> computed-font check against the Vite preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 fix | three-pane workspace height</h2>
+  <ul>
+    <li>Fixed the React workspace shell so the left wiki sidebar, middle workspace pane, and right terminal pane each fill the available window height beneath the top bar.</li>
+    <li>Contained page-level overflow at the app shell and kept each pane responsible for its own scrolling.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and an <code>agent-browser</code> layout measurement pass against the Vite preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 fix | MDX plan table rendering</h2>
+  <ul>
+    <li>Fixed the React MDX plan renderer so GitHub-style pipe tables render as semantic tables instead of visible pipe-delimited text.</li>
+    <li>Added inline Markdown link rendering and route-aware relative MDX navigation for links inside rendered plan content.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | New Project upload-first form restored</h2>
+  <ul>
+    <li>Restored the New Project route to the upload-first form: page title, import drop zone, OR divider, Project Name field, Brief textarea, Git initialization checkbox, and full-width agent planning action.</li>
+    <li>For an empty project registry, the upload-first form now says <code>Welcome to HyperWiki</code> with first-project source import guidance; returning users keep the <code>New Project</code> heading.</li>
+    <li>Refined the manual brief path so the action reads <code>Start Agent Planning</code>, stays disabled until Project Name and Brief are filled, uses a shorter Brief textarea, and tightens heading/subhead spacing.</li>
+    <li>Kept the newer post-import behavior intact, including pending import route markers, incomplete-import recovery, project creation handoff, and automatic planning Q&amp;A startup.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 06</h2>
+  <ul>
+    <li>Completed the Stage 06 Cleanup, Parity, And Handoff batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Removed the obsolete static app shell, duplicate static asset mirrors, root <code>public/wiki.css</code>, and vendored browser xterm files; kept package-served docs assets, theme fallback, favicon, and fonts.</li>
+    <li>Moved the API adapter smoke to the React TypeScript adapter and changed the static asset smoke to assert the old shell is absent from <code>dist</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>, <code>pnpm run smoke:tauri-webdriver</code> with the expected macOS WKWebView skip, <code>pnpm run tauri:build</code>, and a packaged app launch check across New Project, Settings, and Projects.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 05</h2>
+  <ul>
+    <li>Completed the Stage 05 Rust Domain And Scaffold Contract batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Extended wiki page metadata with MDX <code>format</code> and repo-relative <code>sourcePath</code>, and exposed current-plan Markdown through project-contract, MCP, and review prompt surfaces.</li>
+    <li>Updated generated scaffold guidance so agents prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, and <code>pnpm run smoke:mcp-transport</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 04</h2>
+  <ul>
+    <li>Completed the Stage 04 MDX Plan Runtime batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Added React plan-page rendering from exact MDX source, a local trusted component registry, a Rust <code>/api/wiki/source</code> endpoint, and Markdown derivative generation for agent/project-contract follow-up work.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 implementation | incomplete import resume</h2>
+  <ul>
+    <li>Completed <a href="/wiki/plans/features/incomplete-import-resume.mdx">Incomplete Import Resume</a> so abandoned imported projects remain registered, visibly marked, and resumable from saved Q&amp;A context.</li>
+    <li>Added Rust import planning status/progress endpoints, derived project-list import status, repo-visible <code>wiki/sources/import-qna.mdx</code> persistence, React project-card status, and incomplete-import resume routing.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 polish | New Project source card</h2>
+  <ul>
+    <li>Restyled the React New Project route as a large imported-source card with prompt-style heading, contained source fields, inline file import, Git initialization toggle, and right-aligned planning action.</li>
+    <li>Verified desktop and mobile previews with <code>agent-browser</code> against <code>http://127.0.0.1:1420/projects/new</code>, including a mobile overflow fix for long placeholder and import labels.</li>
+    <li>Ran <code>pnpm run check</code> and <code>pnpm run build:frontend</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-24 implementation | MDX-first planning reset</h2>
+  <ul>
+    <li>Changed Hyperwiki's canonical wiki artifact format from app-rendered HTML pages to app-rendered MDX pages under <code>wiki/**/*.mdx</code>, while preserving Markdown-only agent convention files such as root <code>AGENTS.md</code>.</li>
+    <li>Replaced the bundled <code>project-html-wiki</code> skill with a vendored <code>hyperwiki</code> MDX-first planning skill specialized for lowercase <code>wiki/sources.mdx</code>, visible <code>wiki/AGENTS.mdx</code>, and the plan/stage/unit contract.</li>
+    <li>Changed the workspace <code>+ plan</code> action into a full-page planning flow that hands the agent a <code>$hyperwiki</code> and <code>$grill-with-docs</code> interview prompt, then writes MDX plan docs with verification on every executable unit.</li>
+    <li>Converted the repo wiki from <code>.html</code> pages to <code>.mdx</code> pages for the test-mode reset.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-24 implementation | automatic agent skills on init</h2>
+  <ul>
+    <li>Completed <a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a>.</li>
+    <li>New Hyperwiki project initialization now installs a vendored offline skill bundle by default: <code>hyperwiki</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>.</li>
+    <li>Follow-up: added <code>grill-with-docs</code> and <code>make-interfaces-feel-better</code> to the vendored default bundle.</li>
+    <li>Added <code>hyperwiki init --no-skills</code> for minimal scaffolds and kept dashboard-created projects on the default skill bundle.</li>
+    <li>Verified with <code>pnpm run check:all</code> and temp-dir CLI smoke checks for default init and <code>--no-skills</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-23 fix | theme preset picker in settings</h2>
+  <ul>
+    <li>Added a compact preset picker strip to Settings theme editing so users can switch built-in presets without leaving the editor.</li>
+    <li>Preset selection now resets custom theme token edits, keeping the selected preset exact and predictable before Save.</li>
+    <li>Contained the preset strip in a horizontal scroller so the preset cards do not widen the Settings layout.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-23 fix | import agent terminal crash and plan action</h2>
+  <ul>
+    <li>Fixed terminal output trimming so long agent output is drained on UTF-8 character boundaries instead of panicking on multibyte text.</li>
+    <li>Changed the workspace <code>+ plan</code> action to open the existing plan creation form directly while still notifying the side-panel mode.</li>
+    <li>Added an event-driven import-planning recovery so the planning dashboard starts the agent when the imported intake page is visible with no agent session.</li>
+    <li>Removed the post-import success screen so a completed import lands in the imported project workspace with the agent panel visible.</li>
+    <li>Stopped creating <code>wiki/sources/planning-interview.mdx</code>; imported projects now use <code>wiki/sources/import.mdx</code> plus terminal Q&amp;A as the planning source.</li>
+    <li>Changed imported planning auto-start to key off imported source plus absence of real plan pages, and fixed imported-project terminal reattach scoping.</li>
+    <li>Moved post-create navigation ahead of workspace loading and prompt delivery so import cannot remain stuck on the New Project form after the agent prompt is sent.</li>
+    <li>Added a New Project handoff state and direct route callback after import creation, preventing the import form from remaining interactive during agent planning startup.</li>
+    <li>Added a Tauri WebDriver import-planning smoke script for supported platforms and route-aware project selection for workspace URLs.</li>
+    <li>Made the import flow register the created project optimistically and run the project-list refresh outside the critical path, so a successful backend create response immediately opens the planning workspace.</li>
+    <li>Changed New Project agent planning startup to run after route handoff instead of blocking the import form on workspace/session follow-up requests.</li>
+    <li>Added registry recovery for imported project creation so the New Project view can route to the created workspace even if the Tauri create invoke stalls after Rust writes the project.</li>
+    <li>Changed New Project import to force the workspace URL from the expected project slug after starting creation, so the form exits even when the Tauri command bridge does not resolve the create promise.</li>
+    <li>Added pending-import route state and a holding view so workspace startup no longer redirects back to New Project while the local project registry catches up after import.</li>
+    <li>Added visible import diagnostics for frontend handoff state, pending marker writes, forced workspace routes, app boot route state, project-list counts, redirect decisions, and pending import polling.</li>
+    <li>Added Rust <code>/api/projects</code> registry-list logging with project, checkout, group, and active-project counts to correlate frontend recovery with backend registry state.</li>
+    <li>Fixed the empty-registry redirect guard so a valid active project cannot be bounced back to New Project while project groups are still catching up.</li>
+    <li>Added iframe wiki-link interception so clicks inside rendered wiki HTML are routed by the parent React app with active workspace context instead of allowing raw iframe navigation.</li>
+    <li>Added route navigation logs for iframe link clicks, parent navigation, popstate, and project switches to diagnose any remaining workspace-context loss.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-harness</code>, <code>pnpm run smoke:tauri-webdriver</code>, targeted terminal launch tests, and a UTF-8 terminal buffer regression test.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | post-import planning questions</h2>
+  <ul>
+    <li>Added a Rust import-planning surface with source-aware clarify and create-plan endpoints for imported projects.</li>
+    <li>Changed the React New Project flow so import creates the project first, then Hyperwiki asks the missing implementation-planning questions in-app before writing stages or units.</li>
+    <li>Kept generated imported projects in planning intake until required answers are captured, then creates a source-grounded MVP plan with stage pages, unit pages, verification, and completion gates.</li>
+    <li>Adjusted the legacy static import flow to stop running the old generic pre-import MVP wizard.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | stale project registry recovery</h2>
+  <ul>
+    <li>Changed the Rust project registry to prune unavailable project records before listing or resolving projects, so removed roots cannot remain selected as active workspaces.</li>
+    <li>Added React-side filtering for unavailable projects as a defensive guard against stale project-list responses.</li>
+    <li>Added an in-app unavailable-project empty state and missing-file wiki recovery so stale sessions no longer render raw <code>os error 2</code> JSON.</li>
+    <li>Stopped the missing-file recovery path from repeatedly reselecting the same failed project by tracking locally unavailable project IDs and skipping wiki/session loads when no valid project is active.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm exec tsc --noEmit</code>, <code>pnpm run build:frontend</code>, <code>cargo test -q --manifest-path src-tauri/Cargo.toml unavailable</code>, and <code>cargo test -q --manifest-path src-tauri/Cargo.toml</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | source-grounded import planning</h2>
+  <ul>
+    <li>Changed project import so imported source documents are parsed into durable source facts before wiki pages are generated.</li>
+    <li>Captured project planning interview answers in the Rust project creation request instead of dropping the frontend payload.</li>
+    <li>Stopped imported projects from receiving generic placeholder MVP stages and units; new imports now enter a planning-intake state until detailed agent Q&amp;A creates a real implementation plan.</li>
+    <li>Strengthened the post-import agent handoff to require source review, detailed Q&amp;A, real phase gates, unit verification, and completion gates before implementation planning.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | restore projects management surface</h2>
+  <ul>
+    <li>Restored the React Projects route to the original manage-projects layout: large page header, right-aligned New Project action, two-column project cards, status badges, checkout/app/last-opened details, open action, and remove icon.</li>
+    <li>Made the Projects and New Project routes full-width utility views again by hiding the wiki sidebar and Modify Page pane while managing projects.</li>
+    <li>Redirected the zero-project startup state to New Project and added a Projects empty state so reset users do not land on a missing wiki file error.</li>
+    <li>Replaced the React New Project placeholder with the original Project Brief form surface and wired submission to the existing project creation endpoint.</li>
+    <li>Adjusted New Project typography and moved project file import into the Project Brief header as an <code>IMPORT PROJECT FILE</code> action.</li>
+    <li>Changed project import and Open Project to enter the selected workspace directly and reload project-scoped wiki/workspace data.</li>
+    <li>Restored React wiki navigation structure around a nested Plan &gt; Stage &gt; Unit tree, single current-plan indicator, bottom Project drawer, and topbar project name.</li>
+    <li>Tightened plan tree rows with transparent inactive indicators, green current-plan ancestor indicators, ellipsized labels, compact stage/unit labels, and reduced indentation.</li>
+    <li>Restored the right workspace pane to the terminal surface and expanded generated project unit pages with intent, scope, implementation notes, and verification sections.</li>
+    <li>Hid embedded wiki page headers inside the React workspace iframe so project navigation is owned by the app shell.</li>
+    <li>Restored a functional React Settings surface for theme presets, Soul guidance, Memory entries, and AGENTS.md context.</li>
+    <li>Restored Settings as a full-width global utility route without project sidebar or terminal panes.</li>
+    <li>Restored the project card trash action with inline confirmation, optional file deletion, and refresh through the existing project removal endpoint.</li>
+    <li>Kept project switching wired through the existing project selection flow so Open Project changes the active project from the restored card surface.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | restore original React shell chrome</h2>
+  <ul>
+    <li>Corrected the React shell back toward the original Hyperwiki chrome: compact topbar with brand plus Projects and Settings, plan-focused sidebar, original wiki command bar actions, and right-side Modify Page workflow.</li>
+    <li>Removed the terminal-first visible pane and extra command-bar affordances from the default wiki view; terminal implementation remains available for later restoration behind the original controls.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 fix | react shell design and wiki loading</h2>
+  <ul>
+    <li>Restored the animated nine-dot Hyperwiki mark in the React topbar and tightened the rewrite shell chrome with subtle grid texture, pane depth, and active navigation treatment.</li>
+    <li>Fixed project-scoped wiki page loading so React requests project wiki pages through the existing <code>/projects/:id/wiki/...</code> route instead of appending query parameters to wiki file paths.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 4</h2>
+  <ul>
+    <li>Ported the first React command workflow pass: Execute, Worktree, Modify, Review, and New Plan controls now live in the React command bar.</li>
+    <li>Added agent launch guardrails, agent prompt routing through <code>/api/agent/prompt</code>, review workflow routing, worktree creation, and plan creation against existing Tauri endpoints.</li>
+    <li>Completed Stage 03's first React parity pass and advanced the rewrite plan to Stage 04 Unit 01 - Define Trusted MDX Renderer.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml worktree</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml plan_creation</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 3</h2>
+  <ul>
+    <li>Ported the core terminal lifecycle into the React shell with xterm-backed active terminals, attach/replay, output polling, keyboard input, resize forwarding, scoped session tabs, rename, close, and attach/restart controls.</li>
+    <li>Imported xterm styles through the Vite entrypoint so the React terminal renderer owns its display instead of depending on copied legacy static assets.</li>
+    <li>Advanced the rewrite plan from Stage 03 Unit 02 to Stage 03 Unit 03. Remaining Stage 03 work is Execute, Modify, New Plan, review workflows, preview lifecycle, worktree flows, and guardrail parity.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml terminal</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml sessions</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 2</h2>
+  <ul>
+    <li>Replaced the Batch 1 React placeholder with a desktop workspace shell covering the topbar, Up Next popover, project switcher, wiki sidebar, command bar, iframe-backed wiki rendering, Projects, New Project, and Settings route surfaces.</li>
+    <li>Added initial terminal parity in React: scoped session listing, refresh, agent/CLI start actions, and close controls against the existing Tauri terminal/session APIs.</li>
+    <li>Advanced the rewrite plan from Stage 03 Unit 01 to Stage 03 Unit 02. Remaining Stage 03 work is full xterm attachment, live terminal IO, rename/restart flows, and agent/review/worktree parity.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 1</h2>
+  <ul>
+    <li>Completed the frontend foundation batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Added Vite, React, TypeScript, Tailwind v4, shadcn configuration, the first <code>Button</code> primitive, a typed React API adapter, and a minimal React shell surface.</li>
+    <li>Rewired Tauri to use the Vite dev URL and generated <code>dist</code> bundle, while preserving old static app assets as copied compatibility assets for later app-shell parity work.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>pnpm dlx shadcn@latest info --json</code>, and <code>pnpm run tauri:build</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 execution | react-shadcn-mdx-rewrite batch 0</h2>
+  <ul>
+    <li>Completed Stage 00 readiness for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Confirmed the current checkout is the <code>frontend-rewrite</code> branch, so no additional rewrite worktree was created.</li>
+    <li>Installed repo-local <code>shadcn</code> and <code>tailwind-design-system</code> skills through the approved <code>npx skills add</code> commands, producing <code>.agents/skills/</code> entries and <code>skills-lock.json</code>.</li>
+    <li>Updated agent guidance and source briefs so future frontend implementation sessions use those skills before React, Tailwind, shadcn/ui, or MDX code changes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 planning | react-shadcn-mdx-rewrite</h2>
+  <ul>
+    <li>Added the active <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> plan for the full frontend rewrite, not only plan-page rendering.</li>
+    <li>Planning direction: Hyperwiki should use a dedicated rewrite worktree, keep Tauri/Rust as runtime owner, move the app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui, and make new plan pages trusted local MDX with Markdown-first derivatives for LLM/project-contract use.</li>
+    <li>Skill readiness is part of Stage 00: future implementation should install or verify <code>shadcn</code> and <code>tailwind-design-system</code> skills for local Codex and Claude agents before frontend work starts.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | project plan interview wizard</h2>
+  <ul>
+    <li>Reworked create-plan clarification so the app asks one generated, plan-specific question at a time instead of rendering a grid of canned question cards.</li>
+    <li>Updated the clarity endpoint to synthesize the next highest-impact question from the current title, intent, plan type, and prior answers, with the create action gated until the required interview questions are answered.</li>
+    <li>Updated the workspace UI to focus the active answer, advance with <code>Next Question</code>, and reveal <code>Create plan</code> once the clarity gate passes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 planning | theme-aware generated plans</h2>
+  <ul>
+    <li>Added the active <a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> plan for keeping newly generated rich HTML plan layouts aligned with Hyperwiki Settings themes.</li>
+    <li>Planning direction: new generated plans should keep page-specific visual structure but express semantic colors and fonts through shared wiki theme variables, leaving existing plans unchanged.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 planning | project plan creation</h2>
+  <ul>
+    <li>Added the active <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> plan for creating durable wiki plans inside a selected project root.</li>
+    <li>Planning direction: project plan creation should write to the selected project's <code>wiki/</code> files, preserve Hyperwiki scaffold conventions, show scoped path and conflict checks, and navigate to the new plan for review before implementation.</li>
+    <li>Next unit: implement the project-scoped create-plan API contract.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 planning | plan creation Q&amp;A loop</h2>
+  <ul>
+    <li>Updated <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> so the first implementation unit is an LLM-led clarification contract.</li>
+    <li>Planning direction: the LLM should keep asking high-value questions until no blocking unknowns remain and important unknowns are answered or explicitly recorded as assumptions before plan files are written.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | project plan creation</h2>
+  <ul>
+    <li>Implemented the <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> workflow in branch <code>feature/project-plan-creation</code>.</li>
+    <li>Added Rust-backed plan clarification and creation endpoints, generated wiki plan writes, planning dashboard and log updates, slug conflict feedback, and a workspace <code>+ plan</code> Q&amp;A surface.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, targeted Rust plan creation tests, and static browser shell inspection.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | feature plan sidebar visibility</h2>
+  <ul>
+    <li>Fixed the plan sidebar tree so active feature plans under <code>wiki/plans/features/*.mdx</code> render as top-level plan entries instead of being orphaned by the tree parent rules.</li>
+    <li>Added static asset smoke coverage to guard the feature-plan path rule used by the Tauri-served app bundle.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | plain summary status parsing</h2>
+  <ul>
+    <li>Extended Rust wiki status extraction to read plain <code>Summary</code> sections, not only sections with <code>class="summary"</code>.</li>
+    <li>This lets completed feature plans such as <a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> group under Completed Plans in the Tauri sidebar.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | custom plan status parsing</h2>
+  <ul>
+    <li>Extended wiki status parsing to recognize custom plan summary metrics such as the Tauri rewrite page's <code>Status</code> definition-list field.</li>
+    <li>This lets completed custom-layout plans group under Completed Plans in the sidebar without moving their durable wiki files.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and Rust wiki status coverage.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | completed plan sidebar grouping</h2>
+  <ul>
+    <li>Changed the workspace sidebar so completed top-level plan pages render under the Completed Plans group instead of remaining as peer rows beside MVP Plan.</li>
+    <li>Marked the Tauri desktop dogfood checklist complete so it follows the same completed-plan grouping as the closed Tauri rewrite work.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | split agent terminal control sequences</h2>
+  <ul>
+    <li>Made terminal display normalization stateful per terminal session so Codex synchronized-output control sequences split across output polling chunks do not leak visible tail text such as <code>026l</code> into xterm.</li>
+    <li>Kept terminal recording, prompt routing, and agent handoff behavior unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and a targeted split-output normalizer check.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 planning | close active plans</h2>
+  <ul>
+    <li>Marked <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> complete.</li>
+    <li>Marked <a href="/wiki/plans/features/multi-agent-provider-support.mdx">Multi-Agent Provider Support</a> complete.</li>
+    <li>Updated the planning dashboard and home page so future work starts from no active current plan.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 validation | verification reviews and MCP closeout</h2>
+  <ul>
+    <li>Closed the final Tauri migration verification checklist step for project-contract, review workflow, and MCP transport parity.</li>
+    <li>Added executable smoke commands for project contract, review workflows, and stdio MCP transport, and included them in <code>pnpm run check:all</code>.</li>
+    <li>Verified all four review prompts are prepared with project-contract context, remain runtime evidence, and only route when an active agent session exists.</li>
+    <li>Verified the MCP stdio transport serves localhost-scoped resources, lists only read-only tools, rejects action tools, and rejects unexpected read-tool arguments.</li>
+    <li>Validated with <code>pnpm run check:all</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 fix | terminal control sequence display</h2>
+  <ul>
+    <li>Filtered synchronized-output private mode toggles from terminal display output so Codex handoffs do not leave visible <code>?2026h</code> text in the agent prompt line.</li>
+    <li>Kept terminal input, session output recording, and prompt routing behavior unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | non-Git worktree onboarding</h2>
+  <ul>
+    <li>Changed the branch rail to show an <code>init git</code> action instead of <code>+ worktree</code> when the active project has no Git root, avoiding the previous failed worktree creation request.</li>
+    <li>Reused the existing Git initialization endpoint, refreshed repo context after initialization, and then restored the normal <code>+ worktree</code> action.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, and a static browser check of the non-Git branch rail state.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | legacy Node runtime removal</h2>
+  <ul>
+    <li>Decision: Hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>
+    <li>Added the active <a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> plan and updated current source truth to treat <code>pnpm dev</code> as Tauri desktop startup.</li>
+    <li>Preserved <code>package.json</code> as developer tooling for <code>pnpm</code>, Tauri, frontend syntax checks, static asset smoke tests, and Rust-backed worktree command shortcuts.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 validation | Tauri rewrite release dogfood complete</h2>
+  <ul>
+    <li>Completed Stage 06 Unit 04 by using the packaged <code>Hyperwiki.app</code> to render project-scoped wiki pages, create a real worktree, start a dev preview terminal, hand off to an agent terminal, and update the active plan/log.</li>
+    <li>Dogfood found and fixed two release-path defects: worktree creation used stale <code>origin/main</code> instead of local committed <code>main</code>, and packaged project-scoped wiki iframe reads did not resolve <code>/projects/:id/wiki/...</code> paths outside the repo CWD.</li>
+    <li>Verified the fresh dogfood worktree was based on current local <code>main</code> and contained <code>wiki/plans/tauri-rewrite.mdx</code>; the runtime preview URL returned HTTP 200 through Portless.</li>
+    <li>Cleaned up the temporary dogfood branch/worktree and spawned app/dev/agent processes. The complete Tauri rewrite plan is now marked complete; signed DMG/notarization remains deferred release packaging work.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 validation | packaged app desktop dogfood</h2>
+  <ul>
+    <li>Opened the packaged <code>Hyperwiki.app</code> and found a real desktop packaging bug: the Tauri window did not have the legacy Node server's <code>/assets</code> route and iframe wiki URLs fell back to the app shell.</li>
+    <li>Added static <code>public/assets</code> copies for the Tauri bundle and changed desktop wiki rendering to fetch wiki HTML through the Tauri command transport before rendering it into the iframe.</li>
+    <li>Added Rust coverage for direct wiki page HTML reads used by desktop iframes.</li>
+    <li>Rebuilt the app and verified styled wiki rendering, Tauri command-backed wiki navigation, and a packaged-app CLI terminal command.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 validation | Tauri release binary dogfood</h2>
+  <ul>
+    <li>Verified the built release binary can initialize a temporary project, run <code>reset --dry-run</code>, and answer a framed stdio MCP <code>initialize</code> request.</li>
+    <li>Verified the packaged macOS app binary at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app/Contents/MacOS/hyperwiki</code> launches and stays alive for a 5-second smoke window.</li>
+    <li>Updated durable docs that still described the old localhost server as the main product architecture. Stage 06 Unit 04 remains active for an interactive packaged-app workflow pass.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | Tauri shipping path packaging closeout</h2>
+  <ul>
+    <li>Vendored xterm browser assets under <code>public/vendor/@xterm/</code> so the Tauri bundle no longer depends on the legacy Node server's dynamic <code>/vendor</code> route.</li>
+    <li>Moved runtime-only Node packages out of production dependencies; remaining Node usage is development/reference tooling while the shipping desktop path is Rust/Tauri.</li>
+    <li>Updated README and <code>wiki/dev.mdx</code> to describe Tauri as the canonical app runtime, document <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>, and record DMG generation as deferred release packaging work.</li>
+    <li>Verified with <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:all</code>, and <code>pnpm run tauri:build</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | Tauri generated project instruction parity</h2>
+  <ul>
+    <li>Updated the Rust project scaffold so generated projects preserve Hyperwiki's lowercase <code>wiki/sources.mdx</code> convention and app-visible <code>wiki/AGENTS.mdx</code> guidance.</li>
+    <li>Added Rust-generated AGENTS guardrails against duplicate <code>wiki/Sources.mdx</code> files and explicit Portless-backed <code>dev</code> script guidance for previewable apps.</li>
+    <li>Expanded generated plan scaffolds with Stage 02 and Stage 03 unit pages and kept package-script command references visible in <code>wiki/dev.mdx</code>.</li>
+    <li>Verified with targeted Rust scaffold coverage. Stage 06 Unit 02 remains open for final packaging docs before Node runtime removal.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | Tauri init and reset CLI parity</h2>
+  <ul>
+    <li>Replaced the temporary Rust <code>init</code>/<code>reset</code> migration message with working compatibility CLI commands.</li>
+    <li>Rust <code>init</code> now scaffolds the HTML-first wiki and config from package metadata, writes dev and agent panel configuration, supports <code>--no-git</code> and <code>--overwrite</code>, and creates the initial Hyperwiki commit with <code>init --yes</code>.</li>
+    <li>Rust <code>reset</code> now removes the user project registry and clears ignored runtime state/session directories for available Hyperwiki projects while preserving repo wiki and config files.</li>
+    <li>Verified with targeted Rust tests plus manual <code>cargo run --manifest-path src-tauri/Cargo.toml -- init/reset</code> checks. Stage 06 Unit 02 remains open for generated-project instruction reconciliation and final packaging docs.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-21 implementation | Tauri project create and removal parity</h2>
+  <ul>
+    <li>Ported dashboard project creation into Rust, including compatible HTML wiki scaffold creation, optional initial Git commit, project registry registration, and workspace URL generation.</li>
+    <li>Ported project removal into Rust with stale-id root fallback, safe delete guardrails, registry updates, and optional file deletion.</li>
+    <li>Added Tauri command transport coverage for <code>POST /api/projects/create</code> and <code>DELETE /api/projects/:id</code>.</li>
+    <li>Verified with focused Rust domain and command tests. Stage 06 Unit 02 remains open for Rust-native <code>init</code>/<code>reset</code>, generated-project instruction reconciliation, and final packaging docs before Node runtime removal.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 planning | complete Tauri rewrite</h2>
+  <ul>
+    <li>Decision: plan Hyperwiki's desktop direction as a complete Tauri rewrite rather than an Electron app or Tauri shell around the existing Node server.</li>
+    <li>Planning constraints: feature compatibility is the release target, existing project/wiki data compatibility is required, and the rewrite branch may go dark until parity is rebuilt.</li>
+    <li>Added the active <a href="/wiki/plans/tauri-rewrite.mdx">Complete Tauri Rewrite</a> plan with staged units for Tauri foundation, data compatibility, PTY/process runtime, verification/review/MCP, desktop packaging, and Node runtime removal.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri baseline app</h2>
+  <ul>
+    <li>Added the initial <code>src-tauri</code> app shell, Rust entrypoint, Tauri config, app icon, Cargo lockfile, and <code>pnpm</code> scripts for Tauri dev/build/check.</li>
+    <li>Kept the current Node/web implementation as the feature-parity reference while the Tauri branch begins replacing runtime behavior.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and a <code>pnpm run tauri:dev</code> launch that reached <code>Running target/debug/hyperwiki</code> before manual stop.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri command contract skeleton</h2>
+  <ul>
+    <li>Added <code>public/app-api.js</code> as the frontend request adapter so browser mode uses fetch while Tauri mode can call the Rust <code>hyperwiki_request</code> command with the same normalized shape.</li>
+    <li>Changed <code>public/app.js</code> to route app-side API and wiki-page text reads through the adapter instead of direct fetch calls.</li>
+    <li>Added an adapter smoke test and updated syntax checks to cover the new module.</li>
+    <li>Verified with <code>pnpm run smoke:api-adapter</code>, <code>pnpm run check</code>, and <code>pnpm run check:tauri</code>. Browser smoke against an explicit random-port server reached workspace assertions and then stopped at the Portless preview expectation because that server was not a Portless route.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri Rust domain layout</h2>
+  <ul>
+    <li>Split the initial Rust code into <code>command</code> and <code>domain</code> modules so future Tauri commands do not accumulate in <code>lib.rs</code>.</li>
+    <li>Added Rust ownership modules for app shell, projects, wiki, settings, Git, sessions, terminals, previews, verification, reviews, and MCP surfaces, each mapped back to the current Node reference files and parity gate.</li>
+    <li>Added Rust tests for the full surface inventory and JSON-serializable domain contract.</li>
+    <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run check</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri test harness baseline</h2>
+  <ul>
+    <li>Added explicit <code>test:tauri</code>, <code>check:all</code>, and <code>smoke:tauri-harness</code> scripts to separate Rust tests, frontend syntax checks, compatibility smoke tests, and harness coverage.</li>
+    <li>Added a Tauri parity fixture for required Rust surfaces and scripts.</li>
+    <li>Added the <a href="/wiki/plans/tauri-desktop-dogfood-checklist.mdx">Tauri Desktop Dogfood Checklist</a> for macOS-first desktop verification that cannot be assumed from browser automation.</li>
+    <li>Verified with <code>pnpm run check:all</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri project registry</h2>
+  <ul>
+    <li>Ported the user-level project registry model into Rust with compatible records for project roots, names, project slugs, worktree slugs, active state, and grouped checkouts.</li>
+    <li>Added Rust handling for existing registry reads, project availability checks, worktree slug derivation, stale worktree pruning, project/worktree slug resolution, safe default removal, and <code>/api/projects</code> command routing.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for main/worktree grouping, stale worktree pruning, slug resolution, safe removal, and command health routing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri wiki filesystem</h2>
+  <ul>
+    <li>Ported wiki page listing into Rust with recursive HTML discovery, <code>h1</code> title extraction, fallback title generation, summary item parsing, plan status parsing, completed-plan detection, and project-scoped wiki paths.</li>
+    <li>Added <code>/api/wiki</code> handling to the Tauri command transport, resolving the requested project through the Rust project registry and falling back to the current checkout when needed.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for wiki listing, project-scoped paths, status parsing, and the existing Tauri harness smoke.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri settings and AGENTS sync</h2>
+  <ul>
+    <li>Ported the settings store into Rust with compatible JSON read/write, built-in preset normalization, theme reset, theme CSS generation, Soul and Memory handling, AGENTS file reads, and managed AGENTS block sync.</li>
+    <li>Added Tauri command transport handling for <code>/api/settings</code>, <code>/api/settings/reset-theme</code>, <code>/api/settings/agents-file</code>, <code>/api/settings/sync-agents</code>, and <code>/assets/theme.css</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for settings defaults, write/reset behavior, custom theme CSS, managed AGENTS replacement, enabled Memory filtering, and isolated command routing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri Git context and onboarding</h2>
+  <ul>
+    <li>Ported Git context into Rust with command-backed repo root detection, branch detection, dirty status lines, worktree display slug detection, and non-Git fallback behavior.</li>
+    <li>Added Rust Git onboarding with <code>git init</code>, <code>git add -A</code>, the initial <code>Initialize Hyperwiki project</code> commit, and fallback local author config.</li>
+    <li>Added Tauri command transport handling for <code>/api/repo</code> and <code>/api/git/init</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for non-Git, dirty Git, worktree marker, initialization, baseline commit, and command routing behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri session metadata</h2>
+  <ul>
+    <li>Ported the persistent terminal session registry into Rust for ignored <code>.hyperwiki/sessions/</code> metadata.</li>
+    <li>Added Rust behavior for session upsert, scoped listing, rename, close, export, and closed-session pruning while preserving the runtime-only export boundary.</li>
+    <li>Added Tauri command transport handling for <code>/api/sessions</code>, <code>/api/sessions/prune</code>, <code>/api/sessions/:id</code>, and <code>/api/sessions/:id/export</code>.</li>
+    <li>Verified with <code>pnpm run check:all</code>. Stage 03 Unit 01 remains in progress because process spawn, terminal input, resize, output replay, and desktop event transport still need the Rust runtime implementation.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri pipe terminal runtime</h2>
+  <ul>
+    <li>Added a Rust terminal manager that owns pipe-backed shell processes, records session metadata, captures stdout/stderr into a bounded replay buffer, accepts terminal input, acknowledges resize requests, and closes child processes.</li>
+    <li>Added Tauri command transport handling for terminal start, write, resize, output replay, and close operations.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for pipe-backed spawn, input, output replay on reattach, resize acknowledgment, close behavior, and command-level terminal routing.</li>
+    <li>Stage 03 Unit 01 remains in progress because native PTY support and frontend event transport still need to replace the browser WebSocket path.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri PTY terminal transport</h2>
+  <ul>
+    <li>Added native Rust PTY support through <code>portable-pty</code>, keeping the pipe-backed runtime as the fallback path when PTY setup fails.</li>
+    <li>Changed the desktop frontend terminal transport to use Tauri commands for terminal start, write, resize, output replay polling, and close while preserving the existing WebSocket transport for browser mode.</li>
+    <li>Marked Stage 03 Unit 01 complete and advanced the active migration unit to Stage 03 Unit 02 - Agent Launch And Prompt Routing.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for preferred PTY startup with pipe fallback, terminal replay, resize, close, and command-level routing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri agent prompt routing</h2>
+  <ul>
+    <li>Added Tauri command transport handling for <code>/api/agent/prompt</code> so prompts route through Rust-owned terminal sessions instead of the Node server's in-memory input map.</li>
+    <li>Preserved the active command-backed agent guardrail: prompt routing rejects missing agents, non-agent sessions, wrong-scope sessions, and agent sessions without a launch command.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust command tests for missing-agent rejection and successful prompt routing to an active command-backed agent terminal.</li>
+    <li>Stage 03 Unit 02 remains in progress; review workflow routing and the remaining agent prompt surfaces still need Rust command parity.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri review prompt routing</h2>
+  <ul>
+    <li>Ported built-in review workflow discovery and dry-run prompt preparation into Rust with the same workflow IDs, runtime-only boundary, and runtime-evidence marker.</li>
+    <li>Added Tauri command transport handling for <code>/api/review-workflows</code> and <code>/api/review-workflows/run</code>, including routed execution through the Rust-owned active command-backed agent session.</li>
+    <li>Marked Stage 03 Unit 02 complete and advanced the active migration unit to Stage 03 Unit 03 - Dev Preview Lifecycle.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for workflow summary, dry-run prompt content, missing-agent guardrails, direct agent prompt routing, and routed review workflow prompts.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri dev preview lifecycle</h2>
+  <ul>
+    <li>Ported the app preview lifecycle model into Rust, including layout resolution, package-manager-aware dev command fallback, dev panel reconciliation, preview URL selection, and exact Portless route parsing.</li>
+    <li>Added Tauri command transport handling for <code>/api/layout</code>, <code>/api/app-previews</code>, and <code>/api/app-preview</code> so desktop mode can render Run Dev state without the Node server.</li>
+    <li>Marked Stage 03 Unit 03 complete and advanced the active migration unit to Stage 03 Unit 04 - Worktree Creation Flow.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for exact main/worktree hostname matching, package-derived <code>pnpm run dev</code>, dev panel insertion, and preview endpoint response shapes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri worktree creation flow</h2>
+  <ul>
+    <li>Ported worktree creation into Rust with branch normalization and validation, main/master checkout guardrails, duplicate branch/path detection, Git worktree creation, <code>pnpm install</code>, and compatible project registry registration.</li>
+    <li>Added Tauri command transport handling for <code>POST /api/worktrees</code>, returning the same branch, slug, path, preview URL, workspace URL, project, and install result shape used by the existing branch rail flow.</li>
+    <li>Marked Stage 03 Unit 04 and Stage 03 complete, then advanced the active migration unit to Stage 04 Unit 01 - Workspace And Verification Models.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for successful temporary-repo worktree creation, registry persistence, preview/workspace URL derivation, install execution, feature-checkout rejection, and command endpoint guardrails.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri workspace verification models</h2>
+  <ul>
+    <li>Ported workspace summary, verification loop inference, configured verification loops, runtime verification evidence merge, package-manager detection, source brief summaries, and Localhost Tooling guardrails into Rust.</li>
+    <li>Added Tauri command transport handling for <code>/api/workspace</code>, <code>/api/verification</code>, and <code>/api/guardrails</code> so desktop mode can render agent-native project context without the Node server.</li>
+    <li>Marked Stage 04 Unit 01 complete and advanced the active migration unit to Stage 04 Unit 02 - Project Contract.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for configured/inferred loops, latest runtime evidence, workspace exposure, guardrails, and command endpoint response shapes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri project contract</h2>
+  <ul>
+    <li>Ported the versioned project contract composition into Rust, combining project facts, repo context, plan status, source briefs, verification loops, guardrails, layout, wiki page index, canonical/runtime truth boundaries, and agent context.</li>
+    <li>Added Tauri command transport handling for <code>/api/project-contract</code> so desktop mode can expose machine-readable agent context without the Node server.</li>
+    <li>Marked Stage 04 Unit 02 complete and advanced the active migration unit to Stage 04 Unit 03 - Review Workflows.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for contract project facts, source metadata, verification loop inclusion, guardrails, wiki index, agent launch command, copy-pasteable agent context, and command endpoint response shape.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri contract-aware review workflows</h2>
+  <ul>
+    <li>Reconciled Rust review workflow prompt preparation with the full Rust project contract instead of the earlier lightweight contract context.</li>
+    <li>Preserved built-in workflow IDs, workflow summary shape, dry-run prompt preparation, runtime-evidence boundaries, missing-agent guardrails, and routed active-agent execution.</li>
+    <li>Marked Stage 04 Unit 03 complete and advanced the active migration unit to Stage 04 Unit 04 - MCP Surface And Stdio Transport.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for workflow summary, contract-aware prompt content, direct prompt routing, dry-run review preparation, and routed review workflow prompts.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri MCP surface</h2>
+  <ul>
+    <li>Ported the MCP surface contract into Rust, including project contract mapping, read-only resources, permissioned action-tool metadata, use cases, and implementation notes.</li>
+    <li>Added Tauri command transport handling for <code>/api/mcp-surface</code> and Rust JSON-RPC handling for initialize, resource list/read, tool list, and read-only tool calls with Content-Length framing support.</li>
+    <li>Marked Stage 04 Unit 04 and Stage 04 complete, then advanced the active migration unit to Stage 05 Unit 01 - Desktop Window And App Actions.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for MCP resource/tool contract shape, permissioned action tools, read-only stdio tool filtering, resource reads, tool calls, and framed responses.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri desktop app actions</h2>
+  <ul>
+    <li>Updated Tauri product/window title metadata to <code>Hyperwiki</code> and added Rust app-shell metadata for local-only desktop actions.</li>
+    <li>Added Rust-backed external URL validation/open action, project folder reveal action, and <code>/api/terminal/drop</code> file-save parity into ignored <code>.hyperwiki/state/drops/</code>.</li>
+    <li>Marked Stage 05 Unit 01 complete and advanced the active migration unit to Stage 05 Unit 02 - Compatibility CLI.</li>
+    <li>Verified with <code>pnpm run check:all</code>, including Rust tests for desktop action metadata, safe dropped-file names, base64 file saving, endpoint routing, and non-URL external-open rejection.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri compatibility CLI</h2>
+  <ul>
+    <li>Added Rust binary command handling for <code>hyperwiki</code>, <code>launch</code>, <code>dev</code>, <code>help</code>, and <code>mcp</code>, with <code>mcp</code> backed by the Rust stdio JSON-RPC transport.</li>
+    <li>Documented migration guidance in the Rust CLI for <code>init</code> and <code>reset</code>, which continue to use the Node compatibility CLI until scaffold/reset are ported.</li>
+    <li>Marked Stage 05 Unit 02 complete and advanced the active migration unit to Stage 05 Unit 03 - Packaging And Distribution.</li>
+    <li>Verified with <code>pnpm run check:all</code>, <code>cargo run --manifest-path src-tauri/Cargo.toml -- help</code>, and a framed MCP <code>initialize</code> request through <code>cargo run --manifest-path src-tauri/Cargo.toml -- mcp</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | Tauri packaging</h2>
+  <ul>
+    <li>Updated Tauri package metadata to use identifier <code>dev.hyperwiki.desktop</code> and scoped verified bundle output to the macOS <code>.app</code> target.</li>
+    <li>Verified release packaging with <code>pnpm run tauri:build</code>, producing <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+    <li>Recorded that the initial all-target build produced the release binary and <code>.app</code> but failed during DMG script execution, so DMG distribution remains deferred until a focused packaging pass.</li>
+    <li>Marked Stage 05 Unit 03 complete and advanced the active migration unit to Stage 05 Unit 04 - Frontend Styling Decision; <code>pnpm run check:all</code> also passed.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 decision | Tauri frontend styling</h2>
+  <ul>
+    <li>Decided to keep the current CSS and vanilla frontend through Tauri parity closeout instead of adding Tailwind or shadcn during the rewrite.</li>
+    <li>The Rust command contract, desktop terminal runtime, dev previews, worktrees, verification, review, MCP, app actions, CLI, and packaging units did not need a styling framework migration to reach their parity gates.</li>
+    <li>Marked Stage 05 Unit 04 and Stage 05 complete, then advanced the active migration unit to Stage 06 Unit 01 - Full Parity Audit.</li>
+    <li>Verification remains the latest <code>pnpm run check:all</code> plus the packaged <code>Hyperwiki.app</code> build from the previous unit; no frontend code changes were required for this decision.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 audit | Tauri parity closeout</h2>
+  <ul>
+    <li>Compared Node routes, frontend API calls, CLI commands, and Rust command routes for the Stage 06 parity audit.</li>
+    <li>Confirmed Tauri parity for settings, wiki, health, project listing, app previews, workspace, verification, project contract, review workflows, MCP surface, guardrails, layout, repo/Git init, worktrees, sessions, terminals, agent prompts, terminal drops, app shell actions, desktop build, and Rust MCP.</li>
+    <li>Identified remaining blockers before Node runtime removal: <code>POST /api/projects/create</code>, <code>DELETE /api/projects/:id</code>, Rust-native <code>init</code>/<code>reset</code>, generated-project instruction reconciliation, and DMG packaging.</li>
+    <li>Marked Stage 06 Unit 01 complete with gaps identified and advanced the active migration unit to Stage 06 Unit 02 - Remove Node Runtime Dependencies, with those gaps as prerequisites.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 planning | new plan workflow</h2>
+  <ul>
+    <li>Added an active compact feature plan for a first-class <code>+ new plan</code> workflow.</li>
+    <li>The planned flow creates repo-visible wiki plan files, updates the Planning Dashboard and project log, navigates to the new plan, and makes it the active context for Execute, terminal scoping, Up Next, and worktree creation.</li>
+    <li>Recorded open decisions around initial unit-page creation, whether creation should start an agent automatically, and whether pasted source evidence belongs in the same flow.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | worktree creation flow</h2>
+  <ul>
+    <li>Changed the terminal branch rail <code>+ worktree</code> action from an agent prompt shortcut into an in-app create-and-switch flow.</li>
+    <li>Added a local worktree creation API that validates main or master, creates a Git worktree and branch, runs <code>pnpm install</code>, registers the checkout, and returns the workspace and preview URLs.</li>
+    <li>After creation, the UI switches to <code>/workspace/&lt;project&gt;/&lt;worktree&gt;</code> with the current plan hash, updates the branch rail to the worktree slug with ellipsis overflow, hides <code>+ worktree</code> off main, and sends the agent an existing-worktree handoff.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, and an agent-browser interaction check; <code>pnpm run smoke:browser</code> reaches the new popover coverage when pointed at the local server and remains blocked later by the existing completed-stage dot color assertion.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | plan-scoped terminals</h2>
+  <ul>
+    <li>Changed terminal panels to resolve against the active plan root so navigating to another plan shows a fresh right side.</li>
+    <li>Changed the PTY websocket lifecycle so route changes detach browser clients while the local terminal process keeps running until explicit close or process exit.</li>
+    <li>Scoped agent prompt routing to the current terminal scope so hidden sessions from other plans are not reused accidentally.</li>
+    <li>Added launch and session-retention smoke coverage for detached plan sessions and plan reattach behavior.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:pty</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:launch</code>; full browser smoke remains blocked by an unrelated completed-stage dot color assertion.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-20 implementation | xterm terminal renderer</h2>
+  <ul>
+    <li>Replaced the browser terminal renderer with xterm.js, including the fit and web-link addons.</li>
+    <li>Kept the existing PTY websocket lifecycle while moving browser-side command input, resize events, and output rendering onto xterm APIs.</li>
+    <li>Updated collapse and expand restoration to use xterm buffer viewport state so output remains readable after reopening a panel.</li>
+    <li>Changed Run Dev so collapsed managed dev terminals still start, show a Starting state, and update Open App to the runtime URL printed by the dev server.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:pty</code>, and agent-browser checks on the MarkdownStack Run Dev workflow.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-19 implementation | dev script agent guidance</h2>
+  <ul>
+    <li>Made New Project and Execute handoff prompts explicitly require a runnable <code>package.json</code> <code>dev</code> script when agents build previewable apps.</li>
+    <li>Updated generated <code>AGENTS.md</code>, development pages, and technical brief defaults to prefer Portless-backed <code>dev</code> scripts with real app servers behind <code>dev:app</code>.</li>
+    <li>Added init smoke assertions for the generated guidance.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-19 implementation | git onboarding</h2>
+  <ul>
+    <li>Added Git initialization and initial Hyperwiki commit support to CLI init, in-app project creation, and a project-scoped recovery endpoint.</li>
+    <li>Changed New Project to default to initializing Git, and changed Execute to warn and offer Git initialization when older projects lack Git.</li>
+    <li>Added smoke coverage for CLI Git initialization, created-project baseline commits, New Project Git UI, and Execute recovery prompting.</li>
+    <li>Verified with <code>pnpm run check</code>, init, project links, app preview, project removal, launch, and browser smoke coverage.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-17 fix | agent execute launch guard</h2>
+  <ul>
+    <li>Changed Execute and New Agent handoffs to require a configured project agent launch command before creating an agent terminal.</li>
+    <li>Added server-side prompt routing defense so active shell sessions without commands cannot receive agent prompts through <code>/api/agent/prompt</code>.</li>
+    <li>Added browser smoke coverage for the missing-command guard so generated Execute prompts are not pasted into zsh.</li>
+    <li>Verified with <code>pnpm run check</code> and browser smoke.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-17 implementation | project card checkout switcher</h2>
+  <ul>
+    <li>Changed Manage Projects to render one card per project group instead of separate duplicate-looking cards for registered worktrees.</li>
+    <li>Added an in-card checkout switcher so workspace, app preview, and removal actions apply to the selected main or worktree checkout.</li>
+    <li>Adjusted checkout removal copy and smoke coverage so removing a worktree checkout is distinct from removing the whole project.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, and browser smoke after plan closeout.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-17 implementation | multi-worktree app preview</h2>
+  <ul>
+    <li>Added exact-checkout app preview status for registered main and worktree checkouts, using exact Portless hostname matching instead of broad project URL assumptions.</li>
+    <li>Changed the command-bar app control to open a running preview or start the active checkout's dev terminal, poll readiness, and then open the exact checkout URL.</li>
+    <li>Updated the project switcher and Manage Projects cards to show registered worktrees with per-checkout preview status and app start/open actions.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:app-preview</code>, <code>pnpm run smoke:project-removal</code>, <code>pnpm run smoke:plan-status</code>, and <code>pnpm run smoke:contract</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 refinement | decision-complete generated MVP specs</h2>
+  <ul>
+    <li>Extended generated source-grounded projects with <code>wiki/plans/mvp/implementation-spec.mdx</code> so implementation agents get content paths, frontmatter contract, taxonomy facets, seed categories, routes, search/filter behavior, copy/compare behavior, validation plan, and deferred scope.</li>
+    <li>Made generated roadmap, architecture, and development pages source-aware for guided import projects instead of leaving them as generic scaffold pages.</li>
+    <li>Expanded init smoke coverage to assert the implementation spec and source-aware durable pages are present.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 fix | source-grounded generated MVP plans</h2>
+  <ul>
+    <li>Updated project initialization so imported source evidence and planning interview answers generate concrete product, technical, design, MVP, and acceptance pages instead of generic scaffold-only plans.</li>
+    <li>Added durable generated planning-interview pages under <code>wiki/sources/</code> so selected decisions are visible outside runtime terminal session metadata.</li>
+    <li>Repaired the existing <code>markdownstack-2</code> generated wiki from the original MarkdownStack source file and selected static curated gallery direction.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 refinement | New Project interview design</h2>
+  <ul>
+    <li>Redesigned the New Project planning interview from a heavy nested card into a focused decision console.</li>
+    <li>Added compact source evidence, step progress, calmer radio option cards, accent-backed selection, mobile-first decision ordering, selected-plan summary, and unified wizard footer actions.</li>
+    <li>Aligned the wizard with the New Project header, widened the planning surface, removed subtle gradients, and shifted long-form reading text away from the mono font.</li>
+    <li>Removed the Human-Steered badge and moved the step count into the right side of the wizard question header.</li>
+    <li>Fixed the step progress rail so the dots render fully inside the stepper instead of being clipped by the top edge.</li>
+    <li>Made the wizard Next button larger with a chevron icon and changed the Back action to a ghost button.</li>
+    <li>Fixed the final Create Project action so it only appears after all planning steps are complete.</li>
+    <li>Increased the Project Brief form intro size and moved it from mono into the reading font.</li>
+    <li>Verified with <code>pnpm check</code>, agent-browser interaction checks, and Playwright desktop/mobile layout measurements.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 refinement | guided import wizard</h2>
+  <ul>
+    <li>Changed New Project to a global one-column context without the active project sidebar.</li>
+    <li>Reworked the guided import flow into a one-question wizard with answer details and tradeoffs.</li>
+    <li>Expanded guided generated MVP unit pages with why, work included, acceptance, and verification sections.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 planning prototype | guided import planning interview</h2>
+  <ul>
+    <li>Added a comparison prototype for source brief review, in-app MVP steering questions, imported-source preservation, and human-steered MVP plan generation.</li>
+    <li>Validated with MarkdownStack import fixture, syntax checks, init smoke, project-scoped wiki link smoke, and agent-browser interview/import flow.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 implementation | Project removal</h2>
+  <ul>
+    <li>Added Manage Projects card removal with inline confirmation, registry-only removal by default, and an explicitly unchecked delete-files option for recursive project-root deletion.</li>
+    <li>Hid the wiki sidebar on Projects, New Project, and Settings so management pages act as global app surfaces rather than current-project wiki views.</li>
+    <li>Archived the completed <a href="/wiki/plans/zzz_completed/project-removal.mdx">Project Removal</a> plan and added smoke coverage for registry-only removal, opt-in file deletion, and management-page sidebar hiding.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-16 implementation | Scaffold contract skill reconciliation</h2>
+  <ul>
+    <li>Documented Hyperwiki's scaffold contract as product intent: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
+    <li>Updated <code>src/init.js</code> so newly initialized projects generate scaffold-contract guidance in root agent instructions, wiki source context, and technical brief output.</li>
+    <li>Updated import and page-revision handoff prompts in <code>public/app.js</code> so agents can use the installed <code>hyperwiki</code> workflow without creating duplicate scaffold conventions.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:init</code>, and agent-browser review of the new scaffold contract page and updated Sources page.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-15 planning | Scaffold contract skill reconciliation</h2>
+  <ul>
+    <li>Added an active compact feature plan to reconcile Hyperwiki's productized HTML wiki scaffold with the installed <code>hyperwiki</code> skill.</li>
+    <li>The plan keeps Hyperwiki's known divergences explicit before implementation: lowercase <code>wiki/sources.mdx</code>, generated <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
+    <li>Next action: audit <code>src/init.js</code>, import handoff prompts in <code>public/app.js</code>, and wiki guidance before making generator or prompt changes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-15 implementation | New Project page</h2>
+  <ul>
+    <li>Moved project creation out of the Manage Projects page into a dedicated <code>/projects/new</code> app-shell page.</li>
+    <li>Added a New Project action to the topbar Projects dropdown alongside Manage Projects.</li>
+    <li>Hid the wiki command bar and terminal pane in project-management app mode so <code>/projects/new</code> does not show redundant Modify/Execute controls or empty terminal space.</li>
+    <li>Kept successful creation returning to <code>/projects</code> before starting the visible agent handoff.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, and targeted <code>agent-browser</code> checks for the dropdown and direct <code>/projects/new/</code> refresh.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-15 planning | plan state cleanup</h2>
+  <ul>
+    <li>Reconciled the plan tree after Stage 08 completion: Stage 08 unit pages now use <code>Status: complete</code> instead of <code>implemented</code>.</li>
+    <li>Removed superseded standalone Soul and Memory draft plans because their MVP scope was folded into Stage 08 Settings, Soul, and Memory.</li>
+    <li>Archived completed standalone plans under <code>wiki/plans/zzz_completed/</code> so the active plan navigation reflects that there is no current implementation unit.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-15 implementation | Thinking effort picker</h2>
+  <ul>
+    <li>Added a terminal toolbar picker for the default thinking effort used by newly opened Codex agent terminals.</li>
+    <li>The picker stores its default in browser-local workspace state and applies <code>model_reasoning_effort</code> through Codex CLI config overrides.</li>
+    <li>Existing terminal sessions are not mutated when the picker changes, and non-Codex agent launch commands remain unchanged.</li>
+    <li>Verified with <code>pnpm run check</code> and an <code>agent-browser</code> toolbar/agent-launch check against the worktree preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-15 implementation | Projects-only workspace</h2>
+  <ul>
+    <li>Removed idea incubation from the active product model: no Ideas route, topbar item, wiki scaffold, API endpoints, smoke script, or idea files remain.</li>
+    <li>Changed the default workspace surface to Projects and kept imported briefs on the direct project creation path.</li>
+    <li>Legacy <code>/ideas</code> and <code>/dashboard</code> app-shell paths resolve to the Projects surface for compatibility.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Non-plan wiki prompt rail</h2>
+  <ul>
+    <li>Changed idea and other non-plan wiki pages to open with a right-side <code>Modify Idea</code> prompt instead of auto-starting terminal sessions.</li>
+    <li>Submitting that prompt now starts one full-height agent terminal and forwards a revise-this-idea-page instruction.</li>
+    <li>Manual terminal creation controls and Up Next are hidden on non-plan wiki pages because they are outside the active plan workflow.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:ideas</code>, and targeted <code>agent-browser</code> review.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Contextual Up Next visibility</h2>
+  <ul>
+    <li>Hid the Up Next control on Ideas, Projects, and Settings because those app-shell pages are outside the current plan context.</li>
+    <li>Restored Up Next automatically when returning to wiki pages where current-plan context applies.</li>
+    <li>Added browser smoke assertions for Ideas, Projects, and Settings visibility.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | App-shell first paint</h2>
+  <ul>
+    <li>Fixed the initial load flash on Ideas, Projects, and Settings routes by making the HTML shell route-aware before CSS paints.</li>
+    <li>The app hides the default wiki iframe and reveals the matching app-shell page until normal JavaScript state takes over.</li>
+    <li>Verified with <code>agent-browser</code> immediate screenshots for <code>/ideas</code>, <code>/projects</code>, and <code>/settings</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Theme font enforcement</h2>
+  <ul>
+    <li>Audited app, Settings, terminal, and wiki typography for hard-coded visible font stacks.</li>
+    <li>Changed Settings page headings, theme preview titles, workspace body text, wiki header links, code areas, and terminal chrome to use active theme font variables instead of static Instrument Serif, system UI, or base mono declarations.</li>
+    <li>Added browser smoke assertions that compare rendered Settings fonts against the active theme CSS variables.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 fix | Ideas and Projects refresh routes</h2>
+  <ul>
+    <li>Fixed hard refreshes for <code>/ideas</code>, <code>/ideas/</code>, <code>/projects</code>, and <code>/projects/</code> so they serve and keep the workspace app shell instead of falling through to <code>Not found</code> or being rewritten to a workspace wiki URL.</li>
+    <li>Centralized client app-shell route detection for Ideas, Projects, Settings, and legacy Dashboard routes.</li>
+    <li>Added server and browser smoke coverage for direct Ideas and Projects route refreshes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Idea import agent handoff</h2>
+  <ul>
+    <li>Fixed Dashboard idea imports so selecting a markdown or HTML file creates the idea page, opens it, and starts the visible agent with refinement instructions.</li>
+    <li>Kept created idea pages durable even if the agent terminal is unavailable, with status text that distinguishes creation from handoff failure.</li>
+    <li>Added browser smoke coverage for the imported HTML idea handoff status.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 planning | MVP status reconciliation</h2>
+  <ul>
+    <li>Reviewed the MVP plan against the project contract, wiki stage/unit pages, source briefs, project log, and recent implementation history.</li>
+    <li>Marked the MVP plan and Stage 08 complete because all Stage 08 units are implemented: global Settings page, theme system, Soul and Memory controls, and AGENTS.md sync.</li>
+    <li>Removed stale next-action language from completed MVP stages that pointed at already-finished downstream stages.</li>
+    <li>Updated the roadmap and source index to treat read-only MCP transport as implemented, with action-oriented MCP permissions remaining as the open question.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 MCP server transport</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 05 with <code>hyperwiki mcp</code>, a local stdio MCP server using Content-Length framed JSON-RPC messages.</li>
+    <li>The MCP server exposes read-only resources for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>The MCP server exposes read-only tools for project contract access, current plan lookup, verification loop discovery, and review workflow discovery.</li>
+    <li>Deferred action-oriented MCP tools for terminal prompt submission and review workflow execution until permissions are designed.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:mcp-transport</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 workflow | Portless worktree runtime</h2>
+  <ul>
+    <li>Decision: repo development should start through Portless by default with <code>pnpm dev</code>, keeping <code>pnpm run dev:app</code> as the direct server command.</li>
+    <li>Added a durable plan for Portless-backed worktree runtime behavior and documented main and feature preview URLs.</li>
+    <li>Added repo-local worktree command guidance for doctor, create, list, resume, open, finish, and prune workflows.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm wt:doctor</code>, <code>pnpm wt:list</code>, dry-run <code>pnpm wt:open main</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:launch</code>, and a live Portless HTTP 200 check.</li>
+    <li>Follow-up: changed the Portless-backed <code>pnpm dev</code> path to open the active preview URL automatically while preserving <code>pnpm run dev:app</code> as the non-opening server command.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 MCP surface contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 04 with a versioned <code>/api/mcp-surface</code> endpoint.</li>
+    <li>The surface defines MCP-style resources for project contract, current plan, source index, verification loops, guardrails, review workflows, and wiki pages.</li>
+    <li>The surface defines controlled tools for project contract access, current plan lookup, verification loop discovery, review workflow discovery/preparation, and visible agent prompt submission.</li>
+    <li>Tool entries include local endpoint mappings, JSON schemas, read-only/action flags, idempotency, destructive-operation flags, and Localhost Tooling boundaries.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:mcp-surface</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 agent review workflows</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 03 with versioned <code>/api/review-workflows</code> discovery for diff, architecture consistency, security, and test-gap reviews.</li>
+    <li>Added <code>/api/review-workflows/run</code> to build project-contract-aware review prompts and route them into the visible agent terminal, with dry-run prompt preparation for smoke coverage.</li>
+    <li>Review workflow results remain runtime evidence until intentionally recorded in wiki files or Git.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:review-workflows</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 project contract</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 02 with a versioned <code>/api/project-contract</code> endpoint.</li>
+    <li>The contract composes project config, Git/repo state, current plan, source briefs, verification loops, guardrails, layout, wiki page index, runtime boundaries, and copy-pasteable agent context.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:contract</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 implementation | Stage 07 verification loop model</h2>
+  <ul>
+    <li>Implemented Stage 07 Unit 01 with a versioned <code>/api/verification</code> endpoint and the same verification loop model exposed through <code>/api/workspace</code>.</li>
+    <li>Verification loops include command, scope, trigger, status, last run, evidence, manual/automated kind, source, recorded flag, and runtime boundary metadata.</li>
+    <li>Runtime evidence is read from ignored <code>.hyperwiki/state/verification.json</code> and remains separate from canonical wiki/Git truth until intentionally recorded.</li>
+    <li>Verified with <code>pnpm run check</code> and <code>pnpm run smoke:verification</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-14 source decision | Localhost Tooling identity</h2>
+  <ul>
+    <li>Decision: hyperwiki should fully claim and identify as Localhost Tooling.</li>
+    <li>Product boundary: hyperwiki runs as a local app over the developer's own machine, repo files, Git state, terminal sessions, credentials, and environment variables.</li>
+    <li>Implication: hosted sync, telemetry, remote execution, and cloud-backed memory are not default assumptions; local repo truth and visible runtime boundaries remain the product thesis.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-13 maintenance | Stage 07 plan reconciliation</h2>
+  <ul>
+    <li>Split the completed workspace-enabler work out of Stage 07 into the completed <a href="/wiki/plans/zzz_completed/agent-workspace-enablers.mdx">Agent Workspace Enablers</a> plan.</li>
+    <li>Renumbered those extracted units as Workspace Framing Update, Sidebar Project Pin, and Execute Target Workflow so Stage 07 now contains only the active core verification sequence.</li>
+    <li>Added a plan reconciliation policy: renumber units when the same sequence changes, split plans when out-of-order work is a separate durable track, and derive workspace current-state markers from wiki summary status.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-13 maintenance | Stage 07 code-state reconciliation</h2>
+  <ul>
+    <li>Deep code review found Stage 07 had advanced non-linearly: workspace framing, Dashboard handoffs, plan command bar affordances, completed-plan behavior, sidebar Project pinning, and Execute target workflow are implemented and covered by smoke tests.</li>
+    <li>Decision: keep Stage 07 active on Unit 01 because the core verification-loop model, machine-readable project contract, named review workflows, and MCP surfaces are not implemented yet.</li>
+    <li>Updated Stage 07 plan state, source briefs, architecture notes, source index, and planning dashboard to distinguish implemented workspace enablers from pending agent-native verification surfaces.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | execute target workflow</h2>
+  <ul>
+    <li>Changed workspace startup so terminals are created lazily after an explicit Execute target selection.</li>
+    <li>Added main and worktree execution targets, with worktree handoffs instructing agents to use <code>parallel-dev-worktrees</code>.</li>
+    <li>Added Portless preview guidance and collapsed dev-log behavior for execution sessions.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | global settings, soul, and memory</h2>
+  <ul>
+    <li>Promoted Settings from a topbar popover placeholder into a global full page at <code>/settings</code>.</li>
+    <li>Added global settings persistence for theme presets, advanced theme JSON, Soul, and manually reviewed Memory entries.</li>
+    <li>Added explicit current-project <code>AGENTS.md</code> sync for Soul and enabled Memory through a managed block.</li>
+    <li>Folded the product Soul and Memory plans into Stage 08 of the MVP plan.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | static plans sidebar heading</h2>
+  <ul>
+    <li>Changed the workspace sidebar's top-level Plans label from a collapsible disclosure to a static heading.</li>
+    <li>Kept nested plan and stage branches collapsible.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | sidebar project pin</h2>
+  <ul>
+    <li>Added a dedicated Project navigation styling hook in the workspace sidebar.</li>
+    <li>Pinned the Project group to the bottom of the sidebar and let its expanded state stack above plan navigation.</li>
+    <li>Extended browser smoke coverage for the pinned Project group placement and stacking behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | completed plan archive and sidebar grouping</h2>
+  <ul>
+    <li>Moved completed feature plans under <code>wiki/plans/zzz_completed/</code> and added a completed plans archive index.</li>
+    <li>Changed the workspace sidebar so completed plans are grouped under Completed Plans instead of appearing as active plan branches.</li>
+    <li>Moved Sources and Log under the Project sidebar group.</li>
+    <li>Verified with <code>pnpm run check</code> and browser workspace smoke against an isolated dry-run server.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | idea incubation and promotion</h2>
+  <ul>
+    <li>Added <code>wiki/ideas/</code> as a free-form idea incubation area and added Ideas to wiki/workspace navigation.</li>
+    <li>Added a hyperwiki Dashboard that shows ideas and registered projects together.</li>
+    <li>Added local idea promotion: an idea can be initialized as a new hyperwiki project under <code>~/Projects</code>, seeded with a planning package, registered, and replaced by a promoted origin note.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:ideas</code>, <code>pnpm run smoke:launch</code>, and browser workspace smoke against an isolated dry-run server.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | worktree context placement</h2>
+  <ul>
+    <li>Decision: worktrees are runtime contexts for terminal sessions, not separate rows in Projects.</li>
+    <li>Changed Projects to collapse same-project worktrees into one project row and moved the active worktree label into the terminal toolbar.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | missing worktree pruning</h2>
+  <ul>
+    <li>Changed the project registry list path to automatically remove registered non-<code>main</code> worktrees whose root path no longer exists.</li>
+    <li>Kept missing <code>main</code> projects visible as unavailable and changed Projects labels to one-line project/worktree text, without repeating identical project and worktree names.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | sidebar plan tree</h2>
+  <ul>
+    <li>Dogfood finding: Stage 07 appeared above earlier MVP stages because the sidebar sort key promoted the current stage.</li>
+    <li>Changed plan navigation sorting to keep MVP stages in chronological path order while retaining the current plan, stage, and unit markers.</li>
+    <li>Wrapped nav labels in a dedicated truncation span so long plan, stage, and unit labels use text overflow ellipses.</li>
+    <li>Removed the empty sidebar separator above Plans, omitted Planning Dashboard from the plan tree, and aligned active dots with transparent inactive placeholders.</li>
+    <li>Indented stage unit rows and changed stage branches to auto-expand only when the stage or one of its units is selected.</li>
+    <li>Restyled the plan sidebar after the MDXG reference with a white page-list surface, muted section heading, disclosure chevrons, flat selected rows, and a dark active rail.</li>
+    <li>Matched the topbar to the white sidebar surface, moved the active rail flush to the window edge, and tightened chevron spacing.</li>
+    <li>Matched the wiki pane to the white chrome, made selected row backgrounds extend to the window edge, set the selected rail to 2px, and nudged accordion chevrons right.</li>
+    <li>Moved the selected stage rail onto the full summary row so the 2px black edge remains visible over the selected background, and nudged chevrons farther right.</li>
+    <li>Made selected unit rows use the same edge-to-edge background and 2px rail treatment while keeping unit text indented under the selected stage.</li>
+    <li>Nudged accordion chevrons 4px farther right with relative positioning after visual review.</li>
+    <li>Aligned non-expandable plan rows with expandable plan labels by reserving the same chevron column in their row padding.</li>
+    <li>Restored sidebar label ellipses with flexible label spans and added a separator below expanded plan branches before the next plan row.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | terminal header simplification</h2>
+  <ul>
+    <li>Removed the terminal pane's Clean/Dirty, Local-only, guardrail, and session action chrome from the visible workspace.</li>
+    <li>Changed the terminal header to one small mono line with branch context on the left and New Agent / New CLI actions on the right.</li>
+    <li>Added per-terminal close buttons and preserved the rule that at least one terminal must remain open.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | terminal file drops</h2>
+  <ul>
+    <li>Dogfood finding: dropping an image onto a wterm opened the browser's default file navigation instead of adding the image to the terminal prompt context.</li>
+    <li>Changed terminal drops to stay inside hyperwiki, copy dropped files into ignored <code>.hyperwiki/state/drops/</code>, and insert the saved local path into the target terminal.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | direct terminal pane input</h2>
+  <ul>
+    <li>Dogfood finding: clicking directly into a non-active terminal pane did not reliably activate that wterm for typing while another agent process was still producing output.</li>
+    <li>Changed terminal pane focus handling so direct pane clicks activate the target session without breaking existing text selection behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | topbar settings placeholder</h2>
+  <ul>
+    <li>Added a compact Settings action to the TopBar with placeholder workspace preference UI.</li>
+    <li>Added a circle-pile icon to Projects so the TopBar actions now have consistent icon affordances.</li>
+    <li>Changed shared TopBar panel motion to vertical-only entry and kept Projects, Up Next, and Settings mutually exclusive.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | topbar navigation panels</h2>
+  <ul>
+    <li>Moved the workspace brand, Projects switcher, and Up Next status into a persistent TopBar.</li>
+    <li>Replaced the project sidebar and Up Next sidebar popover with shared top-right panels that slide in from the top right and fade in their content.</li>
+    <li>Kept plan navigation as the sidebar's primary surface while preserving keyboard close behavior, focus visibility, and multi-project switching coverage.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | worktree-aware project URLs</h2>
+  <ul>
+    <li>Decision: Git worktrees remain separate swappable project views instead of being hidden as duplicate projects.</li>
+    <li>Added readable project/worktree launch URLs such as <code>/workspace/hyperwiki/main</code> and <code>/workspace/hyperwiki/plan-unit-navigation</code>.</li>
+    <li>Kept root-based project IDs as the runtime source of truth while preserving legacy <code>?project=&lt;id&gt;</code> routes.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | plan unit navigation</h2>
+  <ul>
+    <li>Split existing plan units into dedicated HTML pages and reduced stage/plan pages to overview indexes.</li>
+    <li>Changed the workspace sidebar to render a plans-first tree with active plan branches open and project/source/log groups collapsed.</li>
+    <li>Replaced the persistent sidebar status list with an Up Next popover backed by structured workspace status.</li>
+    <li>Updated generated init templates and smoke coverage for unit pages, plan navigation, and Up Next behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 planning | plan unit navigation</h2>
+  <ul>
+    <li>Added a feature plan for unit-specific plan pages, plans-first workspace navigation, and the Up Next popover.</li>
+    <li>Decision: all plan units should have dedicated HTML pages while plan and stage overview pages become compact indexes.</li>
+    <li>Decision: the workspace sidebar should focus on plan navigation, with project, source, log, and completed/history groups collapsed by default.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 correction | plan prompt input sizing</h2>
+  <ul>
+    <li>Changed the plan prompt input to grow and shrink between one and five text lines.</li>
+    <li>Kept longer prompts scrollable inside the capped textarea instead of expanding the workspace chrome indefinitely.</li>
+    <li>Adjusted the textarea line-height after dogfooding so multi-line prompts have more readable spacing.</li>
+    <li>Kept the send button a stable one-line height aligned to the top of the expanding textarea.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 planning | product soul and memory</h2>
+  <ul>
+    <li>Added separate non-MVP product direction plans for hyperwiki's overall soul and memory model.</li>
+    <li>Decision: soul is an overall product taste layer for language, defaults, interface behavior, and agent interactions, not a mascot or marketing surface.</li>
+    <li>Decision: memory must distinguish per-project memory, overall user-level memory, and runtime session memory before any persistent write path is implemented.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 planning | agent-native verification stage</h2>
+  <ul>
+    <li>Added Stage 07 to translate the Software 3.0 product review into executable MVP work.</li>
+    <li>Decision: verification loops become a first-class hyperwiki product primitive before broad MCP implementation.</li>
+    <li>Decision: structured MCP surfaces should expose project contracts, current plans, source context, verification loops, guardrails, and controlled prompt submission while preserving repo-local wiki and Git as durable truth.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-11 implementation | animated sidebar brand mark</h2>
+  <ul>
+    <li>Added a subtle CSS-only animated dot grid beside the hyperwiki sidebar wordmark.</li>
+    <li>Kept the indicator decorative, dependency-free, and disabled under reduced-motion preferences.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | agent plan prompt</h2>
+  <ul>
+    <li>Added a sidebar plan prompt that appears when an agent session exists.</li>
+    <li>Prompt submissions are written into the visible agent terminal with project and current wiki page context.</li>
+    <li>Kept the feature runtime-only: hyperwiki does not store a separate chat transcript or edit wiki files directly.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 correction | workspace chrome audit</h2>
+  <ul>
+    <li>Reduced duplicated sidebar metadata to a compact next-action status.</li>
+    <li>Suppressed standalone wiki headers when pages are embedded in the workspace iframe.</li>
+    <li>Added per-pane terminal headers and removed the hyperwiki dogfood dev panel that conflicted with the already-running launch server.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 correction | visible launch terminals</h2>
+  <ul>
+    <li>Dogfood finding: launch created agent/dev/CLI sessions, but the tab-only terminal UI made it look like only one wterm existed.</li>
+    <li>Changed the terminal area so sessions render as separate visible panes, with tabs retained as focus controls.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 correction | explicit agent command setup</h2>
+  <ul>
+    <li>Dogfood finding: after a reset, fresh project initialization could inherit this repo's <code>codex --yolo</code> command without explicit user choice.</li>
+    <li>Changed initialization so new projects leave <code>agent.launchCommand</code> empty unless <code>--agent-launch-command</code> is provided.</li>
+    <li>Existing configured projects, including hyperwiki itself, still launch their configured agent panel.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | safe reset command</h2>
+  <ul>
+    <li>Added <code>npx hyperwiki reset</code> to clear the user-level project registry and ignored runtime/session state for hyperwiki-initialized projects.</li>
+    <li>Added <code>npx hyperwiki reset --dry-run</code> to preview reset scope.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:reset</code>, and <code>pnpm run smoke:launch</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | repeatable fresh-launch reset</h2>
+  <ul>
+    <li>Added Stage 06 Unit 03 for a safe reset command that supports dogfooding first-launch behavior repeatedly on the same computer.</li>
+    <li>Decision: reset clears the user-level registry and ignored runtime/session state, while preserving <code>wiki/</code> and <code>.hyperwiki/config.json</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | agent-first launch layout</h2>
+  <ul>
+    <li>Added per-project <code>agent.launchCommand</code> and configured this repo to launch <code>codex --yolo</code>.</li>
+    <li>Changed generated/default terminal layout to agent first when configured, dev second when a dev script exists, and a single CLI shell always.</li>
+    <li>New project initialization can set an agent command through <code>--agent-launch-command</code>, but does not inherit one implicitly.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | agent-first launch layout</h2>
+  <ul>
+    <li>Added Stage 06 for per-project <code>agent.launchCommand</code> and a simplified startup terminal layout.</li>
+    <li>Decision: the default launch panel order is agent, dev, CLI; missing agent or dev commands remove those panels.</li>
+    <li>Decision: this repo dogfoods <code>codex --yolo</code> as the configured agent launch command.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 polish | workspace chrome reduction</h2>
+  <ul>
+    <li>Defaulted the workspace to the current plan dashboard instead of the last deep wiki page.</li>
+    <li>Curated the wiki navigation into primary links and grouped sections, with completed stages collapsed by default.</li>
+    <li>Collapsed terminal session actions and guardrail details so wiki and terminal content stay primary.</li>
+    <li>Filtered retained terminal tabs to configured layout panels so smoke-test residue does not dominate dogfood sessions.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | multi-project workspace</h2>
+  <ul>
+    <li>Added a user-level project registry at <code>~/.hyperwiki/projects.json</code> with <code>HYPERWIKI_HOME</code> support for isolated tests.</li>
+    <li><code>npx hyperwiki</code> now registers hyperwiki-initialized repos and opens the active project URL.</li>
+    <li>Added project-scoped APIs, project-scoped wiki routes, and project-scoped PTY/session routing while keeping per-project runtime state under each repo's <code>.hyperwiki/</code>.</li>
+    <li>Added a collapsible project sidebar that remains hidden for a single registered project and appears once multiple projects exist.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | multi-project workspace stage</h2>
+  <ul>
+    <li>Added Stage 05 for user-level project registration, project-scoped runtime APIs, and a collapsible project switcher.</li>
+    <li>Decision: single-project use stays visually unchanged until at least two projects are registered.</li>
+    <li>Decision: projects are added by launching <code>npx hyperwiki</code> from hyperwiki-initialized repos.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 correction | dogfood launch command parity</h2>
+  <ul>
+    <li>Removed the hyperwiki-only <code>pnpm run launch</code> shortcut so dogfooding uses the same command path as normal initialized projects.</li>
+    <li>The canonical launch command is now <code>npx hyperwiki</code>, with <code>npx hyperwiki launch</code> available as the explicit subcommand.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | one-command local launch</h2>
+  <ul>
+    <li>Added <code>hyperwiki launch</code> and made bare <code>hyperwiki</code> launch the workspace by default.</li>
+    <li>The launch flow starts or attaches to the local server, waits for workspace readiness, opens the browser workspace, and prints the workspace URL.</li>
+    <li>Added <code>/api/health</code> for readiness and repeated-launch detection, plus <code>pnpm run smoke:launch</code> coverage for browser-open intent and default wterm session creation.</li>
+    <li>Updated generated project guidance, repo docs, and workspace verification commands to use the detected package manager and <code>pnpm</code> in this repository.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:pty</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | one-command launch stage</h2>
+  <ul>
+    <li>Dogfood finding: first-use launch ambiguity is now the next MVP focus.</li>
+    <li>Added Stage 04 to define a single command that starts the local server, opens the browser workspace, and prepares the default wterm operating session.</li>
+    <li>Deferred structured MCP integration until after the core local launch workflow is credible.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal local echo jitter</h2>
+  <ul>
+    <li>Suppressed wterm's internal bottom-scroll alignment during recent keyboard input so local echo does not nudge the viewport.</li>
+    <li>Restored local echo scroll preservation while keeping the external same-background gutter model.</li>
+    <li>Extended browser smoke coverage to verify both visual gutter and terminal scroll position stay stable after the first typed character.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal gutter polish</h2>
+  <ul>
+    <li>Made the wterm surface transparent over the terminal pane gutter background.</li>
+    <li>Removed wterm's default shadow and rounded bottom edge so the gutter reads as one continuous terminal surface.</li>
+    <li>Added browser smoke checks for transparent terminal background, gutter color, and stable edge styling.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal visual gutter</h2>
+  <ul>
+    <li>Moved the terminal bottom padding outside the wterm scroll container into a same-background gutter.</li>
+    <li>Restored normal wterm bottom scrolling while keeping visible empty space below the prompt.</li>
+    <li>Updated browser smoke coverage to verify the visual gutter remains stable while typing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | dev asset freshness</h2>
+  <ul>
+    <li>Verified terminal gutter and typing behavior with <code>agent-browser</code> against the local workspace.</li>
+    <li>Disabled static asset caching in the local dev server so workspace JavaScript and CSS fixes apply after refresh.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal bottom typing stability</h2>
+  <ul>
+    <li>Made terminal follow mode conditional on already being near the bottom before new PTY output arrives.</li>
+    <li>Added a bottom gutter and scroll target so prompts sit above the pane edge instead of at the absolute scroll maximum.</li>
+    <li>Held scroll position during recent local echo so typed input can use the gutter without shifting the terminal viewport.</li>
+    <li>Tightened browser smoke coverage to verify bottom typing stability with the guttered scroll position.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | guardrails and auditability</h2>
+  <ul>
+    <li>Added a local guardrails API and workspace UI for local-only mode, canonical wiki/Git truth, ignored runtime state, command history boundaries, and terminal export/prune actions.</li>
+    <li>Made active terminal session metadata visible in the terminal pane and preserved accurate role/command metadata in the pipe fallback path.</li>
+    <li>Updated the technical brief and architecture page to document canonical repo truth versus ignored local runtime data.</li>
+    <li>Completed Stage 03 Unit 04 and Stage 03 after verification with <code>pnpm run check</code> and browser smoke testing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal output follow mode</h2>
+  <ul>
+    <li>Added app-level follow behavior so terminal output scrolls to the bottom as new PTY data arrives.</li>
+    <li>Extended browser smoke coverage to verify generated scrollback ends pinned to the newest output.</li>
+    <li>Recorded <code>pnpm</code> as the repository package manager and replaced npm lock metadata with <code>pnpm-lock.yaml</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal scrollback viewport</h2>
+  <ul>
+    <li>Fixed wterm layout containment after initialization so terminal output scrolls inside the panel instead of growing beyond the workspace.</li>
+    <li>Added browser smoke coverage for scrollback overflow and terminal viewport sizing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 fix | terminal input focus</h2>
+  <ul>
+    <li>Hardened wterm focus behavior so visible terminals receive keyboard input after activation and pointer focus.</li>
+    <li>Kept inactive terminal surfaces measurable instead of initializing wterm inside <code>display: none</code> containers.</li>
+    <li>Added browser smoke coverage that types into the shell panel and verifies terminal output.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 bootstrap | initialize HTML-first project wiki</h2>
+  <ul>
+    <li>Mode: bootstrap_new.</li>
+    <li>Canonical wiki format: HTML.</li>
+    <li>Planning workflow: project-wiki conventions adapted to HTML files.</li>
+    <li>Source briefs: PRD, technical brief, and design brief created for MVP planning.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | dogfood operating layout</h2>
+  <ul>
+    <li>Added config-driven default terminal panels for shell, checks, dev server, git, and agent workflows.</li>
+    <li>Configured the hyperwiki dogfood repo with command presets for checks, dev server, and git status.</li>
+    <li>Updated workspace restore behavior to merge retained sessions with required layout panels.</li>
+    <li>Extended browser smoke coverage to verify the dogfood operating layout and layout API.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | terminal session persistence and retention</h2>
+  <ul>
+    <li>Defined refresh behavior: the workspace restores terminal tabs from retained metadata and starts fresh PTYs on reconnect.</li>
+    <li>Added bounded local retention for closed terminal sessions under ignored <code>.hyperwiki/sessions/</code> metadata.</li>
+    <li>Added runtime-only session export and prune endpoints; exports are returned to the caller and are not written into repo-visible wiki files automatically.</li>
+    <li>Added <code>npm run smoke:sessions</code> and browser coverage for session policy, export, and prune behavior.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | true PTY compatibility</h2>
+  <ul>
+    <li>Identified the local <code>node-pty</code> failure cause: the packaged macOS <code>spawn-helper</code> was installed without executable permissions.</li>
+    <li>Added a runtime guard that restores the executable bit for the macOS <code>node-pty</code> helper before spawning a PTY.</li>
+    <li>Added <code>npm run smoke:pty</code> to prove the real PTY path and fail if only fallback mode is used.</li>
+    <li>Verified the live dev server records terminal metadata with <code>mode: "pty"</code>.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | init template quality and dogfood reset</h2>
+  <ul>
+    <li>Reworked <code>hyperwiki init</code> templates to use project-specific repository evidence instead of hyperwiki-specific product copy.</li>
+    <li>Added package-script, README, Git branch, Git root, and manifest evidence to generated wiki pages and source briefs.</li>
+    <li>Added <code>npm run smoke:init</code> and verified a clean generated dogfood wiki with browser smoke.</li>
+    <li>Completed Stage 02 and advanced the current unit to Stage 03 Unit 01 - True PTY Compatibility.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | workspace file and verification views</h2>
+  <ul>
+    <li>Added local-only <code>/api/workspace</code> for read-only plan status, recent log entries, source briefs, and verification command metadata.</li>
+    <li>Added sidebar workspace summary sections for current plan state, recent log history, and verification commands.</li>
+    <li>Extended browser smoke coverage to verify plan summary, source briefs, and verification command visibility.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | session metadata and repo context</h2>
+  <ul>
+    <li>Added local-only <code>/api/repo</code> and <code>/api/sessions</code> endpoints for workspace context.</li>
+    <li>Persisted transparent terminal session metadata under ignored <code>.hyperwiki/sessions/</code> JSON files.</li>
+    <li>Added workspace repo status display for branch, dirty state, and root-path tooltip.</li>
+    <li>Added terminal lifecycle controls for rename, restart, and close, with session metadata updates.</li>
+    <li>Extended browser smoke coverage for repo context and session metadata; verified direct WebSocket session metadata creation.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 planning | split MVP stages into execution units</h2>
+  <ul>
+    <li>Split Stage 02 into explicit units for workspace shell/navigation, session metadata and repo context, file/verification views, and init template quality.</li>
+    <li>Split Stage 03 into explicit units for true PTY compatibility, terminal persistence, dogfood operating layout, and local guardrails/auditability.</li>
+    <li>Set the current active unit to Stage 02 Unit 02 - Session Metadata And Repo Context.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 implementation | workspace navigation and terminal panel hardening</h2>
+  <ul>
+    <li>Added a server-side <code>/api/wiki</code> index so the workspace discovers repo-local HTML wiki pages instead of hard-coding only top-level links.</li>
+    <li>Added hash-backed wiki navigation, current-page display, an open-page action, and stale iframe-load protection.</li>
+    <li>Reworked terminal panels into active tabs with visible connection status and a <code>New</code> action for additional sessions.</li>
+    <li>Added a repeatable Playwright browser smoke test for workspace navigation and terminal tab creation.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 validation | public npm smoke test</h2>
+  <ul>
+    <li>Verified <code>npx hyperwiki init --yes</code> from the published <code>hyperwiki@0.1.0</code> package in a clean temporary directory.</li>
+    <li>Verified <code>npx hyperwiki dev</code> from the same directory serves the workspace, wiki pages, static assets, and wterm vendor files.</li>
+    <li>Verified the terminal WebSocket transport can execute a command from the published package runtime.</li>
+    <li>Updated the active plan state: Stage 01 is complete; Stage 02 workspace hardening is the next active unit.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-10 validation | dev workspace smoke tests</h2>
+  <ul>
+    <li>Verified CLI syntax checks with <code>npm run check</code>.</li>
+    <li>Verified <code>hyperwiki init</code> creates the expected HTML wiki and config in a temporary directory.</li>
+    <li>Verified the dev server serves the workspace, wiki pages, static assets, and wterm vendor modules on <code>127.0.0.1:4177</code>.</li>
+    <li>Verified terminal WebSocket transport can execute a shell command through the fallback pipe session.</li>
+    <li>Known issue: <code>node-pty</code> spawn currently fails in this environment with <code>posix_spawnp failed</code>; the server reports the failure and falls back without crashing.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-25 implementation | React theme-aware page background</h2>
+  <ul>
+    <li>Added a React app theme bridge that maps saved Settings theme tokens into Tailwind semantic CSS variables.</li>
+    <li>Changed utility route backgrounds to derive from the active theme's docs/UI background, so theme-tinted presets such as Signal no longer render as neutral gray.</li>
+    <li>Applied saved theme changes immediately after Settings saves and added root font smoothing for crisper text.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and <code>agent-browser</code> screenshots for Settings and New Project on the existing Vite preview.</li>
+  </ul>
+</article>
+<article>
+  <h2>2026-05-22 implementation | restored React settings workflows</h2>
+  <ul>
+    <li>Restored Settings as a global full-width surface without project sidebar or terminal chrome.</li>
+    <li>Ported the previous overview, theme editor, and agent-instructions editor structure into the React frontend.</li>
+    <li>Reconnected draft-based theme saves, Soul/Memory edits, and current-project <code>AGENTS.md</code> sync through the existing settings APIs.</li>
+    <li>Adjusted Settings typography to use the active primary font, removed the subhead divider, renamed the docs font label to Primary Font, and aligned UI preset fonts with each preset's primary font.</li>
+    <li>Stopped exposing generated <code>wiki/index.mdx</code> as the React workspace landing page or Project drawer entry; project switches now open the active plan unit when available.</li>
+    <li>Restored the terminal area to the pre-refactor dark branch/worktree toolbar, thinking selector, and <code>+ agent</code>/<code>+ cli</code> controls.</li>
+    <li>Reconnected terminal toolbar behavior in React: repo-aware worktree button visibility, Git initialization, worktree popover preview, worktree creation/switching, and persisted thinking effort.</li>
+    <li>Corrected sidebar green indicators so they track the first incomplete unit in the first incomplete stage rather than the user's currently viewed page.</li>
+    <li>Removed the terminal-only refresh button; terminal sessions already refresh on scope changes and lifecycle actions.</li>
+  </ul>
+</article>

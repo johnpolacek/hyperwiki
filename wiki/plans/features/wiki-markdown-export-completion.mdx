@@ -1,0 +1,54 @@
+---
+title: "Wiki Markdown Export Completion"
+description: "Finish the agent-readable export model with zip and generated skill exports."
+wikiKind: "plan"
+---
+
+<PlanHero title="Wiki Markdown Export Completion" status="complete" description="Complete the practical item-2 follow-up from the Holocron assessment: export the local project wiki as agent-readable Markdown artifacts." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: Unit 01 - Markdown zip and generated skill export complete</li>
+    <li>Next action: continue the numbered sequence with item 3 diagnostics/TOC or item 5 local search.</li>
+    <li>Blockers: none</li>
+    <li>Validation: focused Rust wiki/API tests, TypeScript/static smoke, frontend build, and Rust cargo check passed.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Intent</h2>
+  <p>Make a Hyperwiki project easy for Codex, Claude, or another local agent to ingest as Markdown without scraping rendered HTML or relying on hosted docs conventions.</p>
+</section>
+
+<section>
+  <h2>Scope</h2>
+  <ul>
+    <li>Add a local <code>/api/wiki/export-markdown-zip</code> endpoint that packages wiki Markdown derivatives into a zip payload returned to the app.</li>
+    <li>Add a generated project <code>SKILL.md</code> export that points agents to the canonical wiki, plan, source, and Markdown export surfaces.</li>
+    <li>Add app actions to download the Markdown zip and generated skill from the wiki page header.</li>
+    <li>Render MDX wiki pages through the React renderer so non-plan pages also get copy-as-Markdown and validation-warning affordances.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Non-Goals</h2>
+  <ul>
+    <li>No search index, AST parser migration, import-aware MDX composition, or virtual generated reference-page provider in this unit.</li>
+    <li>No hosted export or public docs packaging model.</li>
+    <li>No automatic writing of generated exports back into repo-visible files.</li>
+  </ul>
+</section>
+
+<PlanUnit title="Unit 01 - Markdown zip and generated skill export">
+  <p>Return generated export artifacts to the caller only. The user can download or copy them, while canonical project truth remains in repo-visible wiki files.</p>
+  <Verification>
+    <ul>
+      <li>Passed: <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>.</li>
+      <li>Passed: <code>pnpm run check</code>.</li>
+      <li>Passed: <code>pnpm run build:frontend</code>.</li>
+      <li>Passed: <code>pnpm run check:tauri</code>.</li>
+    </ul>
+  </Verification>
+</PlanUnit>

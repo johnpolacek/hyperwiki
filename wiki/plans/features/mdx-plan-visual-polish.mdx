@@ -1,0 +1,37 @@
+---
+title: "MDX Plan Visual Polish"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero>
+  <h1>MDX Plan Visual Polish</h1>
+  <p>Make generated plan pages feel like crisp working briefs rather than stacked generic cards.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused renderer and compiler design pass</li>
+    <li>Completed unit: Unit 01 - plan renderer density and generated unit shape</li>
+    <li>Completed artifact: compact MDX plan renderer and updated generated-plan component guidance.</li>
+    <li>Validation: frontend checks, import compiler tests, production frontend build, and browser visual smoke.</li>
+  </ul>
+</PlanSummary>
+
+<Decision title="Design Direction">
+  <p>Use a refined operational brief style: strong title, compact metadata strip, left-ruled sections, restrained evidence/decision panels, and fewer full cards. Keep shadcn primitives where they carry behavior or semantic structure, but avoid dashboard-card repetition.</p>
+</Decision>
+
+<Steps>
+  <Step title="Unit 01 - Renderer and generated unit polish">
+    <p>Update <code>MdxPlanRenderer</code> component styling and deterministic import templates so unit pages use one coherent page body with compact internal sections.</p>
+    <p><strong>Status:</strong> complete.</p>
+    <p><strong>Verification:</strong> <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, <code>pnpm run build:frontend</code>, and an <code>agent-browser</code> visual preview against a representative generated unit page.</p>
+  </Step>
+</Steps>
+
+<Verification title="Result">
+  <p>Generated plan pages now render as concise working briefs: compact summary grid, lighter page sections, restrained evidence and decision callouts, and routine plan content as semantic sections instead of repeated large cards.</p>
+  <p>Follow-up preference: plan card groups and logical column groups now render as a single full-width stack. Fresh import templates no longer emit multi-column <code>CardGroup</code> or <code>Columns</code> attributes.</p>
+</Verification>

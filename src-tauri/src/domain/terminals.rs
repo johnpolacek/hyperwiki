@@ -9,6 +9,7 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Emitter;
 
 pub fn surface() -> DomainSurface {
     DomainSurface {
@@ -24,7 +25,9 @@ pub fn surface() -> DomainSurface {
     }
 }
 
-const OUTPUT_BUFFER_LIMIT: usize = 20000;
+const OUTPUT_BUFFER_LIMIT: usize = 64 * 1024;
+const REPLAY_BUFFER_LIMIT: usize = 2 * 1024 * 1024;
+pub const TERMINAL_OUTPUT_EVENT: &str = "terminal://output";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,8 +37,12 @@ pub struct TerminalStartRequest {
     pub role: Option<String>,
     pub command: Option<String>,
     pub scope: Option<String>,
+    #[serde(alias = "scope_kind")]
     pub scope_kind: Option<String>,
+    #[serde(alias = "plan_path")]
     pub plan_path: Option<String>,
+    pub visibility: Option<String>,
+    pub purpose: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -57,8 +64,31 @@ pub struct TerminalStartResponse {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalReplayResponse {
+    pub session_id: String,
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalOutputEvent {
+    pub session_id: String,
+    pub seq: u64,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct TerminalOutputResponse {
     pub output: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalWriteDiagnostics {
+    pub live: bool,
+    pub replay_seq: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -83,13 +113,13 @@ enum TerminalProcess {
         child: Box<dyn PtyChild + Send + Sync>,
         master: Box<dyn MasterPty + Send>,
         writer: Box<dyn Write + Send>,
-        output: Arc<Mutex<String>>,
+        output: Arc<Mutex<TerminalOutputBuffers>>,
         registry: SessionRegistry,
     },
     Pipe {
         child: Child,
         stdin: Option<ChildStdin>,
-        output: Arc<Mutex<String>>,
+        output: Arc<Mutex<TerminalOutputBuffers>>,
         registry: SessionRegistry,
     },
 }
@@ -106,6 +136,15 @@ impl TerminalManager {
         root: impl AsRef<Path>,
         request: TerminalStartRequest,
     ) -> Result<TerminalStartResponse, String> {
+        self.start_session_with_app(root, request, None)
+    }
+
+    pub fn start_session_with_app(
+        &mut self,
+        root: impl AsRef<Path>,
+        request: TerminalStartRequest,
+        app: Option<tauri::AppHandle>,
+    ) -> Result<TerminalStartResponse, String> {
         let root = root.as_ref();
         let id = request.id.clone().unwrap_or_else(next_terminal_id);
         if let Some(existing) = self.sessions.get(&id) {
@@ -115,6 +154,8 @@ impl TerminalManager {
                     &id,
                     SessionUpdates {
                         status: Some("active".to_string()),
+                        visibility: request.visibility.clone(),
+                        purpose: request.purpose.clone(),
                         connected_clients: Some(1),
                         last_attached_at: Some(timestamp()),
                         ..SessionUpdates::default()
@@ -127,9 +168,11 @@ impl TerminalManager {
             });
         }
 
-        match self.start_pty_session(root, &id, request.clone()) {
+        match self.start_pty_session(root, &id, request.clone(), app.clone()) {
             Ok(response) => Ok(response),
-            Err(pty_error) => self.start_pipe_session_with_warning(root, &id, request, &pty_error),
+            Err(pty_error) => {
+                self.start_pipe_session_with_warning(root, &id, request, &pty_error, app)
+            }
         }
     }
 
@@ -147,6 +190,8 @@ impl TerminalManager {
                     &id,
                     SessionUpdates {
                         status: Some("active".to_string()),
+                        visibility: request.visibility.clone(),
+                        purpose: request.purpose.clone(),
                         connected_clients: Some(1),
                         last_attached_at: Some(timestamp()),
                         ..SessionUpdates::default()
@@ -158,7 +203,7 @@ impl TerminalManager {
                 replay: existing.output(),
             });
         }
-        self.start_pipe_session_with_warning(root, &id, request, "")
+        self.start_pipe_session_with_warning(root, &id, request, "", None)
     }
 
     fn start_pty_session(
@@ -166,8 +211,10 @@ impl TerminalManager {
         root: &Path,
         id: &str,
         request: TerminalStartRequest,
+        app: Option<tauri::AppHandle>,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
+        let launch_command = request.command.clone();
         let pty_system = native_pty_system();
         let pair = pty_system
             .openpty(PtySize {
@@ -178,6 +225,7 @@ impl TerminalManager {
             })
             .map_err(|error| format!("Could not open PTY: {error}"))?;
         let mut command = CommandBuilder::new(&shell);
+        configure_pty_shell_command(&mut command, launch_command.as_deref());
         command.cwd(root);
         command.env("TERM", "xterm-256color");
         let child = pair
@@ -193,8 +241,8 @@ impl TerminalManager {
             .master
             .take_writer()
             .map_err(|error| format!("Could not open PTY input: {error}"))?;
-        let output = Arc::new(Mutex::new(String::new()));
-        capture_output(reader, Arc::clone(&output));
+        let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
+        capture_output(reader, Arc::clone(&output), id.to_string(), app);
         let registry = SessionRegistry::new(root);
         let session = registry
             .upsert(
@@ -204,13 +252,15 @@ impl TerminalManager {
                     status: Some("active".to_string()),
                     mode: Some("pty".to_string()),
                     role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
-                    command: request.command,
+                    command: launch_command,
                     shell: Some(shell),
                     pid: child.process_id(),
                     cwd: Some(root.to_path_buf()),
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
                     plan_path: request.plan_path,
+                    visibility: request.visibility,
+                    purpose: request.purpose,
                     connected_clients: Some(1),
                     last_attached_at: Some(timestamp()),
                     ..SessionUpdates::default()
@@ -239,9 +289,13 @@ impl TerminalManager {
         id: &str,
         request: TerminalStartRequest,
         warning: &str,
+        app: Option<tauri::AppHandle>,
     ) -> Result<TerminalStartResponse, String> {
         let shell = shell_path();
-        let mut child = Command::new(&shell)
+        let launch_command = request.command.clone();
+        let mut command = Command::new(&shell);
+        configure_std_shell_command(&mut command, launch_command.as_deref());
+        let mut child = command
             .current_dir(root)
             .env("TERM", "xterm-256color")
             .stdin(Stdio::piped())
@@ -250,20 +304,23 @@ impl TerminalManager {
             .spawn()
             .map_err(|error| format!("Could not start terminal shell: {error}"))?;
 
-        let output = Arc::new(Mutex::new(String::new()));
+        let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
         if !warning.is_empty() {
             append_output(
                 &output,
-                &format!(
+                id,
+                format!(
                     "\r\n[hyperwiki] PTY spawn failed; using pipe fallback for this session.\r\n[hyperwiki] {warning}\r\n\r\n"
-                ),
+                )
+                .as_bytes(),
+                app.as_ref(),
             );
         }
         if let Some(stdout) = child.stdout.take() {
-            capture_output(stdout, Arc::clone(&output));
+            capture_output(stdout, Arc::clone(&output), id.to_string(), app.clone());
         }
         if let Some(stderr) = child.stderr.take() {
-            capture_output(stderr, Arc::clone(&output));
+            capture_output(stderr, Arc::clone(&output), id.to_string(), app.clone());
         }
         let stdin = child.stdin.take();
         let registry = SessionRegistry::new(root);
@@ -275,13 +332,15 @@ impl TerminalManager {
                     status: Some("active".to_string()),
                     mode: Some("pipe-fallback".to_string()),
                     role: Some(request.role.unwrap_or_else(|| "shell".to_string())),
-                    command: request.command,
+                    command: launch_command,
                     shell: Some(shell),
                     pid: Some(child.id()),
                     cwd: Some(root.to_path_buf()),
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
                     plan_path: request.plan_path,
+                    visibility: request.visibility,
+                    purpose: request.purpose,
                     connected_clients: Some(1),
                     last_attached_at: Some(timestamp()),
                     ..SessionUpdates::default()
@@ -362,6 +421,26 @@ impl TerminalManager {
         })
     }
 
+    pub fn replay(&self, id: &str) -> Result<TerminalReplayResponse, String> {
+        let Some(process) = self.sessions.get(id) else {
+            return Err("Terminal session not found.".to_string());
+        };
+        let snapshot = process.replay();
+        Ok(TerminalReplayResponse {
+            session_id: id.to_string(),
+            seq: snapshot.seq,
+            bytes: snapshot.bytes,
+        })
+    }
+
+    pub fn diagnostics(&self, id: &str) -> TerminalWriteDiagnostics {
+        let replay_seq = self.sessions.get(id).map(|process| process.replay().seq);
+        TerminalWriteDiagnostics {
+            live: replay_seq.is_some(),
+            replay_seq,
+        }
+    }
+
     pub fn close(&mut self, id: &str) -> Result<SessionRecord, String> {
         let Some(mut process) = self.sessions.remove(id) else {
             return Err("Terminal session not found.".to_string());
@@ -377,15 +456,52 @@ impl Default for TerminalManager {
     }
 }
 
+fn configure_pty_shell_command(command: &mut CommandBuilder, launch_command: Option<&str>) {
+    let Some(script) = terminal_launch_script(launch_command) else {
+        return;
+    };
+    command.arg("-l");
+    command.arg("-i");
+    command.arg("-c");
+    command.arg(script);
+}
+
+fn configure_std_shell_command(command: &mut Command, launch_command: Option<&str>) {
+    let Some(script) = terminal_launch_script(launch_command) else {
+        return;
+    };
+    command.arg("-l").arg("-i").arg("-c").arg(script);
+}
+
+fn terminal_launch_script(command: Option<&str>) -> Option<String> {
+    let command = command
+        .map(str::trim)
+        .filter(|command| !command.is_empty())?;
+    Some(format!(
+        "{command}\nstatus=$?\nif [ $status -ne 0 ]; then printf '\\n[hyperwiki] launch command exited with status %s\\n' \"$status\"; fi\nexec \"${{SHELL:-/bin/sh}}\" -l"
+    ))
+}
+
 impl TerminalProcess {
     fn output(&self) -> String {
         self.output_buffer()
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+            .transcript
             .clone()
     }
 
-    fn output_buffer(&self) -> &Arc<Mutex<String>> {
+    fn replay(&self) -> TerminalReplaySnapshot {
+        let value = self.output_buffer()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        TerminalReplaySnapshot {
+            seq: value.seq,
+            bytes: value.replay.clone(),
+        }
+    }
+
+    fn output_buffer(&self) -> &Arc<Mutex<TerminalOutputBuffers>> {
         match self {
             TerminalProcess::Pty { output, .. } => output,
             TerminalProcess::Pipe { output, .. } => output,
@@ -413,26 +529,73 @@ impl TerminalProcess {
     }
 }
 
-fn capture_output(mut reader: impl Read + Send + 'static, output: Arc<Mutex<String>>) {
+#[derive(Default)]
+struct TerminalOutputBuffers {
+    seq: u64,
+    replay: Vec<u8>,
+    transcript: String,
+}
+
+struct TerminalReplaySnapshot {
+    seq: u64,
+    bytes: Vec<u8>,
+}
+
+fn capture_output(
+    mut reader: impl Read + Send + 'static,
+    output: Arc<Mutex<TerminalOutputBuffers>>,
+    session_id: String,
+    app: Option<tauri::AppHandle>,
+) {
     thread::spawn(move || {
         let mut buffer = [0_u8; 1024];
         loop {
             match reader.read(&mut buffer) {
                 Ok(0) => break,
-                Ok(size) => append_output(&output, &String::from_utf8_lossy(&buffer[..size])),
+                Ok(size) => append_output(&output, &session_id, &buffer[..size], app.as_ref()),
                 Err(_) => break,
             }
         }
     });
 }
 
-fn append_output(output: &Arc<Mutex<String>>, chunk: &str) {
-    let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
-    value.push_str(chunk);
-    if value.len() > OUTPUT_BUFFER_LIMIT {
-        let drain_to = value.len() - OUTPUT_BUFFER_LIMIT;
-        value.drain(..drain_to);
+fn append_output(
+    output: &Arc<Mutex<TerminalOutputBuffers>>,
+    session_id: &str,
+    chunk: &[u8],
+    app: Option<&tauri::AppHandle>,
+) {
+    let event = {
+        let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
+        value.seq = value.seq.saturating_add(1);
+        value.replay.extend_from_slice(chunk);
+        if value.replay.len() > REPLAY_BUFFER_LIMIT {
+            let drain_to = value.replay.len() - REPLAY_BUFFER_LIMIT;
+            value.replay.drain(..drain_to);
+        }
+        value.transcript.push_str(&String::from_utf8_lossy(chunk));
+        trim_output_buffer(&mut value.transcript);
+        TerminalOutputEvent {
+            session_id: session_id.to_string(),
+            seq: value.seq,
+            bytes: chunk.to_vec(),
+        }
+    };
+    if let Some(app) = app {
+        let _ = app.emit(TERMINAL_OUTPUT_EVENT, event);
     }
+}
+
+fn trim_output_buffer(value: &mut String) {
+    if value.len() <= OUTPUT_BUFFER_LIMIT {
+        return;
+    }
+    let minimum_start = value.len() - OUTPUT_BUFFER_LIMIT;
+    let drain_to = value
+        .char_indices()
+        .find_map(|(index, _)| (index >= minimum_start).then_some(index))
+        .unwrap_or(value.len());
+    value.drain(..drain_to);
 }
 
 fn shell_path() -> String {
@@ -477,14 +640,16 @@ mod tests {
                     name: Some("pipe".to_string()),
                     role: Some("shell".to_string()),
                     command: None,
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     scope_kind: Some("plan".to_string()),
-                    plan_path: Some("/wiki/plans/index.html".to_string()),
+                    plan_path: Some("/wiki/plans/index.mdx".to_string()),
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
         assert_eq!(started.session.mode, "pipe-fallback");
-        assert_eq!(started.session.scope, "plan:/wiki/plans/index.html");
+        assert_eq!(started.session.scope, "plan:/wiki/plans/index.mdx");
 
         manager
             .write("pipe-one", "printf hyperwiki-terminal-ready\\n\n")
@@ -503,6 +668,8 @@ mod tests {
                     scope: None,
                     scope_kind: None,
                     plan_path: None,
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
@@ -539,6 +706,8 @@ mod tests {
                     scope: None,
                     scope_kind: None,
                     plan_path: None,
+                    visibility: None,
+                    purpose: None,
                 },
             )
             .unwrap();
@@ -559,6 +728,41 @@ mod tests {
             .unwrap();
         assert_eq!(resized.cols, Some(90));
         manager.close("preferred-one").unwrap();
+    }
+
+    #[test]
+    fn trims_terminal_output_on_utf8_boundaries() {
+        let mut output = format!("{}🚀", "a".repeat(OUTPUT_BUFFER_LIMIT));
+        trim_output_buffer(&mut output);
+        assert!(output.len() <= OUTPUT_BUFFER_LIMIT);
+        assert!(output.is_char_boundary(0));
+        assert!(output.starts_with('a'));
+    }
+
+    #[test]
+    fn terminal_start_request_accepts_camel_and_snake_scope_fields() {
+        let camel: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.mdx","scopeKind":"plan","planPath":"/wiki/plans/index.mdx"}"#,
+        )
+        .unwrap();
+        let snake: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.mdx","scope_kind":"plan","plan_path":"/wiki/plans/index.mdx"}"#,
+        )
+        .unwrap();
+        assert_eq!(camel.scope_kind.as_deref(), Some("plan"));
+        assert_eq!(camel.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
+        assert_eq!(snake.scope_kind.as_deref(), Some("plan"));
+        assert_eq!(snake.plan_path.as_deref(), Some("/wiki/plans/index.mdx"));
+    }
+
+    #[test]
+    fn terminal_start_request_accepts_standby_metadata() {
+        let request: TerminalStartRequest = serde_json::from_str(
+            r#"{"scope":"plan:/wiki/plans/index.mdx","visibility":"standby","purpose":"modify"}"#,
+        )
+        .unwrap();
+        assert_eq!(request.visibility.as_deref(), Some("standby"));
+        assert_eq!(request.purpose.as_deref(), Some("modify"));
     }
 
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {

@@ -155,7 +155,7 @@ pub fn initialize_git_onboarding(root: impl AsRef<Path>) -> Result<GitInitRespon
         });
     }
 
-    let init = git(root, &["init"]);
+    let init = git(root, &["init", "--initial-branch=main"]);
     if !init.ok {
         return Err(format!(
             "Could not initialize Git: {}",
@@ -480,6 +480,7 @@ mod tests {
             Some(BASELINE_COMMIT_MESSAGE)
         );
         assert_eq!(result.repo.git.dirty, Some(false));
+        assert_eq!(result.repo.git.branch, "main");
         assert!(result.repo.git.root.is_some());
     }
 
@@ -609,6 +610,7 @@ mod tests {
             available: true,
             last_opened_at: None,
             active: false,
+            import_planning: None,
         };
 
         let error = create_worktree_checkout(
@@ -644,7 +646,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            root.join("wiki").join("index.html"),
+            root.join("wiki").join("index.mdx"),
             "<h1>Git Worktree</h1>",
         )
         .unwrap();

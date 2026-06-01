@@ -1,0 +1,114 @@
+---
+title: "Import Onboarding Engine-First Runtime"
+description: "Evaluate a Hyperwiki-owned local run engine inspired by opencode and Tandem for import onboarding and future agent workflows."
+wikiKind: "plan"
+---
+
+<h1>Import Onboarding Engine-First Runtime</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: draft</li>
+    <li>Shape: candidate architecture plan</li>
+    <li>Candidate: 4 - Engine-first local runtime inspired by opencode and Tandem</li>
+    <li>Goal: make imported-project Q&amp;A the first consumer of a durable Hyperwiki run engine with sessions, events, provider adapters, and human-input resumes.</li>
+    <li>Next action: compare this heavier candidate against the narrower backend state machine, sidecar, direct Codex attachment, and harness-runtime options before implementation selection.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Build a Hyperwiki-owned local runtime that treats agent work as durable runs instead of UI actions or one-off CLI invocations. Imported-project onboarding becomes a first-class run type with a lifecycle, event stream, answer checkpoints, cancellation, diagnostics, and artifact validation.</p>
+  <p>This candidate draws from opencode's model of a multi-provider tool-call loop with streaming events and from Tandem's engine-first run lifecycle, stream hub, sidecar management, and question or permission endpoints. It is intentionally broader than a single import-onboarding fix, so the selection bar should be higher.</p>
+</section>
+<section>
+  <h2>Architecture</h2>
+  <ul>
+    <li>Add a local <code>hyperwiki-engine</code> runtime boundary, either embedded in the Tauri Rust backend at first or split into a sidecar once the contract stabilizes.</li>
+    <li>Model agent work around <code>Session</code>, <code>Run</code>, <code>RunStep</code>, <code>Event</code>, <code>Question</code>, <code>Artifact</code>, and <code>ProviderAdapter</code> records.</li>
+    <li>Implement Codex as the first provider adapter, with room for Claude, OpenAI API, or other local agents behind the same run contract later.</li>
+    <li>Use an event hub that stores a bounded event log and streams live updates to React over Tauri events, local SSE, or another inspectable local transport.</li>
+    <li>Keep run state under ignored runtime storage such as <code>.hyperwiki/state/runs/</code>, while durable project decisions and generated wiki files remain under <code>wiki/</code>.</li>
+    <li>Separate model output from execution decisions. The engine decides whether a question is valid, an answer was recorded, a retry is needed, or artifacts satisfy the import contract.</li>
+  </ul>
+</section>
+<section>
+  <h2>Run Contract</h2>
+  <ul>
+    <li><code>Session</code> represents a durable project workflow context such as import onboarding for one project.</li>
+    <li><code>Run</code> represents one active or historical attempt to advance that session.</li>
+    <li><code>RunStep</code> records structured phases such as loading context, calling provider, parsing question, waiting for human input, writing Q&amp;A, generating plan, validating artifacts, and completing.</li>
+    <li><code>Question</code> is a first-class pending human-input object with prompt text, options, freeform allowance, source evidence, status, and answer record.</li>
+    <li><code>Artifact</code> records expected and produced files, including generated MDX plans, source notes, Q&amp;A logs, and validation results.</li>
+    <li><code>ProviderAdapter</code> normalizes Codex or another agent into start, stream, cancel, resume, health, and diagnostics operations.</li>
+  </ul>
+</section>
+<section>
+  <h2>Import Onboarding Flow</h2>
+  <ul>
+    <li>Import creates a project and opens or resumes an <code>import-onboarding</code> session.</li>
+    <li>The engine creates a run, loads compact source context, selects the Codex provider adapter, and emits immediate progress events.</li>
+    <li>The provider streams raw model events into the engine. The engine transforms them into structured run events and validates candidate questions.</li>
+    <li>When a valid question is ready, the run moves to <code>waiting_for_human_input</code> and exposes a pending <code>Question</code> object to React.</li>
+    <li>React submits an answer to the engine. The engine records durable Q&amp;A, resumes the same session, and starts the next run step.</li>
+    <li>When Codex generates final plan docs, the engine validates required wiki artifacts before marking the run and session complete.</li>
+  </ul>
+</section>
+<section>
+  <h2>Human-Input Bridge</h2>
+  <ul>
+    <li>Treat questions as durable engine state, not transient assistant text.</li>
+    <li>Support pause and resume by persisting pending questions and accepted answers independently of the webview lifecycle.</li>
+    <li>Allow the engine to reject duplicate answers, stale answers, or answers for a previous run ID.</li>
+    <li>Keep the user-facing path fast: answer submission should immediately transition the UI to recording answer, resuming run, or next question progress.</li>
+    <li>Make resume a secondary success criterion for this project, but design the bridge so reloads do not corrupt the onboarding session.</li>
+  </ul>
+</section>
+<section>
+  <h2>Event Model</h2>
+  <ul>
+    <li>Emit typed events for session opened, run started, step started, provider healthy, provider event, progress, question ready, waiting for answer, answer accepted, artifact written, validation passed, retryable failure, fatal failure, cancellation, and completion.</li>
+    <li>Every event includes session ID, run ID, sequence, timestamp, phase, provider, project ID, and correlation ID.</li>
+    <li>Persist a bounded event history so React can reload, fetch a snapshot, and resume live streaming without reconstructing state from stale component memory.</li>
+    <li>Expose raw provider diagnostics separately from user-facing progress so the UI can stay calm while logs remain useful for debugging.</li>
+  </ul>
+</section>
+<section>
+  <h2>Progressive Context</h2>
+  <ul>
+    <li>Give the provider compact import summaries first, then let the engine retrieve focused source excerpts or wiki context only when the run step needs them.</li>
+    <li>Use deterministic context packs for the first implementation before adding model-routed search or retrieval.</li>
+    <li>Record which source files or excerpts influenced each question so the user can trust that questions are grounded in imported material.</li>
+    <li>Keep progressive context as an engine capability that can later support plan modification, execute handoffs, and review workflows.</li>
+  </ul>
+</section>
+<section>
+  <h2>Tradeoffs</h2>
+  <ul>
+    <li>Benefits: strongest long-term architecture, durable run inspection, clean human-input pause and resume, multi-provider flexibility, reusable event stream, and better foundation for future agent workflows.</li>
+    <li>Costs: largest implementation surface, more schema and migration pressure, more runtime testing, provider abstraction risk, and slower path to fixing the immediate import-onboarding stall.</li>
+    <li>Risk: building a generic engine too early could delay the UX fix and create abstractions before Hyperwiki has enough proven workflow variety.</li>
+    <li>Mitigation: implement only the import-onboarding run type first, keep provider abstraction thin, and require latency measurements before broadening the engine to other workflows.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Fresh import opens an onboarding session, starts a run, and emits immediate progress.</li>
+    <li>First and follow-up questions are represented as durable <code>Question</code> objects, not parsed ad hoc in React.</li>
+    <li>Answer submission advances the run without duplicate turns or stale answer routing.</li>
+    <li>Reload during a pending question or active run restores the current session snapshot and event stream.</li>
+    <li>Provider failure, malformed output, cancellation, and artifact validation failure produce explicit retryable states.</li>
+    <li>Generated completion is based on validated wiki artifacts under <code>wiki/</code>, not assistant text.</li>
+    <li>Latency measurements cover app startup, first question, answer-to-follow-up, and plan generation start.</li>
+    <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, engine unit tests, provider-adapter tests, and an import-onboarding run replay smoke test.</li>
+  </ul>
+</section>
+<section>
+  <h2>Assumptions</h2>
+  <ul>
+    <li>Best end-user UX remains the primary criterion, followed by simpler implementation when UX is comparable.</li>
+    <li>Codex remains the preferred generator for final project plan docs, with the engine validating the resulting artifacts.</li>
+    <li>No-stall behavior, fast first question, and fast follow-up question matter more than complete resume semantics for the first implementation.</li>
+    <li>This candidate should win only if the team values a reusable agent runtime enough to absorb the larger implementation and testing cost.</li>
+  </ul>
+</section>

@@ -1,0 +1,488 @@
+---
+title: "React, shadcn, and MDX Rewrite"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<section className="hero" aria-labelledby="title">
+      <div>
+        <div className="badge-row">
+          <span className="badge">Complete</span>
+          <span className="badge">Rewrite branch</span>
+          <span className="badge">Frontend + plans</span>
+        </div>
+        <h1 id="title">React, shadcn, and MDX Rewrite</h1>
+        <p>Rewrite Hyperwiki's frontend on a dedicated feature worktree while keeping Tauri and Rust as the runtime owner. The app shell moves to Vite, React, TypeScript, Tailwind v4, and shadcn/ui. Plan pages move to trusted local MDX with Markdown-first derivatives for LLM and project-contract use.</p>
+      </div>
+      <dl className="summary" aria-label="Plan summary">
+        <dt>Status</dt><dd>complete</dd>
+        <dt>Shape</dt><dd>multi-stage rewrite plan</dd>
+        <dt>Current unit</dt><dd>All stages complete</dd>
+        <dt>Next action</dt><dd>Merge <code>frontend-rewrite</code> to <code>main</code> after final user approval; pushing still requires approval.</dd>
+        <dt>Blockers</dt><dd>None; React choice is accepted for shadcn and MDX compatibility.</dd>
+        <dt>Validation</dt><dd>Each stage closes with automated checks plus desktop dogfood before merge.</dd>
+      </dl>
+    </section>
+
+    <section className="reader-goal">
+      <h2>Reader Goal</h2>
+      <p>After 2 minutes, the reader should understand the rewrite scope, why React is selected, how MDX wiki pages stay useful to agents, and which stage/unit to execute next without making new architectural decisions.</p>
+    </section>
+
+    <section className="decision-panel">
+      <div>
+        <h2>Core Decision</h2>
+        <p>React is selected because shadcn/ui's primary Vite path and component ecosystem are React-based, and MDX component rendering is a first-class React workflow. Lighter alternatives were considered but deferred because they would turn shadcn integration into custom compatibility work during an already-large rewrite.</p>
+      </div>
+      <div className="command" aria-label="Agent skill setup commands">npx skills add https://github.com/shadcn/ui --skill shadcn
+npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</div>
+    </section>
+
+    <section className="panel">
+      <h2>Architecture Map</h2>
+      <div className="flow">
+        <svg viewBox="0 0 980 250" role="img" aria-label="Rewrite architecture flow from Tauri commands to React shell to MDX wiki pages and Markdown derivatives">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#2357d9"></path>
+            </marker>
+          </defs>
+          <rect className="node" x="20" y="45" width="150" height="70" rx="8"></rect>
+          <text x="95" y="74" text-anchor="middle">Rust/Tauri</text>
+          <text x="95" y="98" text-anchor="middle">runtime owner</text>
+          <path className="arrow" d="M170 80 H250"></path>
+          <rect className="node-accent" x="250" y="45" width="170" height="70" rx="8"></rect>
+          <text x="335" y="74" text-anchor="middle">React shell</text>
+          <text x="335" y="98" text-anchor="middle">Vite + TS</text>
+          <path className="arrow" d="M420 80 H500"></path>
+          <rect className="node" x="500" y="45" width="170" height="70" rx="8"></rect>
+          <text x="585" y="74" text-anchor="middle">Tailwind v4</text>
+          <text x="585" y="98" text-anchor="middle">semantic tokens</text>
+          <path className="arrow" d="M670 80 H750"></path>
+          <rect className="node" x="750" y="45" width="190" height="70" rx="8"></rect>
+          <text x="845" y="74" text-anchor="middle">shadcn/ui</text>
+          <text x="845" y="98" text-anchor="middle">owned components</text>
+          <path className="arrow" d="M335 115 V165 H250"></path>
+          <rect className="node-accent" x="55" y="150" width="195" height="70" rx="8"></rect>
+          <text x="152" y="179" text-anchor="middle">MDX wiki pages</text>
+          <text x="152" y="203" text-anchor="middle">trusted local source</text>
+          <path className="arrow" d="M250 185 H370"></path>
+          <rect className="node" x="370" y="150" width="185" height="70" rx="8"></rect>
+          <text x="462" y="179" text-anchor="middle">Rendered view</text>
+          <text x="462" y="203" text-anchor="middle">app display</text>
+          <path className="arrow" d="M250 185 C345 235 530 235 625 185"></path>
+          <rect className="node" x="625" y="150" width="185" height="70" rx="8"></rect>
+          <text x="717" y="179" text-anchor="middle">Markdown</text>
+          <text x="717" y="203" text-anchor="middle">LLM contract</text>
+          <path className="arrow" d="M810 185 H910"></path>
+        </svg>
+      </div>
+    </section>
+
+    <section className="panel">
+      <h2>Decisions And Boundaries</h2>
+      <div className="decision-grid">
+        <article className="decision">
+          <strong>Runtime boundary</strong>
+          <p>Tauri and Rust remain the runtime owner. Node, Vite, Tailwind, shadcn, and MDX tooling are build/development surfaces, not a backend runtime.</p>
+        </article>
+        <article className="decision">
+          <strong>Wiki format</strong>
+          <p>All app-rendered wiki pages now live as <code>wiki/**/*.mdx</code>. Root agent files and skill files stay Markdown because external tools expect those conventions.</p>
+        </article>
+        <article className="decision">
+          <strong>LLM surface</strong>
+          <p>Agents receive Markdown-first derivatives and structured plan metadata, not raw rendered HTML, so visual MDX does not degrade context quality.</p>
+        </article>
+        <article className="decision">
+          <strong>Planning flow</strong>
+          <p><code>+ plan</code> opens a full-page agent interview. The agent uses <code>$hyperwiki</code> and grill-with-docs-style questioning, then writes staged MDX plans with verification for every executable unit.</p>
+        </article>
+      </div>
+    </section>
+
+    <section className="stage" id="stage-00">
+      <header>
+        <div>
+          <h2>Stage 00 - Rewrite And Skill Readiness</h2>
+          <p>Complete. The current checkout is on <code>frontend-rewrite</code>, the required local agent skills are installed, and durable guidance has been updated.</p>
+        </div>
+        <span className="stage-number">Stage 00</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 00.1 - Create Rewrite Worktree</h3>
+          <p>Create or confirm a dedicated rewrite branch/worktree. The user provided the existing <code>frontend-rewrite</code> branch, so no additional worktree was created.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Verified with <code>git status --short --branch</code>: current branch is <code>frontend-rewrite</code>.</li>
+            <li>Verified with <code>git worktree list</code>: current checkout is the active rewrite branch at the project root.</li>
+            <li>No additional feature worktree was created because the user had already checked out the rewrite branch.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 00.2 - Install Or Verify Agent Skills</h3>
+          <p>Make the official/best-in-class shadcn and Tailwind skills available to local Codex and Claude agents before frontend work starts.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>npx skills add https://github.com/shadcn/ui --skill shadcn</code>; installed to <code>.agents/skills/shadcn</code>.</li>
+            <li>Ran <code>npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</code>; installed to <code>.agents/skills/tailwind-design-system</code>.</li>
+            <li>Verified installed <code>SKILL.md</code> files and <code>skills-lock.json</code> entries for both skills. The skills CLI reported copy targets for Codex, Claude, and other local agents; a separate live Claude session was not launched during this batch.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 00.3 - Record Skill Guidance</h3>
+          <p>Update durable agent guidance so future rewrite sessions know to use shadcn and Tailwind skills before touching frontend code.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, the technical brief, and the design brief with skill preflight guidance.</li>
+            <li>Confirmed no package dependencies, Tauri config, or frontend runtime files were changed in Batch 0.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-01">
+      <header>
+        <div>
+          <h2>Stage 01 - Frontend Foundation</h2>
+          <p>Complete. Vite, React, TypeScript, the typed API adapter, Tauri build wiring, and dist static asset smoke coverage are in place.</p>
+        </div>
+        <span className="stage-number">Stage 01</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 01.1 - Add Vite React TypeScript App</h3>
+          <p>Create <code>src/main.tsx</code>, <code>src/App.tsx</code>, route modules, state modules, component folders, and a typed frontend API adapter. Batch 1 created the entrypoint, first shell surface, component folders, and typed API adapter; full route/state modules continue in Stage 03.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Added and ran <code>pnpm run build:frontend</code>.</li>
+            <li>Ran <code>pnpm run check</code>, including <code>tsc -b</code>.</li>
+            <li>Verified the minimal React shell builds through Vite; full interactive desktop launch remains part of Stage 03 parity dogfood.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 01.2 - Wire Tauri To Vite</h3>
+          <p>Move build output from <code>public</code> to <code>dist</code>, configure the Tauri dev URL, and add a frontend build step before Tauri packaging.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated Tauri config with Vite <code>devUrl</code>, <code>beforeDevCommand</code>, <code>beforeBuildCommand</code>, and <code>frontendDist: ../dist</code>.</li>
+            <li>Ran <code>pnpm run tauri:build</code>; the build produced <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+            <li>Updated and ran <code>pnpm run smoke:tauri-static-assets</code> against generated <code>dist</code> output.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 01.3 - Preserve Command Contract Compatibility</h3>
+          <p>Port the frontend request adapter first so React calls the same Tauri command surface as the current static app.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Added <code>src/lib/api.ts</code> as the typed React adapter for the existing <code>hyperwiki_request</code> Tauri command.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-02">
+      <header>
+        <div>
+          <h2>Stage 02 - Tailwind v4 And shadcn System</h2>
+          <p>Complete for foundation. Tailwind v4, semantic tokens, shadcn configuration, and the first UI primitive are installed; broader component adoption continues during Stage 03.</p>
+        </div>
+        <span className="stage-number">Stage 02</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 02.1 - Add Tailwind v4</h3>
+          <p>Use <code>@tailwindcss/vite</code>, CSS-first <code>@theme</code>, and semantic tokens mapped from Hyperwiki's existing theme model.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Added <code>@tailwindcss/vite</code>, <code>@import "tailwindcss"</code>, <code>@theme</code> semantic tokens, and base variables for background, foreground, card, muted, primary, border, and ring.</li>
+            <li>Confirmed the first React shell uses semantic Tailwind classes; dynamic Settings theme integration continues in later app-shell parity work.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 02.2 - Initialize shadcn/ui</h3>
+          <p>Add <code>components.json</code> for a Vite React project with TypeScript, CSS variables, Tailwind v4, and repo aliases.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm dlx shadcn@latest info --json</code>; it detected Vite, Tailwind v4, TypeScript, React/RSC false, alias <code>@</code>, and component <code>button</code>.</li>
+            <li>Added the first low-risk <code>Button</code> component and built successfully.</li>
+            <li>Confirmed imports use <code>@/components/ui/button</code> and <code>@/lib/utils</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 02.3 - Establish UI Primitive Policy</h3>
+          <p>Use shadcn components for buttons, fields, dialogs, sheets, tabs, sidebar/navigation, badges, scroll areas, separators, skeletons, tooltips, and command workflows.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Established <code>components.json</code> with <code>style: new-york</code>, <code>base: radix</code>, <code>rsc: false</code>, <code>tsx: true</code>, Tailwind v4 CSS path, and <code>lucide</code> icons.</li>
+            <li>Used the selected <code>lucide-react</code> icon library in the first shell surface.</li>
+            <li>Kept the first React shell dense, quiet, and operational per <a href="/wiki/sources/design-brief.mdx">design brief</a>; full primitive coverage is a Stage 03 migration requirement.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-03">
+      <header>
+        <div>
+          <h2>Stage 03 - React App Shell Parity</h2>
+          <p>Complete for the first React parity pass. Batch 2 ported the primary React workspace shell, Batch 3 ported the core xterm terminal lifecycle, and Batch 4 ported command-bar agent, review, worktree, preview, and new-plan workflows onto the existing Tauri APIs.</p>
+        </div>
+        <span className="stage-number">Stage 03</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 03.1 - Port Workspace Shell And Navigation</h3>
+          <p>Complete for the React shell pass. Rebuilt the topbar, project switcher, sidebar wiki tree, command bar, route state, Settings route, Projects route, New Project route placeholder, and iframe-backed wiki rendering against the existing Tauri API adapter.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run check</code>.</li>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Added a React theme-token bridge so utility routes such as Settings and New Project use the active theme's tinted background, panel, border, text, accent, muted, and readable foreground tokens instead of the neutral fallback.</li>
+            <li>Polished the New Project route into an imported-source card matching the agent Q&amp;A visual language, with large prompt heading, contained source fields, inline file import, Git toggle, and right-aligned planning action.</li>
+            <li>Rechecked New Project desktop and mobile layout with <code>agent-browser</code>; fixed mobile overflow from long placeholder and import labels.</li>
+            <li>Verified Settings and New Project visually with <code>agent-browser</code> against the running Vite preview on <code>127.0.0.1:1420</code>; the frontend-only server falls back to the default theme when the settings API is unavailable.</li>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Manual desktop dogfood remains outstanding because <code>pnpm dev</code> is a long-running Tauri launch and was not started during this batch.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 03.2 - Port Terminal Surfaces</h3>
+          <p>Complete for the core terminal lifecycle. Batch 3 replaced the initial session list with xterm-backed active terminals, attach/replay, live output polling, keyboard input, resize forwarding, scoped session tabs, rename, close, and attach/restart controls.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run check</code>.</li>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml terminal</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml sessions</code>.</li>
+            <li>Known follow-up: the direct xterm import increases the Vite app chunk beyond 500 kB; code splitting can be handled during polish if startup cost becomes visible.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 03.3 - Port Agent, Review, Preview, And Worktree Flows</h3>
+          <p>Complete for the React command-bar pass. Batch 4 added Execute, Worktree, Modify, Review, and New Plan controls; agent terminal launch guardrails; prompt routing through <code>/api/agent/prompt</code>; review workflow routing; worktree creation; and plan creation against existing Tauri endpoints.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run check</code>.</li>
+            <li>Ran <code>pnpm run build:frontend</code>.</li>
+            <li>Ran <code>pnpm run smoke:api-adapter</code>.</li>
+            <li>Ran <code>pnpm run smoke:review-workflows</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+            <li>Ran <code>pnpm run check:tauri</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml worktree</code>.</li>
+            <li>Ran <code>cargo test --manifest-path src-tauri/Cargo.toml plan_creation</code>.</li>
+            <li>Manual desktop dogfood remains outstanding before merge; automated API coverage verifies the routed workflow endpoints.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-04">
+      <header>
+        <div>
+          <h2>Stage 04 - MDX Plan Runtime</h2>
+          <p>Complete. Visual plan pages now render as first-class React surfaces while preserving exact source reads and agent-readable Markdown derivatives.</p>
+        </div>
+        <span className="stage-number">Stage 04</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 04.1 - Define Trusted MDX Renderer</h3>
+          <p>Complete. Plan wiki pages under <code>/wiki/plans/**/*.mdx</code> now load exact source through the Tauri command API and render directly in React with a local registry for trusted plan sections, stages, units, decisions, evidence, verification, callouts, and command blocks.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Added <code>src/components/MdxPlanRenderer.tsx</code> with trusted local plan-source parsing and component mapping.</li>
+            <li>Plan links now navigate through React route state instead of iframe postMessage.</li>
+            <li>Ran <code>pnpm run check</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 04.2 - Add Markdown Derivative Pipeline</h3>
+          <p>Complete. Rust now derives clean Markdown from MDX source by stripping frontmatter, imports, exports, and visual wrappers while preserving headings, lists, code blocks, and useful component children.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Added <code>mdx_markdown_derivative</code> in the Rust wiki domain.</li>
+            <li>Added tests for component-wrapper stripping and Markdown readability.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 04.3 - Split Display And Source Endpoints</h3>
+          <p>Complete. App display can use React-rendered plan source, while source/editor/agent workflows can read exact MDX plus the Markdown derivative from an explicit source endpoint.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li><code>GET /api/wiki/source?path=...</code> returns exact repo source text plus Markdown derivative.</li>
+            <li>Path traversal and non-MDX wiki source paths are rejected.</li>
+            <li>Command endpoint tests cover source and derivative response shape.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-05">
+      <header>
+        <div>
+          <h2>Stage 05 - Rust Domain And Scaffold Contract</h2>
+          <p>Complete. The Rust domain model, MCP resources, project contract, review prompts, and generated scaffolds now understand the MDX source contract and Markdown-first plan derivative.</p>
+        </div>
+        <span className="stage-number">Stage 05</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 05.1 - Update Wiki Indexing</h3>
+          <p>Complete. Wiki listings now expose <code>format</code>, app route <code>path</code>, repo-relative <code>sourcePath</code>, <code>title</code>, <code>summary</code>, and <code>status</code> for MDX wiki pages and plans.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated Rust wiki-domain tests to assert MDX source path and format metadata.</li>
+            <li>Confirmed active/completed status parsing still works through the existing wiki page summary flow.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 05.2 - Update Plan Creation</h3>
+          <p>Complete by contract audit. The current rewrite path already writes MDX plans, and Stage 05 verified the source and derivative contract that generated plans must satisfy.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Kept plan workflow surfaces pointed at <code>.mdx</code> plan paths.</li>
+            <li>Verified generated/current MDX plan source produces Markdown through <code>/api/wiki/source</code> and project-contract integration.</li>
+            <li>Ran <code>pnpm run smoke:project-contract</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 05.3 - Update Project Contract, MCP, Verification, And Reviews</h3>
+          <p>Complete. Current-plan resources use Markdown-first plan content while preserving structured status, source paths, format metadata, and Localhost Tooling guardrails.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Project contract <code>plan</code> now includes <code>sourcePath</code>, <code>format</code>, and a Markdown derivative scoped for localhost-safe agent context.</li>
+            <li><code>hyperwiki://current-plan</code> returns the same useful Markdown and metadata.</li>
+            <li>Review prompts now include current plan Markdown source.</li>
+            <li>Ran <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, and <code>pnpm run smoke:mcp-transport</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 05.4 - Update Generated Project Scaffold</h3>
+          <p>Complete. Generated Hyperwiki projects now tell agents to prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML while preserving lowercase <code>wiki/sources.mdx</code> and app-visible <code>wiki/AGENTS.mdx</code> conventions.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated generated root <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, and <code>wiki/scaffold-contract.mdx</code> copy.</li>
+            <li>Scaffold tests assert generated guidance names <code>/api/wiki/source</code>.</li>
+            <li>Ran <code>pnpm run test:tauri</code>.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="stage" id="stage-06">
+      <header>
+        <div>
+          <h2>Stage 06 - Cleanup, Parity, And Handoff</h2>
+          <p>Complete. Obsolete static frontend assets are removed, validation is recorded, and the packaged Tauri app launches with the React shell.</p>
+        </div>
+        <span className="stage-number">Stage 06</span>
+      </header>
+      <ol className="units">
+        <li className="unit">
+          <h3>Unit 06.1 - Retire Obsolete Static Frontend Assets</h3>
+          <p>Complete. Removed the old static app shell, static adapter, duplicate asset mirrors, root <code>public/wiki.css</code>, and vendored browser xterm files. Kept package-served docs assets that remain required: <code>/assets/wiki.css</code>, <code>/assets/theme.css</code>, favicon, and docs fonts.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated <code>pnpm run smoke:tauri-static-assets</code> to assert obsolete static shell files and xterm vendor files are absent from <code>dist</code>.</li>
+            <li>Confirmed Vite emits only the React app bundle plus required package assets.</li>
+            <li>Ran <code>pnpm run smoke:tauri-static-assets</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 06.2 - Full Automated Validation</h3>
+          <p>Complete. The frontend, Rust, smoke, MCP, WebDriver skip path, and Tauri packaging checks all passed on the cleaned bundle.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Ran <code>pnpm run check:all</code>.</li>
+            <li>Ran <code>pnpm run smoke:tauri-webdriver</code>; it skipped as expected on macOS WKWebView with an explicit platform message.</li>
+            <li>Ran <code>pnpm run tauri:build</code>; built <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 06.3 - Desktop Dogfood And Visual QA</h3>
+          <p>Complete for this macOS pass. The packaged Tauri app launched successfully and core utility routes rendered without obvious layout overlap.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Launched <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+            <li>Verified New Project, Settings, and Projects surfaces with Computer Use.</li>
+            <li>Full Tauri WebDriver import automation remains Linux/Windows-only; the macOS smoke records the unsupported WKWebView reason.</li>
+          </ul>
+        </li>
+        <li className="unit">
+          <h3>Unit 06.4 - Sync Wiki Context And Close Plan</h3>
+          <p>Complete. Updated source truth, development guidance, project log, Plans index, and this plan's handoff state.</p>
+          <strong>Verification</strong>
+          <ul>
+            <li>Updated <code>wiki/dev.mdx</code> and <code>wiki/sources/technical-brief.mdx</code> to describe the React/Vite shell and remaining package-served public assets.</li>
+            <li>Updated <code>wiki/plans/index.mdx</code> and <code>wiki/log.mdx</code>.</li>
+            <li>Marked this rewrite plan complete after validation and launch evidence were recorded.</li>
+          </ul>
+        </li>
+      </ol>
+    </section>
+
+    <section className="panel">
+      <h2>Risk Register</h2>
+      <div className="risk-grid">
+        <article className="risk">
+          <strong>Framework scope</strong>
+          <p>React increases build complexity. Mitigation: choose React because it lowers shadcn and MDX integration risk.</p>
+        </article>
+        <article className="risk">
+          <strong>Plan readability</strong>
+          <p>Visual MDX can become worse for agents. Mitigation: make Markdown derivatives the official LLM surface.</p>
+        </article>
+        <article className="risk">
+          <strong>Parity drift</strong>
+          <p>A rewrite branch can miss existing workflows. Mitigation: port by route and close with automated and desktop dogfood checks.</p>
+        </article>
+      </div>
+    </section>
+
+    <section className="verification">
+      <h2>Acceptance Gates</h2>
+      <table className="matrix">
+        <thead>
+          <tr><th>Gate</th><th>Required Evidence</th><th>Closeout Rule</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Skill readiness</td><td>shadcn and tailwind-design-system skills verified for Codex and Claude.</td><td>No frontend rewrite implementation starts before this is done or explicitly deferred.</td></tr>
+          <tr><td>Frontend parity</td><td>Projects, wiki nav, terminals, Settings, worktrees, preview, Execute, Modify, New Plan, and review flows work in React.</td><td>Old static app shell is not removed before parity is demonstrated.</td></tr>
+          <tr><td>MDX contract</td><td>MDX renders visually, raw source endpoint works, Markdown derivative feeds project-contract and MCP resources.</td><td>Agents receive Markdown-first content, not rendered HTML.</td></tr>
+          <tr><td>Release confidence</td><td>Full automated checks and desktop dogfood pass or record explicit deferred evidence.</td><td>Only then merge or finish the rewrite worktree.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section className="panel">
+      <h2>Copy Handoff</h2>
+      <div className="copy-row">
+        <textarea id="handoff" readonly>Current plan: wiki/plans/features/react-shadcn-mdx-rewrite.mdx
+Current unit: All stages complete
+Next action: merge frontend-rewrite to main after final user approval; pushing still requires approval.
+Stage 00 is complete: current branch confirmed, shadcn and tailwind-design-system skills installed under .agents/skills, and durable guidance updated.
+Batch 1 is complete: Vite, React, TypeScript, Tailwind v4, shadcn config, first Button primitive, Tauri dist build wiring, typed API adapter, and dist static smoke coverage are in place.
+Batch 2 shell pass is complete: React now owns the topbar, project switcher, wiki navigation/rendering shell, app route surfaces, and initial scoped terminal pane.
+Batch 3 terminal pass is complete: React now owns xterm attachment, replay, live output polling, keyboard input, resize, scoped session tabs, rename, close, and attach/restart controls.
+Batch 4 command workflow pass is complete: React owns Execute, Worktree, Modify, Review, and the New Plan entry now opens the full-page MDX agent interview instead of the retired deterministic plan-create endpoint.
+Batch 5 MDX plan runtime pass is complete: React renders plan pages directly from exact MDX source, Rust exposes `/api/wiki/source`, and Markdown derivatives are covered by Rust tests.
+Batch 6 Rust domain/scaffold contract pass is complete: wiki page metadata carries format/source path, project contract/MCP/review surfaces expose Markdown-first current plan content, and generated scaffolds instruct agents to prefer `/api/wiki/source` or project contract over rendered HTML.
+Batch 7 cleanup/parity/handoff pass is complete: obsolete static app shell assets are removed, static asset smoke asserts their absence, check:all and tauri:build pass, and the packaged Tauri app launched for a desktop route check.
+Required skill commands:
+npx skills add https://github.com/shadcn/ui --skill shadcn
+npx skills add https://github.com/wshobson/agents --skill tailwind-design-system</textarea>
+        <button type="button" id="copyHandoff">Copy handoff</button>
+      </div>
+    </section>

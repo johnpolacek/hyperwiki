@@ -1,0 +1,38 @@
+---
+title: "Unit 02 - Sidebar Project Pin"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Unit 02 - Sidebar Project Pin</h1>
+    <p><a href="/wiki/plans/zzz_completed/agent-workspace-enablers.mdx">Agent Workspace Enablers</a></p>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Project navigation is pinned to the bottom of the sidebar and uses a dedicated styling hook.</li>
+        <li>Plan rows stay directly under the Plans heading, with completed plans grouped under the Completed Plans archive.</li>
+        <li>Verification: covered by <code>pnpm run check</code> and browser smoke assertions for Project placement, stacking, chevron alignment, and plan-row spacing.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Goal</h2>
+      <p>Keep the Project navigation group pinned to the bottom of the workspace sidebar while preserving quick access to plan navigation above it.</p>
+    </section>
+    <section>
+      <h2>Scope</h2>
+      <ul>
+        <li>Pin the Project group to the sidebar bottom in the workspace navigation.</li>
+        <li>Keep plan rows directly underneath the Plans heading whether Project is collapsed or expanded.</li>
+        <li>Align the Plans heading with plan chevrons, give Project a matching up/down chevron, and reduce the top gap above the Plans section.</li>
+        <li>When expanded, let the Project group sit above the plan navigation surface so its links remain usable near the bottom edge.</li>
+        <li>Update browser smoke coverage for the sidebar placement.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Verification</h2>
+      <ul>
+        <li><code>pnpm run check</code>.</li>
+        <li><code>pnpm run smoke:browser</code>.</li>
+      </ul>
+    </section>

@@ -1,0 +1,52 @@
+---
+title: "Thinking Effort Picker"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Thinking Effort Picker</h1>
+    <section className="summary">
+      <h2>Summary</h2>
+      <ul>
+        <li>Status: complete</li>
+        <li>Branch: <code>feature/thinking-effort-picker</code></li>
+        <li>Goal: add a terminal toolbar picker for the default Codex thinking effort used by newly opened agent terminals.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Acceptance</h2>
+      <ul>
+        <li>The terminal toolbar includes a compact thinking-effort picker above the terminal panels.</li>
+        <li>Changing the picker affects newly opened agent terminals and does not mutate existing sessions.</li>
+        <li>Codex agent launch commands receive a <code>model_reasoning_effort</code> config override for the selected level.</li>
+        <li>Non-Codex agent commands remain unchanged.</li>
+        <li>The selected default persists locally for the browser workspace.</li>
+        <li>Smoke coverage verifies the toolbar picker and launched agent command label.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Result</h2>
+      <ul>
+        <li>Added a compact toolbar picker with <code>low</code>, <code>medium</code>, <code>high</code>, and <code>xhigh</code> levels.</li>
+        <li>Persisted the selected default in browser-local workspace state.</li>
+        <li>Applied the selected level to newly opened Codex agent terminals with <code>-c model_reasoning_effort="..."</code>.</li>
+        <li>Left non-Codex agent commands and existing terminal sessions unchanged.</li>
+        <li>Verified syntax with <code>pnpm run check</code> and browser behavior with <code>agent-browser</code> against the worktree preview.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Implementation Notes</h2>
+      <ul>
+        <li>Keep the durable project command in <code>.hyperwiki/config.json</code> as the source command.</li>
+        <li>Apply the thinking-effort default in the browser when creating agent terminals.</li>
+        <li>Use Codex CLI <code>-c model_reasoning_effort="..."</code> overrides so the feature remains compatible with current Codex config behavior.</li>
+      </ul>
+    </section>
+  <section>
+      <h2>Finish</h2>
+      <ul>
+        <li>Finish date: 2026-05-15</li>
+        <li>Branch: <code>feature/thinking-effort-picker</code></li>
+        <li>Finish policy: merge</li>
+      </ul>
+    </section>

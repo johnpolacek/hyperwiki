@@ -4,7 +4,10 @@
   "version": "0.1.1",
   "identifier": "dev.hyperwiki.desktop",
   "build": {
-    "frontendDist": "../public"
+    "beforeDevCommand": "pnpm run dev:frontend",
+    "beforeBuildCommand": "pnpm run build:frontend",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,

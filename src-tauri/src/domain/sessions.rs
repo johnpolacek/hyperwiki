@@ -39,6 +39,9 @@ pub struct SessionRecord {
     pub scope: String,
     pub scope_kind: String,
     pub plan_path: Option<String>,
+    #[serde(default = "default_visibility")]
+    pub visibility: String,
+    pub purpose: Option<String>,
     pub connected_clients: u32,
     pub last_attached_at: Option<String>,
     pub retained: bool,
@@ -64,6 +67,8 @@ pub struct SessionUpdates {
     pub scope: Option<String>,
     pub scope_kind: Option<String>,
     pub plan_path: Option<String>,
+    pub visibility: Option<String>,
+    pub purpose: Option<String>,
     pub connected_clients: Option<u32>,
     pub last_attached_at: Option<String>,
     pub retained: Option<bool>,
@@ -165,6 +170,15 @@ impl SessionRegistry {
                     .as_ref()
                     .and_then(|session| session.plan_path.clone())
             }),
+            visibility: updates
+                .visibility
+                .or_else(|| existing.as_ref().map(|session| session.visibility.clone()))
+                .unwrap_or_else(|| "visible".to_string()),
+            purpose: updates.purpose.or_else(|| {
+                existing
+                    .as_ref()
+                    .and_then(|session| session.purpose.clone())
+            }),
             connected_clients: updates
                 .connected_clients
                 .or_else(|| existing.as_ref().map(|session| session.connected_clients))
@@ -218,11 +232,40 @@ impl SessionRegistry {
         )
     }
 
+    pub fn update_runtime_metadata(
+        &self,
+        id: &str,
+        name: Option<String>,
+        visibility: Option<String>,
+        purpose: Option<String>,
+    ) -> Result<SessionRecord, String> {
+        if self.read_one(id).is_none() {
+            return Err("Session not found.".to_string());
+        }
+        let trimmed_visibility = visibility
+            .map(|value| value.trim().to_string())
+            .filter(|value| value == "visible" || value == "standby");
+        let trimmed_purpose = purpose
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        self.upsert(
+            id,
+            SessionUpdates {
+                name: name.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()),
+                visibility: trimmed_visibility,
+                purpose: trimmed_purpose,
+                ..SessionUpdates::default()
+            },
+        )
+    }
+
     pub fn close(&self, id: &str) -> Result<SessionRecord, String> {
         self.upsert(
             id,
             SessionUpdates {
                 status: Some("closed".to_string()),
+                connected_clients: Some(0),
+                reconnectable: Some(false),
                 ..SessionUpdates::default()
             },
         )
@@ -334,6 +377,10 @@ fn timestamp() -> String {
     format!("{millis:013}")
 }
 
+fn default_visibility() -> String {
+    "visible".to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,22 +395,40 @@ mod tests {
                 SessionUpdates {
                     name: Some("agent".to_string()),
                     mode: Some("pty".to_string()),
-                    scope: Some("plan:/wiki/plans/index.html".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
                     ..SessionUpdates::default()
                 },
             )
             .unwrap();
         assert_eq!(created.id, "agent/one");
         assert_eq!(created.name, "agent");
+        assert_eq!(created.visibility, "visible");
 
         let renamed = registry.rename("agent/one", "agent main").unwrap();
         assert_eq!(renamed.name, "agent main");
+
+        let standby = registry
+            .update_runtime_metadata(
+                "agent/one",
+                None,
+                Some("standby".to_string()),
+                Some("modify".to_string()),
+            )
+            .unwrap();
+        assert_eq!(standby.visibility, "standby");
+        assert_eq!(standby.purpose.as_deref(), Some("modify"));
+
+        let promoted = registry
+            .update_runtime_metadata("agent/one", None, Some("visible".to_string()), None)
+            .unwrap();
+        assert_eq!(promoted.visibility, "visible");
+        assert_eq!(promoted.purpose.as_deref(), Some("modify"));
 
         let exported = registry.export("agent/one").unwrap();
         assert_eq!(exported.boundary, "runtime-only");
         assert_eq!(exported.session.exported_at, Some(exported.exported_at));
 
-        let scoped = registry.list(Some("plan:/wiki/plans/index.html"), true);
+        let scoped = registry.list(Some("plan:/wiki/plans/index.mdx"), true);
         assert_eq!(scoped.sessions.len(), 1);
 
         let closed = registry.close("agent/one").unwrap();

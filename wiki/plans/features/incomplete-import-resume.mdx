@@ -1,0 +1,48 @@
+---
+title: "Incomplete Import Resume"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Incomplete Import Resume</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: complete</li>
+    <li>Next action: none; feature is implemented and covered by checks.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Keep abandoned imported projects as real Hyperwiki projects while making their unfinished planning state explicit and resumable.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Derive import planning status from repo-visible wiki files instead of transient session state.</li>
+    <li>Persist import Q&amp;A answers to <code>wiki/sources/import-qna.mdx</code>.</li>
+    <li>Expose import planning status on project records and through import-planning command endpoints.</li>
+    <li>Mark incomplete imports in Projects and route them back to the planning intake surface when opened.</li>
+    <li>Resume agent planning with saved Q&amp;A context when the original session is gone.</li>
+    <li>Follow-up: while Q&amp;A is running, poll for generated plan files so the UI exits the waiting state once the agent writes the MVP plan.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Rust tests cover incomplete/complete import status and repo-visible Q&amp;A persistence.</li>
+    <li>Frontend type checks cover the new project record shape and resume routing.</li>
+    <li>Manual dogfood should import a brief, answer one question, close/reopen Hyperwiki, and confirm the project card shows incomplete import state and resumes Q&amp;A.</li>
+  </ul>
+</section>
+<section>
+  <h2>Closeout</h2>
+  <ul>
+    <li>Implemented durable import planning status derivation, Q&amp;A answer persistence, project-list status badges, incomplete import resume routing, and command endpoint coverage.</li>
+    <li>Follow-up fix handles agent-authored plans that bypass the deterministic create-plan endpoint by refreshing project/wiki state and navigating to the generated plan when files appear.</li>
+    <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
+  </ul>
+</section>

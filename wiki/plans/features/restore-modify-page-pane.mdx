@@ -1,0 +1,31 @@
+---
+title: "Restore Modify Page Pane"
+description: "Hyperwiki plan page."
+wikiKind: "plan"
+status: "complete"
+---
+
+<h1>Restore Modify Page Pane</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: local React shell fix</li>
+    <li>Goal: make the command-bar <code>modify</code> action visibly open the existing page revision workflow again.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Restored the existing right-side Modify Page pane as a selectable workspace side panel.</li>
+    <li>Kept the terminal as the default side panel so normal plan pages still open with terminal controls visible.</li>
+    <li>Returned Execute, Review, Worktree, and Modify submissions to the terminal panel after sending prompts.</li>
+  </ul>
+</section>
+<Verification>
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run smoke:tauri-static-assets</code></li>
+  </ul>
+</Verification>

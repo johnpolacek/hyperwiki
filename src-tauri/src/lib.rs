@@ -54,9 +54,15 @@ fn run_init_cli(args: &[String]) {
         &root,
         domain::projects::InitProjectOptions {
             project_name: project_name.clone(),
-            summary,
+            summary: summary.clone(),
             source_document: options.string("source_document").unwrap_or_default(),
             source_document_type: options.string("source_document_type").unwrap_or_default(),
+            source_documents: Vec::new(),
+            source_facts: domain::projects::SourceFacts {
+                summary,
+                ..Default::default()
+            },
+            planning_answers: std::collections::BTreeMap::new(),
             agent_launch_command: options.string("agent_launch_command").unwrap_or_default(),
             dev_command: dev_command.unwrap_or_default(),
             package_scripts: package
@@ -64,6 +70,7 @@ fn run_init_cli(args: &[String]) {
                 .iter()
                 .map(|script| format!("{} run {script}", package.manager))
                 .collect(),
+            install_agent_skills: !options.flag("no_skills"),
             overwrite: options.flag("overwrite"),
         },
     );
@@ -346,6 +353,11 @@ fn run_reset_cli(args: &[String]) {
 
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            command::set_app_handle(app.handle().clone());
+            domain::codex_app_server::spawn_codex_provider_prewarm();
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![command::hyperwiki_request])
         .run(tauri::generate_context!())
         .expect("error while running hyperwiki Tauri app");
@@ -353,7 +365,7 @@ pub fn run() {
 
 fn print_help() {
     println!(
-        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an HTML-first repo-local wiki and hyperwiki config.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
+        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite] [--no-skills]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an MDX-first repo-local wiki, hyperwiki config, and default repo-local agent skills.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
     );
 }
 

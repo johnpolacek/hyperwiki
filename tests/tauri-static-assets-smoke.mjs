@@ -1,50 +1,100 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const requiredAssets = [
-  "public/index.html",
-  "public/assets/app.css",
-  "public/assets/app.js",
-  "public/assets/app-api.js",
-  "public/assets/wiki.css",
-  "public/assets/theme.css",
-  "public/app.js",
-  "public/app-api.js",
-  "public/vendor/@xterm/xterm/lib/xterm.mjs",
-  "public/vendor/@xterm/xterm/css/xterm.css",
-  "public/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
-  "public/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
+  "dist/index.html",
+  "dist/assets/wiki.css",
+  "dist/assets/theme.css",
+  "dist/favicon.ico",
+  "dist/vendor/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
+  "dist/vendor/fonts/sometype-mono/SometypeMono-Regular.ttf",
+  "dist/vendor/fonts/rethink-sans/RethinkSans-Regular.ttf",
+  "dist/vendor/fonts/figtree/Figtree-Regular.ttf",
+  "dist/vendor/fonts/eb-garamond/EBGaramond-400.ttf",
+  "dist/vendor/fonts/source-code-pro/SourceCodePro-400.ttf"
 ];
 
 for (const asset of requiredAssets) {
   await access(path.resolve(asset));
 }
 
-const mirroredAssets = [
-  ["public/app.css", "public/assets/app.css"],
-  ["public/app.js", "public/assets/app.js"],
-  ["public/app-api.js", "public/assets/app-api.js"],
-  ["public/wiki.css", "public/assets/wiki.css"]
+const forbiddenAssets = [
+  "dist/.DS_Store",
+  "dist/app.css",
+  "dist/app.js",
+  "dist/app-api.js",
+  "dist/wiki.css",
+  "dist/assets/app.css",
+  "dist/assets/app.js",
+  "dist/assets/app-api.js",
+  "dist/vendor/@xterm/xterm/lib/xterm.mjs",
+  "dist/vendor/@xterm/xterm/css/xterm.css",
+  "dist/vendor/@xterm/addon-fit/lib/addon-fit.mjs",
+  "dist/vendor/@xterm/addon-web-links/lib/addon-web-links.mjs"
 ];
 
-for (const [source, mirror] of mirroredAssets) {
-  const [sourceText, mirrorText] = await Promise.all([
-    readFile(path.resolve(source), "utf8"),
-    readFile(path.resolve(mirror), "utf8")
-  ]);
-  if (sourceText !== mirrorText) {
-    throw new Error(`Tauri static asset mirror is stale: ${mirror} must match ${source}`);
+for (const asset of forbiddenAssets) {
+  try {
+    await access(path.resolve(asset));
+    throw new Error(`Obsolete static frontend asset must not be bundled: ${asset}`);
+  } catch (error) {
+    if (error && error.code !== "ENOENT") {
+      throw error;
+    }
   }
 }
 
-const index = await readFile(path.resolve("public/index.html"), "utf8");
-if (!index.includes("/vendor/@xterm/xterm/lib/xterm.mjs")) {
-  throw new Error("Tauri static app no longer maps xterm to vendored browser assets.");
+const index = await readFile(path.resolve("dist/index.html"), "utf8");
+const appSource = await readFile(path.resolve("src/App.tsx"), "utf8");
+const distAssets = await readdir(path.resolve("dist/assets"));
+if (!distAssets.some((asset) => /^index-.*\.js$/.test(asset)) || !distAssets.some((asset) => /^index-.*\.css$/.test(asset))) {
+  throw new Error("Vite build must emit hashed app JS and CSS assets for the Tauri bundle.");
+}
+if (!index.includes("/assets/index-")) {
+  throw new Error("Tauri dist index must load Vite app assets.");
 }
 
-const app = await readFile(path.resolve("public/app.js"), "utf8");
-if (!app.includes("wiki\\/plans\\/features") || !app.includes(".test(path)) return true")) {
+const appAssets = await Promise.all(
+  distAssets
+    .filter((asset) => /^index-.*\.js$/.test(asset))
+    .map((asset) => readFile(path.resolve("dist/assets", asset), "utf8"))
+);
+const app = appAssets.join("\n");
+if (!app.includes("wiki\\/plans\\/features") || !app.includes("/api/wiki/source")) {
   throw new Error("Plan tree must treat feature plans under wiki/plans/features/ as top-level plan entries.");
+}
+if (app.includes("Docs-only: Modify Plan is limited to app-visible wiki planning files.")) {
+  throw new Error("Command bar modify action must not bundle the retired Modify Plan pane.");
+}
+if (!app.includes("Mode: Modify Plan, planning/wiki-only.") || !app.includes("Standby behavior: do not edit files or run checks") || !app.includes("sessionId") || !app.includes("purpose") || !app.includes("standby")) {
+  throw new Error("Command bar modify action must promote a prewarmed modify agent with the docs-only Modify Plan prompt.");
+}
+if (!appSource.includes('purpose: "modify"') || !appSource.includes('visibility: "standby"') || !appSource.includes("isVisibleLiveTerminalSession")) {
+  throw new Error("Modify prewarm must keep standby sessions hidden until promotion.");
+}
+if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
+  throw new Error("Modify must reuse the plan's prewarmed modify session instead of forcing a fresh launch.");
+}
+if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
+  throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
+}
+if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("attempt < 120") || !appSource.includes("promptAfterStartup")) {
+  throw new Error("Agent prompt readiness must wait through Codex MCP startup before submitting Modify Plan prompts.");
+}
+if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
+  throw new Error("Modify Plan prompts must normalize paths, derive visible unit context, and reduce runtime dirty-state noise.");
+}
+if (appSource.includes("Run relevant checks before finishing.")) {
+  throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
+}
+if (!appSource.includes('parentPath.endsWith("/wiki/plans/mvp/index.mdx")') || !appSource.includes('/^\\/wiki\\/plans\\/mvp\\/stage-\\d+[^/]*\\.mdx$/.test(candidatePath)')) {
+  throw new Error("MVP plan sidebar root must only nest stage pages, not stray generated support pages.");
+}
+if (!appSource.includes("terminalPlanRootPath(route.path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
+  throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
+}
+if (!appSource.includes("terminalDisplayTextForXterm") || !appSource.includes("displayControlCarryRef") || !appSource.includes("stripTerminalDisplayControlSequences(data, carry)")) {
+  throw new Error("Xterm rendering must strip Codex display control sequences with carry-over across output chunks.");
 }
 
 console.log("tauri static assets smoke test passed");
