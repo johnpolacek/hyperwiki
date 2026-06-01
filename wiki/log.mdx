@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-05-31 fix | MVP sidebar stage-only nesting</h2>
+  <ul>
+    <li>Changed the sidebar plan tree so <code>wiki/plans/mvp/index.mdx</code> only nests stage pages.</li>
+    <li>Prevents stray generated support pages such as <code>past-entries.mdx</code> from appearing as siblings outside the nested stage/unit plan navigation.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-05-31 implementation | live wiki sidebar refresh</h2>
   <ul>
     <li>Added a Tauri wiki fingerprint endpoint for <code>wiki/**/*.mdx</code> changes.</li>

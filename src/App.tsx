@@ -5109,6 +5109,9 @@ function isImmediateChildPlanPage(parent: WikiPage, candidate: WikiPage) {
   if (parentPath.endsWith("/wiki/plans/zzz_completed/index.mdx")) {
     return (/^\/wiki\/plans\/zzz_completed\/[^/]+\.mdx$/.test(candidatePath) && !candidatePath.endsWith("/index.mdx")) || isCompletedTopLevelPlanPage(candidate);
   }
+  if (parentPath.endsWith("/wiki/plans/mvp/index.mdx")) {
+    return /^\/wiki\/plans\/mvp\/stage-\d+[^/]*\.mdx$/.test(candidatePath);
+  }
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(parentPath)) return false;
   const stage = parentPath.match(/^(.*)\/stage-(\d+)[^/]*\.mdx$/);
   if (stage) {
