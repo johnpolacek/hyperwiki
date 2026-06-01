@@ -1,6 +1,6 @@
 ---
 title: "Scaffold Contract Skill Reconciliation"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -19,19 +19,19 @@ wikiKind: "plan"
 
     <section aria-labelledby="reader-goal">
       <h2 id="reader-goal">Reader Goal</h2>
-      <p>After 2 minutes, a future agent should know which Hyperwiki scaffold conventions must be reconciled with the external Project HTML Wiki skill before editing generator code.</p>
+      <p>After 2 minutes, a future agent should know which hyperwiki scaffold conventions must be reconciled with the external Project HTML Wiki skill before editing generator code.</p>
     </section>
 
     <section aria-labelledby="intent">
       <h2 id="intent">Intent</h2>
-      <p>Hyperwiki already implements an MDX-first project memory layer, but its productized scaffold intentionally differs from the newly installed <code>hyperwiki</code> skill in a few places. This plan made those differences explicit and updated generator code, prompts, and wiki guidance so future agents do not accidentally normalize away Hyperwiki-specific behavior.</p>
+      <p>hyperwiki already implements an MDX-first project memory layer, but its productized scaffold intentionally differs from the newly installed <code>hyperwiki</code> skill in a few places. This plan made those differences explicit and updated generator code, prompts, and wiki guidance so future agents do not accidentally normalize away hyperwiki-specific behavior.</p>
     </section>
 
     <section aria-labelledby="scope">
       <h2 id="scope">Scope</h2>
       <ul>
         <li>Review <code>src/init.js</code> scaffold outputs against the skill's required project shape, naming, source index, planning, log, and automation-policy expectations.</li>
-        <li>Review new-project import handoff prompts in <code>public/app.js</code> so imported briefs ask agents to use the installed skill workflow without contradicting Hyperwiki conventions.</li>
+        <li>Review new-project import handoff prompts in <code>public/app.js</code> so imported briefs ask agents to use the installed skill workflow without contradicting hyperwiki conventions.</li>
         <li>Update wiki guidance pages where needed to document intentional divergences: lowercase <code>wiki/sources.mdx</code>, generated <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
         <li>Record any unresolved skill-contract contradictions as explicit decisions or follow-ups instead of silently mixing conventions.</li>
       </ul>
@@ -42,7 +42,7 @@ wikiKind: "plan"
       <ul>
         <li>Do not rename the existing source index to <code>wiki/Sources.mdx</code> unless a deliberate compatibility design is chosen.</li>
         <li>Do not replace the app-served wiki CSS system with standalone embedded CSS across all generated pages without a product decision.</li>
-        <li>Do not create a repo-local maintainer skill unless the implementation decision says Hyperwiki should ship one for generated projects.</li>
+        <li>Do not create a repo-local maintainer skill unless the implementation decision says hyperwiki should ship one for generated projects.</li>
         <li>Do not rebootstrap this repository's existing wiki or rewrite completed plan history.</li>
       </ul>
     </section>
@@ -54,7 +54,7 @@ wikiKind: "plan"
           <tr>
             <th>Area</th>
             <th>Skill Contract</th>
-            <th>Hyperwiki Current Behavior</th>
+            <th>hyperwiki Current Behavior</th>
             <th>Planning Decision</th>
           </tr>
         </thead>
@@ -98,7 +98,7 @@ wikiKind: "plan"
         </li>
         <li>
           <strong>Unit 02 - Generator and prompt alignment.</strong>
-          Update <code>src/init.js</code> and <code>public/app.js</code> so generated projects and imported-brief handoffs consistently describe Hyperwiki's chosen scaffold contract.
+          Update <code>src/init.js</code> and <code>public/app.js</code> so generated projects and imported-brief handoffs consistently describe hyperwiki's chosen scaffold contract.
           <h3>Verification</h3>
           <p>Complete. <code>pnpm run check</code> and <code>pnpm run smoke:init</code> passed.</p>
         </li>
@@ -114,8 +114,8 @@ wikiKind: "plan"
     <section aria-labelledby="acceptance">
       <h2 id="acceptance">Acceptance</h2>
       <ul>
-        <li>Generated Hyperwiki projects have one documented scaffold contract for source index naming, wiki agent guidance, styling portability, and Localhost Tooling boundaries.</li>
-        <li>Import handoff prompts tell agents when to apply the installed <code>hyperwiki</code> workflow and when to preserve Hyperwiki product conventions.</li>
+        <li>Generated hyperwiki projects have one documented scaffold contract for source index naming, wiki agent guidance, styling portability, and Localhost Tooling boundaries.</li>
+        <li>Import handoff prompts tell agents when to apply the installed <code>hyperwiki</code> workflow and when to preserve hyperwiki product conventions.</li>
         <li>Future agents can read this plan and avoid creating duplicate <code>Sources.mdx</code>, duplicate wiki guidance files, or unmanaged scaffold rewrites.</li>
         <li>Checks and visual review confirm that scaffold changes do not break existing wiki navigation or new project creation flow.</li>
       </ul>

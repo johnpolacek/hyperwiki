@@ -34,8 +34,8 @@ wikiKind: "plan"
     <li>Corrective follow-up on 2026-05-29: chained runtime transitions now release the completed active run before starting plan generation, repair, or plan repair, preventing the active-run guard from trapping onboarding after a valid <code>hyperwiki-ready-to-plan</code> signal.</li>
     <li>Corrective follow-up on 2026-05-29: the runtime finalizer now uses compare-and-release semantics, matching Tandem's <code>finish_if_match</code> pattern, so a completed parent run cannot erase a newly active child run.</li>
     <li>Corrective refactor on 2026-05-29: plan generation now follows the DeepAgents virtual-filesystem pattern. Codex generates a structured <code>hyperwiki-plan-artifacts</code> payload, while the Rust runtime owns safe MDX writes and deterministic validation.</li>
-    <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding briefly wrote a conservative one-unit MVP plan from accepted decisions and imported source context. Dogfooding showed that this satisfied weak validators while failing Hyperwiki's stage/unit planning contract, so the go-forward path returns to explicit artifact generation with stronger validation and retryable failure on provider stalls.</li>
-    <li>Corrective follow-up complete on 2026-05-30: ready-to-plan now starts the backend-owned artifact-generation run, the conservative runtime fallback was removed, the plan prompt embeds the Hyperwiki stage/unit contract, and validators reject generic confirmed-MVP placeholders, missing stage pages, and single-unit MVP plans.</li>
+    <li>Corrective follow-up on 2026-05-29: once Codex has emitted a valid <code>hyperwiki-ready-to-plan</code> signal, onboarding briefly wrote a conservative one-unit MVP plan from accepted decisions and imported source context. Dogfooding showed that this satisfied weak validators while failing hyperwiki's stage/unit planning contract, so the go-forward path returns to explicit artifact generation with stronger validation and retryable failure on provider stalls.</li>
+    <li>Corrective follow-up complete on 2026-05-30: ready-to-plan now starts the backend-owned artifact-generation run, the conservative runtime fallback was removed, the plan prompt embeds the hyperwiki stage/unit contract, and validators reject generic confirmed-MVP placeholders, missing stage pages, and single-unit MVP plans.</li>
     <li>Corrective follow-up complete on 2026-05-30: dogfooding showed the backend-owned artifact-generation run could still fail when Codex emitted lifecycle events but no assistant text. Normal plan artifact creation now uses a deterministic Rust compiler, with Codex plan repair reserved for validation fallback only.</li>
     <li>Corrective follow-up complete on 2026-05-31: import onboarding now pre-starts and initializes the persistent Codex app-server during app setup, warms imported-project threads after project creation or resume, exposes <code>/api/import-onboarding/prewarm</code>, and uses a shorter no-first-event fallback for warm app-server turns.</li>
   </ul>
@@ -44,17 +44,17 @@ wikiKind: "plan"
   <h2>Decision</h2>
   <p>Use a Rust-owned import-onboarding state machine as the implementation base. It directly addresses the current failure: React owns too much orchestration, the app treats quiet Codex output as a stall, and answer routing depends on fragile UI-side session state.</p>
   <p>Fold in the strongest harness concepts from the agent-harness candidate: durable human-input requests, checkpointed continuation, staged artifacts, deterministic validators, and explicit commit policy for wiki writes. Treat direct Codex attachment as an internal adapter experiment, not the whole product architecture.</p>
-  <p>Defer the separate sidecar service and full engine-first runtime. They are promising if Hyperwiki later needs multi-client background agents, reusable run inspection, or a broader workflow engine, but they add too much packaging and lifecycle cost for the immediate onboarding UX fix.</p>
+  <p>Defer the separate sidecar service and full engine-first runtime. They are promising if hyperwiki later needs multi-client background agents, reusable run inspection, or a broader workflow engine, but they add too much packaging and lifecycle cost for the immediate onboarding UX fix.</p>
 </section>
 <section>
   <h2>Applied References</h2>
   <ul>
     <li><a href="https://github.com/openai/codex">OpenAI Codex CLI</a> is the implementation dependency, not just inspiration. The first unit should wrap the existing <code>codex app-server</code> integration behind a Rust adapter, compare it with <code>codex exec --json</code>, and record real latency and stream-health evidence before picking the default transport.</li>
-    <li><a href="https://github.com/langchain-ai/deepagents">LangChain deepagents</a> applies to the harness concepts Hyperwiki should copy without adopting the framework: durable checkpoints, human-in-the-loop pause points, filesystem-backed intermediate state, and separating model text from execution decisions.</li>
-    <li><a href="https://open-harness.github.io/open-harness/">Open Harness</a> applies narrowly to evaluation discipline: record enough structured run data to compare transports and prompt variants against the same import fixture. Hyperwiki should not add a harness dependency in the first implementation.</li>
+    <li><a href="https://github.com/langchain-ai/deepagents">LangChain deepagents</a> applies to the harness concepts hyperwiki should copy without adopting the framework: durable checkpoints, human-in-the-loop pause points, filesystem-backed intermediate state, and separating model text from execution decisions.</li>
+    <li><a href="https://open-harness.github.io/open-harness/">Open Harness</a> applies narrowly to evaluation discipline: record enough structured run data to compare transports and prompt variants against the same import fixture. hyperwiki should not add a harness dependency in the first implementation.</li>
     <li><a href="https://github.com/anomalyco/opencode">opencode</a> applies to event normalization and session ownership: the UI should subscribe to a persistent stream of typed events from an agent runtime boundary instead of managing a one-off CLI exchange.</li>
-    <li><a href="https://github.com/frumu-ai/tandem">Tandem</a> and the local download at <code>/Users/johnpolacek/Downloads/tandem-main</code> apply to run lifecycle language: session IDs, run IDs, checkpoints, questions, cancellation, and run inspection. Hyperwiki should borrow those runtime concepts inside the Tauri backend, not split to a Tandem-style sidecar yet.</li>
-    <li><a href="https://github.com/janhq/jan">Jan</a> applies only to UX behavior: show streaming progress and agent activity early instead of waiting for a complete final JSON block. Hyperwiki still transitions only on validated backend events.</li>
+    <li><a href="https://github.com/frumu-ai/tandem">Tandem</a> and the local download at <code>/Users/johnpolacek/Downloads/tandem-main</code> apply to run lifecycle language: session IDs, run IDs, checkpoints, questions, cancellation, and run inspection. hyperwiki should borrow those runtime concepts inside the Tauri backend, not split to a Tandem-style sidecar yet.</li>
+    <li><a href="https://github.com/janhq/jan">Jan</a> applies only to UX behavior: show streaming progress and agent activity early instead of waiting for a complete final JSON block. hyperwiki still transitions only on validated backend events.</li>
   </ul>
 </section>
 <section>
@@ -62,8 +62,8 @@ wikiKind: "plan"
   <ul>
     <li>Do not introduce a standalone sidecar service in the first implementation.</li>
     <li>Do not adopt Open Harness, deepagents, LangGraph, or another external agent harness as a runtime dependency until a local prototype proves it fits Tauri packaging and the local trust boundary.</li>
-    <li>Do not build a general Hyperwiki run engine for every agent workflow yet. Import onboarding is the only committed consumer.</li>
-    <li>Do not mark onboarding complete from a generic runtime-authored placeholder. The plan artifact run may be backend-managed, but it must produce concrete stage and unit MDX artifacts that pass Hyperwiki's planning contract.</li>
+    <li>Do not build a general hyperwiki run engine for every agent workflow yet. Import onboarding is the only committed consumer.</li>
+    <li>Do not mark onboarding complete from a generic runtime-authored placeholder. The plan artifact run may be backend-managed, but it must produce concrete stage and unit MDX artifacts that pass hyperwiki's planning contract.</li>
     <li>Do not solve full semantic retrieval, vector search, or tool-RAG in the first slice. Use compact deterministic context packs first.</li>
   </ul>
 </section>
@@ -76,8 +76,8 @@ wikiKind: "plan"
     <li>Use persistent <code>codex app-server</code> as the primary transport experiment, while preserving an internal <code>codex exec --json</code> experiment for latency and reliability comparison.</li>
     <li>Represent questions as durable <code>HumanInputRequest</code> objects with IDs, run IDs, text, options, freeform allowance, source evidence, status, and accepted answer.</li>
     <li>Represent generated plan output as staged artifacts or virtual files until deterministic validators approve the actual write to <code>wiki/</code>.</li>
-    <li>Superseded plan-generation boundary: Codex briefly generated virtual artifact paths and complete MDX contents while Hyperwiki owned safe writes, but dogfooding showed the second hidden turn was still too unreliable.</li>
-    <li>Corrected plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, Hyperwiki deterministically compiles source-grounded MDX plan artifacts, writes them through the safe artifact path, and validates them before completion. Codex plan repair remains available only when compiled or existing artifacts fail validation.</li>
+    <li>Superseded plan-generation boundary: Codex briefly generated virtual artifact paths and complete MDX contents while hyperwiki owned safe writes, but dogfooding showed the second hidden turn was still too unreliable.</li>
+    <li>Corrected plan-generation boundary: after Codex emits <code>hyperwiki-ready-to-plan</code>, hyperwiki deterministically compiles source-grounded MDX plan artifacts, writes them through the safe artifact path, and validates them before completion. Codex plan repair remains available only when compiled or existing artifacts fail validation.</li>
     <li>React renders typed backend state and submits answers by request ID. It must not parse raw Codex output, infer plan completion from assistant text, or own retry timing.</li>
     <li>Implemented refactor note: React still retains the generic terminal planning parser for non-import planning, but imported-project onboarding now treats Rust runtime status and event records as the source of truth.</li>
   </ul>
@@ -185,9 +185,9 @@ wikiKind: "plan"
 <section>
   <h2>Deferred Paths</h2>
   <ul>
-    <li>Candidate 2, the separate sidecar service, remains a future option if Hyperwiki needs a reusable background engine reachable by multiple clients or processes.</li>
+    <li>Candidate 2, the separate sidecar service, remains a future option if hyperwiki needs a reusable background engine reachable by multiple clients or processes.</li>
     <li>Candidate 4, the full engine-first runtime, remains the long-term platform direction if multiple workflows need durable run inspection, event replay, provider abstraction, and human-input bridging.</li>
-    <li>External harness adoption from Open Harness or deepagents is deferred. Borrow the concepts first; add a dependency only if local prototypes prove the dependency fits Tauri packaging, Codex integration, and Hyperwiki's local trust boundary.</li>
+    <li>External harness adoption from Open Harness or deepagents is deferred. Borrow the concepts first; add a dependency only if local prototypes prove the dependency fits Tauri packaging, Codex integration, and hyperwiki's local trust boundary.</li>
   </ul>
 </section>
 <section>
@@ -234,6 +234,6 @@ wikiKind: "plan"
     <li>No generic <code>Codex stalled</code> state for a healthy but quiet provider turn.</li>
     <li>Fast first question and fast follow-up question are the primary UX success metrics.</li>
     <li>Resume robustness is useful but secondary, except that reloads must not corrupt state or misroute answers.</li>
-    <li>Codex remains responsible for final project plan generation, while Hyperwiki owns orchestration, validation, state, and UX.</li>
+    <li>Codex remains responsible for final project plan generation, while hyperwiki owns orchestration, validation, state, and UX.</li>
   </ul>
 </section>

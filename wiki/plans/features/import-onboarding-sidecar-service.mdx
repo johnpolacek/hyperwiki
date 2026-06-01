@@ -28,7 +28,7 @@ wikiKind: "plan"
     <li>Use local HTTP plus server-sent events for the first experiment because it is easiest to inspect and test; keep Unix socket or named pipe as a security and port-collision alternative.</li>
     <li>Bind to loopback only when HTTP is used, with a per-user local capability token if the endpoint is reachable from outside Tauri.</li>
     <li>Keep Codex behind a sidecar-owned adapter. The sidecar can use persistent <code>codex app-server</code>, <code>codex exec --json</code>, or future Codex daemon attachment without React knowing which transport won.</li>
-    <li>Store runtime state under ignored <code>.hyperwiki/state/</code> or the app-level Hyperwiki state root, not in React memory.</li>
+    <li>Store runtime state under ignored <code>.hyperwiki/state/</code> or the app-level hyperwiki state root, not in React memory.</li>
   </ul>
 </section>
 <section>
@@ -65,7 +65,7 @@ wikiKind: "plan"
 <section>
   <h2>Flow</h2>
   <ul>
-    <li>Import creates or selects a Hyperwiki project, then Tauri asks the sidecar to create or resume an onboarding session.</li>
+    <li>Import creates or selects a hyperwiki project, then Tauri asks the sidecar to create or resume an onboarding session.</li>
     <li>The sidecar loads compact imported-source context and starts the first run.</li>
     <li>React subscribes to the run event stream and renders progress until a question-ready event arrives.</li>
     <li>React submits the answer to the sidecar. The sidecar writes durable Q&amp;A, starts the follow-up run, and streams the next state.</li>
@@ -77,7 +77,7 @@ wikiKind: "plan"
   <ul>
     <li>Benefits: clean process isolation, reload-safe sessions, easier event-stream debugging, potential reuse by future CLI or web clients, and a clearer engine boundary.</li>
     <li>Costs: more packaging, lifecycle, auth, port/socket, versioning, logging, and integration-test complexity than an in-process Tauri backend manager.</li>
-    <li>Risk: this may overbuild the import onboarding fix if Hyperwiki does not need multiple clients or a shared engine boundary soon.</li>
+    <li>Risk: this may overbuild the import onboarding fix if hyperwiki does not need multiple clients or a shared engine boundary soon.</li>
     <li>Mitigation: scope the first slice to import onboarding only, with a narrow API and no broad engine rewrite.</li>
   </ul>
 </section>

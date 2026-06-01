@@ -1,11 +1,19 @@
 ---
 title: "Project Log"
-description: "Hyperwiki page page."
+description: "hyperwiki page page."
 wikiKind: "page"
 ---
 
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
+<article>
+  <h2>2026-06-01 implementation | lowercase product language</h2>
+  <ul>
+    <li>Made lowercase <code>hyperwiki</code> the canonical product spelling across app copy, Tauri metadata, generated scaffolds, bundled skill guidance, README, and wiki history.</li>
+    <li>Preserved technical identifiers and compatibility strings such as PascalCase API types, <code>HYPERWIKI_HOME</code>, managed comment markers, package names, command names, and <code>.hyperwiki</code> paths.</li>
+    <li>Verified with standalone mixed-case prose audits, <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run tauri:build</code>. The verified macOS bundle path is now <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
+  </ul>
+</article>
 <article>
   <h2>2026-06-01 workflow | frontend rewrite merged locally</h2>
   <ul>
@@ -188,7 +196,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-31 implementation | import planning Codex prewarm</h2>
   <ul>
-    <li>Added non-generative Codex prewarm for import onboarding: Hyperwiki now starts and initializes <code>codex app-server</code> during app setup and warms imported-project threads after project creation or resume.</li>
+    <li>Added non-generative Codex prewarm for import onboarding: hyperwiki now starts and initializes <code>codex app-server</code> during app setup and warms imported-project threads after project creation or resume.</li>
     <li>Added <code>/api/import-onboarding/prewarm</code> and a shorter warm-turn no-first-event fallback before switching to <code>codex exec --json</code>.</li>
     <li>Reduced duplicate planning activity lines by changing React's local placeholder copy to preparation language and normalizing consecutive workstream duplicates.</li>
   </ul>
@@ -212,15 +220,15 @@ wikiKind: "page"
 <article>
   <h2>2026-05-30 implementation | rich planning MDX composition</h2>
   <ul>
-    <li>Added Holocron-inspired planning structures <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to Hyperwiki's local MDX plan renderer and Rust wiki document pipeline.</li>
-    <li>Updated plan-generation prompts and Hyperwiki skill guidance to choose a composition pattern before writing plans and to use richer components for alternatives, work tracks, contracts, and secondary context.</li>
+    <li>Added Holocron-inspired planning structures <code>CardGroup</code>, <code>Columns</code>, <code>Column</code>, <code>Aside</code>, <code>RequestExample</code>, and <code>ResponseExample</code> to hyperwiki's local MDX plan renderer and Rust wiki document pipeline.</li>
+    <li>Updated plan-generation prompts and hyperwiki skill guidance to choose a composition pattern before writing plans and to use richer components for alternatives, work tracks, contracts, and secondary context.</li>
     <li>Validation: <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-30 implementation | wiki document pipeline</h2>
   <ul>
-    <li>Introduced a parsed Rust <code>WikiDocument</code> pipeline for Hyperwiki's trusted local MDX dialect, producing frontmatter, AST-style body nodes, headings, wiki links, component references, Markdown derivatives, and validation warnings from one document pass.</li>
+    <li>Introduced a parsed Rust <code>WikiDocument</code> pipeline for hyperwiki's trusted local MDX dialect, producing frontmatter, AST-style body nodes, headings, wiki links, component references, Markdown derivatives, and validation warnings from one document pass.</li>
     <li>Changed wiki source, page index, page Markdown, <code>llms.txt</code>, Markdown zip, and generated skill exports to consume the shared document pipeline instead of separate heading/link/Markdown scans.</li>
     <li>Extended wiki page/source payloads with <code>componentRefs</code> so future search, validation, and component documentation can reason about MDX component usage.</li>
     <li>Verified with <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
@@ -249,14 +257,14 @@ wikiKind: "page"
   <ul>
     <li>Reworked MDX plan rendering from oversized stacked cards into a more compact working-brief layout with a metadata grid, left-ruled sections, tighter typography, and restrained evidence, decision, and verification panels.</li>
     <li>Changed generated import unit templates so routine sections such as Scope, Implementation Notes, and Completion Gate stay as semantic sections instead of every heading becoming a full <code>PlanUnit</code> card.</li>
-    <li>Updated plan creation prompts, import repair prompts, and bundled Hyperwiki skill references to explain when to use MDX plan components and when to leave ordinary content as semantic sections.</li>
+    <li>Updated plan creation prompts, import repair prompts, and bundled hyperwiki skill references to explain when to use MDX plan components and when to leave ordinary content as semantic sections.</li>
     <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml mdx_markdown</code>, <code>pnpm run build:frontend</code>, and an <code>agent-browser</code> visual preview.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-30 implementation | plan generation component guidance</h2>
   <ul>
-    <li>Updated regular plan creation prompts, import artifact repair prompts, and bundled Hyperwiki skill references to advertise the built-in MDX plan component vocabulary.</li>
+    <li>Updated regular plan creation prompts, import artifact repair prompts, and bundled hyperwiki skill references to advertise the built-in MDX plan component vocabulary.</li>
     <li>Changed the deterministic import MVP compiler to emit <code>PlanHero</code>, <code>PlanSummary</code>, <code>PlanUnit</code>, <code>Evidence</code>, <code>Decision</code>, <code>Verification</code>, <code>Steps</code>, and <code>Visibility for="agents"</code> directly.</li>
     <li>Moved long imported source and Q&amp;A summaries out of visible paragraphs and into agent-only visibility blocks so generated plans stay readable in the app while preserving context in Markdown derivatives.</li>
     <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_onboarding_runtime</code>, and <code>pnpm run build:frontend</code>.</li>
@@ -265,7 +273,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-30 implementation | shadcn MDX plan components</h2>
   <ul>
-    <li>Added Hyperwiki-owned MDX plan components inspired by Holocron's component vocabulary without adding Holocron runtime dependencies.</li>
+    <li>Added hyperwiki-owned MDX plan components inspired by Holocron's component vocabulary without adding Holocron runtime dependencies.</li>
     <li>Installed focused shadcn/ui primitives for cards, badges, alerts, tabs, accordions, separators, tooltips, scroll areas, and collapsibles.</li>
     <li>Extended the trusted React MDX renderer with plan wrappers for decisions, evidence, verification, callouts, panels, frames, steps, prompts, updates, task lists, fields, trees, code blocks, tabs, accordions, badges, and human or agent visibility.</li>
     <li>Extended Rust Markdown derivatives so visual wrappers do not leak into agent context, field/step context remains useful, and <code>Visibility for="humans"</code> is excluded from agent-facing Markdown while <code>Visibility for="agents"</code> is preserved.</li>
@@ -570,7 +578,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-26 implementation | initial stack Q&amp;A gate</h2>
   <ul>
-    <li>Kept <code>$grill-with-docs</code> engaged for imported-project and plan-creation interviews while making technical-stack completeness explicit in Hyperwiki's own prompts.</li>
+    <li>Kept <code>$grill-with-docs</code> engaged for imported-project and plan-creation interviews while making technical-stack completeness explicit in hyperwiki's own prompts.</li>
     <li>Extended deterministic import planning with required frontend, backend/runtime, persistence, auth, services, provider, and local command questions.</li>
     <li>Updated generated technical-foundation units so stack decisions carry into implementation and verification instructions.</li>
     <li>Verified with <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml import_planning</code>, and <code>pnpm run smoke:tauri-static-assets</code>.</li>
@@ -580,7 +588,7 @@ wikiKind: "page"
   <h2>2026-05-26 maintenance | plans index reframe</h2>
   <ul>
     <li>Renamed the user-facing <code>/wiki/plans/index.mdx</code> surface to Plans while preserving the canonical route for project contracts, MCP current-plan context, imports, generated scaffolds, review prompts, and terminal scoping.</li>
-    <li>Updated generated project/import templates, Hyperwiki skill references, active plan docs, and import-planning smoke expectations to use Plans index language.</li>
+    <li>Updated generated project/import templates, hyperwiki skill references, active plan docs, and import-planning smoke expectations to use Plans index language.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code>; the WebDriver smoke skipped on macOS WKWebView.</li>
   </ul>
 </article>
@@ -674,7 +682,7 @@ wikiKind: "page"
   <h2>2026-05-25 polish | New Project upload-first form restored</h2>
   <ul>
     <li>Restored the New Project route to the upload-first form: page title, import drop zone, OR divider, Project Name field, Brief textarea, Git initialization checkbox, and full-width agent planning action.</li>
-    <li>For an empty project registry, the upload-first form now says <code>Welcome to HyperWiki</code> with first-project source import guidance; returning users keep the <code>New Project</code> heading.</li>
+    <li>For an empty project registry, the upload-first form now says <code>Welcome to hyperwiki</code> with first-project source import guidance; returning users keep the <code>New Project</code> heading.</li>
     <li>Refined the manual brief path so the action reads <code>Start Agent Planning</code>, stays disabled until Project Name and Brief are filled, uses a shorter Brief textarea, and tightens heading/subhead spacing.</li>
     <li>Kept the newer post-import behavior intact, including pending import route markers, incomplete-import recovery, project creation handoff, and automatic planning Q&amp;A startup.</li>
   </ul>
@@ -724,7 +732,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-24 implementation | MDX-first planning reset</h2>
   <ul>
-    <li>Changed Hyperwiki's canonical wiki artifact format from app-rendered HTML pages to app-rendered MDX pages under <code>wiki/**/*.mdx</code>, while preserving Markdown-only agent convention files such as root <code>AGENTS.md</code>.</li>
+    <li>Changed hyperwiki's canonical wiki artifact format from app-rendered HTML pages to app-rendered MDX pages under <code>wiki/**/*.mdx</code>, while preserving Markdown-only agent convention files such as root <code>AGENTS.md</code>.</li>
     <li>Replaced the bundled <code>project-html-wiki</code> skill with a vendored <code>hyperwiki</code> MDX-first planning skill specialized for lowercase <code>wiki/sources.mdx</code>, visible <code>wiki/AGENTS.mdx</code>, and the plan/stage/unit contract.</li>
     <li>Changed the workspace <code>+ plan</code> action into a full-page planning flow that hands the agent a <code>$hyperwiki</code> and <code>$grill-with-docs</code> interview prompt, then writes MDX plan docs with verification on every executable unit.</li>
     <li>Converted the repo wiki from <code>.html</code> pages to <code>.mdx</code> pages for the test-mode reset.</li>
@@ -734,7 +742,7 @@ wikiKind: "page"
   <h2>2026-05-24 implementation | automatic agent skills on init</h2>
   <ul>
     <li>Completed <a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a>.</li>
-    <li>New Hyperwiki project initialization now installs a vendored offline skill bundle by default: <code>hyperwiki</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>.</li>
+    <li>New hyperwiki project initialization now installs a vendored offline skill bundle by default: <code>hyperwiki</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>.</li>
     <li>Follow-up: added <code>grill-with-docs</code> and <code>make-interfaces-feel-better</code> to the vendored default bundle.</li>
     <li>Added <code>hyperwiki init --no-skills</code> for minimal scaffolds and kept dashboard-created projects on the default skill bundle.</li>
     <li>Verified with <code>pnpm run check:all</code> and temp-dir CLI smoke checks for default init and <code>--no-skills</code>.</li>
@@ -778,7 +786,7 @@ wikiKind: "page"
   <h2>2026-05-22 fix | post-import planning questions</h2>
   <ul>
     <li>Added a Rust import-planning surface with source-aware clarify and create-plan endpoints for imported projects.</li>
-    <li>Changed the React New Project flow so import creates the project first, then Hyperwiki asks the missing implementation-planning questions in-app before writing stages or units.</li>
+    <li>Changed the React New Project flow so import creates the project first, then hyperwiki asks the missing implementation-planning questions in-app before writing stages or units.</li>
     <li>Kept generated imported projects in planning intake until required answers are captured, then creates a source-grounded MVP plan with stage pages, unit pages, verification, and completion gates.</li>
     <li>Adjusted the legacy static import flow to stop running the old generic pre-import MVP wizard.</li>
     <li>Verified with <code>pnpm run check</code> and <code>pnpm run test:tauri</code>.</li>
@@ -827,7 +835,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-22 fix | restore original React shell chrome</h2>
   <ul>
-    <li>Corrected the React shell back toward the original Hyperwiki chrome: compact topbar with brand plus Projects and Settings, plan-focused sidebar, original wiki command bar actions, and right-side Modify Page workflow.</li>
+    <li>Corrected the React shell back toward the original hyperwiki chrome: compact topbar with brand plus Projects and Settings, plan-focused sidebar, original wiki command bar actions, and right-side Modify Page workflow.</li>
     <li>Removed the terminal-first visible pane and extra command-bar affordances from the default wiki view; terminal implementation remains available for later restoration behind the original controls.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
   </ul>
@@ -835,7 +843,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-22 fix | react shell design and wiki loading</h2>
   <ul>
-    <li>Restored the animated nine-dot Hyperwiki mark in the React topbar and tightened the rewrite shell chrome with subtle grid texture, pane depth, and active navigation treatment.</li>
+    <li>Restored the animated nine-dot hyperwiki mark in the React topbar and tightened the rewrite shell chrome with subtle grid texture, pane depth, and active navigation treatment.</li>
     <li>Fixed project-scoped wiki page loading so React requests project wiki pages through the existing <code>/projects/:id/wiki/...</code> route instead of appending query parameters to wiki file paths.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, and <code>pnpm run check:tauri</code>.</li>
   </ul>
@@ -889,7 +897,7 @@ wikiKind: "page"
   <h2>2026-05-22 planning | react-shadcn-mdx-rewrite</h2>
   <ul>
     <li>Added the active <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> plan for the full frontend rewrite, not only plan-page rendering.</li>
-    <li>Planning direction: Hyperwiki should use a dedicated rewrite worktree, keep Tauri/Rust as runtime owner, move the app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui, and make new plan pages trusted local MDX with Markdown-first derivatives for LLM/project-contract use.</li>
+    <li>Planning direction: hyperwiki should use a dedicated rewrite worktree, keep Tauri/Rust as runtime owner, move the app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui, and make new plan pages trusted local MDX with Markdown-first derivatives for LLM/project-contract use.</li>
     <li>Skill readiness is part of Stage 00: future implementation should install or verify <code>shadcn</code> and <code>tailwind-design-system</code> skills for local Codex and Claude agents before frontend work starts.</li>
   </ul>
 </article>
@@ -904,7 +912,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 planning | theme-aware generated plans</h2>
   <ul>
-    <li>Added the active <a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> plan for keeping newly generated rich HTML plan layouts aligned with Hyperwiki Settings themes.</li>
+    <li>Added the active <a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> plan for keeping newly generated rich HTML plan layouts aligned with hyperwiki Settings themes.</li>
     <li>Planning direction: new generated plans should keep page-specific visual structure but express semantic colors and fonts through shared wiki theme variables, leaving existing plans unchanged.</li>
   </ul>
 </article>
@@ -912,7 +920,7 @@ wikiKind: "page"
   <h2>2026-05-21 planning | project plan creation</h2>
   <ul>
     <li>Added the active <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> plan for creating durable wiki plans inside a selected project root.</li>
-    <li>Planning direction: project plan creation should write to the selected project's <code>wiki/</code> files, preserve Hyperwiki scaffold conventions, show scoped path and conflict checks, and navigate to the new plan for review before implementation.</li>
+    <li>Planning direction: project plan creation should write to the selected project's <code>wiki/</code> files, preserve hyperwiki scaffold conventions, show scoped path and conflict checks, and navigate to the new plan for review before implementation.</li>
     <li>Next unit: implement the project-scoped create-plan API contract.</li>
   </ul>
 </article>
@@ -1006,7 +1014,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 implementation | legacy Node runtime removal</h2>
   <ul>
-    <li>Decision: Hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>
+    <li>Decision: hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>
     <li>Added the active <a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> plan and updated current source truth to treat <code>pnpm dev</code> as Tauri desktop startup.</li>
     <li>Preserved <code>package.json</code> as developer tooling for <code>pnpm</code>, Tauri, frontend syntax checks, static asset smoke tests, and Rust-backed worktree command shortcuts.</li>
   </ul>
@@ -1014,7 +1022,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 validation | Tauri rewrite release dogfood complete</h2>
   <ul>
-    <li>Completed Stage 06 Unit 04 by using the packaged <code>Hyperwiki.app</code> to render project-scoped wiki pages, create a real worktree, start a dev preview terminal, hand off to an agent terminal, and update the active plan/log.</li>
+    <li>Completed Stage 06 Unit 04 by using the packaged <code>hyperwiki.app</code> to render project-scoped wiki pages, create a real worktree, start a dev preview terminal, hand off to an agent terminal, and update the active plan/log.</li>
     <li>Dogfood found and fixed two release-path defects: worktree creation used stale <code>origin/main</code> instead of local committed <code>main</code>, and packaged project-scoped wiki iframe reads did not resolve <code>/projects/:id/wiki/...</code> paths outside the repo CWD.</li>
     <li>Verified the fresh dogfood worktree was based on current local <code>main</code> and contained <code>wiki/plans/tauri-rewrite.mdx</code>; the runtime preview URL returned HTTP 200 through Portless.</li>
     <li>Cleaned up the temporary dogfood branch/worktree and spawned app/dev/agent processes. The complete Tauri rewrite plan is now marked complete; signed DMG/notarization remains deferred release packaging work.</li>
@@ -1023,7 +1031,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 validation | packaged app desktop dogfood</h2>
   <ul>
-    <li>Opened the packaged <code>Hyperwiki.app</code> and found a real desktop packaging bug: the Tauri window did not have the legacy Node server's <code>/assets</code> route and iframe wiki URLs fell back to the app shell.</li>
+    <li>Opened the packaged <code>hyperwiki.app</code> and found a real desktop packaging bug: the Tauri window did not have the legacy Node server's <code>/assets</code> route and iframe wiki URLs fell back to the app shell.</li>
     <li>Added static <code>public/assets</code> copies for the Tauri bundle and changed desktop wiki rendering to fetch wiki HTML through the Tauri command transport before rendering it into the iframe.</li>
     <li>Added Rust coverage for direct wiki page HTML reads used by desktop iframes.</li>
     <li>Rebuilt the app and verified styled wiki rendering, Tauri command-backed wiki navigation, and a packaged-app CLI terminal command.</li>
@@ -1033,7 +1041,7 @@ wikiKind: "page"
   <h2>2026-05-21 validation | Tauri release binary dogfood</h2>
   <ul>
     <li>Verified the built release binary can initialize a temporary project, run <code>reset --dry-run</code>, and answer a framed stdio MCP <code>initialize</code> request.</li>
-    <li>Verified the packaged macOS app binary at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app/Contents/MacOS/hyperwiki</code> launches and stays alive for a 5-second smoke window.</li>
+    <li>Verified the packaged macOS app binary at <code>src-tauri/target/release/bundle/macos/hyperwiki.app/Contents/MacOS/hyperwiki</code> launches and stays alive for a 5-second smoke window.</li>
     <li>Updated durable docs that still described the old localhost server as the main product architecture. Stage 06 Unit 04 remains active for an interactive packaged-app workflow pass.</li>
   </ul>
 </article>
@@ -1042,14 +1050,14 @@ wikiKind: "page"
   <ul>
     <li>Vendored xterm browser assets under <code>public/vendor/@xterm/</code> so the Tauri bundle no longer depends on the legacy Node server's dynamic <code>/vendor</code> route.</li>
     <li>Moved runtime-only Node packages out of production dependencies; remaining Node usage is development/reference tooling while the shipping desktop path is Rust/Tauri.</li>
-    <li>Updated README and <code>wiki/dev.mdx</code> to describe Tauri as the canonical app runtime, document <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>, and record DMG generation as deferred release packaging work.</li>
+    <li>Updated README and <code>wiki/dev.mdx</code> to describe Tauri as the canonical app runtime, document <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>, and record DMG generation as deferred release packaging work.</li>
     <li>Verified with <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:all</code>, and <code>pnpm run tauri:build</code>.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-21 implementation | Tauri generated project instruction parity</h2>
   <ul>
-    <li>Updated the Rust project scaffold so generated projects preserve Hyperwiki's lowercase <code>wiki/sources.mdx</code> convention and app-visible <code>wiki/AGENTS.mdx</code> guidance.</li>
+    <li>Updated the Rust project scaffold so generated projects preserve hyperwiki's lowercase <code>wiki/sources.mdx</code> convention and app-visible <code>wiki/AGENTS.mdx</code> guidance.</li>
     <li>Added Rust-generated AGENTS guardrails against duplicate <code>wiki/Sources.mdx</code> files and explicit Portless-backed <code>dev</code> script guidance for previewable apps.</li>
     <li>Expanded generated plan scaffolds with Stage 02 and Stage 03 unit pages and kept package-script command references visible in <code>wiki/dev.mdx</code>.</li>
     <li>Verified with targeted Rust scaffold coverage. Stage 06 Unit 02 remains open for final packaging docs before Node runtime removal.</li>
@@ -1059,8 +1067,8 @@ wikiKind: "page"
   <h2>2026-05-21 implementation | Tauri init and reset CLI parity</h2>
   <ul>
     <li>Replaced the temporary Rust <code>init</code>/<code>reset</code> migration message with working compatibility CLI commands.</li>
-    <li>Rust <code>init</code> now scaffolds the HTML-first wiki and config from package metadata, writes dev and agent panel configuration, supports <code>--no-git</code> and <code>--overwrite</code>, and creates the initial Hyperwiki commit with <code>init --yes</code>.</li>
-    <li>Rust <code>reset</code> now removes the user project registry and clears ignored runtime state/session directories for available Hyperwiki projects while preserving repo wiki and config files.</li>
+    <li>Rust <code>init</code> now scaffolds the HTML-first wiki and config from package metadata, writes dev and agent panel configuration, supports <code>--no-git</code> and <code>--overwrite</code>, and creates the initial hyperwiki commit with <code>init --yes</code>.</li>
+    <li>Rust <code>reset</code> now removes the user project registry and clears ignored runtime state/session directories for available hyperwiki projects while preserving repo wiki and config files.</li>
     <li>Verified with targeted Rust tests plus manual <code>cargo run --manifest-path src-tauri/Cargo.toml -- init/reset</code> checks. Stage 06 Unit 02 remains open for generated-project instruction reconciliation and final packaging docs.</li>
   </ul>
 </article>
@@ -1076,7 +1084,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-20 planning | complete Tauri rewrite</h2>
   <ul>
-    <li>Decision: plan Hyperwiki's desktop direction as a complete Tauri rewrite rather than an Electron app or Tauri shell around the existing Node server.</li>
+    <li>Decision: plan hyperwiki's desktop direction as a complete Tauri rewrite rather than an Electron app or Tauri shell around the existing Node server.</li>
     <li>Planning constraints: feature compatibility is the release target, existing project/wiki data compatibility is required, and the rewrite branch may go dark until parity is rebuilt.</li>
     <li>Added the active <a href="/wiki/plans/tauri-rewrite.mdx">Complete Tauri Rewrite</a> plan with staged units for Tauri foundation, data compatibility, PTY/process runtime, verification/review/MCP, desktop packaging, and Node runtime removal.</li>
   </ul>
@@ -1144,7 +1152,7 @@ wikiKind: "page"
   <h2>2026-05-20 implementation | Tauri Git context and onboarding</h2>
   <ul>
     <li>Ported Git context into Rust with command-backed repo root detection, branch detection, dirty status lines, worktree display slug detection, and non-Git fallback behavior.</li>
-    <li>Added Rust Git onboarding with <code>git init</code>, <code>git add -A</code>, the initial <code>Initialize Hyperwiki project</code> commit, and fallback local author config.</li>
+    <li>Added Rust Git onboarding with <code>git init</code>, <code>git add -A</code>, the initial <code>Initialize hyperwiki project</code> commit, and fallback local author config.</li>
     <li>Added Tauri command transport handling for <code>/api/repo</code> and <code>/api/git/init</code>.</li>
     <li>Verified with <code>pnpm run check:all</code>, including Rust tests for non-Git, dirty Git, worktree marker, initialization, baseline commit, and command routing behavior.</li>
   </ul>
@@ -1251,7 +1259,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-20 implementation | Tauri desktop app actions</h2>
   <ul>
-    <li>Updated Tauri product/window title metadata to <code>Hyperwiki</code> and added Rust app-shell metadata for local-only desktop actions.</li>
+    <li>Updated Tauri product/window title metadata to <code>hyperwiki</code> and added Rust app-shell metadata for local-only desktop actions.</li>
     <li>Added Rust-backed external URL validation/open action, project folder reveal action, and <code>/api/terminal/drop</code> file-save parity into ignored <code>.hyperwiki/state/drops/</code>.</li>
     <li>Marked Stage 05 Unit 01 complete and advanced the active migration unit to Stage 05 Unit 02 - Compatibility CLI.</li>
     <li>Verified with <code>pnpm run check:all</code>, including Rust tests for desktop action metadata, safe dropped-file names, base64 file saving, endpoint routing, and non-URL external-open rejection.</li>
@@ -1270,7 +1278,7 @@ wikiKind: "page"
   <h2>2026-05-20 implementation | Tauri packaging</h2>
   <ul>
     <li>Updated Tauri package metadata to use identifier <code>dev.hyperwiki.desktop</code> and scoped verified bundle output to the macOS <code>.app</code> target.</li>
-    <li>Verified release packaging with <code>pnpm run tauri:build</code>, producing <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+    <li>Verified release packaging with <code>pnpm run tauri:build</code>, producing <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
     <li>Recorded that the initial all-target build produced the release binary and <code>.app</code> but failed during DMG script execution, so DMG distribution remains deferred until a focused packaging pass.</li>
     <li>Marked Stage 05 Unit 03 complete and advanced the active migration unit to Stage 05 Unit 04 - Frontend Styling Decision; <code>pnpm run check:all</code> also passed.</li>
   </ul>
@@ -1281,7 +1289,7 @@ wikiKind: "page"
     <li>Decided to keep the current CSS and vanilla frontend through Tauri parity closeout instead of adding Tailwind or shadcn during the rewrite.</li>
     <li>The Rust command contract, desktop terminal runtime, dev previews, worktrees, verification, review, MCP, app actions, CLI, and packaging units did not need a styling framework migration to reach their parity gates.</li>
     <li>Marked Stage 05 Unit 04 and Stage 05 complete, then advanced the active migration unit to Stage 06 Unit 01 - Full Parity Audit.</li>
-    <li>Verification remains the latest <code>pnpm run check:all</code> plus the packaged <code>Hyperwiki.app</code> build from the previous unit; no frontend code changes were required for this decision.</li>
+    <li>Verification remains the latest <code>pnpm run check:all</code> plus the packaged <code>hyperwiki.app</code> build from the previous unit; no frontend code changes were required for this decision.</li>
   </ul>
 </article>
 <article>
@@ -1341,7 +1349,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-19 implementation | git onboarding</h2>
   <ul>
-    <li>Added Git initialization and initial Hyperwiki commit support to CLI init, in-app project creation, and a project-scoped recovery endpoint.</li>
+    <li>Added Git initialization and initial hyperwiki commit support to CLI init, in-app project creation, and a project-scoped recovery endpoint.</li>
     <li>Changed New Project to default to initializing Git, and changed Execute to warn and offer Git initialization when older projects lack Git.</li>
     <li>Added smoke coverage for CLI Git initialization, created-project baseline commits, New Project Git UI, and Execute recovery prompting.</li>
     <li>Verified with <code>pnpm run check</code>, init, project links, app preview, project removal, launch, and browser smoke coverage.</li>
@@ -1430,7 +1438,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-16 implementation | Scaffold contract skill reconciliation</h2>
   <ul>
-    <li>Documented Hyperwiki's scaffold contract as product intent: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
+    <li>Documented hyperwiki's scaffold contract as product intent: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
     <li>Updated <code>src/init.js</code> so newly initialized projects generate scaffold-contract guidance in root agent instructions, wiki source context, and technical brief output.</li>
     <li>Updated import and page-revision handoff prompts in <code>public/app.js</code> so agents can use the installed <code>hyperwiki</code> workflow without creating duplicate scaffold conventions.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:init</code>, and agent-browser review of the new scaffold contract page and updated Sources page.</li>
@@ -1439,8 +1447,8 @@ wikiKind: "page"
 <article>
   <h2>2026-05-15 planning | Scaffold contract skill reconciliation</h2>
   <ul>
-    <li>Added an active compact feature plan to reconcile Hyperwiki's productized HTML wiki scaffold with the installed <code>hyperwiki</code> skill.</li>
-    <li>The plan keeps Hyperwiki's known divergences explicit before implementation: lowercase <code>wiki/sources.mdx</code>, generated <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
+    <li>Added an active compact feature plan to reconcile hyperwiki's productized HTML wiki scaffold with the installed <code>hyperwiki</code> skill.</li>
+    <li>The plan keeps hyperwiki's known divergences explicit before implementation: lowercase <code>wiki/sources.mdx</code>, generated <code>wiki/AGENTS.mdx</code>, app-served <code>/assets/wiki.css</code>, and Localhost Tooling runtime boundaries.</li>
     <li>Next action: audit <code>src/init.js</code>, import handoff prompts in <code>public/app.js</code>, and wiki guidance before making generator or prompt changes.</li>
   </ul>
 </article>

@@ -1183,7 +1183,7 @@ fn send_agent_prompt(
         &format!("Project: {}", project.name),
         &format!("Repo root: {}", project.root.display()),
         &format!("Current wiki page: {current_page}"),
-        "If AGENTS.md contains a HyperWiki Global Context managed block, treat it as active Soul and Memory guidance.",
+        "If AGENTS.md contains a hyperwiki Global Context managed block, treat it as active Soul and Memory guidance.",
         "Keep durable project knowledge in wiki/ MDX pages and Git-visible files. If you edit files, run relevant checks before finishing.",
         "When creating a new plan page, do not append \"Plan\" to the page title; the plans sidebar already supplies that context.",
         "",
@@ -1313,7 +1313,7 @@ mod tests {
 
         std::env::set_current_dir(previous_dir).unwrap();
         assert!(summary.ok);
-        assert!(summary.text.contains("\"windowTitle\":\"Hyperwiki\""));
+        assert!(summary.text.contains("\"windowTitle\":\"hyperwiki\""));
         assert!(dropped.ok);
         assert!(dropped.text.contains(".hyperwiki"));
         assert!(!rejected_open.ok);
@@ -1745,7 +1745,7 @@ mod tests {
             None => std::env::remove_var("HYPERWIKI_HOME"),
         }
         assert!(response.ok, "{}", response.text);
-        assert!(response.text.contains("# Hyperwiki Project Wiki"));
+        assert!(response.text.contains("# hyperwiki Project Wiki"));
         assert!(response.text.contains("- [Home](/wiki/index.mdx)"));
     }
 

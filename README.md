@@ -23,7 +23,7 @@ pnpm run tauri:build
 The verified macOS bundle target is:
 
 ```text
-src-tauri/target/release/bundle/macos/Hyperwiki.app
+src-tauri/target/release/bundle/macos/hyperwiki.app
 ```
 
 Launch the compatibility CLI from a built binary:
@@ -47,7 +47,7 @@ For local development in this repo, start the Tauri desktop app:
 pnpm dev
 ```
 
-`pnpm dev` runs `tauri dev`. Portless remains useful for previewing user projects from inside Hyperwiki, but Hyperwiki itself no longer has a browser-server development runtime.
+`pnpm dev` runs `tauri dev`. Portless remains useful for previewing user projects from inside hyperwiki, but hyperwiki itself no longer has a browser-server development runtime.
 
 ## Commands
 
@@ -72,7 +72,7 @@ skills-lock.json
 .hyperwiki/sessions/
 ```
 
-Repo-local agent skills are installed by default from Hyperwiki's vendored bundle. Use `hyperwiki init --no-skills` to create a minimal wiki/config scaffold without `.agents/skills/` or `skills-lock.json`.
+Repo-local agent skills are installed by default from hyperwiki's vendored bundle. Use `hyperwiki init --no-skills` to create a minimal wiki/config scaffold without `.agents/skills/` or `skills-lock.json`.
 
 The `wiki/` files are canonical repo-visible HTML. Runtime state under `.hyperwiki/state/` and `.hyperwiki/sessions/` should stay ignored unless intentionally exported.
 Known local projects are tracked outside repos in `~/.hyperwiki/projects.json` so the workspace can switch between initialized projects without modifying their manifests.

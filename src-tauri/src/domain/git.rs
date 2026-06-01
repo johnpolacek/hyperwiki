@@ -4,8 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const BASELINE_COMMIT_MESSAGE: &str = "Initialize Hyperwiki project";
-const FALLBACK_AUTHOR_NAME: &str = "Hyperwiki";
+const BASELINE_COMMIT_MESSAGE: &str = "Initialize hyperwiki project";
+const FALLBACK_AUTHOR_NAME: &str = "hyperwiki";
 const FALLBACK_AUTHOR_EMAIL: &str = "hyperwiki@localhost";
 
 pub fn surface() -> DomainSurface {
@@ -528,7 +528,7 @@ mod tests {
             &root,
             &[
                 "-c",
-                "user.name=Hyperwiki Test",
+                "user.name=hyperwiki Test",
                 "-c",
                 "user.email=hyperwiki-test@localhost",
                 "commit",
@@ -542,7 +542,7 @@ mod tests {
             &root,
             &[
                 "-c",
-                "user.name=Hyperwiki Test",
+                "user.name=hyperwiki Test",
                 "-c",
                 "user.email=hyperwiki-test@localhost",
                 "commit",

@@ -1,6 +1,6 @@
 ---
 title: "Import Onboarding Engine-First Runtime"
-description: "Evaluate a Hyperwiki-owned local run engine inspired by opencode and Tandem for import onboarding and future agent workflows."
+description: "Evaluate a hyperwiki-owned local run engine inspired by opencode and Tandem for import onboarding and future agent workflows."
 wikiKind: "plan"
 ---
 
@@ -11,13 +11,13 @@ wikiKind: "plan"
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
     <li>Candidate: 4 - Engine-first local runtime inspired by opencode and Tandem</li>
-    <li>Goal: make imported-project Q&amp;A the first consumer of a durable Hyperwiki run engine with sessions, events, provider adapters, and human-input resumes.</li>
+    <li>Goal: make imported-project Q&amp;A the first consumer of a durable hyperwiki run engine with sessions, events, provider adapters, and human-input resumes.</li>
     <li>Next action: compare this heavier candidate against the narrower backend state machine, sidecar, direct Codex attachment, and harness-runtime options before implementation selection.</li>
   </ul>
 </section>
 <section>
   <h2>Intent</h2>
-  <p>Build a Hyperwiki-owned local runtime that treats agent work as durable runs instead of UI actions or one-off CLI invocations. Imported-project onboarding becomes a first-class run type with a lifecycle, event stream, answer checkpoints, cancellation, diagnostics, and artifact validation.</p>
+  <p>Build a hyperwiki-owned local runtime that treats agent work as durable runs instead of UI actions or one-off CLI invocations. Imported-project onboarding becomes a first-class run type with a lifecycle, event stream, answer checkpoints, cancellation, diagnostics, and artifact validation.</p>
   <p>This candidate draws from opencode's model of a multi-provider tool-call loop with streaming events and from Tandem's engine-first run lifecycle, stream hub, sidecar management, and question or permission endpoints. It is intentionally broader than a single import-onboarding fix, so the selection bar should be higher.</p>
 </section>
 <section>
@@ -86,7 +86,7 @@ wikiKind: "plan"
   <ul>
     <li>Benefits: strongest long-term architecture, durable run inspection, clean human-input pause and resume, multi-provider flexibility, reusable event stream, and better foundation for future agent workflows.</li>
     <li>Costs: largest implementation surface, more schema and migration pressure, more runtime testing, provider abstraction risk, and slower path to fixing the immediate import-onboarding stall.</li>
-    <li>Risk: building a generic engine too early could delay the UX fix and create abstractions before Hyperwiki has enough proven workflow variety.</li>
+    <li>Risk: building a generic engine too early could delay the UX fix and create abstractions before hyperwiki has enough proven workflow variety.</li>
     <li>Mitigation: implement only the import-onboarding run type first, keep provider abstraction thin, and require latency measurements before broadening the engine to other workflows.</li>
   </ul>
 </section>

@@ -9,7 +9,7 @@ Every substantial MDX artifact must pass a structure and readability bar before 
 - Start with minimal frontmatter: `title`, `description`, and `wikiKind`.
 - Keep the first screen CLI-readable with a title, reader goal, status, next action, blockers, and key links when applicable.
 - Use Markdown for ordinary prose and lists, and use semantic HTML/JSX only when it materially improves structure.
-- Use Hyperwiki planning components on plan pages when they improve structure. For non-plan pages, prefer renderer-agnostic Markdown and semantic HTML/JSX unless the target project exposes a component registry.
+- Use hyperwiki planning components on plan pages when they improve structure. For non-plan pages, prefer renderer-agnostic Markdown and semantic HTML/JSX unless the target project exposes a component registry.
 - Do not rely on page-local CSS, inline scripts, remote assets, or framework-specific MDX features by default.
 - Use renderer-native styling. The skill owns content structure, not theme implementation.
 - Include at least one artifact-specific structure when the content supports it: evidence matrix, execution track, status table, decision panel, workflow diagram, annotated snippet, or roadmap rail.
@@ -17,7 +17,7 @@ Every substantial MDX artifact must pass a structure and readability bar before 
 
 If a generated page reads like a prose dump, revise it into clearer sections, tables, diagrams, or decision panels.
 
-## Hyperwiki Plan Components
+## hyperwiki Plan Components
 
 Plan MDX can use these built-in components without imports:
 
@@ -239,7 +239,7 @@ Before handoff:
 - internal links use `.mdx` paths
 - tables fit raw-file reading and rendered reading
 - inline SVG, if present, is small and renderer-agnostic
-- no custom component imports outside the Hyperwiki planning component registry unless target repo support was confirmed
+- no custom component imports outside the hyperwiki planning component registry unless target repo support was confirmed
 - no inline scripts unless explicitly requested
 - no stale references to generated standard `.html` wiki paths
 - source-heavy claims have evidence or confidence labels

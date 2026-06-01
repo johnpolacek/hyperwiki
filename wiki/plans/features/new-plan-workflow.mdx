@@ -1,6 +1,6 @@
 ---
 title: "New Plan Workflow"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -23,9 +23,9 @@ wikiKind: "plan"
       <h2>User Flow</h2>
       <ol>
         <li>The user clicks <code>+ new plan</code> from the Plans index or plan sidebar header.</li>
-        <li>Hyperwiki opens a compact creation surface that asks for the plan title, short intent, and whether the work is a feature, fix, cleanup, or research spike.</li>
+        <li>hyperwiki opens a compact creation surface that asks for the plan title, short intent, and whether the work is a feature, fix, cleanup, or research spike.</li>
         <li>The app previews the generated slug, wiki path, first unit title, and the execution target that will become active after creation.</li>
-        <li>On create, Hyperwiki writes the plan page, updates <code>wiki/plans/index.mdx</code>, records the action in <code>wiki/log.mdx</code>, and navigates to the new plan.</li>
+        <li>On create, hyperwiki writes the plan page, updates <code>wiki/plans/index.mdx</code>, records the action in <code>wiki/log.mdx</code>, and navigates to the new plan.</li>
         <li>The new plan becomes the current plan for Execute, terminal scoping, Up Next, and worktree creation.</li>
       </ol>
     </section>
@@ -33,7 +33,7 @@ wikiKind: "plan"
       <h2>UI Requirements</h2>
       <ul>
         <li>Place <code>+ new plan</code> where planning work begins, not in the global Projects menu.</li>
-        <li>Use a restrained form or popover that matches the dense Hyperwiki workspace, with no marketing-style empty state or decorative cards.</li>
+        <li>Use a restrained form or popover that matches the dense hyperwiki workspace, with no marketing-style empty state or decorative cards.</li>
         <li>Show generated file path and slug before writing so the user can catch naming mistakes.</li>
         <li>After creation, keep the topbar unchanged and change only the wiki route, sidebar current state, command bar context, and terminal scope.</li>
         <li>Use overflow-safe labels in the sidebar and breadcrumb because generated plan titles can be long.</li>

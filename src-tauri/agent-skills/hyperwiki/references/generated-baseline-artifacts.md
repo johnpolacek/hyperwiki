@@ -93,7 +93,7 @@ This `wiki/` directory is the maintained MDX knowledge and planning layer for `[
 - Update `index.mdx` when adding or materially changing durable pages.
 - Update `log.mdx` after bootstrapping, planning, validation, or material project changes that affect durable project context.
 - Use renderer-agnostic MDX with Markdown, semantic HTML/JSX, tables, `<details>`, and inline SVG when structure improves readability.
-- Use Hyperwiki planning components for plan pages when available; avoid other custom imports unless the target repo explicitly supports them.
+- Use hyperwiki planning components for plan pages when available; avoid other custom imports unless the target repo explicitly supports them.
 
 ## Boundaries
 
@@ -121,7 +121,7 @@ All generated `wiki/*.mdx` and `wiki/**/*.mdx` pages should be renderer-agnostic
 - Use Markdown for ordinary content and semantic HTML/JSX only for richer structures.
 - Prefer summaries, tables, status matrices, execution tracks, decision panels, evidence matrices, `<details>`, and inline SVG diagrams over long prose.
 - Keep internal links relative and point to `.mdx` paths.
-- Use Hyperwiki planning components for plan pages when available: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+- Use hyperwiki planning components for plan pages when available: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 - Before writing a substantial plan, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.
 - Use `CardGroup` or `Columns` for alternatives, risks, dependencies, work tracks, and stage overviews when they make the plan easier to scan.
 - Use `RequestExample`, `ResponseExample`, `ParamField`, and `ResponseField` for API, MCP, command, event, or schema contracts.

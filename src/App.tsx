@@ -1438,7 +1438,7 @@ function App() {
       appendImportLog(`Planning answer submitted session=${first.question.sessionId || "none"} questions=${trimmedAnswers.length}`);
       return;
     } else if (first.question.sessionId) {
-      const response = `Hyperwiki planning answer: ${answerSummary}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
+      const response = `hyperwiki planning answer: ${answerSummary}\n\nContinue the source-grounded planning interview. Emit the next question as JSON with question, recommendedAnswer, reasoning, and options, or create the MVP plan if no blocking unknowns remain.`;
       await sendPasteSubmitInput(first.question.sessionId, response);
       appendImportLog(`Planning answer sent to terminal session=${first.question.sessionId} questions=${trimmedAnswers.length} chars=${response.length}`);
     }
@@ -1897,7 +1897,7 @@ function App() {
           };
         }
         if (status.snapshot.firstDeltaMs && status.snapshot.elapsedMs >= 60000) {
-          throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid Hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
+          throw new ImportPlanningProtocolError("schema_mismatch", "Codex returned text, but not a valid hyperwiki planning question within 60 seconds.", status.snapshot.textTail || plain.slice(-1200));
         }
       }
     }
@@ -2285,7 +2285,7 @@ function App() {
       if (project) return project;
       await delay(250);
     }
-    throw new Error("Project was created, but Hyperwiki could not find it in the registry.");
+    throw new Error("Project was created, but hyperwiki could not find it in the registry.");
   }
 
   async function removeProject(project: ProjectRecord, deleteFiles: boolean) {
@@ -2300,7 +2300,7 @@ function App() {
     const projectsResult = await hyperwikiApi.json<ProjectListResponse>("/api/projects");
     setProjects(projectsResult);
     setActiveProject(findActiveProject(projectsResult, unavailableProjectIds));
-    setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from Hyperwiki");
+    setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from hyperwiki");
   }
 
   async function downloadWikiMarkdownZip() {
@@ -2887,7 +2887,7 @@ function WikiErrorState({ error, onNewProject, onProjects }: { error: string; on
         <div className="grid gap-2">
           <h2 className="font-ui m-0 text-2xl font-bold">{missing ? "Project files are unavailable" : "Wiki page unavailable"}</h2>
           <p className="m-0 text-sm text-muted-foreground">
-            {missing ? "The selected project points to files that no longer exist. Pick another project or create a new one." : "Hyperwiki could not load this wiki page."}
+            {missing ? "The selected project points to files that no longer exist. Pick another project or create a new one." : "hyperwiki could not load this wiki page."}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
@@ -2996,8 +2996,8 @@ function PlanCreationView({
             <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Create New Plan</h1>
             <p className="m-0 max-w-2xl text-base leading-7 text-muted-foreground text-pretty">
               {isImportedFirstPlan
-                ? "Hyperwiki will use the imported source as the planning brief, start a focused Q&A, then write the first MVP plan when the blocking decisions are clear."
-                : "Hyperwiki will start a focused Q&A, inspect the repo and wiki, then write plan docs when the blocking decisions are clear."}
+                ? "hyperwiki will use the imported source as the planning brief, start a focused Q&A, then write the first MVP plan when the blocking decisions are clear."
+                : "hyperwiki will start a focused Q&A, inspect the repo and wiki, then write plan docs when the blocking decisions are clear."}
             </p>
           </div>
           <Button className="min-h-10 active:scale-[0.96] transition-transform" variant="outline" onClick={onCancel} type="button">
@@ -3020,7 +3020,7 @@ function PlanCreationView({
             <div className="grid gap-3 rounded-md bg-background p-4 shadow-[inset_0_0_0_1px_hsl(var(--border))]">
               <h2 className="m-0 text-lg font-semibold">Imported source detected</h2>
               <p className="m-0 max-w-2xl text-sm leading-6 text-muted-foreground text-pretty">
-                This is the first plan for {activeProject?.name || "this project"}, so Hyperwiki will create an MVP plan from the imported source after the Q&A resolves open decisions.
+                This is the first plan for {activeProject?.name || "this project"}, so hyperwiki will create an MVP plan from the imported source after the Q&A resolves open decisions.
               </p>
             </div>
           )}
@@ -3332,7 +3332,7 @@ function ProjectsView({
         ) : (
           <div className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card p-8">
             <h2 className="m-0 text-3xl font-bold">No projects yet</h2>
-            <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh Hyperwiki project from a brief to start the workspace.</p>
+            <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh hyperwiki project from a brief to start the workspace.</p>
             <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
               <Plus aria-hidden="true" data-icon="inline-start" />
               New Project
@@ -3416,7 +3416,7 @@ function ProjectCard({
           <div className="grid gap-1 text-sm">
             <strong>{checkoutCount > 1 ? `Remove checkout: ${selected?.worktreeSlug || "main"}` : "Destructive option"}</strong>
             <span className="text-muted-foreground">
-              Removing this {checkoutCount > 1 ? "checkout" : "project"} only forgets it in Hyperwiki. File deletion permanently deletes the {checkoutCount > 1 ? "checkout" : "project"} folder.
+              Removing this {checkoutCount > 1 ? "checkout" : "project"} only forgets it in hyperwiki. File deletion permanently deletes the {checkoutCount > 1 ? "checkout" : "project"} folder.
             </span>
           </div>
           <label className="mt-3 flex items-center gap-2 text-sm font-bold text-muted-foreground">
@@ -3519,7 +3519,7 @@ function NewProjectView({
         initializeGit,
       });
     } catch (error) {
-      logImport("Hyperwiki import failed while reading the selected file bundle.", error);
+      logImport("hyperwiki import failed while reading the selected file bundle.", error);
       setStatus(error instanceof Error ? `Could not read import files: ${error.message}` : "Could not read the import files.");
     } finally {
       setIsSubmitting(false);
@@ -3570,7 +3570,7 @@ function NewProjectView({
       .catch((error) => {
         window.clearTimeout(fallbackTimer);
         setHandoffProject(null);
-        logImport("Hyperwiki import agent handoff failed.", error);
+        logImport("hyperwiki import agent handoff failed.", error);
         setStatus(error instanceof Error ? error.message : "Could not start agent-led planning.");
       });
   }
@@ -3587,10 +3587,10 @@ function NewProjectView({
     );
   }
 
-  const heading = isFirstProject ? "Welcome to HyperWiki" : "New Project";
+  const heading = isFirstProject ? "Welcome to hyperwiki" : "New Project";
   const subhead = isFirstProject
-    ? "Create your first project by importing a brief or source file. HyperWiki will do the rest."
-    : "Import a brief or source file. HyperWiki will do the rest.";
+    ? "Create your first project by importing a brief or source file. hyperwiki will do the rest."
+    : "Import a brief or source file. hyperwiki will do the rest.";
   const canSubmitBrief = Boolean(title.trim() && document.trim());
 
   return (
@@ -4436,15 +4436,15 @@ function renderAgentsManagedBlock(settings: { soul?: SettingsResponse["soul"]; m
   const principles = (soul.principles || []).filter(Boolean);
   const memories = (settings.memory?.entries || []).filter((entry) => entry.enabled !== false && String(entry.content || "").trim());
   return `<!-- HYPERWIKI-GLOBAL-CONTEXT:START v1 -->
-## HyperWiki Global Context
+## hyperwiki Global Context
 
 ### Soul
 
 ${principles.length ? principles.map((item) => `- ${item}`).join("\n") : "- No global soul principles recorded."}
 
-Interface guidance: ${soul.interface || "Use HyperWiki's default interface guidance."}
+Interface guidance: ${soul.interface || "Use hyperwiki's default interface guidance."}
 
-Agent guidance: ${soul.agent || "Use HyperWiki's default agent guidance."}
+Agent guidance: ${soul.agent || "Use hyperwiki's default agent guidance."}
 
 ### Memory
 
@@ -5546,13 +5546,13 @@ function importAgentLaunchCommand(layout: LayoutResponse | null) {
 
 function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
   return [
-    "You are generating the next Hyperwiki import-planning interview question.",
+    "You are generating the next hyperwiki import-planning interview question.",
     "Questionnaire-only response. Do not use tools. Do not run commands. Do not read files. Do not write plans. Do not update wiki files.",
     "Use only the inline source context in this prompt.",
     "If you are about to say you will write files, create the MVP plan, update wiki indexes, inspect the repo, or run commands, stop and output the JSON question instead.",
     "",
     "Goal:",
-    "Generate exactly one source-grounded blocking planning question for the imported project. Hyperwiki will ask it in the UI.",
+    "Generate exactly one source-grounded blocking planning question for the imported project. hyperwiki will ask it in the UI.",
     "",
     "Output exactly one fenced JSON block. No prose after the block.",
     "The JSON object must have:",
@@ -5581,7 +5581,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
   const isInitialTurn = !latestAnswer.trim();
   if (!isInitialTurn) {
     return [
-      "You are working inside this newly imported Hyperwiki project.",
+      "You are working inside this newly imported hyperwiki project.",
       "Plan mode only: do not implement product code from this prompt.",
       "",
       "Fast import-planning turn:",
@@ -5607,7 +5607,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
-    "You are working inside this newly imported Hyperwiki project.",
+    "You are working inside this newly imported hyperwiki project.",
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "Goal:",
@@ -5629,7 +5629,7 @@ function importedProjectPlanningPrompt(project: ProjectRecord, requestId: string
     "- Start with a one-question-at-a-time grilling session before writing implementation stages or units.",
     "- For every user-facing question, emit one JSON object containing type \"hyperwiki-question\", requestId, question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
     `- The JSON object's requestId must be exactly \"${requestId}\".`,
-    "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
+    "- hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. Keep options mutually exclusive and concise.",
     "- After emitting a hyperwiki-question block, stop and wait for the user's answer before continuing.",
     "- If latest answer is present above, briefly reconcile it against wiki/sources/import-qna.mdx, then either emit the next hyperwiki-question object or emit a hyperwiki-ready-to-plan object if no blocking unknowns remain.",
@@ -5651,7 +5651,7 @@ function importedProjectPlanningRepairPrompt(project: ProjectRecord, requestId: 
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
-    "You are repairing an incomplete Hyperwiki import-planning turn.",
+    "You are repairing an incomplete hyperwiki import-planning turn.",
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "The previous turn completed without a parseable hyperwiki-question and without validated generated plan files.",
@@ -5686,7 +5686,7 @@ function importedProjectPlanGenerationPrompt(project: ProjectRecord, requestId: 
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
-    "You are generating the first MVP plan for this newly imported Hyperwiki project.",
+    "You are generating the first MVP plan for this newly imported hyperwiki project.",
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "This is a plan-generation turn, not a question turn.",
@@ -5726,7 +5726,7 @@ function importedProjectPlanRepairPrompt(project: ProjectRecord, requestId: stri
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
-    "You are repairing a failed Hyperwiki import plan-generation turn.",
+    "You are repairing a failed hyperwiki import plan-generation turn.",
     "The previous turn completed without validated MVP plan artifacts.",
     "",
     `- requestId: ${requestId}`,
@@ -5754,20 +5754,20 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     "Goal:",
     "Run a one-question-at-a-time grilling interview for the requested work, then automatically create or update MDX wiki plan docs when no blocking unknowns remain.",
     "",
-    "Hyperwiki requirements:",
+    "hyperwiki requirements:",
     "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
     "- Inspect repo evidence before asking questions the repo can answer.",
     "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
     "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
-    "- Hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
+    "- hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
     "- Put the recommended answer first in options. After the block, stop and wait for the user's answer.",
-    "- After receiving `Hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
+    "- After receiving `hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
     "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
     "- For plans that create or materially change implementation foundations, resolve or explicitly record stack-impacting choices before writing executable units: frontend/client surface, backend/API/runtime, persistence, auth, external services/integrations, provider choices, local preview/deployment approach, package manager, and build/type/test commands.",
     "- Do not infer stack defaults from thin context. Ask a hyperwiki-question or record a blocker/assumption when the stack would affect implementation safety.",
     "- Preserve a flexible plan > stages > units structure; compact plans may use one implicit stage.",
     "- Every executable unit must include a Verification section or component.",
-    "- Hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
+    "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
     "- Before writing, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
     "- Prefer PlanHero for the title and intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Callout/Warning/Danger for important constraints. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
     "- Use Visibility for=\"agents\" around long source context, raw Q&A, or implementation handoff details that agents need but humans should not see in the rendered app. Use Visibility for=\"humans\" only for app-visible explanation that should be stripped from agent Markdown.",

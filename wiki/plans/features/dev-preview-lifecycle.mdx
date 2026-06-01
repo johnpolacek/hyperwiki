@@ -1,6 +1,6 @@
 ---
 title: "Dev Preview Lifecycle"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -18,18 +18,18 @@ wikiKind: "plan"
     </section>
     <section>
       <h2>Intent</h2>
-      <p>Make the App control describe dev server lifecycle state instead of collapsing missing dev commands into the misleading App Not Configured label, and recover when a project gains a package dev script after Hyperwiki onboarding.</p>
+      <p>Make the App control describe dev server lifecycle state instead of collapsing missing dev commands into the misleading App Not Configured label, and recover when a project gains a package dev script after hyperwiki onboarding.</p>
     </section>
     <section>
       <h2>Implementation</h2>
       <ul>
         <li>Keep App Not Configured only for projects without a preview URL.</li>
         <li>Show Dev Not Available when a preview URL exists but no dev command is configured.</li>
-        <li>Show Run Dev when Hyperwiki can start the configured dev command.</li>
+        <li>Show Run Dev when hyperwiki can start the configured dev command.</li>
         <li>Derive the dev command from <code>package.json</code> when <code>.hyperwiki/config.json</code> still has an empty command.</li>
         <li>Add a derived dev panel before the CLI panel when the layout lacks one but the package dev script exists.</li>
-        <li>Show Stop Dev only for a running preview backed by the current Hyperwiki-managed dev terminal.</li>
-        <li>Show Dev Running for externally started Portless routes that Hyperwiki should not stop.</li>
+        <li>Show Stop Dev only for a running preview backed by the current hyperwiki-managed dev terminal.</li>
+        <li>Show Dev Running for externally started Portless routes that hyperwiki should not stop.</li>
       </ul>
     </section>
     <section>

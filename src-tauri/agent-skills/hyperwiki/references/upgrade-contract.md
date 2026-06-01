@@ -8,7 +8,7 @@ Use this reference when auditing or upgrading a project that was previously boot
 - Add missing standard artifacts when safe.
 - Replace only managed blocks that use recognized Project MDX Wiki Skill markers.
 - Do not rewrite generated-looking MDX wholesale unless it is inside a managed block.
-- Hyperwiki is MDX-first in test mode. Existing HTML wiki files should be treated as stale legacy artifacts unless the user explicitly asks to preserve them.
+- hyperwiki is MDX-first in test mode. Existing HTML wiki files should be treated as stale legacy artifacts unless the user explicitly asks to preserve them.
 - Report artifacts as `present_but_not_upgraded` when no safe update boundary exists.
 
 ## Managed Marker Versions

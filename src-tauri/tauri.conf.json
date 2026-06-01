@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Hyperwiki",
+  "productName": "hyperwiki",
   "version": "0.1.1",
   "identifier": "dev.hyperwiki.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Hyperwiki",
+        "title": "hyperwiki",
         "width": 1720,
         "height": 1000,
         "minWidth": 1040,

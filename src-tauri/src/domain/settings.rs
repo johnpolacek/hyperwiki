@@ -163,10 +163,10 @@ pub fn render_agents_block(settings: &Value) -> String {
         })
         .collect::<Vec<_>>();
     format!(
-        "{MANAGED_START}\n## HyperWiki Global Context\n\n### Soul\n\n{}\n\nInterface guidance: {}\n\nAgent guidance: {}\n\n### Memory\n\n{}\n{MANAGED_END}",
+        "{MANAGED_START}\n## hyperwiki Global Context\n\n### Soul\n\n{}\n\nInterface guidance: {}\n\nAgent guidance: {}\n\n### Memory\n\n{}\n{MANAGED_END}",
         if principles.is_empty() { "- No global soul principles recorded.".to_string() } else { principles.join("\n") },
-        string_at(soul, "interface", "Use HyperWiki's default interface guidance."),
-        string_at(soul, "agent", "Use HyperWiki's default agent guidance."),
+        string_at(soul, "interface", "Use hyperwiki's default interface guidance."),
+        string_at(soul, "agent", "Use hyperwiki's default agent guidance."),
         if memories.is_empty() { "- No approved global memory entries recorded.".to_string() } else { memories.join("\n") }
     )
 }
@@ -319,7 +319,7 @@ fn default_settings() -> Value {
         },
         "soul": {
             "principles": [
-                "HyperWiki is Localhost Tooling for docs-driven agentic development.",
+                "hyperwiki is Localhost Tooling for docs-driven agentic development.",
                 "Prefer concise, concrete language over marketing language.",
                 "Keep product behavior visible, inspectable, and reversible."
             ],

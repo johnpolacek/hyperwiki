@@ -67,7 +67,7 @@ function normalizeRequest(path: string, options: HyperwikiRequestOptions = {}) {
 
 async function requestTauri<T>(invokeImpl: TauriInvoke | undefined | null, request: ReturnType<typeof normalizeRequest>): Promise<HyperwikiResponse<T>> {
   if (typeof invokeImpl !== "function") {
-    throw new Error("Hyperwiki must run inside the Tauri desktop app. Tauri command transport is unavailable.");
+    throw new Error("hyperwiki must run inside the Tauri desktop app. Tauri command transport is unavailable.");
   }
   const response = await invokeImpl(tauriRequestCommand, { request });
   return normalizeResponse<T>(response);

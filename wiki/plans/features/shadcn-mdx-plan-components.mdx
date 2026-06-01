@@ -1,12 +1,12 @@
 ---
 title: "shadcn MDX Plan Components"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
 <PlanHero>
   <h1>shadcn MDX Plan Components</h1>
-  <p>Bring a Holocron-inspired MDX component vocabulary into Hyperwiki plans without importing Holocron runtime dependencies. Components stay Hyperwiki-owned, render through the trusted local MDX renderer, and use shadcn/ui primitives where they improve plan readability and design quality.</p>
+  <p>Bring a Holocron-inspired MDX component vocabulary into hyperwiki plans without importing Holocron runtime dependencies. Components stay hyperwiki-owned, render through the trusted local MDX renderer, and use shadcn/ui primitives where they improve plan readability and design quality.</p>
 </PlanHero>
 
 <PlanSummary>
@@ -20,7 +20,7 @@ wikiKind: "plan"
 </PlanSummary>
 
 <Decision title="Runtime boundary">
-  <p>Do not depend on Holocron, Spiceflow, hosted assistants, icon atlases, Mermaid, Prism virtual modules, or public docs deployment conventions. Hyperwiki only adopts the useful component ideas.</p>
+  <p>Do not depend on Holocron, Spiceflow, hosted assistants, icon atlases, Mermaid, Prism virtual modules, or public docs deployment conventions. hyperwiki only adopts the useful component ideas.</p>
 </Decision>
 
 <Decision title="Component boundary">
@@ -33,7 +33,7 @@ wikiKind: "plan"
 
 <Steps>
   <Step title="Unit 01 - shadcn primitives and MDX renderer">
-    <p>Add the shadcn components that fit the plan surface and extend <code>MdxPlanRenderer</code> with Hyperwiki-owned components for plan structure, calls to action, steps, fields, trees, prompts, updates, code, and visibility.</p>
+    <p>Add the shadcn components that fit the plan surface and extend <code>MdxPlanRenderer</code> with hyperwiki-owned components for plan structure, calls to action, steps, fields, trees, prompts, updates, code, and visibility.</p>
     <p><strong>Verification:</strong> TypeScript check, frontend build, and static smoke coverage proving the renderer imports and recognizes the expected components.</p>
   </Step>
   <Step title="Unit 02 - Markdown derivative contract">

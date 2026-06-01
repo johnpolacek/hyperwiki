@@ -1,10 +1,10 @@
-# Hyperwiki Skill
+# hyperwiki Skill
 
-A Hyperwiki-specialized skill for AI coding agents that creates and maintains an MDX-based project memory layer. It helps agents capture source context, plans, roadmap state, decisions, verification records, and durable handoffs in renderer-friendly `wiki/` pages that remain useful from a terminal.
+A hyperwiki-specialized skill for AI coding agents that creates and maintains an MDX-based project memory layer. It helps agents capture source context, plans, roadmap state, decisions, verification records, and durable handoffs in renderer-friendly `wiki/` pages that remain useful from a terminal.
 
-Use it when you want Hyperwiki to initialize a project wiki, onboard an existing repo, run agent-guided plan creation, plan feature work, sync unplanned changes back into project memory, or audit an existing wiki.
+Use it when you want hyperwiki to initialize a project wiki, onboard an existing repo, run agent-guided plan creation, plan feature work, sync unplanned changes back into project memory, or audit an existing wiki.
 
-This skill is derived from the Project MDX Wiki skill and adapted for Hyperwiki's current MDX-first test-mode contract.
+This skill is derived from the Project MDX Wiki skill and adapted for hyperwiki's current MDX-first test-mode contract.
 
 ## Install
 
@@ -81,7 +81,7 @@ Important constraints:
 
 For existing live products, internal tools, libraries, archives, maintenance-mode projects, or unknown lifecycle, the skill should treat the project as post-MVP unless source evidence says otherwise.
 
-Hyperwiki is in MDX-first test mode. Existing HTML wiki files are legacy artifacts; convert or replace them only when the user explicitly asks for a migration/reset, and otherwise report them as stale instead of preserving HTML as the current contract.
+hyperwiki is in MDX-first test mode. Existing HTML wiki files are legacy artifacts; convert or replace them only when the user explicitly asks for a migration/reset, and otherwise report them as stale instead of preserving HTML as the current contract.
 
 ### Plan Or Continue Feature Work
 

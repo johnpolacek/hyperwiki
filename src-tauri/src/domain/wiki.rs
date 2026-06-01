@@ -294,7 +294,7 @@ pub fn wiki_page_markdown(
 
 pub fn wiki_llms_txt(root: impl AsRef<Path>) -> String {
     let pages = list_wiki_pages(&root, None);
-    let mut output = String::from("# Hyperwiki Project Wiki\n\n");
+    let mut output = String::from("# hyperwiki Project Wiki\n\n");
     output.push_str("Repo-local wiki pages exported as Markdown derivatives for local agents.\n\n");
     output.push_str("## Pages\n");
     for page in &pages.pages {
@@ -411,16 +411,16 @@ name: hyperwiki-project-context
 description: Use when working in this repository and you need canonical project wiki context, current plans, source briefs, or local agent handoff guidance.
 ---
 
-# Hyperwiki Project Context
+# hyperwiki Project Context
 
-Use this skill to read the local Hyperwiki project wiki as canonical repo-visible context.
+Use this skill to read the local hyperwiki project wiki as canonical repo-visible context.
 
 ## Workflow
 
 1. Read `wiki/index.mdx` first for project orientation.
 2. Read `wiki/plans/index.mdx` for the current plan, current unit, blockers, and next action.
 3. Read `wiki/sources.mdx` and linked source briefs when product, design, technical, or imported-source context matters.
-4. Prefer Markdown derivatives from Hyperwiki's local APIs over rendered app HTML when you need agent-readable context:
+4. Prefer Markdown derivatives from hyperwiki's local APIs over rendered app HTML when you need agent-readable context:
    - `/api/wiki/page-markdown?path=/wiki/path.mdx`
    - `/api/wiki/llms.txt`
    - `/api/wiki/export-markdown-zip`
@@ -2171,7 +2171,7 @@ Agent-only text.
 
         let export = wiki_llms_txt(&root);
 
-        assert!(export.contains("# Hyperwiki Project Wiki"));
+        assert!(export.contains("# hyperwiki Project Wiki"));
         assert!(export.contains("- [Sample](/wiki/plans/sample.mdx)"));
         assert!(export.contains("## /wiki/plans/sample.mdx"));
         assert!(export.contains("Agent-readable page."));

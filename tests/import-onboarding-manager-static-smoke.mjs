@@ -90,7 +90,7 @@ assert.match(importPlanning, /StagedArtifactRecord/);
 assert.match(importPlanning, /ImportPlanningArtifactValidation/);
 assert.match(importPlanning, /validate_import_plan_artifacts/);
 assert.match(importPlanning, /staged-artifacts\.json/);
-assert.match(runtime, /Use built-in Hyperwiki MDX plan components/);
+assert.match(runtime, /Use built-in hyperwiki MDX plan components/);
 assert.match(runtime, /Visibility for=\\"agents\\"/);
 assert.match(runtime, /<PlanHero/);
 assert.match(runtime, /<PlanSummary>/);

@@ -1,0 +1,47 @@
+---
+title: "Lowercase Product Language"
+description: "Normalize hyperwiki product naming to lowercase across app, generated, and documented text."
+wikiKind: "plan"
+---
+
+<PlanHero title="Lowercase Product Language" status="complete" description="Make lowercase hyperwiki the canonical product spelling across live app surfaces, generated scaffolds, shipped guidance, and repository docs." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Current unit: Unit 01 - lowercase product language normalization</li>
+    <li>Next action: none; lowercase product language is normalized and verified.</li>
+    <li>Blockers: none</li>
+    <li>Validation: casing audits, <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and package/build smoke as feasible.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Scope</h2>
+  <p>Normalize standalone product prose from mixed-case spellings to <code>hyperwiki</code> in live UI copy, Rust/Tauri runtime strings, generated project scaffolds, agent prompts, bundled skill guidance, README, and all wiki history.</p>
+  <p>Preserve technical identifiers and compatibility strings where casing is part of the interface: TypeScript and Rust type names, environment variables, managed comment markers, package names, command names, crate names, and paths such as <code>.hyperwiki</code>.</p>
+</section>
+
+<Decision title="Canonical spelling">
+  <p>The product brand is lowercase <code>hyperwiki</code> everywhere it appears as human-readable product language, including sentence starts and headings.</p>
+</Decision>
+
+<Steps>
+  <Step title="Unit 01 - Normalize casing">
+    <p>Apply standalone mixed-case product word replacement, then review code diffs to ensure PascalCase API and Rust identifiers remain unchanged.</p>
+  </Step>
+  <Step title="Unit 02 - Verify interfaces and docs">
+    <p>Run static audits for remaining mixed-case prose, update assertions and generated-output expectations, and verify TypeScript/Rust checks.</p>
+  </Step>
+</Steps>
+
+<Verification>
+  <ul>
+    <li>Mixed-case product spelling audit passed for standalone prose; remaining matches are allowlisted code identifiers.</li>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>pnpm run check:tauri</code> passed.</li>
+    <li><code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+    <li><code>pnpm run tauri:build</code> passed and produced <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
+  </ul>
+</Verification>

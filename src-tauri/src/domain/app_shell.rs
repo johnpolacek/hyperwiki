@@ -74,7 +74,7 @@ pub struct OpenTargetRequest {
 pub fn app_shell_summary() -> AppShellSummary {
     AppShellSummary {
         product_name: "hyperwiki",
-        window_title: "Hyperwiki",
+        window_title: "hyperwiki",
         runtime: "tauri",
         local_only: true,
         actions: vec![
@@ -210,7 +210,7 @@ mod tests {
     fn app_shell_summary_exposes_local_desktop_actions() {
         let summary = app_shell_summary();
         assert_eq!(summary.product_name, "hyperwiki");
-        assert_eq!(summary.window_title, "Hyperwiki");
+        assert_eq!(summary.window_title, "hyperwiki");
         assert_eq!(summary.runtime, "tauri");
         assert!(summary.local_only);
         assert!(summary

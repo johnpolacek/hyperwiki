@@ -1438,7 +1438,7 @@ fn read_import_source_context(root: &Path) -> String {
 
 fn question_turn_prompt(project: &ProjectRecord, request_id: &str, source_context: &str) -> String {
     [
-        "You are generating the next Hyperwiki import-planning interview question.",
+        "You are generating the next hyperwiki import-planning interview question.",
         "Questionnaire-only response. Do not use tools. Do not run commands. Do not read files. Do not write plans.",
         "Use only the inline source context in this prompt.",
         "If no blocking unknowns remain, emit a hyperwiki-ready-to-plan JSON object instead of prose.",
@@ -1467,7 +1467,7 @@ fn answer_turn_prompt(
     answered_question_id: &str,
 ) -> String {
     [
-        "You are continuing a Hyperwiki imported-project planning interview.",
+        "You are continuing a hyperwiki imported-project planning interview.",
         "Questionnaire-only response. Do not use tools. Do not run commands. Do not read files. Do not write plans.",
         "Use only the inline source context and latest answer in this prompt.",
         "",
@@ -1496,7 +1496,7 @@ fn repair_turn_prompt(
     answered_question_id: &str,
 ) -> String {
     [
-        "You are repairing an incomplete Hyperwiki import-planning turn.",
+        "You are repairing an incomplete hyperwiki import-planning turn.",
         "Questionnaire-only response. Do not use tools. Do not run commands. Do not read files. Do not write plans.",
         "Return exactly one JSON object now: either a hyperwiki-question or a hyperwiki-ready-to-plan object.",
         &format!("The requestId must be exactly \"{request_id}\"."),
@@ -1522,13 +1522,13 @@ fn plan_repair_prompt(
     source_context: &str,
 ) -> String {
     [
-        "You are generating or repairing Hyperwiki import plan artifacts.",
+        "You are generating or repairing hyperwiki import plan artifacts.",
         "Artifact-generation response only. Do not use tools. Do not run commands. Do not read files. Do not write files.",
         "Return exactly one fenced JSON object with type=\"hyperwiki-plan-artifacts\", requestId, and artifacts.",
         &format!("The requestId must be exactly \"{request_id}\"."),
         "The runtime will write and validate the artifacts. You only generate the file paths and complete MDX contents.",
-        "Apply the bundled Hyperwiki planning contract even though you cannot call a skill tool in this turn.",
-        "Use built-in Hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
+        "Apply the bundled hyperwiki planning contract even though you cannot call a skill tool in this turn.",
+        "Use built-in hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
         "Before writing artifacts, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
         "Prefer PlanHero for the title/intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Avoid multi-column plan layouts so generated briefs read as one full-width column.",
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
@@ -2667,7 +2667,7 @@ mod tests {
             &read_import_source_context(&root),
         );
 
-        assert!(prompt.contains("Apply the bundled Hyperwiki planning contract"));
+        assert!(prompt.contains("Apply the bundled hyperwiki planning contract"));
         assert!(prompt.contains("PlanHero, PlanSummary, PlanUnit"));
         assert!(prompt.contains("CardGroup, Columns, Column"));
         assert!(prompt.contains("RequestExample/ResponseExample/ParamField/ResponseField"));

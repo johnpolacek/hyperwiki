@@ -1,6 +1,6 @@
 ---
 title: "Technical Brief"
-description: "Hyperwiki source page."
+description: "hyperwiki source page."
 wikiKind: "source"
 ---
 
@@ -18,10 +18,10 @@ wikiKind: "source"
   <li>MDX canonical wiki files.</li>
   <li>Vite, React, TypeScript, Tailwind v4, shadcn/ui, and MDX plan rendering on the <code>frontend-rewrite</code> branch, with Rust/Tauri remaining the runtime owner.</li>
   <li>Repo-local agent skills for the rewrite are installed under <code>.agents/skills/shadcn</code> and <code>.agents/skills/tailwind-design-system</code>, pinned by <code>skills-lock.json</code>.</li>
-  <li>New Hyperwiki project initialization now installs a vendored default skill bundle by default: <code>hyperwiki</code>, <code>grill-with-docs</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>make-interfaces-feel-better</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>. Users can opt out with <code>hyperwiki init --no-skills</code>.</li>
+  <li>New hyperwiki project initialization now installs a vendored default skill bundle by default: <code>hyperwiki</code>, <code>grill-with-docs</code>, <code>parallel-dev-worktrees</code>, <code>portless</code>, <code>frontend-design</code>, <code>make-interfaces-feel-better</code>, <code>shadcn</code>, and <code>tailwind-design-system</code>. Users can opt out with <code>hyperwiki init --no-skills</code>.</li>
   <li>Future rewrite agents should use those skills before modifying React, Tailwind, shadcn/ui, MDX, wiki, worktree, Portless, or substantial frontend code.</li>
   <li>xterm.js is bundled by Vite from npm packages for terminal rendering, and Rust <code>portable-pty</code> owns local PTY sessions.</li>
-  <li>The frontend talks to the runtime through Tauri command transport only; Hyperwiki no longer has an HTTP fetch or WebSocket fallback runtime.</li>
+  <li>The frontend talks to the runtime through Tauri command transport only; hyperwiki no longer has an HTTP fetch or WebSocket fallback runtime.</li>
   <li>Local-only desktop runtime by default.</li>
   <li>The developer's local machine, repo files, Git state, terminal sessions, credentials, and environment variables define the primary trust boundary.</li>
   <li><code>hyperwiki launch</code>, <code>hyperwiki dev</code>, bare <code>hyperwiki</code>, and <code>pnpm dev</code> open the Tauri desktop app.</li>
@@ -32,7 +32,7 @@ wikiKind: "source"
   <li>Switching plans or projects detaches visible terminal panels without killing the underlying local process; explicit terminal close remains the process termination boundary.</li>
   <li>Execute is a single main-checkout action. Worktree execution starts from the terminal branch rail <code>+ worktree</code> flow, which creates and registers a checkout before sending the agent an existing-worktree handoff.</li>
   <li>Active checkout identity is carried by the workspace URL shape <code>/workspace/&lt;project-slug&gt;/&lt;worktree-slug&gt;</code>; reloading or navigating back to that URL must preserve the worktree instead of falling back to main.</li>
-  <li>Portless remains recommended for user project previews, but Hyperwiki's own <code>pnpm dev</code> command starts Tauri instead of a browser route.</li>
+  <li>Portless remains recommended for user project previews, but hyperwiki's own <code>pnpm dev</code> command starts Tauri instead of a browser route.</li>
   <li>Repo-local worktree commands are exposed as <code>pnpm wt:doctor</code>, <code>pnpm wt:create</code>, <code>pnpm wt:list</code>, <code>pnpm wt:resume</code>, <code>pnpm wt:open</code>, <code>pnpm wt:finish</code>, and <code>pnpm wt:prune</code>, backed by the Rust CLI.</li>
   <li>Feature worktrees live under <code>../hyperwiki.worktrees/&lt;branch-slug&gt;</code> and use a merge finish policy to preserve feature history.</li>
   <li>The current Tauri command API exposes workspace summaries, guardrails, repo context, wiki pages, projects, worktree creation, sessions, agent prompt handoff, versioned verification loops, a versioned project contract, named agent review workflows, and a versioned MCP surface contract.</li>
@@ -42,7 +42,7 @@ wikiKind: "source"
   <li><code>/api/mcp-surface</code> defines MCP-style resources and tools for project contract, current plan, source index, verification loops, guardrails, review workflows, wiki pages, review preparation, and controlled prompt submission.</li>
   <li><code>hyperwiki mcp</code> serves a local stdio MCP transport for read-only resources and read-only tools over Content-Length framed JSON-RPC messages.</li>
   <li>It does not yet expose action-oriented MCP tools for terminal prompt submission or review workflow execution.</li>
-  <li>The Hyperwiki scaffold contract keeps <code>wiki/sources.mdx</code> as the source index, <code>wiki/AGENTS.mdx</code> as the visible wiki guide, and app-served <code>/assets/wiki.css</code> as the default generated-page stylesheet.</li>
+  <li>The hyperwiki scaffold contract keeps <code>wiki/sources.mdx</code> as the source index, <code>wiki/AGENTS.mdx</code> as the visible wiki guide, and app-served <code>/assets/wiki.css</code> as the default generated-page stylesheet.</li>
   <li>The workspace must visibly separate canonical repo truth from ignored local runtime data: <code>wiki/</code> and Git are durable; <code>.hyperwiki/state/</code> and <code>.hyperwiki/sessions/</code> are local retention surfaces.</li>
   <li>Terminal history and scrollback are runtime data unless the user intentionally exports or records them into wiki files. Export actions return runtime data to the caller and do not write canonical wiki pages automatically.</li>
   <li>Hosted sync, telemetry, remote execution, and cloud-backed project memory are not default assumptions; any future hosted integration must be explicit and subordinate to local repo truth.</li>

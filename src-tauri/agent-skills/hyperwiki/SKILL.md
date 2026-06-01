@@ -1,15 +1,15 @@
 ---
 name: hyperwiki
-description: Use this skill for Hyperwiki project memory, MDX wiki pages, MDX planning docs, project import/planning, source sync, roadmap/log maintenance, and agent-guided plan creation. Applies to projects initialized by Hyperwiki or any repo with a `wiki/` directory following Hyperwiki conventions. Do not use for ordinary coding tasks unless wiki/planning state must be created, revised, audited, or reconciled.
+description: Use this skill for hyperwiki project memory, MDX wiki pages, MDX planning docs, project import/planning, source sync, roadmap/log maintenance, and agent-guided plan creation. Applies to projects initialized by hyperwiki or any repo with a `wiki/` directory following hyperwiki conventions. Do not use for ordinary coding tasks unless wiki/planning state must be created, revised, audited, or reconciled.
 ---
 
-# Hyperwiki Skill
+# hyperwiki Skill
 
-Use this skill to maintain a Hyperwiki project wiki: an MDX-first project memory layer for agentic development. Hyperwiki owns source context, planning state, execution handoffs, verification records, and durable project decisions under `wiki/`.
+Use this skill to maintain a hyperwiki project wiki: an MDX-first project memory layer for agentic development. hyperwiki owns source context, planning state, execution handoffs, verification records, and durable project decisions under `wiki/`.
 
 ## Current Contract
 
-Hyperwiki is in MDX-first test mode. Do not preserve old HTML wiki conventions.
+hyperwiki is in MDX-first test mode. Do not preserve old HTML wiki conventions.
 
 - App-rendered wiki pages are `.mdx`.
 - Root `AGENTS.md`, optional `CLAUDE.md`, and `.agents/skills/*/SKILL.md` remain Markdown because external tools expect those paths.
@@ -20,12 +20,12 @@ Hyperwiki is in MDX-first test mode. Do not preserve old HTML wiki conventions.
 
 ## MDX Output
 
-Generated wiki pages must be `.mdx` source artifacts. Keep raw MDX useful in a terminal and rendered MDX useful inside Hyperwiki.
+Generated wiki pages must be `.mdx` source artifacts. Keep raw MDX useful in a terminal and rendered MDX useful inside hyperwiki.
 
 - Use minimal frontmatter: `title`, `description`, and `wikiKind`.
 - Start pages with CLI-readable status, reader goal, current state, next action, and blockers.
 - Prefer Markdown, tables, semantic HTML/JSX, `<details>`, and small inline SVG for ordinary docs.
-- Use Hyperwiki planning components for plan pages when they improve structure: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+- Use hyperwiki planning components for plan pages when they improve structure: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 - Before writing a plan, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.
 - Prefer `PlanHero` for title and intent, `PlanSummary` for status/current unit/next action/blockers/validation, `Decision` for accepted choices, `Evidence` for source-grounded facts, `Verification` for checks, `Steps`/`Step` for stage or unit sequences, `CardGroup`/`Columns` for alternatives or work tracks, `RequestExample`/`ResponseExample`/`ParamField`/`ResponseField` for contracts, and `Aside` for compact secondary context. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.
 - Use `Visibility for="agents"` for long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app. Use `Visibility for="humans"` only for app-visible explanation that should be stripped from agent Markdown.
@@ -40,13 +40,13 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
 1. Inspect first: root files, Git state, manifests, changed files, existing `wiki/`, source briefs, plans, roadmap, log, and agent guidance.
 2. Choose the mode:
    - `intake_discovery`: interview before files exist or project direction is too vague.
-   - `bootstrap_new`: create a fresh MDX Hyperwiki scaffold.
-   - `import_existing`: add Hyperwiki memory to an existing repo without overwriting user files.
+   - `bootstrap_new`: create a fresh MDX hyperwiki scaffold.
+   - `import_existing`: add hyperwiki memory to an existing repo without overwriting user files.
    - `plan_feature`: create a decision-complete implementation plan before meaningful app changes.
    - `update_plan`: revise an existing plan after decisions, implementation discoveries, or validation.
    - `sync_changes`: reconcile recent code changes back into wiki/log/plans/source briefs.
    - `record_execution`: append durable project-context history to `wiki/log.mdx`.
-   - `audit_or_upgrade`: check or repair Hyperwiki conventions.
+   - `audit_or_upgrade`: check or repair hyperwiki conventions.
 3. Load only the references needed for the chosen mode.
 4. Write the smallest durable wiki update that preserves future implementation clarity.
 5. Record material planning, validation, maintenance, bootstrap, or implementation context in `wiki/log.mdx` only when it affects future decisions.
@@ -88,7 +88,7 @@ For agent-guided plan creation:
 
 ## Required Project Shape
 
-A completed Hyperwiki scaffold should create or preserve:
+A completed hyperwiki scaffold should create or preserve:
 
 - `AGENTS.md`
 - `CLAUDE.md` only when already used or explicitly requested
@@ -115,7 +115,7 @@ Generate source briefs only when evidence justifies them:
 - Do not create root-level `docs/` or `tasks/` for maintained plans.
 - Never leave bracketed placeholders.
 - Do not push unless explicitly requested.
-- Commit docs-only changes only when repo policy or the active Hyperwiki workflow says to do so.
+- Commit docs-only changes only when repo policy or the active hyperwiki workflow says to do so.
 
 ## Handoff
 

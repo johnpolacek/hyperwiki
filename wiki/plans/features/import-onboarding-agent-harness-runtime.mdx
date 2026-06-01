@@ -18,7 +18,7 @@ wikiKind: "plan"
 <section>
   <h2>Intent</h2>
   <p>Use an agent harness pattern for imported-project onboarding instead of letting the model conversation, React state, and filesystem writes blur together. The harness owns the loop: prepare context, call the agent, validate structured outputs, pause for a human answer, resume with that answer, and commit approved artifacts to the real wiki.</p>
-  <p>This candidate is narrower than building a full Hyperwiki run engine, but more structured than attaching directly to Codex app-server. It borrows the useful parts of open-harness and deepagents: virtual filesystem staging, session bridging, structured event streams, and model output separated from execution decisions.</p>
+  <p>This candidate is narrower than building a full hyperwiki run engine, but more structured than attaching directly to Codex app-server. It borrows the useful parts of open-harness and deepagents: virtual filesystem staging, session bridging, structured event streams, and model output separated from execution decisions.</p>
 </section>
 <section>
   <h2>Architecture</h2>

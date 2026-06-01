@@ -1,6 +1,6 @@
 ---
 title: "React, shadcn, and MDX Rewrite"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -12,7 +12,7 @@ wikiKind: "plan"
           <span className="badge">Frontend + plans</span>
         </div>
         <h1 id="title">React, shadcn, and MDX Rewrite</h1>
-        <p>Rewrite Hyperwiki's frontend on a dedicated feature worktree while keeping Tauri and Rust as the runtime owner. The app shell moves to Vite, React, TypeScript, Tailwind v4, and shadcn/ui. Plan pages move to trusted local MDX with Markdown-first derivatives for LLM and project-contract use.</p>
+        <p>Rewrite hyperwiki's frontend on a dedicated feature worktree while keeping Tauri and Rust as the runtime owner. The app shell moves to Vite, React, TypeScript, Tailwind v4, and shadcn/ui. Plan pages move to trusted local MDX with Markdown-first derivatives for LLM and project-contract use.</p>
       </div>
       <dl className="summary" aria-label="Plan summary">
         <dt>Status</dt><dd>complete</dd>
@@ -167,7 +167,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
           <strong>Verification</strong>
           <ul>
             <li>Updated Tauri config with Vite <code>devUrl</code>, <code>beforeDevCommand</code>, <code>beforeBuildCommand</code>, and <code>frontendDist: ../dist</code>.</li>
-            <li>Ran <code>pnpm run tauri:build</code>; the build produced <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+            <li>Ran <code>pnpm run tauri:build</code>; the build produced <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
             <li>Updated and ran <code>pnpm run smoke:tauri-static-assets</code> against generated <code>dist</code> output.</li>
           </ul>
         </li>
@@ -195,7 +195,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
       <ol className="units">
         <li className="unit">
           <h3>Unit 02.1 - Add Tailwind v4</h3>
-          <p>Use <code>@tailwindcss/vite</code>, CSS-first <code>@theme</code>, and semantic tokens mapped from Hyperwiki's existing theme model.</p>
+          <p>Use <code>@tailwindcss/vite</code>, CSS-first <code>@theme</code>, and semantic tokens mapped from hyperwiki's existing theme model.</p>
           <strong>Verification</strong>
           <ul>
             <li>Ran <code>pnpm run build:frontend</code>.</li>
@@ -370,7 +370,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
         </li>
         <li className="unit">
           <h3>Unit 05.4 - Update Generated Project Scaffold</h3>
-          <p>Complete. Generated Hyperwiki projects now tell agents to prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML while preserving lowercase <code>wiki/sources.mdx</code> and app-visible <code>wiki/AGENTS.mdx</code> conventions.</p>
+          <p>Complete. Generated hyperwiki projects now tell agents to prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML while preserving lowercase <code>wiki/sources.mdx</code> and app-visible <code>wiki/AGENTS.mdx</code> conventions.</p>
           <strong>Verification</strong>
           <ul>
             <li>Updated generated root <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, and <code>wiki/scaffold-contract.mdx</code> copy.</li>
@@ -407,7 +407,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
           <ul>
             <li>Ran <code>pnpm run check:all</code>.</li>
             <li>Ran <code>pnpm run smoke:tauri-webdriver</code>; it skipped as expected on macOS WKWebView with an explicit platform message.</li>
-            <li>Ran <code>pnpm run tauri:build</code>; built <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+            <li>Ran <code>pnpm run tauri:build</code>; built <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
           </ul>
         </li>
         <li className="unit">
@@ -415,7 +415,7 @@ npx skills add https://github.com/wshobson/agents --skill tailwind-design-system
           <p>Complete for this macOS pass. The packaged Tauri app launched successfully and core utility routes rendered without obvious layout overlap.</p>
           <strong>Verification</strong>
           <ul>
-            <li>Launched <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+            <li>Launched <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
             <li>Verified New Project, Settings, and Projects surfaces with Computer Use.</li>
             <li>Full Tauri WebDriver import automation remains Linux/Windows-only; the macOS smoke records the unsupported WKWebView reason.</li>
           </ul>

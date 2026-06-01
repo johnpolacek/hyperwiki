@@ -758,7 +758,7 @@ fn is_mvp_stage_artifact_path(path: &str) -> bool {
 
 fn import_artifact_repair_prompt(errors: &[String]) -> String {
     format!(
-        "Repair the staged Hyperwiki import plan artifacts without implementing product code. Fix these validation errors, preserve source-grounded decisions and unknowns, keep MDX frontmatter with wikiKind plan, and ensure executable unit pages include verification guidance:\n- {}",
+        "Repair the staged hyperwiki import plan artifacts without implementing product code. Fix these validation errors, preserve source-grounded decisions and unknowns, keep MDX frontmatter with wikiKind plan, and ensure executable unit pages include verification guidance:\n- {}",
         errors.join("\n- ")
     )
 }
@@ -1091,7 +1091,7 @@ mod tests {
         assert!(validation
             .repair_prompt
             .unwrap()
-            .contains("Repair the staged Hyperwiki import plan artifacts"));
+            .contains("Repair the staged hyperwiki import plan artifacts"));
     }
 
     #[test]

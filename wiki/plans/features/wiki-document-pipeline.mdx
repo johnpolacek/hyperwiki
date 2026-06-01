@@ -4,7 +4,7 @@ description: "Introduce a single parsed document pipeline for MDX wiki metadata 
 wikiKind: "plan"
 ---
 
-<PlanHero title="Wiki Document Pipeline" status="complete" description="Move Hyperwiki's wiki processing toward AST-first MDX discipline without adopting Holocron's runtime." />
+<PlanHero title="Wiki Document Pipeline" status="complete" description="Move hyperwiki's wiki processing toward AST-first MDX discipline without adopting Holocron's runtime." />
 
 <PlanSummary>
   <ul>
@@ -19,7 +19,7 @@ wikiKind: "plan"
 
 <section>
   <h2>Intent</h2>
-  <p>Give Hyperwiki one coherent local document pipeline that can feed rendering, Markdown exports, agent context, navigation metadata, validation warnings, and future search without repeatedly rescanning MDX source with unrelated string transforms.</p>
+  <p>Give hyperwiki one coherent local document pipeline that can feed rendering, Markdown exports, agent context, navigation metadata, validation warnings, and future search without repeatedly rescanning MDX source with unrelated string transforms.</p>
 </section>
 
 <section>
@@ -42,7 +42,7 @@ wikiKind: "plan"
 </section>
 
 <PlanUnit title="Unit 01 - Parsed wiki document pipeline">
-  <p>Implement the first durable AST-first step as a repo-local Rust parser tailored to Hyperwiki's trusted MDX dialect. This should centralize metadata and derivative generation while leaving room for a deeper MDX AST crate later if needed.</p>
+  <p>Implement the first durable AST-first step as a repo-local Rust parser tailored to hyperwiki's trusted MDX dialect. This should centralize metadata and derivative generation while leaving room for a deeper MDX AST crate later if needed.</p>
   <Verification>
     <ul>
       <li>Passed: <code>cargo test --manifest-path src-tauri/Cargo.toml wiki -- --nocapture</code>.</li>

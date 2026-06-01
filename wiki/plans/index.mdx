@@ -1,6 +1,6 @@
 ---
 title: "Plans"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -25,7 +25,7 @@ wikiKind: "plan"
     <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a> is the go-forward implementation plan: Candidate 1 as the base, Candidate 5 concepts folded in, and Candidate 3 as the transport experiment path.</li>
     <li><a href="/wiki/plans/features/import-onboarding-backend-state-machine.mdx">Import Onboarding Backend State Machine</a> captures Candidate 1 for refactoring imported-project Q&amp;A into a Rust-owned Codex adapter and backend state machine.</li>
     <li><a href="/wiki/plans/features/import-onboarding-sidecar-service.mdx">Import Onboarding Sidecar Service</a> captures Candidate 2 for moving imported-project Q&amp;A into a separate local engine service with run IDs and event streaming.</li>
-    <li><a href="/wiki/plans/features/import-onboarding-direct-codex-attachment.mdx">Import Onboarding Direct Codex Attachment</a> captures Candidate 3 for attaching directly to persistent Codex app-server or daemon sessions through a minimal Hyperwiki wrapper.</li>
+    <li><a href="/wiki/plans/features/import-onboarding-direct-codex-attachment.mdx">Import Onboarding Direct Codex Attachment</a> captures Candidate 3 for attaching directly to persistent Codex app-server or daemon sessions through a minimal hyperwiki wrapper.</li>
     <li><a href="/wiki/plans/features/import-onboarding-engine-first-runtime.mdx">Import Onboarding Engine-First Runtime</a> captures Candidate 4 for a reusable local run engine inspired by opencode and Tandem, with import onboarding as its first consumer.</li>
     <li><a href="/wiki/plans/features/import-onboarding-agent-harness-runtime.mdx">Import Onboarding Agent Harness Runtime</a> captures Candidate 5 for an open-harness or deepagents-style workflow with virtual files, structured events, and human-input continuation points.</li>
     <li><a href="/wiki/plans/features/terminal-vertical-splits-and-startup-marker.mdx">Terminal Vertical Splits And Startup Marker</a> renders live sessions as vertical terminal panes and hides the startup-only zsh marker.</li>
@@ -38,6 +38,7 @@ wikiKind: "plan"
 <section>
   <h2>Recently Completed</h2>
   <ul>
+    <li><a href="/wiki/plans/features/lowercase-product-language.mdx">Lowercase Product Language</a> makes lowercase <code>hyperwiki</code> the canonical product spelling across app surfaces, generated scaffolds, bundled guidance, docs, and Tauri bundle metadata.</li>
     <li><a href="/wiki/plans/features/live-wiki-sidebar-refresh.mdx">Live Wiki Sidebar Refresh</a> keeps the Plans sidebar in sync when Modify Plan or local edits add units, stages, or plans.</li>
     <li><a href="/wiki/plans/features/direct-modify-plan-agent-handoff.mdx">Direct Modify Plan Agent Handoff</a> replaces the right-side Modify Plan form with an immediate scoped Codex handoff for docs-only planning wiki MDX changes.</li>
     <li><a href="/wiki/plans/features/git-init-main-branch.mdx">Git Init Main Branch</a> ensures Git onboarding creates new repositories with <code>main</code> as the initial branch.</li>
@@ -49,8 +50,8 @@ wikiKind: "plan"
     <li><a href="/wiki/plans/features/wiki-markdown-export-completion.mdx">Wiki Markdown Export Completion</a> finishes the local agent-readable export slice with Markdown zip download, generated project <code>SKILL.md</code> export, header download actions, and Copy Markdown on all React-rendered MDX wiki pages.</li>
     <li><a href="/wiki/plans/features/holocron-inspired-wiki-exports-and-validation.mdx">Holocron-Inspired Wiki Exports and Validation</a> adds local page Markdown and <code>llms.txt</code> exports, enriches the wiki index with headings, links, frontmatter, and broken-link warnings, and adds copy-as-Markdown to React-rendered plan pages.</li>
     <li><a href="/wiki/plans/features/mdx-plan-visual-polish.mdx">MDX Plan Visual Polish</a> makes generated plan pages feel like crisp working briefs rather than stacked generic cards.</li>
-    <li><a href="/wiki/plans/features/plan-generation-component-guidance.mdx">Plan Generation Component Guidance</a> makes plan creation and import-plan compilation explicitly use Hyperwiki's shadcn-backed MDX plan component vocabulary.</li>
-    <li><a href="/wiki/plans/features/shadcn-mdx-plan-components.mdx">shadcn MDX Plan Components</a> brings a Holocron-inspired but Hyperwiki-owned MDX component vocabulary into plan pages using shadcn/ui primitives and Markdown-first agent derivatives.</li>
+    <li><a href="/wiki/plans/features/plan-generation-component-guidance.mdx">Plan Generation Component Guidance</a> makes plan creation and import-plan compilation explicitly use hyperwiki's shadcn-backed MDX plan component vocabulary.</li>
+    <li><a href="/wiki/plans/features/shadcn-mdx-plan-components.mdx">shadcn MDX Plan Components</a> brings a Holocron-inspired but hyperwiki-owned MDX component vocabulary into plan pages using shadcn/ui primitives and Markdown-first agent derivatives.</li>
     <li><a href="/wiki/plans/features/stronger-import-qa-protocol.mdx">Stronger Import Q&amp;A Protocol</a> makes app-server import turns observable, bounded, and retryable.</li>
     <li><a href="/wiki/plans/features/codex-app-server-import-qa.mdx">Codex App Server Import Q&amp;A</a> moves imported-project planning turns to Codex app-server JSON-RPC with terminal startup as fallback.</li>
     <li><a href="/wiki/plans/features/faster-import-qa-turns.mdx">Faster Import Q&amp;A Turns</a> reduces import interview latency with low-thinking Codex launches, compact state, short prompts, and batched decisions.</li>
@@ -62,8 +63,8 @@ wikiKind: "plan"
     <li><a href="/wiki/plans/features/initial-stack-qa-gate.mdx">Initial Stack Q&amp;A Gate</a> ensures first-project planning resolves frontend, backend, data, auth, services, provider, and local command choices before generating MVP units.</li>
     <li><a href="/wiki/plans/features/plans-index-reframe.mdx">Plans Index Reframe</a> replaces dashboard-facing language with Plans index language while keeping <code>/wiki/plans/index.mdx</code> stable for contracts, imports, generated scaffolds, and agent handoffs.</li>
     <li><a href="/wiki/plans/features/restore-modify-page-pane.mdx">Restore Modify Page Pane</a> reconnects the React command-bar modify action to the existing right-side page revision prompt.</li>
-    <li><a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> moved Hyperwiki's app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui; plan pages now render from trusted local MDX with Markdown-first derivatives for agents, and obsolete static shell assets have been removed.</li>
-    <li><a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a> adds a vendored default skill bundle to new Hyperwiki projects, installed offline during CLI and dashboard initialization with a <code>--no-skills</code> opt-out.</li>
+    <li><a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> moved hyperwiki's app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui; plan pages now render from trusted local MDX with Markdown-first derivatives for agents, and obsolete static shell assets have been removed.</li>
+    <li><a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a> adds a vendored default skill bundle to new hyperwiki projects, installed offline during CLI and dashboard initialization with a <code>--no-skills</code> opt-out.</li>
     <li><a href="/wiki/plans/features/source-grounded-import-planning.mdx">Source-Grounded Import Planning</a> changes imported projects to preserve source facts, capture planning answers, and wait for detailed agent Q&amp;A before creating real stages and units.</li>
     <li><a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> added the project-scoped <code>+ plan</code> Q&amp;A workflow, clarity gate, generated wiki writes, dashboard/log sync, conflict feedback, and post-create activation.</li>
     <li><a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> adds the in-app flow for turning rough intent into durable wiki plans.</li>
@@ -96,13 +97,13 @@ wikiKind: "plan"
     <li><a href="/wiki/plans/features/plan-scoped-terminals.mdx">Plan-scoped Terminals</a> scopes terminal panels to the active plan root and keeps hidden plan or project terminal processes running until explicit close.</li>
     <li><a href="/wiki/plans/features/dev-script-agent-guidance.mdx">Dev Script Agent Guidance</a> makes new-project and Execute handoffs explicitly require a runnable <code>package.json</code> <code>dev</code> script for previewable apps, preferably backed by Portless.</li>
     <li><a href="/wiki/plans/features/dev-preview-lifecycle.mdx">Dev Preview Lifecycle</a> corrected preview lifecycle labels and derives Run Dev from <code>package.json</code> when older project config still has an empty dev command.</li>
-    <li><a href="/wiki/plans/features/git-onboarding.mdx">Git Onboarding</a> asks to initialize Git during onboarding, creates an initial Hyperwiki commit when accepted, and offers the same recovery before Execute on older non-Git projects.</li>
+    <li><a href="/wiki/plans/features/git-onboarding.mdx">Git Onboarding</a> asks to initialize Git during onboarding, creates an initial hyperwiki commit when accepted, and offers the same recovery before Execute on older non-Git projects.</li>
     <li><a href="/wiki/plans/features/agent-execute-launch-guard.mdx">Agent Execute Launch Guard</a> prevents Execute and New Agent from sending handoff prompts into a plain shell when a project has no configured agent launch command.</li>
     <li><a href="/wiki/plans/zzz_completed/features/project-open-current-work.mdx">Project Open Current Work</a> simplified Manage Projects actions to Open and navigates projects to their current unit of work.</li>
     <li><a href="/wiki/plans/zzz_completed/features/sidebar-keyboard-navigation.mdx">Sidebar Keyboard Navigation</a> added roving keyboard focus and tree-style arrow navigation to the workspace sidebar.</li>
     <li>The New Project flow was moved to a dedicated <a href="/wiki/plans/new-project-page.mdx">New Project page</a> linked from the Projects dropdown.</li>
     <li><a href="/wiki/plans/zzz_completed/project-removal.mdx">Project Removal</a> added inline Manage Projects removal, optional project-root deletion, and management-page sidebar hiding.</li>
-    <li><a href="/wiki/plans/zzz_completed/features/scaffold-contract-skill-reconciliation.mdx">Scaffold Contract Skill Reconciliation</a> documented and implemented Hyperwiki's product scaffold conventions for external project-wiki skill compatibility.</li>
+    <li><a href="/wiki/plans/zzz_completed/features/scaffold-contract-skill-reconciliation.mdx">Scaffold Contract Skill Reconciliation</a> documented and implemented hyperwiki's product scaffold conventions for external project-wiki skill compatibility.</li>
     <li>Stage 05 multi-project workspace was implemented and smoke-tested.</li>
     <li>Stage 06 agent-first launch layout and safe reset command were implemented and smoke-tested.</li>
     <li>Workspace chrome was reduced after dogfooding the multi-pane terminal layout.</li>

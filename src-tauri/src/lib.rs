@@ -95,7 +95,7 @@ fn run_init_cli(args: &[String]) {
     };
     println!("Initialized hyperwiki for {project_name}");
     match git_result.as_deref() {
-        Some("committed") => println!("Initialized Git and created the initial Hyperwiki commit."),
+        Some("committed") => println!("Initialized Git and created the initial hyperwiki commit."),
         Some("already-initialized") => println!("Git is already initialized."),
         Some("initialized") => println!("Initialized Git."),
         Some("skipped") => println!("Skipped Git initialization."),
@@ -151,7 +151,7 @@ fn wt_doctor(
 fn wt_list(registry: &domain::projects::ProjectRegistry) -> Result<(), String> {
     let list = registry.list(None);
     if list.checkouts.is_empty() {
-        println!("No registered Hyperwiki checkouts.");
+        println!("No registered hyperwiki checkouts.");
         return Ok(());
     }
     for project in list.checkouts {
@@ -365,7 +365,7 @@ pub fn run() {
 
 fn print_help() {
     println!(
-        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite] [--no-skills]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an MDX-first repo-local wiki, hyperwiki config, and default repo-local agent skills.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage Hyperwiki worktree development through the Rust CLI.\n"
+        "hyperwiki\n\nUsage:\n  hyperwiki\n  hyperwiki init [--yes] [--git|--no-git] [--project-name NAME] [--summary TEXT] [--overwrite] [--no-skills]\n  hyperwiki reset [--dry-run]\n  hyperwiki launch\n  hyperwiki dev\n  hyperwiki mcp\n  hyperwiki wt <doctor|create|list|resume|open|finish|prune>\n  hyperwiki help\n\nCommands:\n  init     Scaffold an MDX-first repo-local wiki, hyperwiki config, and default repo-local agent skills.\n  reset    Clear user registry and ignored local runtime state without touching wiki or config files.\n  launch   Open the Tauri desktop app.\n  dev      Open the Tauri desktop app for local development.\n  mcp      Start the local stdio MCP server for read-only project context.\n  wt       Manage hyperwiki worktree development through the Rust CLI.\n"
     );
 }
 

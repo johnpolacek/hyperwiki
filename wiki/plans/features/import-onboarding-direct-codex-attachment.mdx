@@ -1,6 +1,6 @@
 ---
 title: "Import Onboarding Direct Codex Attachment"
-description: "Evaluate a minimal Hyperwiki wrapper around persistent Codex app-server or daemon sessions for imported-project Q&A."
+description: "Evaluate a minimal hyperwiki wrapper around persistent Codex app-server or daemon sessions for imported-project Q&A."
 wikiKind: "plan"
 ---
 
@@ -10,14 +10,14 @@ wikiKind: "plan"
   <ul>
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
-    <li>Candidate: 3 - Direct Codex app-server or daemon attachment with a minimal Hyperwiki wrapper</li>
+    <li>Candidate: 3 - Direct Codex app-server or daemon attachment with a minimal hyperwiki wrapper</li>
     <li>Goal: preserve Codex as the primary session engine while eliminating per-turn CLI startup, frontend-owned orchestration, and false stalled states.</li>
     <li>Next action: compare this candidate against the backend state machine, sidecar service, and broader engine candidates before implementation selection.</li>
   </ul>
 </section>
 <section>
   <h2>Intent</h2>
-  <p>Use Codex app-server, or a future Codex daemon interface, as the long-lived agent runtime for import onboarding. Hyperwiki should attach to Codex, normalize its events, and render state, but avoid building a broad new engine unless Codex proves unable to support the required user experience.</p>
+  <p>Use Codex app-server, or a future Codex daemon interface, as the long-lived agent runtime for import onboarding. hyperwiki should attach to Codex, normalize its events, and render state, but avoid building a broad new engine unless Codex proves unable to support the required user experience.</p>
   <p>This candidate is the smallest architectural move that still addresses the current failure mode: no more spawning a full CLI turn for each interaction, no more React-managed request protocol, and no more treating a quiet assistant stream as a hard stall after 25 seconds.</p>
 </section>
 <section>
@@ -26,9 +26,9 @@ wikiKind: "plan"
     <li>Keep a single persistent <code>codex app-server --listen stdio://</code> process owned by the Tauri backend during app startup or first import-onboarding use.</li>
     <li>Wrap Codex app-server behind a narrow Rust <code>CodexSessionClient</code> that owns process health, JSON-RPC request IDs, thread creation, turn start, event subscription, cancellation, and restart policy.</li>
     <li>Expose import-onboarding operations from Rust to React as typed commands and events, but let Codex remain the source of the conversational thread and generation state.</li>
-    <li>Use Codex app-server event types such as agent-message deltas, turn completion, errors, and tool requests as the raw stream, then normalize them into Hyperwiki onboarding events.</li>
+    <li>Use Codex app-server event types such as agent-message deltas, turn completion, errors, and tool requests as the raw stream, then normalize them into hyperwiki onboarding events.</li>
     <li>Prefer Codex-native structured output, JSON schema, or tool-request semantics when available. Fall back to strict prompt contracts and Rust-side validation when the Codex protocol cannot enforce structure.</li>
-    <li>Persist only the minimal Hyperwiki attachment state needed to recover: project ID, Codex thread/session ID, active turn ID, last known onboarding phase, last valid question, and durable Q&amp;A path.</li>
+    <li>Persist only the minimal hyperwiki attachment state needed to recover: project ID, Codex thread/session ID, active turn ID, last known onboarding phase, last valid question, and durable Q&amp;A path.</li>
   </ul>
 </section>
 <section>
@@ -44,7 +44,7 @@ wikiKind: "plan"
 <section>
   <h2>Flow</h2>
   <ul>
-    <li>Import creates or selects a Hyperwiki project, then Rust attaches to the persistent Codex app-server process.</li>
+    <li>Import creates or selects a hyperwiki project, then Rust attaches to the persistent Codex app-server process.</li>
     <li>Rust creates or resumes a Codex thread seeded with compact source context and the import-onboarding protocol.</li>
     <li>Codex starts a turn to produce one source-grounded question or generate the final plan when no blocking unknowns remain.</li>
     <li>Rust streams Codex events, validates the first complete question payload, persists the attachment snapshot, and emits a question-ready event.</li>
@@ -75,8 +75,8 @@ wikiKind: "plan"
   <h2>Tradeoffs</h2>
   <ul>
     <li>Benefits: smallest implementation surface, minimal packaging risk, direct use of Codex's existing session model, and likely fastest path to remove current stalls.</li>
-    <li>Costs: Hyperwiki remains constrained by Codex app-server protocol stability, cancellation semantics, event ordering, structured-output support, and recovery behavior.</li>
-    <li>Risk: if Codex app-server is quiet or opaque during long work, this candidate may still struggle to produce the best visible UX without adding a stronger Hyperwiki-owned state machine.</li>
+    <li>Costs: hyperwiki remains constrained by Codex app-server protocol stability, cancellation semantics, event ordering, structured-output support, and recovery behavior.</li>
+    <li>Risk: if Codex app-server is quiet or opaque during long work, this candidate may still struggle to produce the best visible UX without adding a stronger hyperwiki-owned state machine.</li>
     <li>Mitigation: normalize every Codex event into explicit UI state, add protocol watchdogs, and keep Candidate 1's backend state machine as the fallback escalation path.</li>
   </ul>
 </section>
@@ -96,7 +96,7 @@ wikiKind: "plan"
 <section>
   <h2>Assumptions</h2>
   <ul>
-    <li>Best end-user UX remains the primary criterion, but this candidate assumes Codex can provide enough streaming and session behavior without a separate Hyperwiki engine.</li>
+    <li>Best end-user UX remains the primary criterion, but this candidate assumes Codex can provide enough streaming and session behavior without a separate hyperwiki engine.</li>
     <li>Codex-generated final plan docs remain preferred over deterministic Rust plan generation.</li>
     <li>Resume is useful but secondary to no stalls, fast first question, and fast follow-up question.</li>
     <li>Structured streaming, progressive context, human-input bridging, and artifact-contract validation remain comparison dimensions that can be layered onto this candidate.</li>

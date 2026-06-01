@@ -1,6 +1,6 @@
 ---
 title: "Xterm Terminal Renderer"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -24,7 +24,7 @@ wikiKind: "plan"
       <h2>Implementation</h2>
       <ul>
         <li>Use <code>@xterm/xterm</code> with fit and web-link addons for browser terminal panels.</li>
-        <li>Keep Hyperwiki's existing PTY websocket endpoint and session lifecycle, replacing only the browser transport adapter.</li>
+        <li>Keep hyperwiki's existing PTY websocket endpoint and session lifecycle, replacing only the browser transport adapter.</li>
         <li>Resize PTYs through the xterm fit addon instead of measuring character cells manually.</li>
         <li>Preserve collapse or expand position through xterm buffer viewport state.</li>
         <li>Allow the managed Run Dev terminal to start while collapsed and show a Starting state until the server prints a runtime URL.</li>

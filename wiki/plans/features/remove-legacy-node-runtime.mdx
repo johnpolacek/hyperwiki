@@ -1,6 +1,6 @@
 ---
 title: "Remove Legacy Node Runtime"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
@@ -21,7 +21,7 @@ wikiKind: "plan"
         <li><code>package.json</code> remains only for <code>pnpm</code> developer scripts, the Tauri CLI, frontend static checks, and asset smoke tests.</li>
         <li>The product command surface is the Rust/Tauri binary. No npm <code>bin</code> shim remains.</li>
         <li>Worktree commands stay convenient through <code>pnpm wt:*</code>, but those scripts invoke Rust CLI commands instead of a Node shim.</li>
-        <li>The frontend uses Tauri command transport only. HTTP and WebSocket transports are no longer supported for Hyperwiki's own app shell.</li>
+        <li>The frontend uses Tauri command transport only. HTTP and WebSocket transports are no longer supported for hyperwiki's own app shell.</li>
       </ul>
     </section>
     <section>

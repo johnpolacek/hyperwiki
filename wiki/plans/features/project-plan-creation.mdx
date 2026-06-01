@@ -1,13 +1,13 @@
 ---
 title: "Project Plan Creation"
-description: "Hyperwiki plan page."
+description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
 <section className="hero-strip" aria-labelledby="title">
       <span className="badge status-active">Active</span>
       <h1 id="title">Project Plan Creation</h1>
-      <p>Plan the in-app workflow for creating a durable Hyperwiki plan inside any selected project, using an LLM-led clarification loop, the project root as the write boundary, and the project wiki as the source of truth.</p>
+      <p>Plan the in-app workflow for creating a durable hyperwiki plan inside any selected project, using an LLM-led clarification loop, the project root as the write boundary, and the project wiki as the source of truth.</p>
       <dl className="summary-grid">
         <div>
           <dt>Status</dt>
@@ -48,7 +48,7 @@ wikiKind: "plan"
 
     <section className="panel" aria-labelledby="intent">
       <h2 id="intent">Intent</h2>
-      <p>Extend Hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for Hyperwiki's own repository. The app should interview the user through an LLM-guided clarification loop, create or update files under the selected project's <code>wiki/</code> directory only after the clarity gate passes, update that project's Plans index, and navigate the user into the newly created project plan.</p>
+      <p>Extend hyperwiki's completed <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> so plan creation works from any active project workspace, not only as a plan for hyperwiki's own repository. The app should interview the user through an LLM-guided clarification loop, create or update files under the selected project's <code>wiki/</code> directory only after the clarity gate passes, update that project's Plans index, and navigate the user into the newly created project plan.</p>
     </section>
 
     <section className="workflow-map" aria-labelledby="flow">
@@ -111,7 +111,7 @@ wikiKind: "plan"
           </tr>
           <tr>
             <td>Compatibility</td>
-            <td>Preserve Hyperwiki scaffold conventions: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, and app-served <code>/assets/wiki.css</code>.</td>
+            <td>Preserve hyperwiki scaffold conventions: lowercase <code>wiki/sources.mdx</code>, app-visible <code>wiki/AGENTS.mdx</code>, and app-served <code>/assets/wiki.css</code>.</td>
             <td>Applying external project-wiki filename conventions that would create duplicate <code>wiki/Sources.mdx</code> files.</td>
           </tr>
         </tbody>

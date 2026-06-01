@@ -1,6 +1,6 @@
 ---
 title: "Development"
-description: "Hyperwiki page page."
+description: "hyperwiki page page."
 wikiKind: "page"
 ---
 
@@ -18,16 +18,16 @@ src-tauri/target/release/hyperwiki reset --dry-run
 src-tauri/target/release/hyperwiki</code></pre>
 <h2>Desktop Runtime</h2>
 <ul>
-  <li>The canonical app runtime is the Tauri bundle at <code>src-tauri/target/release/bundle/macos/Hyperwiki.app</code>.</li>
+  <li>The canonical app runtime is the Tauri bundle at <code>src-tauri/target/release/bundle/macos/hyperwiki.app</code>.</li>
   <li>The Rust binary provides commands for <code>init</code>, <code>reset</code>, <code>dev</code>, <code>launch</code>, <code>mcp</code>, and <code>wt</code>.</li>
-  <li><code>pnpm dev</code> runs <code>tauri dev</code>; Hyperwiki no longer has a browser-server development runtime.</li>
+  <li><code>pnpm dev</code> runs <code>tauri dev</code>; hyperwiki no longer has a browser-server development runtime.</li>
   <li>The Vite React app is the only app shell. Static files under <code>public/</code> are limited to package-served assets such as <code>/assets/wiki.css</code>, <code>/assets/theme.css</code>, favicon, and docs fonts.</li>
 </ul>
 <h2>Project Previews</h2>
 <ul>
-  <li>Portless remains the preferred preview mechanism for user projects opened inside Hyperwiki.</li>
+  <li>Portless remains the preferred preview mechanism for user projects opened inside hyperwiki.</li>
   <li>Feature worktree preview URLs should continue to use <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code> when a project provides a Portless-backed preview.</li>
-  <li>Hyperwiki's own development runtime is the Tauri desktop app, not a Portless browser route.</li>
+  <li>hyperwiki's own development runtime is the Tauri desktop app, not a Portless browser route.</li>
 </ul>
 <h2>Parallel Worktrees</h2>
 <pre><code>pnpm wt:doctor
