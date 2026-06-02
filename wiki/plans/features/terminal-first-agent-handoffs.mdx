@@ -1,0 +1,40 @@
+---
+title: "Terminal-First Agent Handoffs"
+description: "Retire the activity feed and keep live agent and dev work in terminals."
+wikiKind: "plan"
+---
+
+<h1>Terminal-First Agent Handoffs</h1>
+
+<section>
+  <h2>Status</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective UI plan</li>
+    <li>Current unit: complete.</li>
+    <li>Next action: dogfood agent, worktree, review, and dev handoffs in the desktop app.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>Live agent work and app runtime commands should stay in the terminal panel. The separate Agent Activity pane duplicates terminal output, can misrepresent the session, and creates a surprising panel replacement when the user expects a CLI.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Remove the Agent Activity pane as a visible mode and keep the side panel on terminals for normal workspace routes.</li>
+    <li>Keep terminal output parsing for planning questions and lifecycle cleanup, but do not render feed cards, copied transcripts, or a Raw terminal toggle.</li>
+    <li>Make agent handoffs select the relevant terminal session instead of replacing the panel.</li>
+    <li>Make the terminal <code>run dev</code> action start a <code>dev</code> terminal using the configured preview start command, without creating a worktree or sending an agent prompt.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+    <li>Manual app dogfooding should confirm agent, worktree, review, and dev actions keep the right panel terminal-only.</li>
+  </ul>
+</section>

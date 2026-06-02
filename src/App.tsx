@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
-  Activity,
   BookOpen,
   Check,
   ChevronDown,
@@ -44,7 +43,6 @@ type ViewRoute =
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
-type SidePanelMode = "terminal" | "agent-activity";
 type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
 type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 
@@ -639,7 +637,6 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
-  const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("terminal");
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
@@ -1277,7 +1274,7 @@ function App() {
     await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
   }
 
-  function startAgentRun(kind: AgentRunKind, label: string, panelMode: SidePanelMode = kind === "execute" ? "terminal" : "agent-activity") {
+  function startAgentRun(kind: AgentRunKind, label: string) {
     const run: AgentRunState = {
       id: `${kind}-${Date.now()}`,
       kind,
@@ -1291,7 +1288,6 @@ function App() {
       startedAt: Date.now(),
     };
     setAgentRun(run);
-    setSidePanelMode(panelMode);
     return run.id;
   }
 
@@ -1520,9 +1516,9 @@ function App() {
     projectLayout = layout,
     knownSessions = sessions,
     existingRunId?: string,
-    options: { forceNewSession?: boolean; panelMode?: SidePanelMode } = {},
+    options: { forceNewSession?: boolean } = {},
   ) {
-    const runId = existingRunId || startAgentRun(kind, label, options.panelMode);
+    const runId = existingRunId || startAgentRun(kind, label);
     try {
       const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: kind === "modify" ? "modify" : undefined, promote: kind === "modify" });
       updateAgentRun(runId, {
@@ -2091,7 +2087,7 @@ function App() {
           layout,
           sessions,
           undefined,
-          action === "modify" ? { panelMode: "terminal" } : { forceNewSession: true, panelMode: "terminal" },
+          action === "modify" ? {} : { forceNewSession: true },
         );
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
@@ -2215,6 +2211,33 @@ function App() {
       setActiveSessionId(restarted.session.id);
       await loadSessions();
       setStatus("Session attached");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function startDevTerminal() {
+    const command = preview?.startCommand || "";
+    if (!command.trim()) {
+      setStatus(preview?.reason || "No dev command is configured.");
+      return;
+    }
+    setStatus("Starting dev terminal");
+    try {
+      const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
+        method: "POST",
+        body: {
+          name: "dev",
+          role: "dev",
+          command,
+          scope: terminalScope.scope,
+          scopeKind: terminalScope.scopeKind,
+          planPath: terminalScope.planPath,
+        },
+      });
+      setActiveSessionId(started.session.id);
+      await loadSessions();
+      setStatus(`Dev started: ${command}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -2426,12 +2449,7 @@ function App() {
           wikiPages={wikiPages}
           activePlanState={activePlanState}
         />
-        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? null : sidePanelMode === "agent-activity" ? (
-          <>
-            <HeadlessTerminalListener activeProject={activeProject} onTerminalText={handleTerminalText} sessions={sessions} />
-            <AgentActivityPane agentRun={agentRun} onShowTerminal={() => setSidePanelMode("terminal")} />
-          </>
-        ) : (
+        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? null : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
               activeSessionId={activeSessionId}
@@ -2442,7 +2460,7 @@ function App() {
               onInitializeGit={initializeGitFromTerminal}
               onRenameSession={renameSession}
               onRestartSession={restartSession}
-              onRunDev={() => runCommandAction("execute-worktree")}
+              onRunDev={startDevTerminal}
               onSelectSession={setActiveSessionId}
               onStart={startTerminal}
               onTerminalText={handleTerminalText}
@@ -4488,86 +4506,6 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function AgentActivityPane({ agentRun, onShowTerminal }: { agentRun: AgentRunState | null; onShowTerminal: () => void }) {
-  const phaseLabel = agentRun ? agentRunPhaseLabel(agentRun.phase) : "No active run";
-  const lines = agentRun?.lines.length ? agentRun.lines : [agentRun?.activity || "Waiting for agent activity"];
-  const isDone = agentRun?.phase === "complete" || agentRun?.phase === "blocked";
-  const [copyStatus, setCopyStatus] = useState("");
-  const transcript = agentRun?.transcript.trim() || lines.join("\n");
-
-  async function copyTranscript() {
-    try {
-      await navigator.clipboard.writeText(transcript);
-      setCopyStatus("Copied");
-      window.setTimeout(() => setCopyStatus(""), 1600);
-    } catch {
-      setCopyStatus("Select the transcript text and copy manually");
-    }
-  }
-
-  return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l bg-background max-xl:hidden">
-      <header className="flex min-h-12 shrink-0 items-center justify-between gap-3 border-b bg-card px-4">
-        <div className="flex min-w-0 items-center gap-2">
-          {isDone ? <Activity aria-hidden="true" className="size-4 text-muted-foreground" /> : <Loader2 aria-hidden="true" className="size-4 animate-spin text-muted-foreground" />}
-          <div className="min-w-0">
-            <p className="m-0 truncate text-sm font-bold">{agentRun?.label || "Agent Activity"}</p>
-            <p className="m-0 truncate text-xs text-muted-foreground">{phaseLabel}</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {copyStatus ? <span className="text-xs text-muted-foreground">{copyStatus}</span> : null}
-          <Button size="sm" variant="outline" onClick={copyTranscript}>
-            Copy transcript
-          </Button>
-          <Button size="sm" variant="outline" onClick={onShowTerminal}>
-            Raw terminal
-          </Button>
-        </div>
-      </header>
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        <section className="grid gap-4">
-          <div className="rounded-md border bg-card p-4">
-            <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Current activity</p>
-            <p className="m-0 mt-2 text-sm leading-6">{agentRun?.activity || "Waiting for agent output."}</p>
-          </div>
-          <div className="rounded-md border bg-card">
-            <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Feed</p>
-              <p className="m-0 text-xs text-muted-foreground">{lines.length} lines</p>
-            </div>
-            <div className="max-h-[42vh] min-h-64 overflow-auto px-4 py-3 font-mono text-xs leading-5">
-              {lines.map((line, index) => (
-                <p className="m-0 whitespace-pre-wrap border-l border-border py-1 pl-3 text-muted-foreground" key={`${index}:${line}`}>
-                  {line}
-                </p>
-              ))}
-            </div>
-          </div>
-          {agentRun?.outcome ? (
-            <div className={cn("rounded-md border p-4", agentRun.phase === "blocked" ? "bg-destructive/10" : "bg-secondary")}>
-              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Outcome</p>
-              <p className="m-0 mt-2 text-sm leading-6">{agentRun.outcome}</p>
-            </div>
-          ) : null}
-          <div className="rounded-md border bg-card">
-            <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-              <p className="m-0 text-xs font-bold uppercase text-muted-foreground">Troubleshooting transcript</p>
-              <p className="m-0 text-xs text-muted-foreground">{transcript.length.toLocaleString()} chars</p>
-            </div>
-            <textarea
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              className="min-h-72 w-full resize-y border-0 bg-background p-4 font-mono text-xs leading-5 text-foreground outline-none"
-              readOnly
-              value={transcript}
-            />
-          </div>
-        </section>
-      </div>
-    </aside>
-  );
-}
-
 function TerminalPane(props: {
   activeSessionId: string | null;
   activeProject: ProjectRecord | null;
@@ -4730,69 +4668,6 @@ function TerminalPane(props: {
       </div>
     </aside>
   );
-}
-
-function HeadlessTerminalListener({
-  activeProject,
-  onTerminalText,
-  sessions,
-}: {
-  activeProject: ProjectRecord | null;
-  onTerminalText: (sessionId: string, text: string) => void;
-  sessions: SessionRecord[];
-}) {
-  const agentSession = sessions.find((session) => isAgentSession(session) && !isStandbySession(session)) || null;
-  useEffect(() => {
-    if (!activeProject || !agentSession) return;
-    const session = agentSession;
-    let closed = false;
-    let seenSeq = 0;
-    let eventBuffer: TerminalOutputEventPayload[] = [];
-    let unlisten: (() => void) | null = null;
-
-    const writeChunk = (payload: TerminalOutputEventPayload) => {
-      if (closed || payload.sessionId !== session.id || payload.seq <= seenSeq) return;
-      seenSeq = payload.seq;
-      const bytes = Uint8Array.from(payload.bytes || []);
-      if (!bytes.length) return;
-      onTerminalText(session.id, terminalTextForParsing(terminalBytesToText(bytes)));
-    };
-
-    const handleChunk = (payload: TerminalOutputEventPayload) => {
-      if (payload.sessionId !== session.id) return;
-      if (!seenSeq) {
-        eventBuffer.push(payload);
-        return;
-      }
-      writeChunk(payload);
-    };
-
-    async function attach() {
-      try {
-        appendImportLog(`Headless terminal listener attach start session=${session.id}`);
-        unlisten = await listenTerminalOutput(handleChunk);
-        const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
-        if (closed) return;
-        const bytes = Uint8Array.from(replay.bytes || []);
-        appendImportLog(`Headless terminal listener replay session=${session.id} seq=${replay.seq} bytes=${bytes.length} buffered=${eventBuffer.length}`);
-        if (bytes.length) onTerminalText(session.id, terminalTextForParsing(terminalBytesToText(bytes)));
-        seenSeq = replay.seq || 0;
-        eventBuffer.sort((left, right) => left.seq - right.seq).forEach(writeChunk);
-        appendImportLog(`Headless terminal listener attached session=${session.id} seenSeq=${seenSeq}`);
-        eventBuffer = [];
-      } catch (error) {
-        appendImportLog(`Headless terminal listener failed session=${session.id}`, error);
-      }
-    }
-
-    void attach();
-    return () => {
-      closed = true;
-      if (unlisten) unlisten();
-    };
-  }, [activeProject?.id, agentSession?.id, onTerminalText]);
-
-  return null;
 }
 
 function TerminalSessionTab(props: {

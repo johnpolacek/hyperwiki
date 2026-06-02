@@ -12,21 +12,22 @@ wikiKind: "plan"
     <li>Status: complete</li>
     <li>Shape: corrective UI plan</li>
     <li>Current unit: complete</li>
-    <li>Next action: continue dogfooding agent handoffs and refine feed parsing when new terminal output patterns appear.</li>
+    <li>Next action: none; this UI direction has been superseded by <a href="/wiki/plans/features/terminal-first-agent-handoffs.mdx">Terminal-First Agent Handoffs</a>.</li>
   </ul>
 </section>
 
 <section>
   <h2>Intent</h2>
-  <p>Modify, Execute, worktree, and review handoffs should show a clear live feed of what the agent is doing instead of switching to a raw terminal view that can look idle while Codex is working.</p>
+  <p>Modify, Execute, worktree, and review handoffs originally showed a clear live feed of what the agent was doing instead of switching to a raw terminal view that could look idle while Codex was working. Dogfooding later showed that terminals should remain the canonical live surface.</p>
 </section>
 
 <section>
   <h2>Implementation</h2>
   <ul>
     <li>Add a tracked agent-run state for handoff phase, current activity, feed lines, and outcome.</li>
-    <li>Render a simplified Agent Activity pane by default after agent handoffs, with raw terminal available as an explicit secondary view.</li>
-    <li>Reuse terminal event parsing to populate a full scrollable feed and a copy-friendly troubleshooting transcript while suppressing spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
+    <li>Rendered a simplified Agent Activity pane by default after agent handoffs, with raw terminal available as an explicit secondary view.</li>
+    <li>Reused terminal event parsing to populate a full scrollable feed and a copy-friendly troubleshooting transcript while suppressing spinner redraw fragments, prompt chrome, and repeated terminal noise.</li>
+    <li>This feed UI has since been removed; terminal parsing remains for planning questions and lifecycle cleanup.</li>
     <li>Treat remaining manual/provider gates as outcome detail after a completed agent run instead of classifying the whole handoff as blocked.</li>
     <li>Disable normal Modify and Execute actions for completed or stale plan pages and show an Open current action when active work exists.</li>
     <li>Constrain Modify Plan handoffs to planning/wiki edits only. The textarea request is wrapped in an explicit docs-only prompt so agents update app-visible wiki planning files rather than implementing product code, changing dependencies, or running ahead into execution.</li>

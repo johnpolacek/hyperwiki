@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | terminal-first handoffs</h2>
+  <ul>
+    <li>Retired the separate Agent Activity side-panel mode so normal workspace routes keep the right panel on live terminals for agent, worktree, review, and execute handoffs.</li>
+    <li>Changed the terminal <code>run dev</code> button to start a normal <code>dev</code> terminal using the configured preview start command instead of creating a worktree and sending an agent prompt.</li>
+    <li>Kept terminal output parsing and agent lifecycle state for planning questions and completed-plan cleanup while removing feed cards, copy transcript UI, and the Raw terminal toggle.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | modify prompt fast path</h2>
   <ul>
     <li>Changed Modify Plan handoffs to cap click-time Codex readiness polling to a short fast path while keeping the longer wait for Execute and general agent prompts.</li>

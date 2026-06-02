@@ -93,8 +93,14 @@ if (!appSource.includes('const executionPage = action === "execute-main" ? activ
 if (!appSource.includes("currentUnitLabel") || !appSource.includes("compactUnitLabel(currentPage)") || !appSource.includes("activePlanState.currentUnitLabel ? `execute ${activePlanState.currentUnitLabel.toLowerCase()}` : \"execute\"")) {
   throw new Error("Execute button label must show only the compact current unit label, not the full unit title.");
 }
-if (!appSource.includes('action === "modify" ? { panelMode: "terminal" } : { forceNewSession: true, panelMode: "terminal" }')) {
+if (appSource.includes("SidePanelMode") || appSource.includes("AgentActivityPane") || appSource.includes("HeadlessTerminalListener")) {
+  throw new Error("Agent handoffs must stay terminal-first without restoring the separate activity feed panel.");
+}
+if (!appSource.includes('action === "modify" ? {} : { forceNewSession: true }')) {
   throw new Error("Execute must start a fresh general agent session while Modify keeps its prewarmed session behavior.");
+}
+if (!appSource.includes('name: "dev"') || !appSource.includes('role: "dev"') || !appSource.includes('const command = preview?.startCommand || ""')) {
+  throw new Error("Run dev must start a configured dev terminal instead of an empty CLI or worktree agent handoff.");
 }
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
