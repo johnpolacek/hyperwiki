@@ -1088,9 +1088,7 @@ function App() {
         return;
       }
       const nextSessions = response.sessions || [];
-      const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
-      setSessions(nextSessions);
-      setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
+      applyTerminalSessions(requestedProjectId, requestedScope, nextSessions, { reason: "load" });
     } catch {
       if (!isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) return;
       setSessions([]);
@@ -1104,6 +1102,7 @@ function App() {
 
   function navigate(nextRoute: ViewRoute) {
     const nextUrl = urlForRoute(nextRoute, activeProject);
+    latestTerminalContext.current = { projectId: activeProject?.id || "", scope: normalizeTerminalScope(scopeForRoute(nextRoute)).scope };
     appendImportLog(`Navigate route=${nextRoute.kind}${nextRoute.kind === "wiki" ? `:${nextRoute.path}` : ""} url=${nextUrl} activeProject=${activeProject?.id || "none"}`);
     setRoute(nextRoute);
     window.history.pushState(null, "", nextUrl);
@@ -1118,6 +1117,7 @@ function App() {
     const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
     if (isIncompleteImportProject(project)) void prewarmImportOnboarding(project, "switch-project");
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
+    latestTerminalContext.current = { projectId: project.id, scope: normalizeTerminalScope(scopeForRoute(nextRoute)).scope };
     setRoute(nextRoute);
     const nextPath = `/workspace/${project.projectSlug}/${project.worktreeSlug}#${landingPath}`;
     window.history.pushState(null, "", nextPath);
@@ -1170,12 +1170,43 @@ function App() {
           planPath: terminalScope.planPath,
         },
       });
-      setActiveSessionId(started.session.id);
+      if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-terminal", select: true });
       await loadSessions();
       setStatus(`${name} started`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
+  }
+
+  function applyTerminalSessions(projectId: string, scope: string, incomingSessions: SessionRecord[], options: { reason: string; selectSessionId?: string | null } = { reason: "apply" }) {
+    const requestedScope = normalizeTerminalScope({ scope, scopeKind: "global", planPath: null }).scope;
+    if (!isCurrentTerminalContext(projectId, requestedScope, latestTerminalContext.current)) {
+      appendImportLog(`Ignoring stale terminal sessions apply reason=${options.reason} project=${projectId || "none"} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+      return;
+    }
+    setSessions((current) => {
+      const currentVisible = current.filter((session) => isVisibleLiveTerminalSession(session) && sessionMatchesScopePath(session, requestedScope));
+      const incomingIds = new Set(incomingSessions.map((session) => session.id));
+      const preserved = currentVisible.filter((session) => !incomingIds.has(session.id));
+      const nextSessions = [...incomingSessions, ...preserved].sort(compareSessions);
+      appendImportLog(`Applied terminal sessions reason=${options.reason} project=${projectId || "none"} scope=${requestedScope} incoming=${incomingSessions.length} preserved=${preserved.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}:${session.visibility || "visible"}`).join(",") || "none"}`);
+      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, requestedScope, options.selectSessionId, currentActive));
+      return nextSessions;
+    });
+  }
+
+  function upsertTerminalSession(projectId: string, session: SessionRecord, options: { reason: string; select?: boolean } = { reason: "upsert" }) {
+    const requestedScope = canonicalTerminalScopePath(session.scope || "");
+    if (!requestedScope || !isCurrentTerminalContext(projectId, requestedScope, latestTerminalContext.current)) {
+      appendImportLog(`Ignoring stale terminal session upsert reason=${options.reason} project=${projectId || "none"} session=${session.id} scope=${requestedScope || "none"} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+      return;
+    }
+    setSessions((current) => {
+      const nextSessions = upsertSessionRecord(current, session).sort(compareSessions);
+      appendImportLog(`Upserted terminal session reason=${options.reason} project=${projectId || "none"} session=${session.id} scope=${requestedScope} visibility=${session.visibility || "visible"} status=${session.status || "unknown"}`);
+      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, requestedScope, options.select && !isStandbySession(session) ? session.id : null, currentActive));
+      return nextSessions;
+    });
   }
 
   async function ensureAgentSession() {
@@ -1194,9 +1225,7 @@ function App() {
       appendImportLog(`Ignoring stale project session load project=${project.id} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
       return nextSessions;
     }
-    const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
-    setSessions(nextSessions);
-    setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
+    applyTerminalSessions(project.id, requestedScope, nextSessions, { reason: "project-load" });
     return nextSessions;
   }
 
@@ -1221,10 +1250,10 @@ function App() {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"} createdAt=${existing.createdAt || "unknown"}`);
       if (options.promote && isStandbySession(existing)) {
         const promoted = await promoteSession(project, existing.id);
-        setActiveSessionId(promoted.id);
+        upsertTerminalSession(project.id, promoted, { reason: "promote-reuse", select: true });
         return promoted;
       }
-      setActiveSessionId(existing.id);
+      upsertTerminalSession(project.id, existing, { reason: "reuse-agent", select: true });
       return existing;
     }
     if (existing?.command && options.forceNew) {
@@ -1248,8 +1277,7 @@ function App() {
       },
     });
     appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""} purpose=${started.session.purpose || "none"} visibility=${started.session.visibility || "visible"}`);
-    setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
-    if (!isStandbySession(started.session)) setActiveSessionId(started.session.id);
+    upsertTerminalSession(project.id, started.session, { reason: "start-agent", select: !isStandbySession(started.session) });
     return started.session;
   }
 
@@ -1282,7 +1310,7 @@ function App() {
       body: { visibility: "visible", purpose: "modify" },
     });
     const promoted = response.session;
-    setSessions((current) => current.map((session) => session.id === promoted.id ? promoted : session));
+    upsertTerminalSession(project.id, promoted, { reason: "promote", select: true });
     return promoted;
   }
 
@@ -2223,7 +2251,7 @@ function App() {
           planPath: session.planPath || terminalScope.planPath,
         },
       });
-      setActiveSessionId(restarted.session.id);
+      if (activeProject) upsertTerminalSession(activeProject.id, restarted.session, { reason: "restart", select: true });
       await loadSessions();
       setStatus("Session attached");
     } catch (error) {
@@ -2250,7 +2278,7 @@ function App() {
           planPath: terminalScope.planPath,
         },
       });
-      setActiveSessionId(started.session.id);
+      if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-dev", select: true });
       await loadSessions();
       setStatus(`Dev started: ${command}`);
     } catch (error) {
@@ -5198,6 +5226,30 @@ function isLiveTerminalSession(session: SessionRecord) {
 
 function isVisibleLiveTerminalSession(session: SessionRecord) {
   return isLiveTerminalSession(session) && !isStandbySession(session);
+}
+
+function upsertSessionRecord(sessions: SessionRecord[], nextSession: SessionRecord) {
+  const didReplace = sessions.some((session) => session.id === nextSession.id);
+  if (didReplace) return sessions.map((session) => session.id === nextSession.id ? nextSession : session);
+  return [...sessions, nextSession];
+}
+
+function compareSessions(left: SessionRecord, right: SessionRecord) {
+  const leftMs = sessionSortMs(left);
+  const rightMs = sessionSortMs(right);
+  if (leftMs !== rightMs) return leftMs - rightMs;
+  return left.id.localeCompare(right.id);
+}
+
+function sessionMatchesScopePath(session: SessionRecord, scope: string) {
+  return canonicalTerminalScopePath(session.scope || "") === scope;
+}
+
+function selectActiveSessionId(sessions: SessionRecord[], scope: string, preferredId?: string | null, currentId?: string | null) {
+  const visible = sessions.filter((session) => isVisibleLiveTerminalSession(session) && sessionMatchesScopePath(session, scope));
+  if (preferredId && visible.some((session) => session.id === preferredId)) return preferredId;
+  if (currentId && visible.some((session) => session.id === currentId)) return currentId;
+  return newestSession(visible)?.id || null;
 }
 
 function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean }) {

@@ -117,6 +117,9 @@ if (!appSource.includes('name: "dev"') || !appSource.includes('role: "dev"') || 
 if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignoring stale project session load") || !appSource.includes("function isCurrentTerminalContext")) {
   throw new Error("Async session loads must not replace the terminal pane after the route or project scope changes.");
 }
+if (!appSource.includes("function applyTerminalSessions") || !appSource.includes("preserved = currentVisible.filter") || !appSource.includes("function upsertTerminalSession") || !appSource.includes("function selectActiveSessionId")) {
+  throw new Error("Terminal pane sessions must use one canonical apply/upsert path that preserves newly started visible sessions.");
+}
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
 }
