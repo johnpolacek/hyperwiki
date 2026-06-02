@@ -653,9 +653,11 @@ function App() {
   const loggedPlanningQuestionIds = useRef(new Set<string>());
   const wikiFingerprintRef = useRef("");
   const wikiRefreshInFlight = useRef(false);
+  const latestTerminalContext = useRef<{ projectId: string; scope: string }>({ projectId: "", scope: "" });
 
   const currentWikiPath = route.kind === "wiki" ? route.path : defaultWikiPath;
   const terminalScope = useMemo(() => scopeForRoute(route), [route]);
+  latestTerminalContext.current = { projectId: activeProject?.id || "", scope: normalizeTerminalScope(terminalScope).scope };
   const sidebarModel = useMemo(() => buildSidebarModel(wikiPages), [wikiPages]);
   const projectGroups = useMemo(() => normalizeProjectGroups(projects, unavailableProjectIds), [projects, unavailableProjectIds]);
   const hasRegisteredProjects = projectGroups.length > 0;
@@ -1076,18 +1078,27 @@ function App() {
   }
 
   async function loadSessions() {
+    const requestedProjectId = activeProject?.id || "";
+    const requestedScope = normalizeTerminalScope(terminalScope).scope;
     setIsSessionsLoading(true);
     try {
-      const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(terminalScope.scope)}`, activeProject));
+      const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(requestedScope)}`, activeProject));
+      if (!isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) {
+        appendImportLog(`Ignoring stale session load project=${requestedProjectId || "none"} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+        return;
+      }
       const nextSessions = response.sessions || [];
       const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
       setSessions(nextSessions);
       setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
     } catch {
+      if (!isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) return;
       setSessions([]);
       setActiveSessionId(null);
     } finally {
-      setIsSessionsLoading(false);
+      if (isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) {
+        setIsSessionsLoading(false);
+      }
     }
   }
 
@@ -1174,10 +1185,15 @@ function App() {
 
   async function loadSessionsForProject(project: ProjectRecord | null, scope = terminalScope) {
     if (!project) return [];
-    appendImportLog(`Loading sessions project=${project.id} scope=${scope.scope}`);
-    const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(scope.scope)}`, project));
+    const requestedScope = normalizeTerminalScope(scope).scope;
+    appendImportLog(`Loading sessions project=${project.id} scope=${requestedScope}`);
+    const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(requestedScope)}`, project));
     const nextSessions = response.sessions || [];
-    appendImportLog(`Loaded sessions project=${project.id} scope=${scope.scope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
+    appendImportLog(`Loaded sessions project=${project.id} scope=${requestedScope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
+    if (!isCurrentTerminalContext(project.id, requestedScope, latestTerminalContext.current)) {
+      appendImportLog(`Ignoring stale project session load project=${project.id} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+      return nextSessions;
+    }
     const liveSessions = nextSessions.filter(isVisibleLiveTerminalSession);
     setSessions(nextSessions);
     setActiveSessionId((current) => current && liveSessions.some((session) => session.id === current) ? current : liveSessions[0]?.id || null);
@@ -5218,6 +5234,10 @@ function sessionSortMs(session: SessionRecord) {
 
 function sessionMatchesScope(session: SessionRecord, scope: TerminalScope) {
   return canonicalTerminalScopePath(session.scope || "") === scope.scope;
+}
+
+function isCurrentTerminalContext(projectId: string, scope: string, current: { projectId: string; scope: string }) {
+  return current.projectId === projectId && current.scope === scope;
 }
 
 function hasImportedSource(pages: WikiPage[]) {

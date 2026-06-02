@@ -114,6 +114,9 @@ if (!appSource.includes('action === "modify" ? {} : { forceNewSession: true }'))
 if (!appSource.includes('name: "dev"') || !appSource.includes('role: "dev"') || !appSource.includes('const command = preview?.startCommand || ""')) {
   throw new Error("Run dev must start a configured dev terminal instead of an empty CLI or worktree agent handoff.");
 }
+if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignoring stale project session load") || !appSource.includes("function isCurrentTerminalContext")) {
+  throw new Error("Async session loads must not replace the terminal pane after the route or project scope changes.");
+}
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
 }

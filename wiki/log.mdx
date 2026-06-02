@@ -11,6 +11,7 @@ wikiKind: "page"
   <ul>
     <li>Changed regular <code>+ plan</code> to navigate to the Plans index and start a fresh visible planning agent terminal instead of opening the retired full-page plan creation route.</li>
     <li>Updated the plan creation prompt so Q&amp;A happens in terminal prose until goal, scope, constraints, implementation approach, and verification are clear enough to write MDX plan docs.</li>
+    <li>Guarded async session list refreshes by active project and terminal scope so stale prewarm loads cannot replace the newly opened planning terminal with another scope's sessions.</li>
     <li>Kept imported-project onboarding Q&amp;A on its existing backend-managed flow.</li>
   </ul>
 </article>
