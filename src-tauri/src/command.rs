@@ -1218,6 +1218,7 @@ fn send_agent_prompt(
         "requestedSessionId": requested_session_id,
         "scope": scope,
         "promptChars": prompt.chars().count(),
+        "clearPrefixBytes": 2,
         "pasteBytes": paste.len() + 1,
         "beforeReplaySeq": before.replay_seq,
         "afterReplaySeq": after.replay_seq,
@@ -1230,7 +1231,7 @@ fn send_agent_prompt(
 }
 
 fn codex_paste_input(message: &str) -> String {
-    format!("\x1b[200~{message}\x1b[201~")
+    format!("\x1b\x15\x1b[200~{message}\x1b[201~")
 }
 
 #[cfg(test)]
@@ -2231,6 +2232,7 @@ mod tests {
         assert!(start.ok);
         assert!(routed.ok);
         assert!(routed.text.contains("\"id\":\"agent-command\""));
+        assert!(routed.text.contains("\"clearPrefixBytes\":2"));
         assert!(explicitly_routed.ok);
         assert!(explicitly_routed
             .text
@@ -2244,6 +2246,14 @@ mod tests {
         assert!(close.ok);
         assert!(!stale_requested.ok);
         assert_eq!(stale_requested.status, 409);
+    }
+
+    #[test]
+    fn codex_paste_input_clears_starter_prompt_before_submit() {
+        let input = codex_paste_input("Do the thing");
+
+        assert!(input.starts_with("\x1b\x15\x1b[200~"));
+        assert!(input.ends_with("\x1b[201~"));
     }
 
     #[test]

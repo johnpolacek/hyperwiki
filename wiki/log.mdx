@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | agent prompt starter text clearing</h2>
+  <ul>
+    <li>Changed routed agent prompts to clear Codex starter prompt text before bracketed paste and submit.</li>
+    <li>Prevents Execute or Modify prompts from being queued behind starter suggestions such as <code>Explain this codebase</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | terminal current unit label</h2>
   <ul>
     <li>Changed the terminal pane header to show the canonical current unit from plan action state instead of the checkout or worktree slug.</li>

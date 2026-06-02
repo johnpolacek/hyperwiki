@@ -1,0 +1,28 @@
+---
+title: "Agent Prompt Clears Starter Text"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Agent Prompt Clears Starter Text" status="complete" description="Clear Codex starter prompt text before routing Execute and Modify prompts into agent terminals." />
+
+<PlanSummary>
+  <ul>
+    <li>Shape: corrective terminal prompt-routing fix</li>
+    <li>Current unit: Unit 01 - clear before paste</li>
+    <li>Next action: none; agent prompt routing now clears starter text before bracketed paste.</li>
+    <li>Validation: targeted command tests, frontend checks, and Tauri tests.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Clear Before Paste" status="complete">
+  <h2>Intent</h2>
+  <p>Execute should behave like a real submitted agent prompt, not queue behind Codex starter text such as <code>Explain this codebase</code>.</p>
+  <h2>Change</h2>
+  <p>Prefix routed agent prompts with terminal input that clears the active prompt line before bracketed paste and submit.</p>
+  <h2>Verification</h2>
+  <ul>
+    <li>Command tests confirm agent prompt routing reports the clear prefix.</li>
+    <li>Helper tests confirm the paste input starts with the clear sequence.</li>
+  </ul>
+</PlanUnit>
