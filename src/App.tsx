@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import {
   Activity,
   BookOpen,
+  Check,
   ChevronDown,
   Circle,
   Command,
@@ -2726,6 +2727,7 @@ function SidebarPageButton({
   onToggle?: () => void;
 }) {
   const isSelected = selected ?? currentPath === page.path;
+  const isComplete = isCompletedPage(page);
   return (
     <div
       className={cn(
@@ -2751,7 +2753,13 @@ function SidebarPageButton({
       ) : (
         <span aria-hidden="true" className="size-4" />
       )}
-      <span className={cn("mx-auto size-[6px] shrink-0 rounded-full", current ? "bg-[#25a244] opacity-70 shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" : "bg-transparent")} />
+      <span className="mx-auto grid size-3 shrink-0 place-items-center">
+        {current ? (
+          <span aria-label="Current work" className="size-[6px] rounded-full bg-[#25a244] opacity-70 shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" />
+        ) : isComplete ? (
+          <Check aria-label="Complete" className="size-3 text-muted-foreground/60" />
+        ) : null}
+      </span>
       <button
         className="min-w-0 truncate text-left font-normal"
         onClick={(event) => {
