@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 implementation | static html dev package</h2>
+  <ul>
+    <li>Changed new static <code>index.html</code> project initialization to generate a private pnpm <code>package.json</code> with a Portless-backed Python static server <code>dev</code> script when no package manifest already exists.</li>
+    <li>Set generated static project preview config to <code>pnpm run dev</code>, allowing the existing layout and app-preview lifecycle to expose a Run Dev panel and <code>canStart</code> state.</li>
+    <li>Preserved existing <code>package.json</code> files and left already-imported static projects, including current dogfood fixtures, as manual repair cases.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-01 fix | execute targets current unit</h2>
   <ul>
     <li>Changed the command bar Execute action to resolve its prompt page and terminal scope from the current unit instead of the visible wiki page.</li>

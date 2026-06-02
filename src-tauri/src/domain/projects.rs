@@ -589,11 +589,19 @@ pub fn init_hyperwiki_project(
     options: InitProjectOptions,
 ) -> Result<(), String> {
     let root = root.as_ref();
+    let mut options = options;
     let slug = slugify(&options.project_name);
+    let should_write_static_package = should_generate_static_package(root, &options);
+    if should_write_static_package {
+        options.dev_command = "pnpm run dev".to_string();
+    }
     let layout_panels = layout_panels(&options)?;
     fs::create_dir_all(root.join(".hyperwiki").join("state")).map_err(|error| error.to_string())?;
     fs::create_dir_all(root.join(".hyperwiki").join("sessions"))
         .map_err(|error| error.to_string())?;
+    if should_write_static_package {
+        write_static_package_json(root, &slug, options.overwrite)?;
+    }
     write_if_safe(
         &root.join(".hyperwiki").join("config.json"),
         &format!(
@@ -634,6 +642,33 @@ pub fn init_hyperwiki_project(
     }
     write_basic_wiki(root, &options)?;
     Ok(())
+}
+
+fn should_generate_static_package(root: &Path, options: &InitProjectOptions) -> bool {
+    options.dev_command.trim().is_empty()
+        && root.join("index.html").is_file()
+        && !root.join("package.json").exists()
+}
+
+fn write_static_package_json(root: &Path, slug: &str, overwrite: bool) -> Result<(), String> {
+    let package = serde_json::json!({
+        "name": slug,
+        "version": "0.1.0",
+        "private": true,
+        "type": "module",
+        "packageManager": "pnpm@10.33.3",
+        "scripts": {
+            "dev": "portless run -- sh -c 'python3 -m http.server \"$PORT\" --bind \"${HOST:-127.0.0.1}\"'"
+        }
+    });
+    write_if_safe(
+        &root.join("package.json"),
+        &format!(
+            "{}\n",
+            serde_json::to_string_pretty(&package).map_err(|error| error.to_string())?
+        ),
+        overwrite,
+    )
 }
 
 pub fn reset_hyperwiki_state(
@@ -2457,6 +2492,77 @@ mod tests {
 
         assert!(!root.join(".agents").join("skills").exists());
         assert!(!root.join("skills-lock.json").exists());
+    }
+
+    #[test]
+    fn init_writes_static_package_and_dev_preview_config_for_root_index_html() {
+        let root = temp_root("init-static-package");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("index.html"),
+            "<!doctype html><title>Static</title>",
+        )
+        .unwrap();
+
+        init_hyperwiki_project(&root, init_options("Static Preview")).unwrap();
+
+        let package: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(root.join("package.json")).unwrap()).unwrap();
+        assert_eq!(package["name"], "static-preview");
+        assert_eq!(package["private"], true);
+        assert_eq!(package["packageManager"], "pnpm@10.33.3");
+        assert_eq!(
+            package["scripts"]["dev"],
+            "portless run -- sh -c 'python3 -m http.server \"$PORT\" --bind \"${HOST:-127.0.0.1}\"'"
+        );
+
+        let config: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string(root.join(".hyperwiki").join("config.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(config["dev"]["command"], "pnpm run dev");
+
+        let layout = crate::domain::previews::layout_config_for_root(&root);
+        assert_eq!(layout.dev.command, "pnpm run dev");
+        assert!(layout
+            .panels
+            .iter()
+            .any(|panel| panel.role == "dev" && panel.command.as_deref() == Some("pnpm run dev")));
+
+        let preview = crate::domain::previews::app_preview_for_project(&ProjectRecord {
+            id: "static".to_string(),
+            root: root.clone(),
+            name: "Static Preview".to_string(),
+            project_slug: "static-preview".to_string(),
+            worktree_slug: "main".to_string(),
+            available: true,
+            last_opened_at: None,
+            active: true,
+            import_planning: None,
+        });
+        assert!(preview.can_start);
+        assert_eq!(preview.start_command, "pnpm run dev");
+    }
+
+    #[test]
+    fn init_preserves_existing_package_json_for_static_project() {
+        let root = temp_root("init-static-existing-package");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(
+            root.join("index.html"),
+            "<!doctype html><title>Static</title>",
+        )
+        .unwrap();
+        let package =
+            "{\n  \"name\": \"custom-static\",\n  \"scripts\": { \"dev\": \"custom-dev\" }\n}\n";
+        fs::write(root.join("package.json"), package).unwrap();
+
+        init_hyperwiki_project(&root, init_options("Static Existing Package")).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.join("package.json")).unwrap(),
+            package
+        );
     }
 
     #[test]

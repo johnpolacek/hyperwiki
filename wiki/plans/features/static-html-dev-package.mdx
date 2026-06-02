@@ -1,0 +1,38 @@
+---
+title: "Static HTML Dev Package"
+description: "Generate package-backed dev previews for new static HTML projects."
+wikiKind: "plan"
+---
+
+<h1>Static HTML Dev Package</h1>
+<section className="summary" aria-labelledby="summary">
+  <h2 id="summary">Summary</h2>
+  <dl>
+    <dt>Status</dt><dd>complete</dd>
+    <dt>Shape</dt><dd>compact feature plan</dd>
+    <dt>Current unit</dt><dd>none</dd>
+    <dt>Next action</dt><dd>none; implementation and verification are complete.</dd>
+    <dt>Blockers</dt><dd>none</dd>
+    <dt>Validation</dt><dd><code>cargo test --manifest-path src-tauri/Cargo.toml init_writes_static_package</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml init_preserves_existing_package_json_for_static_project</code>, and <code>pnpm run check</code>.</dd>
+  </dl>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>Make future package-free static HTML projects previewable through the existing Run Dev lifecycle by generating a minimal <code>package.json</code> when a root <code>index.html</code> exists and no package manifest exists.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>For new initialized projects with root <code>index.html</code>, no <code>package.json</code>, and no explicit dev command, write a private pnpm package with a <code>dev</code> script.</li>
+    <li>The script should use global Portless and Python's built-in static server: <code>portless run -- sh -c 'python3 -m http.server "$PORT" --bind "${HOST:-127.0.0.1}"'</code>.</li>
+    <li>Set the generated project config dev command to <code>pnpm run dev</code> so existing layout and preview APIs expose a dev panel and <code>canStart: true</code>.</li>
+    <li>Never overwrite an existing <code>package.json</code>; existing static projects are not auto-repaired.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Focused Rust tests for generated package creation, dev config, layout panel derivation, and existing package preservation.</li>
+    <li><code>pnpm run check</code> passed.</li>
+  </ul>
+</section>
