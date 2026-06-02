@@ -123,7 +123,7 @@ interface PlanPageActionState {
   isStale: boolean;
   canExecute: boolean;
   currentPath: string;
-  message: string;
+  currentTitle: string;
 }
 
 interface WikiListResponse {
@@ -2964,24 +2964,22 @@ function CommandBar({
   onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
 }) {
+  const executeLabel = activePlanState.currentTitle ? `execute ${activePlanState.currentTitle.toLowerCase()}` : "execute";
   return (
     <div className="flex items-center gap-2">
-      {activePlanState.isPlanPage && activePlanState.isComplete ? (
-        <div className="flex min-w-0 items-center gap-2 rounded-md border bg-secondary px-2.5 py-1 text-xs text-secondary-foreground">
-          <span className="max-w-56 truncate">{activePlanState.message}</span>
-        </div>
-      ) : null}
       {canResumeImportPlanning ? (
         <Button size="sm" onClick={onResumeImportPlanning}>
           <Play aria-hidden="true" data-icon="inline-start" />
           Resume Q&A
         </Button>
       ) : null}
-      <Button size="sm" variant="outline" disabled={activePlanState.isPlanPage && activePlanState.isComplete} onClick={() => onRunCommand("modify")}>
-        modify
-      </Button>
+      {activePlanState.isPlanPage && activePlanState.isComplete ? null : (
+        <Button size="sm" variant="outline" onClick={() => onRunCommand("modify")}>
+          modify
+        </Button>
+      )}
       <Button size="sm" variant="outline" disabled={!activePlanState.canExecute} onClick={() => onRunCommand("execute-main")}>
-        execute
+        {executeLabel}
       </Button>
     </div>
   );
@@ -5281,14 +5279,13 @@ function planPageActionState(path: string, pages: WikiPage[], workspace: Workspa
   const isComplete = Boolean(page && isCompletedPage(page));
   const isStale = Boolean(isPlanPage && currentDisplayPath && displayPath !== currentDisplayPath && !displayPath.endsWith("/wiki/plans/index.mdx"));
   const canExecute = Boolean(currentDisplayPath && currentDisplayPath !== defaultWikiPath && currentPage && !isCompletedPage(currentPage));
-  const message = isComplete ? "This unit is complete." : "";
   return {
     isPlanPage,
     isComplete,
     isStale,
     canExecute,
     currentPath,
-    message,
+    currentTitle: currentPage && canExecute ? cleanPageTitle(currentPage) : "",
   };
 }
 
