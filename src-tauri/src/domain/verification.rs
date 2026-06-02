@@ -770,6 +770,7 @@ fn workspace_status(
 ) -> WorkspaceStatus {
     let current_stage = summary_value(plan_summary, "Current stage");
     let current_unit = summary_value(plan_summary, "Current unit");
+    let current_work = next_incomplete_work_page(pages);
     let active_plan = pages
         .iter()
         .find(|page| {
@@ -777,19 +778,22 @@ fn workspace_status(
                 && page.status.as_deref() == Some("active")
         })
         .cloned();
+    let current_work_ref = current_work.as_ref();
+    let active_plan_ref = active_plan.as_ref();
     WorkspaceStatus {
         completed: completed_status(plan_summary, log_entries),
         stage: if current_stage.is_empty() {
-            active_plan
-                .as_ref()
+            current_work_ref
+                .or(active_plan_ref)
                 .map(|page| page.title.clone())
                 .unwrap_or_else(|| "none".to_string())
         } else {
             current_stage
         },
-        current: if current_unit.is_empty() {
-            active_plan
-                .as_ref()
+        current: if let Some(page) = current_work_ref {
+            page.title.clone()
+        } else if current_unit.is_empty() {
+            active_plan_ref
                 .map(|page| page.title.clone())
                 .or_else(|| {
                     let status = summary_value(plan_summary, "Status");
@@ -799,11 +803,168 @@ fn workspace_status(
         } else {
             current_unit
         },
-        current_path: active_plan
+        current_path: current_work_ref
+            .or_else(|| active_plan_ref.filter(|page| !wiki_page_is_complete(page)))
             .map(|page| display_wiki_path(&page.path))
             .unwrap_or_default(),
         conflicts: Vec::new(),
     }
+}
+
+fn next_incomplete_work_page(
+    pages: &[crate::domain::wiki::WikiPage],
+) -> Option<crate::domain::wiki::WikiPage> {
+    let mut sorted = pages.to_vec();
+    sorted.sort_by(|left, right| plan_sort_key(&left.path).cmp(&plan_sort_key(&right.path)));
+    let roots = sorted
+        .iter()
+        .filter(|page| is_top_level_plan_page(page) && !is_completed_top_level_plan_page(page))
+        .cloned()
+        .collect::<Vec<_>>();
+    for root in roots {
+        if wiki_page_is_complete(&root) {
+            continue;
+        }
+        if display_wiki_path(&root.path).ends_with("/wiki/plans/index.mdx")
+            && sorted
+                .iter()
+                .any(|page| page.path != root.path && is_top_level_plan_page(page))
+        {
+            continue;
+        }
+        let stages = child_plan_pages(&root, &sorted)
+            .into_iter()
+            .filter(|page| !wiki_page_is_complete(page))
+            .collect::<Vec<_>>();
+        let Some(stage) = stages.first().cloned() else {
+            return Some(root);
+        };
+        let units = child_plan_pages(&stage, &sorted)
+            .into_iter()
+            .filter(|page| !wiki_page_is_complete(page))
+            .collect::<Vec<_>>();
+        return units.into_iter().next().or(Some(stage));
+    }
+    None
+}
+
+fn is_top_level_plan_page(page: &crate::domain::wiki::WikiPage) -> bool {
+    let path = display_wiki_path(&page.path);
+    path.ends_with("/wiki/plans/index.mdx")
+        || path.ends_with("/wiki/plans/mvp/index.mdx")
+        || path.ends_with("/wiki/plans/zzz_completed/index.mdx")
+        || path_matches_feature_plan(&path)
+        || path_matches_generic_plan(&path)
+}
+
+fn is_completed_top_level_plan_page(page: &crate::domain::wiki::WikiPage) -> bool {
+    is_top_level_plan_page(page)
+        && !display_wiki_path(&page.path).ends_with("/wiki/plans/zzz_completed/index.mdx")
+        && wiki_page_is_complete(page)
+}
+
+fn child_plan_pages(
+    parent: &crate::domain::wiki::WikiPage,
+    pages: &[crate::domain::wiki::WikiPage],
+) -> Vec<crate::domain::wiki::WikiPage> {
+    pages
+        .iter()
+        .filter(|candidate| is_immediate_child_plan_page(parent, candidate))
+        .cloned()
+        .collect()
+}
+
+fn is_immediate_child_plan_page(
+    parent: &crate::domain::wiki::WikiPage,
+    candidate: &crate::domain::wiki::WikiPage,
+) -> bool {
+    let parent_path = display_wiki_path(&parent.path);
+    let candidate_path = display_wiki_path(&candidate.path);
+    if parent_path == candidate_path {
+        return false;
+    }
+    if parent_path.ends_with("/wiki/plans/mvp/index.mdx") {
+        return path_matches_mvp_stage(&candidate_path);
+    }
+    if path_matches_feature_plan(&parent_path) {
+        return false;
+    }
+    if let Some((stage_prefix, stage_number)) = stage_prefix_and_number(&parent_path) {
+        let legacy_base = parent_path.trim_end_matches(".mdx").to_string();
+        let legacy_child = candidate_path.starts_with(&format!("{legacy_base}/"))
+            && !candidate_path[legacy_base.len() + 1..].contains('/');
+        let unit_base = format!("{stage_prefix}/units/stage-{stage_number}");
+        let documented_child = candidate_path.starts_with(&format!("{unit_base}/"))
+            && !candidate_path[unit_base.len() + 1..].contains('/');
+        return legacy_child || documented_child;
+    }
+    let parent_base = plan_tree_base_path(&parent_path);
+    candidate_path.starts_with(&format!("{parent_base}/"))
+        && !candidate_path[parent_base.len() + 1..].contains('/')
+}
+
+fn wiki_page_is_complete(page: &crate::domain::wiki::WikiPage) -> bool {
+    page.status.as_deref() == Some("complete")
+}
+
+fn plan_tree_base_path(path: &str) -> String {
+    path.strip_suffix("/index.mdx")
+        .map(str::to_string)
+        .unwrap_or_else(|| path.trim_end_matches(".mdx").to_string())
+}
+
+fn plan_sort_key(path: &str) -> String {
+    let path = display_wiki_path(path);
+    if path.ends_with("/wiki/plans/index.mdx") {
+        return "00".to_string();
+    }
+    if path.ends_with("/wiki/plans/mvp/index.mdx") {
+        return "01".to_string();
+    }
+    if path.starts_with("/wiki/plans/mvp/stage-") {
+        return format!("01-{path}");
+    }
+    if path.ends_with("/wiki/plans/zzz_completed/index.mdx") {
+        return "99".to_string();
+    }
+    if path.starts_with("/wiki/plans/zzz_completed/") {
+        return format!("99-{path}");
+    }
+    format!("02-{path}")
+}
+
+fn path_matches_mvp_stage(path: &str) -> bool {
+    path.starts_with("/wiki/plans/mvp/stage-")
+        && path.ends_with(".mdx")
+        && !path.trim_start_matches("/wiki/plans/mvp/").contains('/')
+}
+
+fn path_matches_feature_plan(path: &str) -> bool {
+    path.starts_with("/wiki/plans/features/")
+        && path.ends_with(".mdx")
+        && !path
+            .trim_start_matches("/wiki/plans/features/")
+            .contains('/')
+}
+
+fn path_matches_generic_plan(path: &str) -> bool {
+    path.starts_with("/wiki/plans/")
+        && path.ends_with(".mdx")
+        && !path.ends_with("/index.mdx")
+        && !path.trim_start_matches("/wiki/plans/").contains('/')
+}
+
+fn stage_prefix_and_number(path: &str) -> Option<(String, String)> {
+    let filename = path.rsplit('/').next()?;
+    let number = filename
+        .strip_prefix("stage-")?
+        .chars()
+        .take_while(|char| char.is_ascii_digit())
+        .collect::<String>();
+    if number.is_empty() {
+        return None;
+    }
+    Some((path.rsplit_once('/')?.0.to_string(), number))
 }
 
 fn completed_status(plan_summary: &[String], log_entries: &[String]) -> String {
@@ -1240,6 +1401,62 @@ mod tests {
         assert!(contract.agent_context.contains("Project: Contract Smoke"));
         assert!(contract.agent_context.contains("Current plan Markdown:"));
         assert!(contract.agent_context.contains("Verification loops:"));
+    }
+
+    #[test]
+    fn workspace_summary_advances_current_path_to_next_incomplete_unit() {
+        let root = temp_root("workspace-next-incomplete-unit");
+        fs::create_dir_all(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            r#"<PlanSummary><ul><li>Status: active planning</li><li>Current unit: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Unit 01 - Root HTML Shell</a></li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanSummary><ul><li>Status: active</li><li>Current unit: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Unit 01 - Root HTML Shell</a></li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanSummary><ul><li>Status: active</li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-01-root-html-shell.mdx"),
+            r#"<PlanSummary><ul><li>Status: complete</li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-02-local-preview-script.mdx"),
+            r#"<PlanSummary><ul><li>Status: pending</li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(root.join("wiki").join("log.mdx"), "<h1>Log</h1>").unwrap();
+
+        let workspace = workspace_summary(&root);
+
+        assert_eq!(
+            workspace.status.current_path,
+            "/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-02-local-preview-script.mdx"
+        );
     }
 
     fn make_project(root: &Path) {

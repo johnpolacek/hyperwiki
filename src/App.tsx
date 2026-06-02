@@ -5281,9 +5281,9 @@ function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: Wo
   const derived = firstIncompleteWorkPath(pages, roots);
   if (derived && derived !== defaultWikiPath) return derived;
   const currentPath = workspace?.status?.currentPath;
-  if (currentPath) return currentPath;
+  if (currentPath && !pathIsCompletedPage(currentPath, pages)) return currentPath;
   if (derived) return derived;
-  return pages.find((page) => page.currentState === "current-unit")?.path || pages.find((page) => page.currentState === "current-plan")?.path || "";
+  return pages.find((page) => page.currentState === "current-unit" && !isCompletedPage(page))?.path || pages.find((page) => page.currentState === "current-plan" && !isCompletedPage(page))?.path || "";
 }
 
 function planLandingPath(workspace: WorkspaceResponse | null, pages: WikiPage[]) {
@@ -5308,6 +5308,12 @@ function firstIncompleteWorkPath(pages: WikiPage[], roots: WikiPage[]) {
     return (units[0] || stage).path;
   }
   return "";
+}
+
+function pathIsCompletedPage(path: string, pages: WikiPage[]) {
+  const displayPath = displayWikiPath(path);
+  const page = pages.find((candidate) => displayWikiPath(candidate.path) === displayPath);
+  return Boolean(page && isCompletedPage(page));
 }
 
 function pageStatus(page: WikiPage) {

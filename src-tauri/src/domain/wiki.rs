@@ -1548,6 +1548,9 @@ fn markdown_summary_table_items(mdx: &str) -> Option<Vec<String>> {
 }
 
 fn first_summary_section(html: &str) -> Option<String> {
+    if let Some(section) = first_between_case_insensitive(html, "<PlanSummary", "</PlanSummary>") {
+        return Some(section);
+    }
     if let Some(section) =
         first_between_case_insensitive(html, "<section class=\"summary\"", "</section>")
     {
@@ -2081,6 +2084,31 @@ Agent-only text.
         assert_eq!(
             pages[0].path,
             "/wiki/plans/features/remove-legacy-node-runtime.mdx"
+        );
+        assert_eq!(pages[0].status.as_deref(), Some("complete"));
+        assert_eq!(pages[0].summary[0], "Status: complete");
+    }
+
+    #[test]
+    fn parses_plan_summary_component_status() {
+        let root = temp_root("wiki-plan-summary-component-status");
+        let plan_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("unit-01-root-html-shell.mdx"),
+            r#"<PlanHero><h1>Unit 01: Root HTML Shell</h1></PlanHero>
+<PlanSummary><ul><li>Status: complete</li><li>Next action: implement Unit 02.</li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        assert_eq!(
+            pages[0].path,
+            "/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx"
         );
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
