@@ -108,6 +108,9 @@ if (!appSource.includes('planCreationPrompt(activeProject)') || !appSource.inclu
 if (!appSource.includes("async function openVisibleAgentPromptSession") || !appSource.includes("await openVisibleAgentPromptSession({") || appSource.includes("navigate(planIndexRoute);")) {
   throw new Error("Regular + plan must use the canonical visible terminal prompt handoff, not a separate navigate-then-prompt sequence.");
 }
+if (!appSource.includes("function hasExplicitWikiRouteLocation") || !appSource.includes("if (hasExplicitWikiRouteLocation()) return;")) {
+  throw new Error("Explicit Plans index routes must not be redirected to the active plan before + plan can show its terminal.");
+}
 if (!appSource.includes("Boolean(activeProject?.importPlanning && isImportedPlanningActive)") || appSource.includes("const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting || isImportPlanningResume")) {
   throw new Error("Regular Plans index planning must not be captured by the imported-project Q&A layout that hides the terminal pane.");
 }

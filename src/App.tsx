@@ -752,6 +752,7 @@ function App() {
   useEffect(() => {
     if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
     if (isImportedPlanningActive) return;
+    if (hasExplicitWikiRouteLocation()) return;
     const landingPath = planLandingPath(wikiPages);
     if (!landingPath || landingPath === defaultWikiPath) return;
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
@@ -4899,6 +4900,15 @@ function routeFromLocation(): ViewRoute {
   if (window.location.pathname === "/settings") return { kind: "settings" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
+}
+
+function hasExplicitWikiRouteLocation() {
+  return Boolean(
+    window.location.hash
+    || window.location.pathname.startsWith("/wiki/")
+    || window.location.pathname.endsWith("/plans/new")
+    || window.location.pathname === "/plans/new",
+  );
 }
 
 function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
