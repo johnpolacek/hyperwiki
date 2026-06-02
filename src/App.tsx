@@ -204,6 +204,9 @@ interface ProjectRemoveResponse {
 
 interface AppPreviewResponse {
   url?: string;
+  canStart?: boolean;
+  reason?: string;
+  startCommand?: string;
   status?: string;
   projectSlug?: string;
   worktreeSlug?: string;
@@ -2432,6 +2435,7 @@ function App() {
               onSelectSession={setActiveSessionId}
               onStart={startTerminal}
               onTerminalText={handleTerminalText}
+              preview={preview}
               repoContext={repoContext}
               scope={terminalScope}
               workspace={workspace}
@@ -4561,6 +4565,7 @@ function TerminalPane(props: {
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
   onTerminalText: (sessionId: string, text: string) => void;
+  preview: AppPreviewResponse | null;
   repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
   workspace: WorkspaceResponse | null;
@@ -4575,6 +4580,10 @@ function TerminalPane(props: {
   const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
   const hasGit = Boolean(props.repoContext?.git?.root);
   const canCreateWorktree = hasGit && ["main", "master"].includes(String(branchLabel || "").trim().toLowerCase());
+  const canRunDev = props.preview?.canStart === true;
+  const runDevTitle = canRunDev
+    ? props.preview?.startCommand || "Run dev"
+    : props.preview?.reason || "No package.json dev script is available.";
   const worktreeSlug = slugify(worktreeBranch.replace(/^refs\/heads\//, "") || "feature/worktree");
   const gitRoot = props.repoContext?.git?.root || props.repoContext?.root || "";
   const worktreePreview = worktreePreviewForSlug(gitRoot, worktreeSlug);
@@ -4632,7 +4641,7 @@ function TerminalPane(props: {
               {hasGit ? "+ worktree" : "init git"}
             </Button>
           ) : null}
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={props.onRunDev}>
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev} size="sm" title={runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
             run dev
           </Button>
           {isWorktreeOpen ? (
