@@ -1531,7 +1531,7 @@ function App() {
         lines: ["Agent session started", "Waiting for the agent prompt"],
         transcript: "Agent session started\nWaiting for the agent prompt",
       });
-      const readinessOptions = kind === "modify" ? { maxAttempts: 12, intervalMs: 250, reason: "modify-submit" } : undefined;
+      const readinessOptions = kind === "modify" ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" } : undefined;
       const ready = await waitForAgentPromptReady(session.id, readinessOptions);
       appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120}`);
       updateAgentRun(runId, {

@@ -9,7 +9,7 @@ const requiredSnippets = [
   "function selectReusableAgentSession",
   'options.purpose === "modify" && options.promote',
   "newestSession(liveWithCommand.filter(isStandbySession))",
-  'kind === "modify" ? { maxAttempts: 12, intervalMs: 250, reason: "modify-submit" }',
+  'kind === "modify" ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" }',
   "waitForAgentPromptReady(session.id, { maxAttempts: 20, intervalMs: 250, reason: \"modify-prewarm\" })",
   "Explain this codebase",
   "Write tests for @filename",
