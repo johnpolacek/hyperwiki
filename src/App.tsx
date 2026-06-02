@@ -681,7 +681,7 @@ function App() {
     && isIncompleteImportProject(activeProject)
     && hasImportedSource(wikiPages)
     && !hasGeneratedPlanPages(wikiPages);
-  const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages, workspace), [currentWikiPath, wikiPages, workspace]);
+  const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages), [currentWikiPath, wikiPages]);
   const activePlanScopeComplete = useMemo(() => planScopeIsComplete(terminalScope, wikiPages), [terminalScope.scope, terminalScope.scopeKind, terminalScope.planPath, wikiPages]);
 
   useEffect(() => {
@@ -748,7 +748,7 @@ function App() {
   useEffect(() => {
     if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
     if (isImportedPlanningActive) return;
-    const landingPath = planLandingPath(workspace, wikiPages);
+    const landingPath = planLandingPath(wikiPages);
     if (!landingPath || landingPath === defaultWikiPath) return;
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
@@ -1049,7 +1049,7 @@ function App() {
         const displayPath = displayWikiPath(route.path);
         const visiblePageExists = nextPages.some((page) => displayWikiPath(page.path) === displayPath);
         if (!visiblePageExists && displayPath !== defaultWikiPath) {
-          const landingPath = planLandingPath(nextWorkspace, nextPages);
+          const landingPath = planLandingPath(nextPages);
           const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
           setRoute(nextRoute);
           window.history.replaceState(null, "", urlForRoute(nextRoute, activeProject));
@@ -1104,7 +1104,7 @@ function App() {
     setIsProjectsOpen(false);
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
-    const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loadedWorkspace, loaded.pages);
+    const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
     if (isIncompleteImportProject(project)) void prewarmImportOnboarding(project, "switch-project");
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     setRoute(nextRoute);
@@ -2377,7 +2377,7 @@ function App() {
     <main className="hyperwiki-shell flex h-svh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <TopBar
         activeProject={activeProject}
-        homePath={planLandingPath(workspace, wikiPages)}
+        homePath={planLandingPath(wikiPages)}
         isProjectsOpen={isProjectsOpen}
         isUpNextOpen={isUpNextOpen}
         onRefresh={loadBaseData}
@@ -2671,7 +2671,7 @@ function WikiSidebar(props: {
             </div>
           </div>
           {props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
-          <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} workspace={props.workspace} />
+          <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} />
         </section>
         <details className="border-t bg-card p-3" open={false}>
           <summary className="cursor-pointer list-none text-xs font-bold uppercase text-muted-foreground">Project</summary>
@@ -2686,11 +2686,11 @@ function WikiSidebar(props: {
   );
 }
 
-function PlanTree({ pages, currentPath, onNavigate, workspace }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void; workspace: WorkspaceResponse | null }) {
+function PlanTree({ pages, currentPath, onNavigate }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void }) {
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
   const visibleRoots = roots.filter((page) => !isPlansIndexPage(page));
-  const currentPlanPath = currentPlanWorkPath(sorted, roots, workspace);
+  const currentPlanPath = currentPlanWorkPath(sorted, roots);
   if (!visibleRoots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
   return (
     <div className="grid gap-1">
@@ -5143,13 +5143,13 @@ function isCompletedPage(page: WikiPage) {
   return pageStatus(page) === "complete";
 }
 
-function planPageActionState(path: string, pages: WikiPage[], workspace: WorkspaceResponse | null): PlanPageActionState {
+function planPageActionState(path: string, pages: WikiPage[]): PlanPageActionState {
   const displayPath = displayWikiPath(path);
   const isPlanPage = displayPath.includes("/wiki/plans/") && displayPath.endsWith(".mdx");
   const page = pages.find((candidate) => displayWikiPath(candidate.path) === displayPath);
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((candidate) => isTopLevelPlanPage(candidate) && !isCompletedTopLevelPlanPage(candidate));
-  const currentPath = currentPlanWorkPath(sorted, roots, workspace);
+  const currentPath = currentPlanWorkPath(sorted, roots);
   const currentDisplayPath = displayWikiPath(currentPath);
   const currentPage = pages.find((candidate) => displayWikiPath(candidate.path) === currentDisplayPath);
   const isComplete = Boolean(page && isCompletedPage(page));
@@ -5182,19 +5182,17 @@ function planScopeIsComplete(scope: { scope: string; scopeKind: string; planPath
   return Boolean(page && isCompletedPage(page));
 }
 
-function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[], workspace: WorkspaceResponse | null) {
+function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[]) {
   const derived = firstIncompleteWorkPath(pages, roots);
   if (derived && derived !== defaultWikiPath) return derived;
-  const currentPath = workspace?.status?.currentPath;
-  if (currentPath && !pathIsCompletedPage(currentPath, pages)) return currentPath;
   if (derived) return derived;
   return pages.find((page) => page.currentState === "current-unit" && !isCompletedPage(page))?.path || pages.find((page) => page.currentState === "current-plan" && !isCompletedPage(page))?.path || "";
 }
 
-function planLandingPath(workspace: WorkspaceResponse | null, pages: WikiPage[]) {
+function planLandingPath(pages: WikiPage[]) {
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
-  const currentPath = currentPlanWorkPath(sorted, roots, workspace);
+  const currentPath = currentPlanWorkPath(sorted, roots);
   if (currentPath && currentPath !== defaultWikiPath) return currentPath;
   return sorted.find((page) => !isPlansIndexPage(page) && displayWikiPath(page.path).startsWith("/wiki/plans/"))?.path || defaultWikiPath;
 }

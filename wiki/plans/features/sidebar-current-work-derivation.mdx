@@ -1,0 +1,29 @@
+---
+title: "Sidebar Current Work Derivation"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Sidebar Current Work Derivation" status="complete" description="Derive current-work sidebar state from the first incomplete plan, stage, or unit instead of stale workspace current-path metadata." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: small corrective UI plan</li>
+    <li>Current unit: Unit 01 - derived current work</li>
+    <li>Next action: none; sidebar current indicators now follow incomplete wiki status.</li>
+    <li>Validation: frontend typecheck/build and targeted Rust workspace summary test.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Derived Current Work" status="complete">
+  <h2>Intent</h2>
+  <p>The plan sidebar should mark the first incomplete stage or unit as current. Completed units should show completion affordances and must not stay green because a previous workspace current path still points at them.</p>
+  <h2>Change</h2>
+  <p>Keep current-work resolution in the React sidebar aligned with the wiki tree's completion status by using the first incomplete work path as the source of truth.</p>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run frontend checks.</li>
+    <li>Run the existing Rust test that verifies workspace summary advances from a completed unit to the next incomplete unit.</li>
+  </ul>
+</PlanUnit>

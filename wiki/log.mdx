@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | sidebar current work derivation</h2>
+  <ul>
+    <li>Changed React current-work resolution to derive from the first incomplete plan, stage, or unit in the wiki tree.</li>
+    <li>Stopped falling back to stale workspace current-path metadata for sidebar indicators and Execute target resolution after a unit is marked complete.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | terminal-first handoffs</h2>
   <ul>
     <li>Retired the separate Agent Activity side-panel mode so normal workspace routes keep the right panel on live terminals for agent, worktree, review, and execute handoffs.</li>
