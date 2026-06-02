@@ -6322,6 +6322,7 @@ async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts
 
 function isAgentPromptReady(text: string) {
   const normalized = text.replace(/\s+/g, " ");
+  if (isAgentStartupInProgress(normalized)) return false;
   if (isAgentMcpStartupInProgress(normalized)) return false;
   if (normalized.includes("starting mcp servers") && !normalized.match(/starting mcp servers\s*\(\s*2\s*\/\s*2\s*\)/i)) return false;
   const lastStartup = normalized.toLowerCase().lastIndexOf("starting mcp servers");
@@ -6333,6 +6334,16 @@ function isAgentPromptReady(text: string) {
     || /›\s*$/.test(text)
     || /\u203a\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail)
     || /›\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail);
+}
+
+function isAgentStartupInProgress(text: string) {
+  const tail = text.slice(-1800).toLowerCase();
+  if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(tail)) return true;
+  if (/model:\s*loading/.test(tail)) return true;
+  if (/starting\s+\d+\s*\(/.test(tail)) return true;
+  if (/starting\s+mcp|startingmcp/.test(tail)) return true;
+  if (/mcp\s+servers\s*\(\s*[01]\s*\/\s*2\s*\)/.test(tail)) return true;
+  return false;
 }
 
 function isAgentMcpStartupInProgress(text: string) {

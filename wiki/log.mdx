@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | agent prompt idle readiness</h2>
+  <ul>
+    <li>Changed agent prompt readiness to reject Codex terminals that still show model loading, MCP startup, or queued follow-up input banners.</li>
+    <li>Preserved starter-prompt recognition only after the startup tail is idle, so Execute prompts are sent as the primary request instead of queued follow-up input.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | agent prompt starter text clearing</h2>
   <ul>
     <li>Changed routed agent prompts to clear Codex starter prompt text before bracketed paste and submit.</li>

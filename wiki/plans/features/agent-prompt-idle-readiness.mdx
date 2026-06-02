@@ -1,0 +1,29 @@
+---
+title: "Agent Prompt Idle Readiness"
+description: "Wait for Codex to be idle before routing Execute prompts."
+wikiKind: "plan"
+status: "completed"
+---
+
+<PlanHero status="completed" title="Agent Prompt Idle Readiness" subtitle="Prevent Execute prompts from being queued during Codex startup." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="completed" />
+  <PlanSummaryItem label="Scope" value="agent terminal readiness" />
+  <PlanSummaryItem label="Trigger" value="Execute prompts appeared as queued follow-up inputs" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+Execute should behave like an immediate handoff: open the agent terminal, wait until Codex is ready for primary input, then submit the scoped unit prompt. A visible starter prompt is not enough when the terminal is still loading the model or starting MCP servers.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- Treat Codex startup markers such as model loading, partial MCP startup, and queued follow-up banners as not ready.
+- Keep support for starter prompt text only after startup indicators have cleared.
+- Preserve the longer Execute readiness wait and the shorter Modify fast path.
+</PlanSection>
+
+<PlanSection title="Verification">
+- Static smoke tests cover the stricter startup guard and continued Modify fast path.
+- `pnpm run check`
+</PlanSection>

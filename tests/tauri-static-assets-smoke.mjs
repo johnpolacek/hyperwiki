@@ -78,8 +78,8 @@ if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
 }
-if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup")) {
-  throw new Error("Agent prompt readiness must wait through Codex MCP startup before submitting Modify Plan prompts.");
+if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("isAgentStartupInProgress") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("model:\\s*loading") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup")) {
+  throw new Error("Agent prompt readiness must wait through Codex model and MCP startup before submitting agent prompts.");
 }
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
   throw new Error("Modify Plan prompts must normalize paths, derive visible unit context, and reduce runtime dirty-state noise.");
