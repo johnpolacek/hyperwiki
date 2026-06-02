@@ -2094,7 +2094,7 @@ function App() {
       }
       if (action === "execute-worktree") {
         const runId = startAgentRun("worktree", "Run Dev Worktree");
-        const branch = payload?.branch || `feature/${slugify(workspace?.status?.current || titleForPath(currentWikiPath, wikiPages))}`;
+        const branch = payload?.branch || `feature/${slugify(activePlanState.currentTitle || titleForPath(currentWikiPath, wikiPages))}`;
         updateAgentRun(runId, { activity: `Creating worktree ${branch}`, lines: [`Creating worktree ${branch}`], transcript: `Creating worktree ${branch}` });
         const result = await hyperwikiApi.json<{ branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }>(withProjectQuery("/api/worktrees", activeProject), {
           method: "POST",
@@ -2468,6 +2468,7 @@ function App() {
               preview={preview}
               repoContext={repoContext}
               scope={terminalScope}
+              currentWorkTitle={activePlanState.currentTitle}
               workspace={workspace}
               sessions={sessions}
             />
@@ -4524,6 +4525,7 @@ function TerminalPane(props: {
   preview: AppPreviewResponse | null;
   repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
+  currentWorkTitle: string;
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
@@ -4534,6 +4536,7 @@ function TerminalPane(props: {
   const [isCreatingWorktree, setIsCreatingWorktree] = useState(false);
   const [thinkingEffort, setThinkingEffort] = useState(() => normalizedThinkingEffort(window.localStorage.getItem("hyperwiki.thinkingEffort")));
   const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
+  const terminalContextLabel = props.currentWorkTitle || titleForPath(props.scope.planPath || "", []) || branchLabel;
   const hasGit = Boolean(props.repoContext?.git?.root);
   const canCreateWorktree = hasGit && ["main", "master"].includes(String(branchLabel || "").trim().toLowerCase());
   const canRunDev = props.preview?.canStart === true;
@@ -4559,7 +4562,7 @@ function TerminalPane(props: {
       setIsWorktreeOpen(true);
       return;
     }
-    const title = props.workspace?.status?.current || titleForPath(props.scope.planPath || "worktree", []);
+    const title = props.currentWorkTitle || titleForPath(props.scope.planPath || "worktree", []);
     setWorktreeBranch(`feature/${slugify(title || "worktree")}`);
     setWorktreeStatus(props.repoContext?.git?.dirty ? "Main has uncommitted changes. Commit them first if the worktree should include them." : "");
     setIsWorktreeOpen(true);
@@ -4591,7 +4594,7 @@ function TerminalPane(props: {
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
         <div className="relative flex min-w-0 flex-1 items-center gap-2">
           <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
-          <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]">{branchLabel}</strong>
+          <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]" title={`Current work: ${terminalContextLabel}. Checkout: ${branchLabel}`}>{terminalContextLabel}</strong>
           {canCreateWorktree || !hasGit ? (
             <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={openWorktreePopover}>
               {hasGit ? "+ worktree" : "init git"}

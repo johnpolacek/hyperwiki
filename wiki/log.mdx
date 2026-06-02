@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | terminal current unit label</h2>
+  <ul>
+    <li>Changed the terminal pane header to show the canonical current unit from plan action state instead of the checkout or worktree slug.</li>
+    <li>Kept checkout identity available as hover context and changed default worktree branch generation to use the same canonical current unit title.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | canonical plan status source</h2>
   <ul>
     <li>Made backend-parsed wiki page status the canonical status field for plan pages, source responses, sidebar completion, and current-work resolution.</li>

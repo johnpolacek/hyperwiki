@@ -1,0 +1,27 @@
+---
+title: "Canonical Terminal Current Unit Label"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Canonical Terminal Current Unit Label" status="complete" description="Show the same canonical current unit in the terminal pane that the sidebar and Execute command use." />
+
+<PlanSummary>
+  <ul>
+    <li>Shape: small corrective UI plan</li>
+    <li>Current unit: Unit 01 - terminal current-work label</li>
+    <li>Next action: none; terminal header and worktree defaults now consume the canonical current unit.</li>
+    <li>Validation: frontend checks.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Terminal Current-Work Label" status="complete">
+  <h2>Intent</h2>
+  <p>The terminal pane should not imply an old unit merely because the active checkout or branch was created for that unit.</p>
+  <h2>Change</h2>
+  <p>Display the canonical current unit from the plan action state in the terminal header and use it for default worktree branch names. Keep checkout identity available as hover context.</p>
+  <h2>Verification</h2>
+  <ul>
+    <li>Run frontend checks.</li>
+  </ul>
+</PlanUnit>
