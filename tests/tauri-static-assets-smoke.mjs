@@ -78,7 +78,7 @@ if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
 }
-if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("attempt < 120") || !appSource.includes("promptAfterStartup")) {
+if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup")) {
   throw new Error("Agent prompt readiness must wait through Codex MCP startup before submitting Modify Plan prompts.");
 }
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
@@ -99,7 +99,7 @@ if (appSource.includes("Run relevant checks before finishing.")) {
 if (!appSource.includes('parentPath.endsWith("/wiki/plans/mvp/index.mdx")') || !appSource.includes('/^\\/wiki\\/plans\\/mvp\\/stage-\\d+[^/]*\\.mdx$/.test(candidatePath)')) {
   throw new Error("MVP plan sidebar root must only nest stage pages, not stray generated support pages.");
 }
-if (!appSource.includes("terminalPlanRootPath(route.path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
+if (!appSource.includes("terminalPlanRootPath(wikiPath)") || !appSource.includes("canonicalTerminalScopePath(path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
   throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
 }
 if (!appSource.includes("terminalDisplayTextForXterm") || !appSource.includes("displayControlCarryRef") || !appSource.includes("stripTerminalDisplayControlSequences(data, carry)")) {

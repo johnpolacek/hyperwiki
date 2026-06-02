@@ -317,6 +317,12 @@ interface SessionRecord {
   updatedAt?: string;
 }
 
+type TerminalScope = {
+  scope: string;
+  scopeKind: string;
+  planPath: string | null;
+};
+
 interface SessionsResponse {
   sessions?: SessionRecord[];
 }
@@ -1190,16 +1196,15 @@ function App() {
     if (!project) {
       throw new Error("Project not found for agent planning.");
     }
+    const normalizedScope = normalizeTerminalScope(scope);
     const matchingSessions = knownSessions.filter((session) =>
       isAgentSession(session)
       && (!options.purpose || session.purpose === options.purpose)
-      && session.scope === scope.scope
+      && sessionMatchesScope(session, normalizedScope)
     );
-    const visibleExisting = matchingSessions.find((session) => session.command && isVisibleLiveTerminalSession(session));
-    const standbyExisting = matchingSessions.find((session) => session.command && isLiveTerminalSession(session));
-    const existing = options.purpose ? (visibleExisting || standbyExisting) : knownSessions.find((session) => isAgentSession(session) && !isStandbySession(session) && session.scope === scope.scope);
+    const existing = selectReusableAgentSession(matchingSessions, options);
     if (existing?.command && isLiveTerminalSession(existing) && !options.forceNew) {
-      appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length}`);
+      appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"} createdAt=${existing.createdAt || "unknown"}`);
       if (options.promote && isStandbySession(existing)) {
         const promoted = await promoteSession(project, existing.id);
         setActiveSessionId(promoted.id);
@@ -1209,7 +1214,7 @@ function App() {
       return existing;
     }
     if (existing?.command && options.forceNew) {
-      appendImportLog(`ensureAgentSession starting fresh agent project=${project.id} previous=${existing.id} known=${knownSessions.length}`);
+      appendImportLog(`ensureAgentSession starting fresh agent project=${project.id} previous=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"}`);
     }
     const command = options.commandOverride || agentLaunchCommand(projectLayout);
     if (!command) {
@@ -1221,34 +1226,37 @@ function App() {
         name: "Agent",
         role: "agent",
         command,
-        scope: scope.scope,
-        scopeKind: scope.scopeKind,
-        planPath: scope.planPath,
+        scope: normalizedScope.scope,
+        scopeKind: normalizedScope.scopeKind,
+        planPath: normalizedScope.planPath,
         visibility: options.visibility || "visible",
         purpose: options.purpose || null,
       },
     });
-    appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""}`);
+    appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""} purpose=${started.session.purpose || "none"} visibility=${started.session.visibility || "visible"}`);
     setSessions((current) => current.some((session) => session.id === started.session.id) ? current : [...current, started.session]);
     if (!isStandbySession(started.session)) setActiveSessionId(started.session.id);
     return started.session;
   }
 
-  async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: { scope: string; scopeKind: string; planPath: string | null }, knownSessions: SessionRecord[]) {
-    const key = `${project.id}:${scope.scope}`;
+  async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
+    const normalizedScope = normalizeTerminalScope(scope);
+    const key = `${project.id}:${normalizedScope.scope}`;
     if (prewarmingModifySessions.current.has(key)) return;
-    if (knownSessions.some((session) => isModifySession(session) && session.scope === scope.scope && isLiveTerminalSession(session))) return;
+    if (knownSessions.some((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session))) return;
     const command = agentLaunchCommand(projectLayout);
     if (!command) return;
     prewarmingModifySessions.current.add(key);
     try {
-      appendImportLog(`Prewarming modify agent project=${project.id} scope=${scope.scope}`);
-      const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { commandOverride: command, purpose: "modify", visibility: "standby" });
-      const ready = await waitForAgentPromptReady(session.id);
-      appendImportLog(`Prewarmed modify agent project=${project.id} session=${session.id} scope=${scope.scope} ready=${ready}`);
-      await loadSessionsForProject(project, scope);
+      appendImportLog(`Prewarming modify agent project=${project.id} scope=${normalizedScope.scope}`);
+      const session = await ensureAgentSessionForProject(project, projectLayout, normalizedScope, knownSessions, { commandOverride: command, purpose: "modify", visibility: "standby" });
+      appendImportLog(`Prewarmed modify agent started project=${project.id} session=${session.id} scope=${normalizedScope.scope} visibility=${session.visibility || "visible"}`);
+      await loadSessionsForProject(project, normalizedScope);
+      void waitForAgentPromptReady(session.id, { maxAttempts: 20, intervalMs: 250, reason: "modify-prewarm" }).then((ready) => {
+        appendImportLog(`Prewarmed modify agent readiness project=${project.id} session=${session.id} scope=${normalizedScope.scope} ready=${ready}`);
+      });
     } catch (error) {
-      appendImportLog(`Prewarm modify agent failed project=${project.id} scope=${scope.scope}`, error);
+      appendImportLog(`Prewarm modify agent failed project=${project.id} scope=${normalizedScope.scope}`, error);
     } finally {
       prewarmingModifySessions.current.delete(key);
     }
@@ -1523,8 +1531,9 @@ function App() {
         lines: ["Agent session started", "Waiting for the agent prompt"],
         transcript: "Agent session started\nWaiting for the agent prompt",
       });
-      const ready = await waitForAgentPromptReady(session.id);
-      appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
+      const readinessOptions = kind === "modify" ? { maxAttempts: 12, intervalMs: 250, reason: "modify-submit" } : undefined;
+      const ready = await waitForAgentPromptReady(session.id, readinessOptions);
+      appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120}`);
       updateAgentRun(runId, {
         phase: "sent",
         activity: ready ? "Sending prompt to agent" : "Sending prompt after readiness timeout",
@@ -5001,13 +5010,16 @@ function XtermSession({
 }
 
 function routeFromLocation(): ViewRoute {
-  const hashPath = window.location.hash.startsWith("#/wiki/") ? window.location.hash.slice(1) : "";
+  const rawHashPath = window.location.hash.startsWith("#/") ? window.location.hash.slice(1) : "";
+  const hashPath = rawHashPath.startsWith("/wiki/") || /^\/projects\/[^/]+\/wiki\//.test(rawHashPath)
+    ? displayWikiPath(rawHashPath)
+    : "";
   if (hashPath) return { kind: "wiki", path: hashPath };
   if (window.location.pathname === "/projects") return { kind: "projects" };
   if (window.location.pathname === "/projects/new") return { kind: "new-project" };
   if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "plan-create" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
-  if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: window.location.pathname };
+  if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
 }
 
@@ -5181,7 +5193,9 @@ function cleanPageTitle(page: WikiPage) {
 }
 
 function displayWikiPath(path: string) {
-  return path.replace(/^\/projects\/[^/]+/, "");
+  return path
+    .replace(/^\/workspace\/[^/]+\/[^/#?]+#/, "")
+    .replace(/^\/projects\/[^/]+/, "")
 }
 
 function isTopLevelPlanPage(page: WikiPage) {
@@ -5369,6 +5383,42 @@ function isLiveTerminalSession(session: SessionRecord) {
 
 function isVisibleLiveTerminalSession(session: SessionRecord) {
   return isLiveTerminalSession(session) && !isStandbySession(session);
+}
+
+function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean }) {
+  const liveWithCommand = sessions.filter((session) => session.command && isLiveTerminalSession(session));
+  if (!liveWithCommand.length) return null;
+  if (options.purpose === "modify" && options.promote) {
+    return newestSession(liveWithCommand.filter(isStandbySession))
+      || newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession))
+      || newestSession(liveWithCommand);
+  }
+  if (options.visibility === "standby") {
+    return newestSession(liveWithCommand);
+  }
+  return newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession))
+    || newestSession(liveWithCommand);
+}
+
+function newestSession(sessions: SessionRecord[]) {
+  return sessions.reduce<SessionRecord | null>((newest, session) => {
+    if (!newest) return session;
+    const newestMs = sessionSortMs(newest);
+    const currentMs = sessionSortMs(session);
+    if (currentMs !== newestMs) return currentMs > newestMs ? session : newest;
+    return session.id > newest.id ? session : newest;
+  }, null);
+}
+
+function sessionSortMs(session: SessionRecord) {
+  const parsed = session.createdAt ? Date.parse(session.createdAt) : Number.NaN;
+  if (Number.isFinite(parsed)) return parsed;
+  const idTimestamp = session.id.match(/(\d{10,})/)?.[1];
+  return idTimestamp ? Number(idTimestamp) : 0;
+}
+
+function sessionMatchesScope(session: SessionRecord, scope: TerminalScope) {
+  return canonicalTerminalScopePath(session.scope || "") === scope.scope;
 }
 
 function hasImportedSource(pages: WikiPage[]) {
@@ -5928,18 +5978,37 @@ function scopeForRoute(route: ViewRoute) {
   if (route.kind !== "wiki") {
     return { scope: route.kind, scopeKind: "app", planPath: null };
   }
-  if (route.path.includes("/plans/")) {
-    const planPath = terminalPlanRootPath(route.path);
+  const wikiPath = displayWikiPath(route.path);
+  if (wikiPath.includes("/plans/")) {
+    const planPath = terminalPlanRootPath(wikiPath);
     return { scope: planPath, scopeKind: "plan", planPath };
   }
-  return { scope: route.path, scopeKind: "wiki", planPath: null };
+  return { scope: wikiPath, scopeKind: "wiki", planPath: null };
 }
 
 function terminalPlanRootPath(path: string) {
-  const normalized = path.split(/[?#]/)[0] || path;
+  const normalized = canonicalTerminalScopePath(path);
   const unitChild = normalized.match(/^(.*)\/unit-\d+[^/]*\.mdx$/);
   if (unitChild) return `${unitChild[1]}.mdx`;
   return normalized;
+}
+
+function normalizeTerminalScope(scope: TerminalScope): TerminalScope {
+  if (scope.scopeKind === "plan") {
+    const planPath = terminalPlanRootPath(scope.planPath || scope.scope);
+    return { ...scope, scope: planPath, planPath };
+  }
+  if (scope.scopeKind === "wiki") {
+    const wikiPath = canonicalTerminalScopePath(scope.scope);
+    return { ...scope, scope: wikiPath, planPath: scope.planPath ? canonicalTerminalScopePath(scope.planPath) : null };
+  }
+  return scope.planPath
+    ? { ...scope, planPath: canonicalTerminalScopePath(scope.planPath) }
+    : scope;
+}
+
+function canonicalTerminalScopePath(path: string) {
+  return displayWikiPath((path || "").split(/[?#]/)[0] || path);
 }
 
 function trimPlanningQuestionBuffer(text: string) {
@@ -6347,10 +6416,12 @@ async function sendPasteSubmitInput(sessionId: string, message: string) {
   appendImportLog(`Terminal paste submit complete session=${sessionId}`);
 }
 
-async function waitForAgentPromptReady(sessionId: string) {
+async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts?: number; intervalMs?: number; reason?: string } = {}) {
   const startedAt = Date.now();
   let lastText = "";
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  const maxAttempts = options.maxAttempts || 120;
+  const intervalMs = options.intervalMs || 250;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
       const bytes = Uint8Array.from(replay.bytes || []);
@@ -6360,9 +6431,9 @@ async function waitForAgentPromptReady(sessionId: string) {
     } catch (error) {
       lastText = error instanceof Error ? error.message : String(error);
     }
-    await delay(250);
+    await delay(intervalMs);
   }
-  appendImportLog(`Agent prompt readiness timed out session=${sessionId} waitedMs=${Date.now() - startedAt} tail=${JSON.stringify(lastText)}`);
+  appendImportLog(`Agent prompt readiness timed out session=${sessionId} reason=${options.reason || "default"} waitedMs=${Date.now() - startedAt} attempts=${maxAttempts} tail=${JSON.stringify(lastText)}`);
   return false;
 }
 
@@ -6373,7 +6444,12 @@ function isAgentPromptReady(text: string) {
   const lastStartup = normalized.toLowerCase().lastIndexOf("starting mcp servers");
   const lastPrompt = Math.max(normalized.lastIndexOf("›"), normalized.lastIndexOf("\u203a"));
   const promptAfterStartup = lastPrompt !== -1 && lastPrompt > lastStartup;
-  return promptAfterStartup && (/\u203a\s*$/.test(text) || /›\s*$/.test(text) || normalized.includes("› Implement {feature}") || normalized.includes("›Implement {feature}"));
+  if (!promptAfterStartup) return false;
+  const promptTail = normalized.slice(lastPrompt, lastPrompt + 120);
+  return /\u203a\s*$/.test(text)
+    || /›\s*$/.test(text)
+    || /\u203a\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail)
+    || /›\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail);
 }
 
 function isAgentMcpStartupInProgress(text: string) {

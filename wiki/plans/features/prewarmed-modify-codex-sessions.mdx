@@ -29,6 +29,16 @@ status: "complete"
   </ul>
 </section>
 
+<section>
+  <h2>2026-06-02 Regression Fix</h2>
+  <ul>
+    <li>Modify prompt injection now treats Codex starter prompts such as <code>›Explain this codebase</code> and <code>›Write tests for @filename</code> as input-ready states after MCP startup.</li>
+    <li>Modify click-time readiness polling is capped to a short fast path while Execute and general agent prompts keep the longer MCP startup wait.</li>
+    <li>Plan terminal scopes are canonicalized to <code>/wiki/...</code> paths so project-prefixed routes do not split prewarm and click sessions.</li>
+    <li>Modify session reuse now prefers the newest live standby modify session for the plan scope before falling back to a visible modify session.</li>
+  </ul>
+</section>
+
 <Verification>
   <ul>
     <li><code>pnpm run check</code></li>
