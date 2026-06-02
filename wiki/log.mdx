@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | terminal-first new plan</h2>
+  <ul>
+    <li>Changed regular <code>+ plan</code> to navigate to the Plans index and start a fresh visible planning agent terminal instead of opening the retired full-page plan creation route.</li>
+    <li>Updated the plan creation prompt so Q&amp;A happens in terminal prose until goal, scope, constraints, implementation approach, and verification are clear enough to write MDX plan docs.</li>
+    <li>Kept imported-project onboarding Q&amp;A on its existing backend-managed flow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | agent prompt idle readiness</h2>
   <ul>
     <li>Changed agent prompt readiness to reject Codex terminals that still show model loading, MCP startup, or queued follow-up input banners.</li>

@@ -1,0 +1,40 @@
+---
+title: "Terminal-First New Plan"
+description: "Make + plan start a visible agent terminal instead of a hidden full-page Q&A route."
+wikiKind: "plan"
+---
+
+<h1>Terminal-First New Plan</h1>
+
+<section>
+  <h2>Status</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: corrective UI plan</li>
+    <li>Current unit: complete.</li>
+    <li>Next action: dogfood regular <code>+ plan</code> in the desktop app.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>Regular <code>+ plan</code> should open a visible planning agent terminal. The agent should ask Q&amp;A in the terminal until the work is decision-complete, then write durable MDX plan docs.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Remove the regular full-page plan creation route and keep the workspace shell visible.</li>
+    <li>Make <code>+ plan</code> navigate to the Plans index and start a fresh visible agent terminal scoped to that page.</li>
+    <li>Update the prompt so Q&amp;A happens in terminal prose instead of the retired structured app-rendered JSON question flow.</li>
+    <li>Leave imported-project onboarding Q&amp;A unchanged.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+    <li>Manual app dogfooding should confirm <code>+ plan</code> keeps sidebars and terminals visible.</li>
+  </ul>
+</section>

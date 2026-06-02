@@ -96,6 +96,18 @@ if (!appSource.includes("currentUnitLabel") || !appSource.includes("compactUnitL
 if (appSource.includes("SidePanelMode") || appSource.includes("AgentActivityPane") || appSource.includes("HeadlessTerminalListener")) {
   throw new Error("Agent handoffs must stay terminal-first without restoring the separate activity feed panel.");
 }
+if (appSource.includes('kind: "plan-create"') || appSource.includes("PlanCreationView") || appSource.includes('return `${projectPrefix}/plans/new`;')) {
+  throw new Error("Regular + plan must not restore the full-page plan-create route.");
+}
+if (!appSource.includes('if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" }')) {
+  throw new Error("Direct /plans/new URLs must fall back to the Plans index.");
+}
+if (!appSource.includes('planCreationPrompt(activeProject)') || !appSource.includes('"planning"') || !appSource.includes('"Create Plan"') || !appSource.includes('{ forceNewSession: true }')) {
+  throw new Error("Regular + plan must start a fresh visible planning agent terminal.");
+}
+if (!appSource.includes("terminal-native one-question-at-a-time planning interview") || !appSource.includes("ask the user for the planning focus first and wait") || appSource.includes("For every user-facing question, emit only one JSON object containing type \\\"hyperwiki-question\\\"")) {
+  throw new Error("Regular + plan prompt must use terminal-native Q&A instead of app-rendered JSON questions.");
+}
 if (!appSource.includes('action === "modify" ? {} : { forceNewSession: true }')) {
   throw new Error("Execute must start a fresh general agent session while Modify keeps its prewarmed session behavior.");
 }

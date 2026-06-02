@@ -39,7 +39,6 @@ type ViewRoute =
   | { kind: "wiki"; path: string }
   | { kind: "projects" }
   | { kind: "new-project" }
-  | { kind: "plan-create" }
   | { kind: "settings" };
 
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
@@ -866,7 +865,7 @@ function App() {
 
   useEffect(() => {
     const shouldMonitor = sessions.some((session) => isAgentSession(session) && isLiveTerminalSession(session))
-      && (terminalScope.scopeKind === "plan" || terminalScope.scopeKind === "plan-create");
+      && terminalScope.scopeKind === "plan";
     if (!shouldMonitor) return;
     void checkWikiFingerprint("agent-monitor-start");
     const timer = window.setInterval(() => {
@@ -2129,27 +2128,22 @@ function App() {
         setStatus("Review prompt sent");
       }
       if (action === "new-plan") {
-        navigate({ kind: "plan-create" });
-        setStatus("Plan creation opened");
+        const planIndexRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+        const planScope = scopeForRoute(planIndexRoute);
+        navigate(planIndexRoute);
+        await sendTrackedAgentPrompt(
+          "planning",
+          "Create Plan",
+          planCreationPrompt(activeProject),
+          planIndexRoute.path,
+          planScope,
+          layout,
+          sessions,
+          undefined,
+          { forceNewSession: true },
+        );
+        setStatus("Plan creation terminal started");
       }
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  async function startPlanCreation(intent: string) {
-    const trimmed = intent.trim();
-    if (!trimmed) {
-      setStatus("Describe what this plan should accomplish.");
-      return;
-    }
-    setStatus("Starting plan interview");
-    try {
-      const projectScope = scopeForRoute({ kind: "plan-create" });
-      const session = await sendAgentPromptToProject(activeProject, planCreationPrompt(activeProject, trimmed), "/wiki/plans/index.mdx", projectScope, layout, sessions);
-      setActiveSessionId(session.id);
-      await loadSessionsForProject(activeProject, projectScope);
-      setStatus("Plan interview started");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -2371,10 +2365,10 @@ function App() {
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
-  const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute && route.kind !== "plan-create";
+  const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute;
 
   useEffect(() => {
-    if (!isUtilityRoute && route.kind !== "plan-create") return;
+    if (!isUtilityRoute) return;
     appendImportLog(`Terminal pane hidden utility=${isUtilityRoute} route=${route.kind} activeProject=${activeProject?.id || "none"}`);
   }, [activeProject?.id, isUtilityRoute, route.kind]);
 
@@ -2398,14 +2392,14 @@ function App() {
       <section
         className={cn(
           "grid h-full min-h-0 flex-1 overflow-hidden",
-          isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create"
+          isMainPaneExpanded || isUtilityRoute
             ? "grid-cols-1"
             : isImportPlanningView
             ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
             : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
         )}
       >
-        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : (
+        {isMainPaneExpanded || isUtilityRoute ? null : (
           <WikiSidebar
             currentPath={currentWikiPath}
             exportStatus={wikiExportStatus}
@@ -2432,7 +2426,6 @@ function App() {
           onRemoveProject={removeProject}
           onRunCommand={runCommandAction}
           onAnswerPlanningQuestion={answerPlanningQuestion}
-          onStartPlanCreation={startPlanCreation}
           onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
           onSwitchProject={switchProject}
           planningActivity={planningActivity}
@@ -2454,7 +2447,7 @@ function App() {
           wikiPages={wikiPages}
           activePlanState={activePlanState}
         />
-        {isMainPaneExpanded || isUtilityRoute || route.kind === "plan-create" ? null : isImportPlanningView ? null : (
+        {isMainPaneExpanded || isUtilityRoute ? null : isImportPlanningView ? null : (
           <div className="h-full min-h-0 overflow-hidden">
             <TerminalPane
               activeSessionId={activeSessionId}
@@ -2824,7 +2817,6 @@ function WorkspacePane(props: {
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onStartPlanCreation: (intent: string) => Promise<void>;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
   planningActivity: string;
@@ -2854,9 +2846,6 @@ function WorkspacePane(props: {
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
-  }
-  if (props.route.kind === "plan-create") {
-    return <PlanCreationView activeProject={props.activeProject} isImportedFirstPlan={hasImportedSource(props.wikiPages) && !hasGeneratedPlanPages(props.wikiPages)} onCancel={() => props.onNavigate({ kind: "wiki", path: "/wiki/plans/index.mdx" })} onStart={props.onStartPlanCreation} />;
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
@@ -3008,79 +2997,6 @@ function CommandBar({
         {executeLabel}
       </Button>
     </div>
-  );
-}
-
-function PlanCreationView({
-  activeProject,
-  isImportedFirstPlan = false,
-  onCancel,
-  onStart,
-}: {
-  activeProject: ProjectRecord | null;
-  isImportedFirstPlan?: boolean;
-  onCancel: () => void;
-  onStart: (intent: string) => Promise<void>;
-}) {
-  const [intent, setIntent] = useState(isImportedFirstPlan ? "Create the first MVP plan from the imported source." : "");
-  const [isStarting, setIsStarting] = useState(false);
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setIsStarting(true);
-    try {
-      await onStart(intent);
-    } finally {
-      setIsStarting(false);
-    }
-  }
-
-  return (
-    <main className="grid min-h-0 bg-background antialiased">
-      <section className="mx-auto flex min-h-0 w-full max-w-4xl flex-col gap-6 px-8 py-8">
-        <header className="flex items-start justify-between gap-4 pb-2">
-          <div className="grid gap-3">
-            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan creation</p>
-            <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">Create New Plan</h1>
-            <p className="m-0 max-w-2xl text-base leading-7 text-muted-foreground text-pretty">
-              {isImportedFirstPlan
-                ? "hyperwiki will use the imported source as the planning brief, start a focused Q&A, then write the first MVP plan when the blocking decisions are clear."
-                : "hyperwiki will start a focused Q&A, inspect the repo and wiki, then write plan docs when the blocking decisions are clear."}
-            </p>
-          </div>
-          <Button className="min-h-10 active:scale-[0.96] transition-transform" variant="outline" onClick={onCancel} type="button">
-            Cancel
-          </Button>
-        </header>
-        <form className="grid gap-5 rounded-lg bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_32px_rgba(0,0,0,0.05)]" onSubmit={submit}>
-          {!isImportedFirstPlan ? (
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold">Planning focus</span>
-              <textarea
-                {...DISABLE_TEXT_CORRECTION_PROPS}
-                className="min-h-[180px] rounded-md bg-background p-4 text-sm leading-6 outline-none shadow-[inset_0_0_0_1px_hsl(var(--border))] transition-shadow focus-visible:shadow-[inset_0_0_0_1px_hsl(var(--ring)),0_0_0_3px_hsl(var(--ring)/0.18)]"
-                onChange={(event) => setIntent(event.target.value)}
-                placeholder="Feature, workflow, refactor, research track, or product change..."
-                value={intent}
-              />
-            </label>
-          ) : (
-            <div className="grid gap-3 rounded-md bg-background p-4 shadow-[inset_0_0_0_1px_hsl(var(--border))]">
-              <h2 className="m-0 text-lg font-semibold">Imported source detected</h2>
-              <p className="m-0 max-w-2xl text-sm leading-6 text-muted-foreground text-pretty">
-                This is the first plan for {activeProject?.name || "this project"}, so hyperwiki will create an MVP plan from the imported source after the Q&A resolves open decisions.
-              </p>
-            </div>
-          )}
-          <div className="flex justify-end">
-            <Button className="min-h-10 active:scale-[0.96] transition-transform" disabled={isStarting || !activeProject} type="submit">
-              {isStarting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Play aria-hidden="true" data-icon="inline-start" />}
-              Start Q&A
-            </Button>
-          </div>
-        </form>
-      </section>
-    </main>
   );
 }
 
@@ -4900,7 +4816,7 @@ function routeFromLocation(): ViewRoute {
   if (hashPath) return { kind: "wiki", path: hashPath };
   if (window.location.pathname === "/projects") return { kind: "projects" };
   if (window.location.pathname === "/projects/new") return { kind: "new-project" };
-  if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "plan-create" };
+  if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
@@ -4909,10 +4825,6 @@ function routeFromLocation(): ViewRoute {
 function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "projects") return "/projects";
   if (route.kind === "new-project") return "/projects/new";
-  if (route.kind === "plan-create") {
-    const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
-    return `${projectPrefix}/plans/new`;
-  }
   if (route.kind === "settings") return "/settings";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;
@@ -5710,24 +5622,24 @@ function importedProjectPlanRepairPrompt(project: ProjectRecord, requestId: stri
   ].join("\n");
 }
 
-function planCreationPrompt(project: ProjectRecord | null, intent: string) {
-  const normalizedIntent = intent.trim() || "Create the next plan from current project context.";
+function planCreationPrompt(project: ProjectRecord | null, intent = "") {
+  const normalizedIntent = intent.trim();
   return [
     "Use $hyperwiki and $grill-with-docs.",
     "",
     "Plan mode only: do not implement product code from this prompt.",
     "",
     "Goal:",
-    "Run a one-question-at-a-time grilling interview for the requested work, then automatically create or update MDX wiki plan docs when no blocking unknowns remain.",
+    "Run a terminal-native one-question-at-a-time planning interview, then create or update MDX wiki plan docs only when no blocking unknowns remain.",
     "",
     "hyperwiki requirements:",
     "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
     "- Inspect repo evidence before asking questions the repo can answer.",
-    "- Ask one focused question at a time and recommend an answer when tradeoffs exist.",
-    "- For every user-facing question, emit only one JSON object containing type \"hyperwiki-question\", question, recommendedAnswer, reasoning, and options. Prefer a fenced ```json block, but do not use bullets inside the JSON.",
-    "- hyperwiki renders that JSON in the app UI; keep prose before and after the question brief.",
-    "- Put the recommended answer first in options. After the block, stop and wait for the user's answer.",
-    "- After receiving `hyperwiki planning answer: ...`, briefly reconcile it, then either emit the next hyperwiki-question object or create the plan if no blocking unknowns remain.",
+    "- If the initial user intent below is blank, ask the user for the planning focus first and wait.",
+    "- Ask one focused terminal question at a time. When tradeoffs exist, include a recommended answer first and 2-3 concise alternatives.",
+    "- After each question, stop and wait for the user's answer in the terminal.",
+    "- After receiving an answer, briefly reconcile it, then either ask the next blocking question or create the plan if no blocking unknowns remain.",
+    "- Keep asking until goal, audience, success criteria, scope, constraints, implementation approach, edge cases, and verification are clear enough for another engineer or agent to implement safely.",
     "- Surface terminology conflicts, contradictions, scope risks, and missing verification.",
     "- For plans that create or materially change implementation foundations, resolve or explicitly record stack-impacting choices before writing executable units: frontend/client surface, backend/API/runtime, persistence, auth, external services/integrations, provider choices, local preview/deployment approach, package manager, and build/type/test commands.",
     "- Do not infer stack defaults from thin context. Ask a hyperwiki-question or record a blocker/assumption when the stack would affect implementation safety.",
@@ -5746,7 +5658,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     `Project root: ${project?.root || "Unknown"}`,
     "",
     "Initial user intent:",
-    normalizedIntent,
+    normalizedIntent || "(blank; ask the user what plan they want to create)",
   ].join("\n");
 }
 
@@ -5859,9 +5771,6 @@ function worktreePreviewForSlug(root: string, slug: string) {
 }
 
 function scopeForRoute(route: ViewRoute) {
-  if (route.kind === "plan-create") {
-    return { scope: "plan-create", scopeKind: "plan-create", planPath: "/wiki/plans/index.mdx" };
-  }
   if (route.kind !== "wiki") {
     return { scope: route.kind, scopeKind: "app", planPath: null };
   }
