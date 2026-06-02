@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | canonical plan status source</h2>
+  <ul>
+    <li>Made backend-parsed wiki page status the canonical status field for plan pages, source responses, sidebar completion, and current-work resolution.</li>
+    <li>Changed page-level <code>PlanHero status</code> to be the preferred status authority, while preserving frontmatter and summary status fallbacks for older pages.</li>
+    <li>Added status-conflict validation warnings when secondary status sources disagree with the canonical page status.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | sidebar current work derivation</h2>
   <ul>
     <li>Changed React current-work resolution to derive from the first incomplete plan, stage, or unit in the wiki tree.</li>

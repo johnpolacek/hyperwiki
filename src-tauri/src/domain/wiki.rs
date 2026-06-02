@@ -63,6 +63,8 @@ pub struct WikiSource {
     pub links: Vec<WikiLink>,
     pub component_refs: Vec<WikiComponentRef>,
     pub validation_warnings: Vec<WikiValidationWarning>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -272,7 +274,11 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
     let mut files = Vec::new();
     collect_wiki_files(&wiki_root, &mut files);
     let known_paths = known_relative_paths(&wiki_root, &files);
-    let document = parse_wiki_document(&source, relative, &known_paths);
+    let mut document = parse_wiki_document(&source, relative, &known_paths);
+    let status = canonical_page_status(&document, &source, &format!("/wiki/{relative}"));
+    let status_warnings =
+        status_validation_warnings(status.as_ref(), &document, &list_items_from_first_summary(&source));
+    document.validation_warnings.extend(status_warnings);
     Ok(WikiSource {
         path: format!("/wiki/{relative}"),
         markdown: document.markdown,
@@ -281,6 +287,7 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
         links: document.links,
         component_refs: document.component_refs,
         validation_warnings: document.validation_warnings,
+        status,
         source,
     })
 }
@@ -835,7 +842,7 @@ fn wiki_page_from_file(
 ) -> Option<WikiPage> {
     let relative_path = slash_path(full_path.strip_prefix(base_root).ok()?);
     let mdx = fs::read_to_string(full_path).unwrap_or_default();
-    let document = parse_wiki_document(&mdx, &relative_path, known_paths);
+    let mut document = parse_wiki_document(&mdx, &relative_path, known_paths);
     let title = document
         .frontmatter
         .get("title")
@@ -847,11 +854,16 @@ fn wiki_page_from_file(
                 .map(|heading| heading.text.clone())
         })
         .unwrap_or_else(|| title_from_wiki_path(&relative_path));
-    let summary = list_items_from_first_summary(&mdx);
     let path = project_id
         .map(|id| format!("/projects/{id}/wiki/{relative_path}"))
         .unwrap_or_else(|| format!("/wiki/{relative_path}"));
-    let status = page_status(&summary, &path);
+    let mut summary = list_items_from_first_summary(&mdx);
+    let status = canonical_page_status(&document, &mdx, &path);
+    if let Some(status) = status.as_ref() {
+        ensure_summary_status(&mut summary, status);
+    }
+    let status_warnings = status_validation_warnings(status.as_ref(), &document, &summary);
+    document.validation_warnings.extend(status_warnings);
     Some(WikiPage {
         title,
         summary,
@@ -1611,7 +1623,29 @@ fn definition_value_after_term(html: &str, term: &str) -> Option<String> {
     None
 }
 
-fn page_status(summary: &[String], path: &str) -> Option<String> {
+fn canonical_page_status(document: &WikiDocument, mdx: &str, path: &str) -> Option<String> {
+    component_status(document, "PlanHero", "status")
+        .or_else(|| frontmatter_status(document))
+        .or_else(|| summary_page_status(&list_items_from_first_summary(mdx), path))
+}
+
+fn component_status(document: &WikiDocument, component_name: &str, attr_name: &str) -> Option<String> {
+    document
+        .component_refs
+        .iter()
+        .find(|component| component.name == component_name)
+        .and_then(|component| component.attributes.get(attr_name))
+        .and_then(|status| normalize_page_status(status))
+}
+
+fn frontmatter_status(document: &WikiDocument) -> Option<String> {
+    document
+        .frontmatter
+        .get("status")
+        .and_then(|status| normalize_page_status(status))
+}
+
+fn summary_page_status(summary: &[String], path: &str) -> Option<String> {
     if path.contains("/wiki/plans/zzz_completed/")
         && !path.ends_with("/wiki/plans/zzz_completed/index.mdx")
     {
@@ -1620,18 +1654,103 @@ fn page_status(summary: &[String], path: &str) -> Option<String> {
     summary.iter().find_map(|item| {
         let lower = item.to_lowercase();
         let status = lower.strip_prefix("status:")?.trim();
-        [
-            "active",
-            "pending",
-            "complete",
-            "completed",
-            "draft",
-            "blocked",
-            "deferred",
-        ]
-        .contains(&status)
-        .then(|| status.replace("completed", "complete"))
+        normalize_page_status(status)
     })
+}
+
+fn normalize_page_status(status: &str) -> Option<String> {
+    let normalized = status.trim().to_lowercase().replace("completed", "complete");
+    [
+        "active",
+        "active planning",
+        "pending",
+        "planned",
+        "complete",
+        "draft",
+        "blocked",
+        "deferred",
+    ]
+    .contains(&normalized.as_str())
+    .then_some(normalized)
+}
+
+fn ensure_summary_status(summary: &mut Vec<String>, status: &str) {
+    if summary
+        .iter()
+        .any(|item| item.to_lowercase().starts_with("status:"))
+    {
+        return;
+    }
+    summary.insert(0, format!("Status: {status}"));
+}
+
+fn status_validation_warnings(
+    canonical_status: Option<&String>,
+    document: &WikiDocument,
+    summary: &[String],
+) -> Vec<WikiValidationWarning> {
+    let mut warnings = Vec::new();
+    let Some(canonical_status) = canonical_status else {
+        return warnings;
+    };
+    if let Some(frontmatter_status) = frontmatter_status(document) {
+        if frontmatter_status != *canonical_status {
+            warnings.push(status_conflict_warning(
+                "frontmatter",
+                &frontmatter_status,
+                canonical_status,
+                1,
+            ));
+        }
+    }
+    if let Some(summary_status) = summary_page_status(summary, "") {
+        if summary_status != *canonical_status {
+            warnings.push(status_conflict_warning(
+                "PlanSummary",
+                &summary_status,
+                canonical_status,
+                1,
+            ));
+        }
+    }
+    for component in &document.component_refs {
+        if component.name != "StatusBadge" && component.name != "Badge" && component.name != "PlanUnit" {
+            continue;
+        }
+        let Some(value) = component
+            .attributes
+            .get("status")
+            .or_else(|| component.attributes.get("label"))
+            .and_then(|status| normalize_page_status(status))
+        else {
+            continue;
+        };
+        if value != *canonical_status {
+            warnings.push(status_conflict_warning(
+                &component.name,
+                &value,
+                canonical_status,
+                component.line,
+            ));
+        }
+    }
+    warnings
+}
+
+fn status_conflict_warning(
+    source: &str,
+    value: &str,
+    canonical: &str,
+    line: usize,
+) -> WikiValidationWarning {
+    WikiValidationWarning {
+        kind: "status-source-conflict".to_string(),
+        message: format!(
+            "{source} status '{value}' differs from canonical page status '{canonical}'."
+        ),
+        href: None,
+        line,
+    }
 }
 
 fn first_between_case_insensitive(value: &str, start: &str, end: &str) -> Option<String> {
@@ -2115,6 +2234,53 @@ Agent-only text.
     }
 
     #[test]
+    fn uses_plan_hero_status_as_canonical_page_status() {
+        let root = temp_root("wiki-plan-hero-status");
+        let plan_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("unit-03-local-persistence.mdx"),
+            r#"<PlanHero status="completed"><h1>Unit 03 - Local Persistence</h1></PlanHero>
+<Card title="Build"><p>Persistence behavior.</p></Card>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+
+        assert_eq!(
+            pages[0].path,
+            "/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-03-local-persistence.mdx"
+        );
+        assert_eq!(pages[0].status.as_deref(), Some("complete"));
+        assert_eq!(pages[0].summary[0], "Status: complete");
+    }
+
+    #[test]
+    fn warns_when_plan_status_sources_conflict() {
+        let root = temp_root("wiki-plan-status-conflict");
+        let plan_dir = root.join("wiki").join("plans");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("conflict.mdx"),
+            r#"<PlanHero status="complete"><h1>Conflict</h1></PlanHero>
+<PlanSummary><ul><li>Status: active</li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+
+        assert_eq!(pages[0].status.as_deref(), Some("complete"));
+        assert!(pages[0]
+            .validation_warnings
+            .iter()
+            .any(|warning| warning.kind == "status-source-conflict"));
+    }
+
+    #[test]
     fn can_emit_project_scoped_wiki_paths() {
         let root = temp_root("wiki-project");
         fs::create_dir_all(root.join("wiki")).unwrap();
@@ -2177,6 +2343,7 @@ Agent-only text.
         let source = read_wiki_source(&root, "/wiki/plans/sample.mdx").unwrap();
 
         assert!(source.source.contains("<PlanHero>"));
+        assert_eq!(source.status.as_deref(), Some("active"));
         assert!(source.markdown.contains("# Sample"));
         assert!(source.markdown.contains("- Status: active"));
         assert!(source

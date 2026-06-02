@@ -1504,7 +1504,13 @@ mod tests {
         let root = temp_root("command-verification");
         let home = temp_root("command-verification-home");
         fs::create_dir_all(root.join(".hyperwiki").join("state")).unwrap();
-        fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
+        fs::create_dir_all(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-command-verification"),
+        )
+        .unwrap();
         fs::write(
             root.join(".hyperwiki").join("config.json"),
             serde_json::json!({
@@ -1538,7 +1544,29 @@ mod tests {
         .unwrap();
         fs::write(
             root.join("wiki").join("plans").join("index.mdx"),
-            "<h1>Plans</h1><section class=\"summary\"><ul><li>Current stage: Stage 01</li><li>Current unit: Unit 01</li></ul></section>",
+            r#"<PlanHero status="active planning"><h1>Plans</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-command-verification.mdx"),
+            r#"<PlanHero status="active"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-command-verification")
+                .join("unit-01-command-verification.mdx"),
+            r#"<PlanHero status="planned"><h1>Unit 01</h1></PlanHero>"#,
         )
         .unwrap();
         fs::write(

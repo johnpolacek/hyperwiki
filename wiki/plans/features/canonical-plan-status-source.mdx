@@ -1,0 +1,29 @@
+---
+title: "Canonical Plan Status Source"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Canonical Plan Status Source" status="complete" description="Make parsed wiki page status the single source of truth for plan rendering, sidebar completion, and current-work resolution." />
+
+<PlanSummary>
+  <ul>
+    <li>Shape: corrective metadata plan</li>
+    <li>Current unit: Unit 01 - canonical page status</li>
+    <li>Next action: none; plan status now resolves through one backend-owned field.</li>
+    <li>Validation: frontend checks plus targeted Rust wiki and workspace status tests.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Canonical Page Status" status="complete">
+  <h2>Intent</h2>
+  <p>Plan pages should not have separate status truths for the visible badge, sidebar indicator, current-work resolver, and workspace contract.</p>
+  <h2>Change</h2>
+  <p>Use parsed <code>WikiPage.status</code> and <code>WikiSource.status</code> as the canonical status field. Prefer page-level <code>PlanHero status</code>, preserve compatibility fallbacks, and warn when status sources disagree.</p>
+  <h2>Verification</h2>
+  <ul>
+    <li>Rust wiki parser tests cover <code>PlanHero status=&quot;completed&quot;</code> and status conflicts.</li>
+    <li>Workspace tests cover current-work advancement from a completed PlanHero unit to the next planned unit.</li>
+    <li>Frontend checks verify React consumes canonical status.</li>
+  </ul>
+</PlanUnit>

@@ -139,6 +139,7 @@ interface WikiSourceResponse {
   path: string;
   source: string;
   markdown: string;
+  status?: string;
   frontmatter?: Record<string, string>;
   headings?: WikiHeading[];
   links?: WikiLink[];
@@ -2908,6 +2909,7 @@ function WorkspacePane(props: {
             markdown={props.wikiSource.markdown}
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
             path={props.wikiPath}
+            status={props.wikiSource.status}
             source={props.wikiSource.source}
             validationWarnings={props.wikiSource.validationWarnings}
           />
@@ -5220,10 +5222,7 @@ function pathIsCompletedPage(path: string, pages: WikiPage[]) {
 }
 
 function pageStatus(page: WikiPage) {
-  if (page.status) return String(page.status).replace("completed", "complete");
-  const summary = Array.isArray(page.summary) ? page.summary : [];
-  const statusItem = summary.find((item) => /^status:/i.test(item));
-  return statusItem ? statusItem.slice(statusItem.indexOf(":") + 1).trim().toLowerCase().replace("completed", "complete") : "";
+  return page.status ? String(page.status).replace("completed", "complete") : "";
 }
 
 function pathContainsSelectedPage(path: string, selectedPath: string) {
@@ -5729,7 +5728,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent: string) {
     "- Every executable unit must include a Verification section or component.",
     "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
     "- Before writing, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-    "- Prefer PlanHero for the title and intent, PlanSummary for status/current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Callout/Warning/Danger for important constraints. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
+    "- Prefer PlanHero for the title, intent, and canonical page status. Use PlanSummary for current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Callout/Warning/Danger for important constraints. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
     "- Use Visibility for=\"agents\" around long source context, raw Q&A, or implementation handoff details that agents need but humans should not see in the rendered app. Use Visibility for=\"humans\" only for app-visible explanation that should be stripped from agent Markdown.",
     "- Do not dump long imported source bundles or Q&A transcripts into visible paragraphs; summarize visibly and preserve the full context in agent-only Visibility blocks when needed.",
     "- Write MDX files under wiki/plans/ and update wiki/plans/index.mdx and wiki/log.mdx.",

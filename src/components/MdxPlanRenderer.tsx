@@ -34,6 +34,7 @@ import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 interface MdxPlanRendererProps {
   source: string;
   markdown?: string;
+  status?: string;
   validationWarnings?: MdxValidationWarning[];
   onNavigate: (path: string) => void;
   path?: string;
@@ -94,8 +95,8 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onNavigate, path }: MdxPlanRendererProps) {
-  const content = useMemo(() => renderTrustedMdx(source, onNavigate, path), [source, onNavigate, path]);
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, path }: MdxPlanRendererProps) {
+  const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status]);
   const [copyStatus, setCopyStatus] = useState("");
   const copyMarkdown = async () => {
     if (!markdown?.trim()) return;
@@ -163,11 +164,11 @@ export function MdxPlanRenderer({ source, markdown, validationWarnings = [], onN
   );
 }
 
-function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string) {
+function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string, pageStatus?: string) {
   if (typeof DOMParser === "undefined") return null;
   const html = mdxBodyToHtml(source);
   const document = new DOMParser().parseFromString(`<main>${html}</main>`, "text/html");
-  return Array.from(document.body.firstElementChild?.childNodes || []).map((node, index) => renderNode(node, `${index}`, onNavigate, path));
+  return Array.from(document.body.firstElementChild?.childNodes || []).map((node, index) => renderNode(node, `${index}`, onNavigate, path, pageStatus));
 }
 
 function mdxBodyToHtml(source: string) {
@@ -350,19 +351,19 @@ function normalizeComponentTags(source: string) {
   }, source);
 }
 
-function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => void, path?: string): ReactNode {
+function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => void, path?: string, pageStatus?: string): ReactNode {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent;
   if (!(node instanceof Element)) return null;
 
   const tag = node.tagName.toLowerCase();
-  const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path));
+  const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path, pageStatus));
   const titleChildren = normalizeTitleChildren(children);
   const className = node.getAttribute("class") || "";
   const component = node.getAttribute("data-plan-component") || "";
   const classTokens = new Set(className.split(/\s+/).filter(Boolean));
 
   if (component) {
-    const renderedComponent = renderPlanComponent(node, component, children, key, onNavigate, path);
+    const renderedComponent = renderPlanComponent(node, component, children, key, onNavigate, path, pageStatus);
     if (renderedComponent !== undefined) return renderedComponent;
   }
 
@@ -437,6 +438,7 @@ function renderPlanComponent(
   key: string,
   onNavigate: (path: string) => void,
   path?: string,
+  pageStatus?: string,
 ): ReactNode | undefined {
   const title = componentTitle(node);
   const description = node.getAttribute("description") || node.getAttribute("summary") || "";
@@ -450,7 +452,7 @@ function renderPlanComponent(
   if (component === "PlanHero") {
     return (
       <section className="grid gap-3 pb-5 pr-28" key={key}>
-        {renderComponentHeader(title, description, node.getAttribute("status"))}
+        {renderComponentHeader(title, description, pageStatus || node.getAttribute("status"))}
         {children}
       </section>
     );

@@ -1459,6 +1459,62 @@ mod tests {
         );
     }
 
+    #[test]
+    fn workspace_summary_uses_plan_hero_status_for_current_path() {
+        let root = temp_root("workspace-plan-hero-status-current-path");
+        fs::create_dir_all(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation"),
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("index.mdx"),
+            r#"<PlanHero status="active planning"><h1>Plans</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="active"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-03-local-persistence.mdx"),
+            r#"<PlanHero status="completed"><h1>Unit 03 - Local Persistence</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation")
+                .join("unit-04-clear-entry-and-verification.mdx"),
+            r#"<PlanHero status="planned"><h1>Unit 04 - Clear Entry And Verification</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(root.join("wiki").join("log.mdx"), "<h1>Log</h1>").unwrap();
+
+        let workspace = workspace_summary(&root);
+
+        assert_eq!(
+            workspace.status.current_path,
+            "/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-04-clear-entry-and-verification.mdx"
+        );
+    }
+
     fn make_project(root: &Path) {
         fs::create_dir_all(root.join(".hyperwiki")).unwrap();
         fs::create_dir_all(root.join("wiki").join("plans")).unwrap();
