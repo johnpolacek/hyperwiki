@@ -105,6 +105,12 @@ if (!appSource.includes('if (window.location.pathname.endsWith("/plans/new") || 
 if (!appSource.includes('planCreationPrompt(activeProject)') || !appSource.includes('"planning"') || !appSource.includes('"Create Plan"') || !appSource.includes('{ forceNewSession: true }')) {
   throw new Error("Regular + plan must start a fresh visible planning agent terminal.");
 }
+if (!appSource.includes("async function openVisibleAgentPromptSession") || !appSource.includes("await openVisibleAgentPromptSession({") || appSource.includes("navigate(planIndexRoute);")) {
+  throw new Error("Regular + plan must use the canonical visible terminal prompt handoff, not a separate navigate-then-prompt sequence.");
+}
+if (!appSource.includes("Boolean(activeProject?.importPlanning && isImportedPlanningActive)") || appSource.includes("const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting || isImportPlanningResume")) {
+  throw new Error("Regular Plans index planning must not be captured by the imported-project Q&A layout that hides the terminal pane.");
+}
 if (!appSource.includes("terminal-native one-question-at-a-time planning interview") || !appSource.includes("ask the user for the planning focus first and wait") || appSource.includes("For every user-facing question, emit only one JSON object containing type \\\"hyperwiki-question\\\"")) {
   throw new Error("Regular + plan prompt must use terminal-native Q&A instead of app-rendered JSON questions.");
 }

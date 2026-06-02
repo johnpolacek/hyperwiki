@@ -676,7 +676,9 @@ function App() {
     && resumedImportPlanningProjectId === activeProject?.id
     && isIncompleteImportProject(activeProject)
     && !hasGeneratedPlanPages(wikiPages);
-  const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting || isImportPlanningResume;
+  const isImportPlanningView = isImportPlanningStarting
+    || isImportPlanningResume
+    || Boolean(activeProject?.importPlanning && isImportedPlanningActive);
   const canResumeImportPlanning = route.kind === "wiki"
     && route.path === defaultWikiPath
     && Boolean(activeProject)
@@ -1623,6 +1625,42 @@ function App() {
     }
   }
 
+  async function openVisibleAgentPromptSession(options: {
+    kind: AgentRunKind;
+    label: string;
+    prompt: string;
+    currentPage: string;
+    scope: TerminalScope;
+    targetRoute?: ViewRoute;
+    forceNewSession?: boolean;
+    runId?: string;
+  }) {
+    if (options.targetRoute) {
+      latestTerminalContext.current = { projectId: activeProject?.id || "", scope: normalizeTerminalScope(options.scope).scope };
+      appendImportLog(`Visible agent prompt route kind=${options.kind} page=${options.currentPage} scope=${options.scope.scope}`);
+      setRoute(options.targetRoute);
+      window.history.pushState(null, "", urlForRoute(options.targetRoute, activeProject));
+    }
+    setIsWorkspaceExpanded(false);
+    if (options.kind === "planning") {
+      setResumedImportPlanningProjectId(null);
+      clearPlanningQuestions();
+      setPlanningInterviewStatus("idle");
+    }
+    appendImportLog(`Opening visible agent prompt kind=${options.kind} label=${options.label} page=${options.currentPage} scope=${options.scope.scope} forceNew=${options.forceNewSession ? "yes" : "no"}`);
+    return sendTrackedAgentPrompt(
+      options.kind,
+      options.label,
+      options.prompt,
+      options.currentPage,
+      options.scope,
+      layout,
+      sessions,
+      options.runId,
+      { forceNewSession: options.forceNewSession },
+    );
+  }
+
   async function planImportedProject(project: ProjectRecord) {
     const key = `${project.id}:import-qna`;
     if (importedPlanningCompletedKeys.current.has(key)) {
@@ -2174,18 +2212,15 @@ function App() {
       if (action === "new-plan") {
         const planIndexRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
         const planScope = scopeForRoute(planIndexRoute);
-        navigate(planIndexRoute);
-        await sendTrackedAgentPrompt(
-          "planning",
-          "Create Plan",
-          planCreationPrompt(activeProject),
-          planIndexRoute.path,
-          planScope,
-          layout,
-          sessions,
-          undefined,
-          { forceNewSession: true },
-        );
+        await openVisibleAgentPromptSession({
+          kind: "planning",
+          label: "Create Plan",
+          prompt: planCreationPrompt(activeProject),
+          currentPage: planIndexRoute.path,
+          scope: planScope,
+          targetRoute: planIndexRoute,
+          forceNewSession: true,
+        });
         setStatus("Plan creation terminal started");
       }
     } catch (error) {
