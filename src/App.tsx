@@ -1529,7 +1529,11 @@ function App() {
         lines: ["Agent session started", "Waiting for the agent prompt"],
         transcript: "Agent session started\nWaiting for the agent prompt",
       });
-      const readinessOptions = kind === "modify" ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" } : undefined;
+      const readinessOptions = kind === "modify"
+        ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" }
+        : kind === "execute"
+          ? { maxAttempts: 60, intervalMs: 250, reason: "execute-submit" }
+          : undefined;
       const ready = await waitForAgentPromptReady(session.id, readinessOptions);
       appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120}`);
       updateAgentRun(runId, {
@@ -6337,12 +6341,18 @@ function isAgentPromptReady(text: string) {
 }
 
 function isAgentStartupInProgress(text: string) {
-  const tail = text.slice(-1800).toLowerCase();
-  if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(tail)) return true;
-  if (/model:\s*loading/.test(tail)) return true;
-  if (/starting\s+\d+\s*\(/.test(tail)) return true;
-  if (/starting\s+mcp|startingmcp/.test(tail)) return true;
-  if (/mcp\s+servers\s*\(\s*[01]\s*\/\s*2\s*\)/.test(tail)) return true;
+  const lower = text.toLowerCase();
+  const recent = lower.slice(-1800);
+  if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(recent)) return true;
+  const lastPrompt = Math.max(lower.lastIndexOf("›"), lower.lastIndexOf("\u203a"));
+  const markerAfterPrompt = (pattern: RegExp) => {
+    const match = [...lower.matchAll(pattern)].at(-1);
+    return Boolean(match && match.index !== undefined && (lastPrompt === -1 || match.index > lastPrompt));
+  };
+  if (markerAfterPrompt(/model:\s*loading/g)) return true;
+  if (markerAfterPrompt(/starting\s+\d+\s*\(/g)) return true;
+  if (markerAfterPrompt(/starting\s+mcp|startingmcp/g)) return true;
+  if (markerAfterPrompt(/mcp\s+servers\s*\(\s*[01]\s*\/\s*2\s*\)/g)) return true;
   return false;
 }
 

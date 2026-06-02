@@ -20,10 +20,12 @@ Execute should behave like an immediate handoff: open the agent terminal, wait u
 <PlanSection title="Implementation">
 - Treat Codex startup markers such as model loading, partial MCP startup, and queued follow-up banners as not ready.
 - Keep support for starter prompt text only after startup indicators have cleared.
-- Preserve the longer Execute readiness wait and the shorter Modify fast path.
+- Cap Execute readiness at a shorter click-time wait so a missed readiness signal cannot stall the handoff for the full generic agent timeout.
+- Preserve the shortest Modify fast path for prewarmed Modify sessions.
 </PlanSection>
 
 <PlanSection title="Verification">
 - Static smoke tests cover the stricter startup guard and continued Modify fast path.
 - `pnpm run check`
+- `pnpm run smoke:tauri-static-assets`
 </PlanSection>

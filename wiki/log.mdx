@@ -10,7 +10,8 @@ wikiKind: "page"
   <h2>2026-06-02 fix | agent prompt idle readiness</h2>
   <ul>
     <li>Changed agent prompt readiness to reject Codex terminals that still show model loading, MCP startup, or queued follow-up input banners.</li>
-    <li>Preserved starter-prompt recognition only after the startup tail is idle, so Execute prompts are sent as the primary request instead of queued follow-up input.</li>
+    <li>Preserved starter-prompt recognition only after the latest prompt is newer than startup markers, so stale replay text does not delay Execute handoffs.</li>
+    <li>Capped Execute readiness waits to a shorter click-time window while preserving the fastest Modify path.</li>
   </ul>
 </article>
 <article>
