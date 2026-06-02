@@ -90,6 +90,9 @@ if (appSource.includes("activePlanState.isComplete || activePlanState.isStale"))
 if (!appSource.includes('const executionPage = action === "execute-main" ? activePlanState.currentPath || normalizedCurrentPage : normalizedCurrentPage') || !appSource.includes('const executionScope = action === "execute-main" ? scopeForRoute({ kind: "wiki", path: executionPage }) : terminalScope')) {
   throw new Error("Execute must target the resolved current unit path and scope, not the stale visible page.");
 }
+if (!appSource.includes("currentUnitLabel") || !appSource.includes("compactUnitLabel(currentPage)") || !appSource.includes("activePlanState.currentUnitLabel ? `execute ${activePlanState.currentUnitLabel.toLowerCase()}` : \"execute\"")) {
+  throw new Error("Execute button label must show only the compact current unit label, not the full unit title.");
+}
 if (!appSource.includes('action === "modify" ? { panelMode: "terminal" } : { forceNewSession: true, panelMode: "terminal" }')) {
   throw new Error("Execute must start a fresh general agent session while Modify keeps its prewarmed session behavior.");
 }

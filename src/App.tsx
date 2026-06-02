@@ -124,6 +124,7 @@ interface PlanPageActionState {
   canExecute: boolean;
   currentPath: string;
   currentTitle: string;
+  currentUnitLabel: string;
 }
 
 interface WikiListResponse {
@@ -2964,7 +2965,7 @@ function CommandBar({
   onResumeImportPlanning: () => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
 }) {
-  const executeLabel = activePlanState.currentTitle ? `execute ${activePlanState.currentTitle.toLowerCase()}` : "execute";
+  const executeLabel = activePlanState.currentUnitLabel ? `execute ${activePlanState.currentUnitLabel.toLowerCase()}` : "execute";
   return (
     <div className="flex items-center gap-2">
       {canResumeImportPlanning ? (
@@ -5286,7 +5287,17 @@ function planPageActionState(path: string, pages: WikiPage[], workspace: Workspa
     canExecute,
     currentPath,
     currentTitle: currentPage && canExecute ? cleanPageTitle(currentPage) : "",
+    currentUnitLabel: currentPage && canExecute ? compactUnitLabel(currentPage) : "",
   };
+}
+
+function compactUnitLabel(page: WikiPage) {
+  const title = cleanPageTitle(page);
+  const titleMatch = title.match(/\bunit\s+(\d+)\b/i);
+  if (titleMatch?.[1]) return `Unit ${titleMatch[1].padStart(2, "0")}`;
+  const pathMatch = displayWikiPath(page.path).match(/\/unit-(\d+)[^/]*\.mdx$/i);
+  if (pathMatch?.[1]) return `Unit ${pathMatch[1].padStart(2, "0")}`;
+  return title;
 }
 
 function planScopeIsComplete(scope: { scope: string; scopeKind: string; planPath: string | null }, pages: WikiPage[]) {
