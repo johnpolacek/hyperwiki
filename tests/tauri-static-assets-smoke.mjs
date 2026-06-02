@@ -129,6 +129,9 @@ if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignorin
 if (!appSource.includes("function applyTerminalSessions") || !appSource.includes("preserved = currentVisible.filter") || !appSource.includes("function upsertTerminalSession") || !appSource.includes("function selectActiveSessionId")) {
   throw new Error("Terminal pane sessions must use one canonical apply/upsert path that preserves newly started visible sessions.");
 }
+if (!appSource.includes("function terminalStartupNotice") || !appSource.includes("Starting agent terminal...") || !appSource.includes("startupNoticeVisible") || !appSource.includes("terminal.clear();")) {
+  throw new Error("Visible command terminals must show an immediate startup notice until real replay/output arrives.");
+}
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");
 }

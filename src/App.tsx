@@ -4760,6 +4760,7 @@ function XtermSession({
     let hasLoadedReplay = false;
     let eventBuffer: TerminalOutputEventPayload[] = [];
     let unlisten: (() => void) | null = null;
+    let startupNoticeVisible = false;
 
     const terminalFont = getComputedStyle(document.documentElement).getPropertyValue("--terminal-font").trim() || "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     const terminal = new Terminal({
@@ -4783,6 +4784,11 @@ function XtermSession({
     terminal.open(container);
     if (isActive) {
       terminal.focus();
+    }
+    const startupNotice = terminalStartupNotice(session);
+    if (startupNotice) {
+      startupNoticeVisible = true;
+      terminal.write(`\x1b[2m${startupNotice}\x1b[0m\r\n`);
     }
 
     const fit = () => {
@@ -4824,7 +4830,13 @@ function XtermSession({
       );
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
-      if (displayText) terminal.write(displayText);
+      if (displayText) {
+        if (startupNoticeVisible) {
+          terminal.clear();
+          startupNoticeVisible = false;
+        }
+        terminal.write(displayText);
+      }
     };
 
     const handleTerminalChunk = (payload: TerminalOutputEventPayload) => {
@@ -4849,7 +4861,13 @@ function XtermSession({
           );
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
-          if (displayText) terminal.write(displayText);
+          if (displayText) {
+            if (startupNoticeVisible) {
+              terminal.clear();
+              startupNoticeVisible = false;
+            }
+            terminal.write(displayText);
+          }
         }
         seenSeqRef.current = replay.seq || 0;
         hasLoadedReplay = true;
@@ -5263,6 +5281,13 @@ function isStandbySession(session: SessionRecord) {
 function terminalPaneLabel(session: SessionRecord, index: number) {
   const label = (session.role || session.name || `terminal ${index + 1}`).toLowerCase();
   return `${label} --`;
+}
+
+function terminalStartupNotice(session: SessionRecord) {
+  if (!session.command || isStandbySession(session)) return "";
+  if (session.role === "agent") return "Starting agent terminal...";
+  if (session.role === "dev") return "Starting dev terminal...";
+  return "Starting terminal...";
 }
 
 function isLiveTerminalSession(session: SessionRecord) {
