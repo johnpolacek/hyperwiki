@@ -1,0 +1,42 @@
+---
+title: "Default Low Thinking Mode"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Default Low Thinking Mode</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Goal: make newly loaded workspaces start with low Codex thinking effort by default.</li>
+    <li>Scope: React terminal launch state and static smoke coverage.</li>
+  </ul>
+</section>
+<section>
+  <h2>Acceptance</h2>
+  <ul>
+    <li>The terminal thinking picker initializes to <code>low</code> on every app load, regardless of any previously persisted picker value.</li>
+    <li>New Codex agent terminals receive <code>model_reasoning_effort</code> and <code>plan_mode_reasoning_effort</code> overrides for the selected picker value.</li>
+    <li>The startup picker value remains <code>low</code>; users can still change the picker for subsequent terminals in the current app session.</li>
+    <li>Non-Codex agent commands remain unchanged.</li>
+    <li>Static smoke coverage verifies the low startup default and Codex command override behavior.</li>
+  </ul>
+</section>
+<section>
+  <h2>Result</h2>
+  <ul>
+    <li>Hoisted the terminal thinking-effort picker into the app shell and initialized it to <code>low</code> on each app load.</li>
+    <li>Cleared the legacy persisted picker value so older local <code>medium</code>, <code>high</code>, or <code>xhigh</code> choices cannot affect startup.</li>
+    <li>Changed Codex agent launch command construction to rewrite existing effort flags and append both <code>model_reasoning_effort</code> and <code>plan_mode_reasoning_effort</code> for the current picker value.</li>
+    <li>Left non-Codex agent commands unchanged.</li>
+    <li>Added static smoke coverage and ran <code>pnpm run check</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Keep the project layout command as the source command and rewrite only Codex-specific reasoning-effort flags at launch time.</li>
+    <li>Clear legacy persisted thinking-effort state so older <code>medium</code>, <code>high</code>, or <code>xhigh</code> local storage entries do not affect app startup.</li>
+  </ul>
+</section>

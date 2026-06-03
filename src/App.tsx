@@ -44,6 +44,7 @@ type ViewRoute =
 type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
 type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
 type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
+type ThinkingEffort = "low" | "medium" | "high" | "xhigh";
 
 interface SourceDocumentInput {
   name: string;
@@ -603,6 +604,8 @@ class ImportPlanningProtocolError extends Error {
 const defaultWikiPath = "/wiki/plans/index.mdx";
 const importLogStorageKey = "hyperwiki.importLog";
 const importPlanningWorkstreamLimit = 1000;
+const defaultThinkingEffort: ThinkingEffort = "low";
+const thinkingEffortStorageKey = "hyperwiki.thinkingEffort";
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -624,6 +627,7 @@ function App() {
   const [reviewWorkflows, setReviewWorkflows] = useState<ReviewWorkflow[]>([]);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>(defaultThinkingEffort);
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
   const [activePlanningQuestions, setActivePlanningQuestions] = useState<PlanningQuestion[]>([]);
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<PlanningInterviewStatus>("idle");
@@ -691,6 +695,10 @@ function App() {
   useEffect(() => {
     applyAppTheme(settings?.theme);
   }, [settings?.theme]);
+
+  useEffect(() => {
+    window.localStorage.removeItem(thinkingEffortStorageKey);
+  }, []);
 
   useEffect(() => {
     function onPopState() {
@@ -955,7 +963,7 @@ function App() {
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete) return;
     void prewarmModifySessionForScope(activeProject, layout, terminalScope, sessions);
-  }, [activeProject?.id, activePlanScopeComplete, layout, sessions, terminalScope.scope, terminalScope.scopeKind]);
+  }, [activeProject?.id, activePlanScopeComplete, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || !activePlanScopeComplete) return;
@@ -1167,7 +1175,7 @@ function App() {
         body: {
           name,
           role,
-          command: role === "agent" ? agentLaunchCommand(layout) : null,
+          command: role === "agent" ? agentLaunchCommand(layout, thinkingEffort) : null,
           scope: terminalScope.scope,
           scopeKind: terminalScope.scopeKind,
           planPath: terminalScope.planPath,
@@ -1262,7 +1270,7 @@ function App() {
     if (existing?.command && options.forceNew) {
       appendImportLog(`ensureAgentSession starting fresh agent project=${project.id} previous=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"}`);
     }
-    const command = options.commandOverride || agentLaunchCommand(projectLayout);
+    const command = options.commandOverride || agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) {
       throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
     }
@@ -1289,7 +1297,7 @@ function App() {
     const key = `${project.id}:${normalizedScope.scope}`;
     if (prewarmingModifySessions.current.has(key)) return;
     if (knownSessions.some((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session))) return;
-    const command = agentLaunchCommand(projectLayout);
+    const command = agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) return;
     prewarmingModifySessions.current.add(key);
     try {
@@ -2360,7 +2368,7 @@ function App() {
           documentType: input.documentType,
           sourceDocuments: input.sourceDocuments,
           initializeGit: input.initializeGit,
-          agentLaunchCommand: agentLaunchCommand(layout),
+          agentLaunchCommand: agentLaunchCommand(layout, thinkingEffort),
         },
       })
       .then((result) => result.project);
@@ -2545,6 +2553,8 @@ function App() {
               preview={preview}
               repoContext={repoContext}
               scope={terminalScope}
+              thinkingEffort={thinkingEffort}
+              onThinkingEffortChange={setThinkingEffort}
               currentWorkTitle={activePlanState.currentTitle}
               workspace={workspace}
               sessions={sessions}
@@ -4532,10 +4542,12 @@ function TerminalPane(props: {
   onRunDev: () => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
+  onThinkingEffortChange: (effort: ThinkingEffort) => void;
   onTerminalText: (sessionId: string, text: string) => void;
   preview: AppPreviewResponse | null;
   repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
+  thinkingEffort: ThinkingEffort;
   currentWorkTitle: string;
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
@@ -4545,7 +4557,6 @@ function TerminalPane(props: {
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
   const [isCreatingWorktree, setIsCreatingWorktree] = useState(false);
-  const [thinkingEffort, setThinkingEffort] = useState(() => normalizedThinkingEffort(window.localStorage.getItem("hyperwiki.thinkingEffort")));
   const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
   const terminalContextLabel = props.currentWorkTitle || titleForPath(props.scope.planPath || "", []) || branchLabel;
   const hasGit = Boolean(props.repoContext?.git?.root);
@@ -4558,10 +4569,6 @@ function TerminalPane(props: {
   const gitRoot = props.repoContext?.git?.root || props.repoContext?.root || "";
   const worktreePreview = worktreePreviewForSlug(gitRoot, worktreeSlug);
   const previewUrl = props.activeProject?.projectSlug ? `https://${worktreeSlug}.${props.activeProject.projectSlug}.localhost` : `https://${worktreeSlug}.localhost`;
-
-  useEffect(() => {
-    window.localStorage.setItem("hyperwiki.thinkingEffort", thinkingEffort);
-  }, [thinkingEffort]);
 
   useEffect(() => {
     appendImportLog(`Terminal pane render project=${props.activeProject?.id || "none"} scope=${props.scope.scope} sessions=${props.sessions.length} active=${props.activeSessionId || "none"} ids=${props.sessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
@@ -4642,7 +4649,7 @@ function TerminalPane(props: {
         <div className="flex shrink-0 items-center gap-2">
           <label className="flex items-center gap-1.5 text-[#9da79f]">
             <span>think</span>
-            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={thinkingEffort} onChange={(event) => setThinkingEffort(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
+            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.thinkingEffort} onChange={(event) => props.onThinkingEffortChange(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
               <option value="low">low</option>
               <option value="medium">med</option>
               <option value="high">high</option>
@@ -5559,21 +5566,35 @@ function updateProjectImportPlanning(projects: ProjectListResponse, projectId: s
   };
 }
 
-function agentLaunchCommand(layout: LayoutResponse | null) {
-  return layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
+function agentLaunchCommand(layout: LayoutResponse | null, effort: ThinkingEffort = defaultThinkingEffort) {
+  const command = layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
+  return codexCommandWithThinkingEffort(command, effort);
 }
 
 function importAgentLaunchCommand(layout: LayoutResponse | null) {
-  const command = agentLaunchCommand(layout);
+  const command = agentLaunchCommand(layout, defaultThinkingEffort);
   if (!/^\s*(?:[\w./-]+\/)?codex(?:\s|$)/.test(command)) return command;
   const withoutExistingModel = command
     .replace(/\s+-m\s+\S+/g, "")
     .replace(/\s+--model\s+\S+/g, "")
-    .replace(/\s+-c\s+['"]?model_reasoning_effort=[^'"\s]+['"]?/g, "")
-    .replace(/\s+-c\s+['"]?plan_mode_reasoning_effort=[^'"\s]+['"]?/g, "")
+    .replace(codexModelReasoningEffortFlagPattern, "")
+    .replace(codexPlanModeReasoningEffortFlagPattern, "")
     .trim();
   return `${withoutExistingModel} -m gpt-5.5 -c 'model_reasoning_effort="low"' -c 'plan_mode_reasoning_effort="low"'`;
 }
+
+function codexCommandWithThinkingEffort(command: string, effort: ThinkingEffort) {
+  if (!/^\s*(?:[\w./-]+\/)?codex(?:\s|$)/.test(command)) return command;
+  const normalized = normalizedThinkingEffort(effort);
+  const withoutExistingEffort = command
+    .replace(codexModelReasoningEffortFlagPattern, "")
+    .replace(codexPlanModeReasoningEffortFlagPattern, "")
+    .trim();
+  return `${withoutExistingEffort} -c 'model_reasoning_effort="${normalized}"' -c 'plan_mode_reasoning_effort="${normalized}"'`;
+}
+
+const codexModelReasoningEffortFlagPattern = /\s+-c\s+(['"]?)model_reasoning_effort=(?:"[^"]*"|'[^']*'|[^\s'"]+)\1/g;
+const codexPlanModeReasoningEffortFlagPattern = /\s+-c\s+(['"]?)plan_mode_reasoning_effort=(?:"[^"]*"|'[^']*'|[^\s'"]+)\1/g;
 
 function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
   return [
@@ -5919,9 +5940,9 @@ function slugify(value: string) {
     .slice(0, 72) || "work";
 }
 
-function normalizedThinkingEffort(value: string | null | undefined) {
+function normalizedThinkingEffort(value: string | null | undefined): ThinkingEffort {
   const normalized = String(value || "low").trim().toLowerCase();
-  return ["low", "medium", "high", "xhigh"].includes(normalized) ? normalized : "low";
+  return ["low", "medium", "high", "xhigh"].includes(normalized) ? normalized as ThinkingEffort : "low";
 }
 
 function worktreePreviewForSlug(root: string, slug: string) {

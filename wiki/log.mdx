@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-03 fix | default low thinking mode</h2>
+  <ul>
+    <li>Changed the terminal thinking-effort picker to initialize to <code>low</code> on every app load instead of restoring older local selections.</li>
+    <li>Changed Codex agent launch command construction to rewrite existing effort flags and append <code>model_reasoning_effort</code> plus <code>plan_mode_reasoning_effort</code> for the current picker value.</li>
+    <li>Added static smoke coverage for low startup behavior and Codex-only command rewriting.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-03 fix | blank + plan first question</h2>
   <ul>
     <li>Changed regular <code>+ plan</code> prompt construction so a blank initial intent asks the user for the planning focus before any repo or wiki inspection.</li>
