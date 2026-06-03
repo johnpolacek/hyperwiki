@@ -1,7 +1,7 @@
 use super::DomainSurface;
 use base64::Engine;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -198,6 +198,7 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
             wiki_page_from_file(&wiki_root, &full_path, project_id, &known_paths)
         })
         .collect::<Vec<_>>();
+    apply_effective_plan_statuses(&mut pages);
     pages.sort_by(|left, right| left.path.cmp(&right.path));
     WikiPageList { pages }
 }
@@ -274,13 +275,24 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
     let mut files = Vec::new();
     collect_wiki_files(&wiki_root, &mut files);
     let known_paths = known_relative_paths(&wiki_root, &files);
+    let mut pages = files
+        .iter()
+        .filter_map(|full_path| wiki_page_from_file(&wiki_root, full_path, None, &known_paths))
+        .collect::<Vec<_>>();
+    apply_effective_plan_statuses(&mut pages);
     let mut document = parse_wiki_document(&source, relative, &known_paths);
-    let status = canonical_page_status(&document, &source, &format!("/wiki/{relative}"));
+    let path = format!("/wiki/{relative}");
+    let source_status = canonical_page_status(&document, &source, &path);
+    let status = pages
+        .iter()
+        .find(|page| page.path == path)
+        .and_then(|page| page.status.clone())
+        .or_else(|| source_status.clone());
     let status_warnings =
-        status_validation_warnings(status.as_ref(), &document, &list_items_from_first_summary(&source));
+        status_validation_warnings(source_status.as_ref(), &document, &list_items_from_first_summary(&source));
     document.validation_warnings.extend(status_warnings);
     Ok(WikiSource {
-        path: format!("/wiki/{relative}"),
+        path,
         markdown: document.markdown,
         frontmatter: document.frontmatter,
         headings: document.headings,
@@ -877,6 +889,108 @@ fn wiki_page_from_file(
         path,
         status,
     })
+}
+
+fn apply_effective_plan_statuses(pages: &mut [WikiPage]) {
+    let path_statuses = pages
+        .iter()
+        .map(|page| (page.path.clone(), page.status.clone()))
+        .collect::<HashMap<_, _>>();
+    let paths = pages.iter().map(|page| page.path.clone()).collect::<Vec<_>>();
+    let mut memo = HashMap::new();
+    for path in &paths {
+        let status = effective_plan_status_for_path(path, &paths, &path_statuses, &mut memo);
+        if let Some(page) = pages.iter_mut().find(|page| page.path == *path) {
+            page.status = status;
+            if let Some(status) = page.status.as_ref() {
+                ensure_summary_status(&mut page.summary, status);
+            }
+        }
+    }
+}
+
+fn effective_plan_status_for_path(
+    path: &str,
+    paths: &[String],
+    path_statuses: &HashMap<String, Option<String>>,
+    memo: &mut HashMap<String, Option<String>>,
+) -> Option<String> {
+    if let Some(status) = memo.get(path) {
+        return status.clone();
+    }
+    let explicit = path_statuses.get(path).cloned().flatten();
+    if matches!(explicit.as_deref(), Some("complete" | "blocked" | "deferred")) {
+        memo.insert(path.to_string(), explicit.clone());
+        return explicit;
+    }
+    let children = immediate_plan_child_paths(path, paths);
+    if !children.is_empty()
+        && children.iter().all(|child_path| {
+            effective_plan_status_for_path(child_path, paths, path_statuses, memo).as_deref()
+                == Some("complete")
+        })
+    {
+        let status = Some("complete".to_string());
+        memo.insert(path.to_string(), status.clone());
+        return status;
+    }
+    memo.insert(path.to_string(), explicit.clone());
+    explicit
+}
+
+fn immediate_plan_child_paths(path: &str, paths: &[String]) -> Vec<String> {
+    paths
+        .iter()
+        .filter(|candidate| is_immediate_plan_child_path(path, candidate))
+        .cloned()
+        .collect()
+}
+
+fn is_immediate_plan_child_path(parent: &str, candidate: &str) -> bool {
+    if parent == candidate {
+        return false;
+    }
+    if parent.ends_with("/wiki/plans/mvp/index.mdx") {
+        return candidate.starts_with("/wiki/plans/mvp/stage-")
+            && candidate.ends_with(".mdx")
+            && !candidate.trim_start_matches("/wiki/plans/mvp/").contains('/');
+    }
+    let Some((stage_root, stage_number)) = stage_page_parts(parent) else {
+        let base = plan_tree_base_path_for_status(parent);
+        return candidate.starts_with(&format!("{base}/"))
+            && !candidate[base.len() + 1..].contains('/');
+    };
+    let legacy_base = parent.trim_end_matches(".mdx");
+    let legacy_child = candidate.starts_with(&format!("{legacy_base}/"))
+        && !candidate[legacy_base.len() + 1..].contains('/');
+    let unit_base = format!("{stage_root}/units/stage-{stage_number}");
+    let documented_child = candidate.starts_with(&format!("{unit_base}/"))
+        && !candidate[unit_base.len() + 1..].contains('/');
+    legacy_child || documented_child
+}
+
+fn stage_page_parts(path: &str) -> Option<(&str, &str)> {
+    let marker = "/stage-";
+    let marker_index = path.rfind(marker)?;
+    if !path.ends_with(".mdx") {
+        return None;
+    }
+    let after_marker = &path[marker_index + marker.len()..];
+    let number_len = after_marker
+        .chars()
+        .take_while(|character| character.is_ascii_digit())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    if number_len == 0 {
+        return None;
+    }
+    Some((&path[..marker_index], &after_marker[..number_len]))
+}
+
+fn plan_tree_base_path_for_status(path: &str) -> String {
+    path.strip_suffix("/index.mdx")
+        .map(str::to_string)
+        .unwrap_or_else(|| path.trim_end_matches(".mdx").to_string())
 }
 
 fn first_heading(mdx: &str) -> Option<String> {
@@ -2275,6 +2389,183 @@ Agent-only text.
 
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert!(pages[0]
+            .validation_warnings
+            .iter()
+            .any(|warning| warning.kind == "status-source-conflict"));
+    }
+
+    #[test]
+    fn derives_parent_plan_status_when_all_children_are_complete() {
+        let root = temp_root("wiki-derived-parent-status");
+        let stage_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP Plan</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="planned"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        for unit in 1..=3 {
+            fs::write(
+                stage_dir.join(format!("unit-{unit:02}-done.mdx")),
+                format!(r#"<PlanHero status="complete"><h1>Unit {unit:02}</h1></PlanHero>"#),
+            )
+            .unwrap();
+        }
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let status = |path: &str| {
+            pages
+                .iter()
+                .find(|page| page.path == path)
+                .and_then(|page| page.status.as_deref())
+        };
+
+        assert_eq!(status("/wiki/plans/mvp/index.mdx"), Some("complete"));
+        assert_eq!(
+            status("/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx"),
+            Some("complete")
+        );
+    }
+
+    #[test]
+    fn keeps_parent_plan_incomplete_when_any_child_is_incomplete() {
+        let root = temp_root("wiki-derived-parent-incomplete");
+        let stage_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP Plan</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="planned"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-01-done.mdx"),
+            r#"<PlanHero status="complete"><h1>Unit 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-02-planned.mdx"),
+            r#"<PlanHero status="planned"><h1>Unit 02</h1></PlanHero>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let status = |path: &str| {
+            pages
+                .iter()
+                .find(|page| page.path == path)
+                .and_then(|page| page.status.as_deref())
+        };
+
+        assert_eq!(status("/wiki/plans/mvp/index.mdx"), Some("active"));
+        assert_eq!(
+            status("/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx"),
+            Some("planned")
+        );
+    }
+
+    #[test]
+    fn preserves_blocked_or_deferred_parent_status() {
+        let root = temp_root("wiki-derived-parent-blocked");
+        let stage_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="deferred"><h1>MVP Plan</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="blocked"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-01-done.mdx"),
+            r#"<PlanHero status="complete"><h1>Unit 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let status = |path: &str| {
+            pages
+                .iter()
+                .find(|page| page.path == path)
+                .and_then(|page| page.status.as_deref())
+        };
+
+        assert_eq!(status("/wiki/plans/mvp/index.mdx"), Some("deferred"));
+        assert_eq!(
+            status("/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx"),
+            Some("blocked")
+        );
+    }
+
+    #[test]
+    fn read_wiki_source_uses_derived_parent_status() {
+        let root = temp_root("wiki-source-derived-parent-status");
+        let stage_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP Plan</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="planned"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-01-done.mdx"),
+            r#"<PlanHero status="complete"><h1>Unit 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+
+        let source = read_wiki_source(
+            &root,
+            "/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx",
+        )
+        .unwrap();
+
+        assert_eq!(source.status.as_deref(), Some("complete"));
+        assert!(!source
             .validation_warnings
             .iter()
             .any(|warning| warning.kind == "status-source-conflict"));

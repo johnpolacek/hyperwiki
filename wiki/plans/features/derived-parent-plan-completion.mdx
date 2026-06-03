@@ -1,0 +1,31 @@
+---
+title: "Derived Parent Plan Completion"
+description: "Infer parent plan completion from completed child stages and units."
+wikiKind: "plan"
+status: "completed"
+---
+
+<PlanHero title="Derived Parent Plan Completion" status="completed" description="Use one effective status for plan hierarchy completion." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="completed" />
+  <PlanSummaryItem label="Scope" value="wiki status and plan sidebar" />
+  <PlanSummaryItem label="Validation" value="Rust wiki tests plus app smoke checks" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+When every unit under a stage is complete, the stage is effectively complete. When every stage under a plan is effectively complete, the plan is effectively complete. The sidebar, Execute action, page status, and terminal current-work labels should all consume that same effective status.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- Derive effective plan status bottom-up in the Rust wiki listing and source APIs.
+- Preserve explicit <code>complete</code>, <code>blocked</code>, and <code>deferred</code> statuses.
+- Keep the public <code>status</code> field unchanged so React surfaces continue using the canonical status source.
+</PlanSection>
+
+<PlanSection title="Verification">
+- `cargo test --manifest-path src-tauri/Cargo.toml wiki`
+- `pnpm run check`
+- `pnpm run check:tauri`
+- `pnpm run smoke:tauri-static-assets`
+</PlanSection>

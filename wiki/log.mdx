@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-02 fix | derived parent plan completion</h2>
+  <ul>
+    <li>Changed wiki status derivation so stages and plans become effectively complete when all immediate child units or stages are complete.</li>
+    <li>Kept explicit <code>blocked</code> and <code>deferred</code> parent statuses authoritative so human gates are not hidden by child completion.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | terminal-first new plan</h2>
   <ul>
     <li>Changed regular <code>+ plan</code> to navigate to the Plans index and start a fresh visible planning agent terminal instead of opening the retired full-page plan creation route.</li>
