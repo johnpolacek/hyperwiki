@@ -135,79 +135,79 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
   }
   return (
-    <article className="h-full overflow-auto bg-background text-foreground">
-      <div className="relative mx-auto flex max-w-[68rem] flex-col gap-4 px-5 py-5 md:px-8">
-        <TooltipProvider>
-          {markdown || canDeletePlan ? (
-            <div className="pointer-events-none absolute right-5 top-5 z-10 flex items-start gap-1.5 md:right-8">
-              {markdown ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      aria-label="Copy Markdown"
-                      className="pointer-events-auto h-8 gap-1.5 px-2.5 text-xs"
-                      disabled={!markdown.trim()}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                      onClick={copyMarkdown}
-                    >
-                      {copyStatus === "Markdown copied" ? (
-                        <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
-                      ) : (
-                        <Copy aria-hidden="true" data-icon="inline-start" />
-                      )}
-                      <span>Copy</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {canDeletePlan ? (
-                isDeleteConfirming ? (
-                  <div className="pointer-events-auto flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow-sm">
-                    <Button
-                      aria-label="Cancel plan deletion"
-                      className="h-7 px-2 text-xs"
-                      disabled={isDeletingPlan}
-                      size="sm"
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setIsDeleteConfirming(false);
-                        setDeleteStatus("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      aria-label="Delete plan"
-                      className="h-7 px-2 text-xs"
-                      disabled={isDeletingPlan}
-                      size="sm"
-                      type="button"
-                      variant="destructive"
-                      onClick={deletePlan}
-                    >
-                      {isDeletingPlan ? "Deleting..." : "Delete Plan"}
-                    </Button>
-                  </div>
-                ) : (
+    <article className="relative h-full overflow-auto bg-background text-foreground">
+      <TooltipProvider>
+        {markdown || canDeletePlan ? (
+          <div className="pointer-events-none absolute right-3 top-5 z-10 flex items-start gap-1.5">
+            {markdown ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button
-                    aria-label="Delete plan"
-                    className="pointer-events-auto size-8 text-muted-foreground hover:bg-transparent hover:text-foreground"
-                    size="icon"
+                    aria-label="Copy Markdown"
+                    className="pointer-events-auto h-8 gap-1.5 px-2.5 text-xs"
+                    disabled={!markdown.trim()}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                    onClick={copyMarkdown}
+                  >
+                    {copyStatus === "Markdown copied" ? (
+                      <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
+                    ) : (
+                      <Copy aria-hidden="true" data-icon="inline-start" />
+                    )}
+                    <span>Copy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
+              </Tooltip>
+            ) : null}
+            {canDeletePlan ? (
+              isDeleteConfirming ? (
+                <div className="pointer-events-auto flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow-sm">
+                  <Button
+                    aria-label="Cancel plan deletion"
+                    className="h-7 px-2 text-xs"
+                    disabled={isDeletingPlan}
+                    size="sm"
                     type="button"
                     variant="ghost"
-                    onClick={() => setIsDeleteConfirming(true)}
+                    onClick={() => {
+                      setIsDeleteConfirming(false);
+                      setDeleteStatus("");
+                    }}
                   >
-                    <X aria-hidden="true" data-icon="inline-start" />
+                    Cancel
                   </Button>
-                )
-              ) : null}
-              <span className="sr-only" aria-live="polite">{copyStatus || deleteStatus}</span>
-            </div>
-          ) : null}
+                  <Button
+                    aria-label="Delete plan"
+                    className="h-7 px-2 text-xs"
+                    disabled={isDeletingPlan}
+                    size="sm"
+                    type="button"
+                    variant="destructive"
+                    onClick={deletePlan}
+                  >
+                    {isDeletingPlan ? "Deleting..." : "Delete Plan"}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  aria-label="Delete plan"
+                  className="pointer-events-auto size-8 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsDeleteConfirming(true)}
+                >
+                  <X aria-hidden="true" data-icon="inline-start" />
+                </Button>
+              )
+            ) : null}
+            <span className="sr-only" aria-live="polite">{copyStatus || deleteStatus}</span>
+          </div>
+        ) : null}
+        <div className="mx-auto flex max-w-[68rem] flex-col gap-4 px-5 py-5 md:px-8">
           {validationWarnings.length ? (
             <Alert className="rounded-lg">
               <AlertCircle aria-hidden="true" />
@@ -225,8 +225,8 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
           ) : null}
           {content}
           {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
-        </TooltipProvider>
-      </div>
+        </div>
+      </TooltipProvider>
     </article>
   );
 }
