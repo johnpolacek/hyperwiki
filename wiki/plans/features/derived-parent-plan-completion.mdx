@@ -22,6 +22,7 @@ When every unit under a stage is complete, the stage is effectively complete. Wh
 - Preserve explicit <code>complete</code>, <code>blocked</code>, and <code>deferred</code> statuses.
 - Normalize project-scoped paths before parent-child matching so <code>/projects/&lt;id&gt;/wiki/...</code> pages derive the same status as <code>/wiki/...</code> pages.
 - Keep the public <code>status</code> field unchanged so React surfaces continue using the canonical status source.
+- Keep completed top-level plans reachable from a completed sidebar section even when the project has no completed-plan archive page.
 </PlanSection>
 
 <PlanSection title="Verification">

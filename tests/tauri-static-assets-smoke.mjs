@@ -141,6 +141,9 @@ if (!appSource.includes('parentPath.endsWith("/wiki/plans/mvp/index.mdx")') || !
 if (!appSource.includes("terminalPlanRootPath(wikiPath)") || !appSource.includes("canonicalTerminalScopePath(path)") || !appSource.includes("normalized.match(/^(.*)\\/unit-\\d+[^/]*\\.mdx$/)")) {
   throw new Error("Terminal scope must normalize plan unit pages to their parent plan root.");
 }
+if (!appSource.includes("const completedRoots = sorted.filter((page) => isCompletedTopLevelPlanPage(page))") || !appSource.includes("<summary className=\"cursor-pointer list-none px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground\">Completed Plans</summary>")) {
+  throw new Error("Completed top-level plans must remain reachable from the sidebar.");
+}
 if (!appSource.includes("terminalDisplayTextForXterm") || !appSource.includes("displayControlCarryRef") || !appSource.includes("stripTerminalDisplayControlSequences(data, carry)")) {
   throw new Error("Xterm rendering must strip Codex display control sequences with carry-over across output chunks.");
 }

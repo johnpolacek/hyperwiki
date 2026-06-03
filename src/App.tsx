@@ -2769,13 +2769,24 @@ function PlanTree({ pages, currentPath, onNavigate }: { pages: WikiPage[]; curre
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
   const visibleRoots = roots.filter((page) => !isPlansIndexPage(page));
+  const completedRoots = sorted.filter((page) => isCompletedTopLevelPlanPage(page));
   const currentPlanPath = currentPlanWorkPath(sorted, roots);
-  if (!visibleRoots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
+  if (!visibleRoots.length && !completedRoots.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No plan pages.</div>;
   return (
     <div className="grid gap-1">
       {visibleRoots.map((page) => (
         <PlanNode currentPath={currentPath} currentWorkPath={currentPlanPath} key={page.path} onNavigate={onNavigate} page={page} pages={sorted} />
       ))}
+      {completedRoots.length ? (
+        <details className="mt-2 grid gap-1" open={completedRoots.some((page) => pathContainsSelectedPage(page.path, currentPath))}>
+          <summary className="cursor-pointer list-none px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">Completed Plans</summary>
+          <div className="mt-1 grid gap-1">
+            {completedRoots.map((page) => (
+              <PlanNode currentPath={currentPath} currentWorkPath="" key={page.path} onNavigate={onNavigate} page={page} pages={sorted} />
+            ))}
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }
