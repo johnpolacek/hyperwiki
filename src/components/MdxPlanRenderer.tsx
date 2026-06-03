@@ -139,7 +139,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
       <TooltipProvider>
         {markdown || canDeletePlan ? (
           <div className="pointer-events-none absolute right-3 top-5 z-10 flex items-start gap-1.5">
-            {markdown ? (
+            {markdown && !isDeleteConfirming ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
