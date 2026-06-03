@@ -1,0 +1,35 @@
+---
+title: "Project-Wide Terminal Pane Persistence"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<h1>Project-Wide Terminal Pane Persistence</h1>
+<section className="summary">
+  <h2>Summary</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Goal: keep visible project terminals open across sidebar navigation and project switching.</li>
+    <li>Scope: React terminal session loading, visible pane selection, prompt reuse safety, and static smoke coverage.</li>
+  </ul>
+</section>
+<section>
+  <h2>Result</h2>
+  <ul>
+    <li>Changed visible terminal session loading to fetch all live sessions for the active project instead of filtering by route scope.</li>
+    <li>Kept hidden standby Modify sessions out of the terminal pane until they are promoted.</li>
+    <li>Kept Execute, Modify, Review, and planning agent reuse scope-aware through the existing session reuse filter.</li>
+    <li>Stopped xterm panes from remounting only because sidebar navigation changes the current route scope.</li>
+    <li>Added static smoke coverage and ran <code>pnpm run check</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Acceptance</h2>
+  <ul>
+    <li>Sidebar navigation within a project keeps all visible live agent, CLI, and dev terminals in the right terminal pane.</li>
+    <li>Switching away from a project and later returning restores that project's visible live terminal panes.</li>
+    <li>Hidden prewarmed Modify sessions remain hidden until promoted.</li>
+    <li>Execute, Modify, Review, and planning prompt routing still reuse only scope-matching agent sessions.</li>
+    <li>Static smoke coverage guards against route-scope filtered visible terminal loading.</li>
+  </ul>
+</section>

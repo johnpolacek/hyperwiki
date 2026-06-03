@@ -123,8 +123,8 @@ if (!appSource.includes('action === "modify" ? {} : { forceNewSession: true }'))
 if (!appSource.includes('name: "dev"') || !appSource.includes('role: "dev"') || !appSource.includes('const command = preview?.startCommand || ""')) {
   throw new Error("Run dev must start a configured dev terminal instead of an empty CLI or worktree agent handoff.");
 }
-if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignoring stale project session load") || !appSource.includes("function isCurrentTerminalContext")) {
-  throw new Error("Async session loads must not replace the terminal pane after the route or project scope changes.");
+if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignoring stale project session load") || !appSource.includes("function isCurrentTerminalProject")) {
+  throw new Error("Async session loads must not replace the terminal pane after the project changes.");
 }
 if (!appSource.includes("function applyTerminalSessions") || !appSource.includes("preserved = currentVisible.filter") || !appSource.includes("function upsertTerminalSession") || !appSource.includes("function selectActiveSessionId")) {
   throw new Error("Terminal pane sessions must use one canonical apply/upsert path that preserves newly started visible sessions.");

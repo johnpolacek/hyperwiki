@@ -878,14 +878,14 @@ function App() {
 
   useEffect(() => {
     const shouldMonitor = sessions.some((session) => isAgentSession(session) && isLiveTerminalSession(session))
-      && terminalScope.scopeKind === "plan";
+      && route.kind === "wiki";
     if (!shouldMonitor) return;
     void checkWikiFingerprint("agent-monitor-start");
     const timer = window.setInterval(() => {
       void checkWikiFingerprint("agent-monitor");
     }, 2000);
     return () => window.clearInterval(timer);
-  }, [activeProject?.id, sessions, terminalScope.scope, terminalScope.scopeKind]);
+  }, [activeProject?.id, route.kind, sessions]);
 
   useEffect(() => {
     function handleFocusRefresh() {
@@ -958,7 +958,7 @@ function App() {
       return;
     }
     void loadSessions();
-  }, [terminalScope, activeProject, hasLoadedProjects]);
+  }, [activeProject?.id, hasLoadedProjects]);
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete) return;
@@ -1090,22 +1090,21 @@ function App() {
 
   async function loadSessions() {
     const requestedProjectId = activeProject?.id || "";
-    const requestedScope = normalizeTerminalScope(terminalScope).scope;
     setIsSessionsLoading(true);
     try {
-      const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(requestedScope)}`, activeProject));
-      if (!isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) {
-        appendImportLog(`Ignoring stale session load project=${requestedProjectId || "none"} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+      const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery("/api/sessions", activeProject));
+      if (!isCurrentTerminalProject(requestedProjectId, latestTerminalContext.current)) {
+        appendImportLog(`Ignoring stale session load project=${requestedProjectId || "none"} currentProject=${latestTerminalContext.current.projectId || "none"}`);
         return;
       }
       const nextSessions = response.sessions || [];
-      applyTerminalSessions(requestedProjectId, requestedScope, nextSessions, { reason: "load" });
+      applyTerminalSessions(requestedProjectId, nextSessions, { reason: "load" });
     } catch {
-      if (!isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) return;
+      if (!isCurrentTerminalProject(requestedProjectId, latestTerminalContext.current)) return;
       setSessions([]);
       setActiveSessionId(null);
     } finally {
-      if (isCurrentTerminalContext(requestedProjectId, requestedScope, latestTerminalContext.current)) {
+      if (isCurrentTerminalProject(requestedProjectId, latestTerminalContext.current)) {
         setIsSessionsLoading(false);
       }
     }
@@ -1121,8 +1120,12 @@ function App() {
 
   async function switchProject(project: ProjectRecord) {
     appendImportLog(`Switch project ${project.id} ${project.projectSlug}/${project.worktreeSlug}`);
+    latestTerminalContext.current = { projectId: project.id, scope: latestTerminalContext.current.scope };
     setActiveProject(project);
     setIsProjectsOpen(false);
+    setSessions([]);
+    setActiveSessionId(null);
+    setIsSessionsLoading(true);
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
     const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
@@ -1189,33 +1192,32 @@ function App() {
     }
   }
 
-  function applyTerminalSessions(projectId: string, scope: string, incomingSessions: SessionRecord[], options: { reason: string; selectSessionId?: string | null } = { reason: "apply" }) {
-    const requestedScope = normalizeTerminalScope({ scope, scopeKind: "global", planPath: null }).scope;
-    if (!isCurrentTerminalContext(projectId, requestedScope, latestTerminalContext.current)) {
-      appendImportLog(`Ignoring stale terminal sessions apply reason=${options.reason} project=${projectId || "none"} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
+  function applyTerminalSessions(projectId: string, incomingSessions: SessionRecord[], options: { reason: string; selectSessionId?: string | null } = { reason: "apply" }) {
+    if (!isCurrentTerminalProject(projectId, latestTerminalContext.current)) {
+      appendImportLog(`Ignoring stale terminal sessions apply reason=${options.reason} project=${projectId || "none"} currentProject=${latestTerminalContext.current.projectId || "none"}`);
       return;
     }
     setSessions((current) => {
-      const currentVisible = current.filter((session) => isVisibleLiveTerminalSession(session) && sessionMatchesScopePath(session, requestedScope));
+      const currentVisible = current.filter(isVisibleLiveTerminalSession);
       const incomingIds = new Set(incomingSessions.map((session) => session.id));
       const preserved = currentVisible.filter((session) => !incomingIds.has(session.id));
       const nextSessions = [...incomingSessions, ...preserved].sort(compareSessions);
-      appendImportLog(`Applied terminal sessions reason=${options.reason} project=${projectId || "none"} scope=${requestedScope} incoming=${incomingSessions.length} preserved=${preserved.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}:${session.visibility || "visible"}`).join(",") || "none"}`);
-      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, requestedScope, options.selectSessionId, currentActive));
+      appendImportLog(`Applied terminal sessions reason=${options.reason} project=${projectId || "none"} incoming=${incomingSessions.length} preserved=${preserved.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}:${session.visibility || "visible"}`).join(",") || "none"}`);
+      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, options.selectSessionId, currentActive));
       return nextSessions;
     });
   }
 
   function upsertTerminalSession(projectId: string, session: SessionRecord, options: { reason: string; select?: boolean } = { reason: "upsert" }) {
     const requestedScope = canonicalTerminalScopePath(session.scope || "");
-    if (!requestedScope || !isCurrentTerminalContext(projectId, requestedScope, latestTerminalContext.current)) {
+    if (!requestedScope || !isCurrentTerminalProject(projectId, latestTerminalContext.current)) {
       appendImportLog(`Ignoring stale terminal session upsert reason=${options.reason} project=${projectId || "none"} session=${session.id} scope=${requestedScope || "none"} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
       return;
     }
     setSessions((current) => {
       const nextSessions = upsertSessionRecord(current, session).sort(compareSessions);
       appendImportLog(`Upserted terminal session reason=${options.reason} project=${projectId || "none"} session=${session.id} scope=${requestedScope} visibility=${session.visibility || "visible"} status=${session.status || "unknown"}`);
-      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, requestedScope, options.select && !isStandbySession(session) ? session.id : null, currentActive));
+      setActiveSessionId((currentActive) => selectActiveSessionId(nextSessions, options.select && !isStandbySession(session) ? session.id : null, currentActive));
       return nextSessions;
     });
   }
@@ -1229,14 +1231,14 @@ function App() {
     if (!project) return [];
     const requestedScope = normalizeTerminalScope(scope).scope;
     appendImportLog(`Loading sessions project=${project.id} scope=${requestedScope}`);
-    const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery(`/api/sessions?scope=${encodeURIComponent(requestedScope)}`, project));
+    const response = await hyperwikiApi.json<SessionsResponse>(withProjectQuery("/api/sessions", project));
     const nextSessions = response.sessions || [];
-    appendImportLog(`Loaded sessions project=${project.id} scope=${requestedScope} count=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
-    if (!isCurrentTerminalContext(project.id, requestedScope, latestTerminalContext.current)) {
+    appendImportLog(`Loaded sessions project=${project.id} scope=${requestedScope} projectWideCount=${nextSessions.length} ids=${nextSessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
+    if (!isCurrentTerminalProject(project.id, latestTerminalContext.current)) {
       appendImportLog(`Ignoring stale project session load project=${project.id} scope=${requestedScope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope}`);
       return nextSessions;
     }
-    applyTerminalSessions(project.id, requestedScope, nextSessions, { reason: "project-load" });
+    applyTerminalSessions(project.id, nextSessions, { reason: "project-load" });
     return nextSessions;
   }
 
@@ -4678,7 +4680,7 @@ function TerminalPane(props: {
                   </Button>
                 </header>
                 <div className="min-h-0 flex-1">
-                  <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} scope={props.scope} session={session} />
+                  <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
                 </div>
               </section>
             ))}
@@ -4747,13 +4749,11 @@ function XtermSession({
   activeProject,
   isActive,
   onTerminalText,
-  scope,
   session,
 }: {
   activeProject: ProjectRecord | null;
   isActive: boolean;
   onTerminalText: (sessionId: string, text: string) => void;
-  scope: { scope: string; scopeKind: string; planPath: string | null };
   session: SessionRecord;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -4913,7 +4913,7 @@ function XtermSession({
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [activeProject?.id, onTerminalText, scope.planPath, scope.scope, scope.scopeKind, session.id]);
+  }, [activeProject?.id, onTerminalText, session.id]);
 
   useEffect(() => {
     if (isActive) {
@@ -5329,12 +5329,8 @@ function compareSessions(left: SessionRecord, right: SessionRecord) {
   return left.id.localeCompare(right.id);
 }
 
-function sessionMatchesScopePath(session: SessionRecord, scope: string) {
-  return canonicalTerminalScopePath(session.scope || "") === scope;
-}
-
-function selectActiveSessionId(sessions: SessionRecord[], scope: string, preferredId?: string | null, currentId?: string | null) {
-  const visible = sessions.filter((session) => isVisibleLiveTerminalSession(session) && sessionMatchesScopePath(session, scope));
+function selectActiveSessionId(sessions: SessionRecord[], preferredId?: string | null, currentId?: string | null) {
+  const visible = sessions.filter(isVisibleLiveTerminalSession);
   if (preferredId && visible.some((session) => session.id === preferredId)) return preferredId;
   if (currentId && visible.some((session) => session.id === currentId)) return currentId;
   return newestSession(visible)?.id || null;
@@ -5376,8 +5372,8 @@ function sessionMatchesScope(session: SessionRecord, scope: TerminalScope) {
   return canonicalTerminalScopePath(session.scope || "") === scope.scope;
 }
 
-function isCurrentTerminalContext(projectId: string, scope: string, current: { projectId: string; scope: string }) {
-  return current.projectId === projectId && current.scope === scope;
+function isCurrentTerminalProject(projectId: string, current: { projectId: string; scope: string }) {
+  return current.projectId === projectId;
 }
 
 function hasImportedSource(pages: WikiPage[]) {
