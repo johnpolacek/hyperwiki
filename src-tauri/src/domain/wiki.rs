@@ -360,6 +360,8 @@ pub fn delete_wiki_plan(
             fs::remove_dir_all(&plan_directory).map_err(|error| (500, error.to_string()))?;
         }
     }
+    remove_plan_links_from_index_pages(&wiki_root, &format!("/wiki/{relative}"))
+        .map_err(|error| (500, error))?;
 
     deleted_paths.sort();
     deleted_paths.dedup();
@@ -697,6 +699,46 @@ fn collect_relative_files(base_root: &Path, directory: &Path, files: &mut Vec<St
             files.push(format!("wiki/{}", slash_path(relative)));
         }
     }
+}
+
+fn remove_plan_links_from_index_pages(wiki_root: &Path, deleted_path: &str) -> Result<(), String> {
+    for relative in ["index.mdx", "plans/index.mdx"] {
+        let path = wiki_root.join(relative);
+        if path.is_file() {
+            remove_link_list_items_from_file(&path, deleted_path)?;
+        }
+    }
+    Ok(())
+}
+
+fn remove_link_list_items_from_file(path: &Path, deleted_path: &str) -> Result<(), String> {
+    let source = fs::read_to_string(path).map_err(|error| error.to_string())?;
+    let quoted_href = format!("href=\"{deleted_path}\"");
+    let single_quoted_href = format!("href='{deleted_path}'");
+    let markdown_href = format!("]({deleted_path})");
+    let mut changed = false;
+    let mut kept = Vec::new();
+    for line in source.lines() {
+        let references_deleted_path = line.contains(&quoted_href)
+            || line.contains(&single_quoted_href)
+            || line.contains(&markdown_href);
+        let is_list_item = line.trim_start().starts_with("<li")
+            || line.trim_start().starts_with("- ")
+            || line.trim_start().starts_with("* ");
+        if references_deleted_path && is_list_item {
+            changed = true;
+            continue;
+        }
+        kept.push(line);
+    }
+    if changed {
+        let mut output = kept.join("\n");
+        if source.ends_with('\n') {
+            output.push('\n');
+        }
+        fs::write(path, output).map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 pub fn mdx_markdown_derivative(mdx: &str) -> String {
@@ -2956,6 +2998,43 @@ wikiKind: "plan"
         );
         assert!(!plan_dir.join("sample-plan.mdx").exists());
         assert!(!child_dir.exists());
+    }
+
+    #[test]
+    fn delete_plan_removes_index_links_to_deleted_page() {
+        let root = temp_root("delete-plan-index-links");
+        let wiki_root = root.join("wiki");
+        let plan_dir = wiki_root.join("plans").join("features");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(plan_dir.join("search-local-entries.mdx"), "<h1>Search Local Entries</h1>").unwrap();
+        fs::write(
+            wiki_root.join("index.mdx"),
+            r#"<h1>Home</h1>
+<ul>
+  <li><a href="/wiki/plans/features/search-local-entries.mdx">Search Local Entries</a></li>
+  <li><a href="/wiki/plans/features/keep-this.mdx">Keep This</a></li>
+</ul>
+"#,
+        )
+        .unwrap();
+        fs::create_dir_all(wiki_root.join("plans")).unwrap();
+        fs::write(
+            wiki_root.join("plans").join("index.mdx"),
+            r#"<h1>Plans</h1>
+<ul>
+  <li><a href="/wiki/plans/features/search-local-entries.mdx">Search Local Entries</a></li>
+</ul>
+"#,
+        )
+        .unwrap();
+
+        delete_wiki_plan(&root, "/wiki/plans/features/search-local-entries.mdx").unwrap();
+
+        let index = fs::read_to_string(wiki_root.join("index.mdx")).unwrap();
+        let plans_index = fs::read_to_string(wiki_root.join("plans").join("index.mdx")).unwrap();
+        assert!(!index.contains("/wiki/plans/features/search-local-entries.mdx"));
+        assert!(index.contains("/wiki/plans/features/keep-this.mdx"));
+        assert!(!plans_index.contains("/wiki/plans/features/search-local-entries.mdx"));
     }
 
     #[test]
