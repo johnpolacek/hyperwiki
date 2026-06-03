@@ -164,14 +164,15 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             ) : null}
             {canDeletePlan ? (
               isDeleteConfirming ? (
-                <div className="pointer-events-auto flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow-sm">
+                <div className="pointer-events-auto ml-3 flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Are you sure?</span>
                   <Button
                     aria-label="Cancel plan deletion"
-                    className="h-7 px-2 text-xs"
+                    className="h-8 px-2.5 text-xs"
                     disabled={isDeletingPlan}
                     size="sm"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => {
                       setIsDeleteConfirming(false);
                       setDeleteStatus("");
@@ -181,11 +182,11 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                   </Button>
                   <Button
                     aria-label="Delete plan"
-                    className="h-7 px-2 text-xs"
+                    className="h-8 px-2.5 text-xs"
                     disabled={isDeletingPlan}
                     size="sm"
                     type="button"
-                    variant="destructive"
+                    variant="outline"
                     onClick={deletePlan}
                   >
                     {isDeletingPlan ? "Deleting..." : "Delete Plan"}
