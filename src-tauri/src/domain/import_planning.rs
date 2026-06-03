@@ -515,14 +515,7 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
         );
     }
     if path == "wiki/plans/index.mdx" {
-        for (label, needle) in [
-            ("active plan", "active plan"),
-            ("planning shape", "shape"),
-            ("current unit", "current"),
-            ("next action", "next action"),
-            ("blockers", "blocker"),
-            ("validation", "validation"),
-        ] {
+        for (label, needle) in [("plans index navigation", "plans"), ("plan link", "href")] {
             if !lower.contains(needle) {
                 errors.push(format!("Plans index must include {label}"));
             }

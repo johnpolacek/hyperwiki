@@ -71,17 +71,9 @@ For larger plans, the agent may first propose the outline of stages and units, t
 
 ## CLI Plan Workflow
 
-Plan files must be useful from a terminal. Optimize the first 80 lines of `wiki/plans/index.mdx` and every active plan for quick inspection with `sed`, `head`, or `less`.
+Plan files must be useful from a terminal. Optimize the first 80 lines of every active plan for quick inspection with `sed`, `head`, or `less`.
 
-`wiki/plans/index.mdx` is the Plans index and current-work contract. Keep its top section current enough to answer:
-
-- active plan
-- planning shape
-- current stage or unit, when applicable
-- next action
-- blockers or decisions needed
-- recently completed unit or sync event, when useful
-- exact plan files to read next
+`wiki/plans/index.mdx` is the Plans index. Keep it focused on active and completed plan links plus a brief orientation note. Do not add a status/current-unit summary table to the plans index; put current-unit detail, next action, blockers, and validation in the active plan page itself.
 
 Completed plans should not remain in active current-plan or current-unit slots. When a whole plan is complete, move it under `wiki/plans/zzz_completed/` and keep only a compact completed-plan link in `wiki/plans/index.mdx`.
 
@@ -103,11 +95,11 @@ Every active plan should start with a compact summary section:
 When the user asks to inspect, continue, or execute a plan from the CLI, use this workflow:
 
 1. Read `wiki/plans/index.mdx` first.
-2. Identify exactly one current plan and current unit when possible.
+2. Identify the relevant active plan from the index, then read that plan for current-unit detail.
 3. Read only the relevant plan or unit files needed for the next action.
 4. Summarize current state in the response instead of dumping long MDX.
 5. Provide exact paths and useful read commands, such as `sed -n '1,80p' wiki/plans/index.mdx`.
-6. If no single current unit is clear, ask the user to choose or update the Plans index before implementation.
+6. If no single current unit is clear after reading the active plan, ask the user to choose or update the active plan before implementation.
 
 Resume and continue prompts are orientation prompts by default. If the user says "resume", "continue", "pick up", "look at", or "work on" a branch, worktree, feature, or plan, stop after orientation and ask what they want next unless they explicitly requested implementation or planning.
 

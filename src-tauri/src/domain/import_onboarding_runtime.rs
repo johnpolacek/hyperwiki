@@ -1534,7 +1534,7 @@ fn plan_repair_prompt(
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
         "Do not dump long imported source bundles into visible paragraphs; summarize visibly and preserve full context in agent-only Visibility blocks.",
         "Required artifact paths: wiki/plans/index.mdx, wiki/plans/mvp/index.mdx, one wiki/plans/mvp/stage-01-*.mdx stage page, and at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages.",
-        "wiki/plans/index.mdx must expose active plan, planning shape, current stage or unit, next action, blockers, and validation.",
+        "wiki/plans/index.mdx must stay a navigation index with links to active and completed plan tracks. Do not duplicate status, shape, current unit, next action, blockers, or validation there.",
         "wiki/plans/mvp/index.mdx must summarize source decisions, assumptions or unknowns, stage sequence, current unit, and deferred work.",
         "The stage page must explain the stage goal, unit sequence, completion gate, dependencies, and verification expectations.",
         "Every executable unit must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate sections.",
@@ -1612,27 +1612,12 @@ wikiKind: "plan"
   <p>Current source-grounded implementation plans for {title}.</p>
 </PlanHero>
 
-<PlanSummary>
-  <ul>
-    <li>Status: active planning</li>
-    <li>Active plan: <a href="/wiki/plans/mvp/index.mdx">{title} MVP Plan</a></li>
-    <li>Shape: single-stage MVP with three executable units</li>
-    <li>Current unit: <a href="/wiki/plans/mvp/stage-01-static-mvp-foundation/unit-01-root-html-shell.mdx">Unit 01 - Root HTML Shell</a></li>
-    <li>Next action: implement the self-contained root <code>index.html</code> shell.</li>
-    <li>Blockers: none from accepted import decisions.</li>
-    <li>Validation: repository checks plus manual browser verification of the local-only journal workflow.</li>
-  </ul>
-</PlanSummary>
-
 <CardGroup>
-  <Card title="Active plan" description="Source-grounded MVP for {title}">
+  <Card title="Plan track" description="Source-grounded MVP for {title}">
     <p>Execute Stage 01 as a static, local-only, dependency-free browser MVP.</p>
   </Card>
-  <Card title="Current unit" description="Unit 01 - Root HTML Shell">
-    <p>Create the root <code>index.html</code> surface before wiring persistence.</p>
-  </Card>
-  <Card title="Ready when" description="Manual browser proof exists">
-    <p>The final unit records create, autosave, reload restore, clear-entry, and cleared reload behavior.</p>
+  <Card title="Read next" description="MVP plan">
+    <p><a href="/wiki/plans/mvp/index.mdx">Open the MVP plan</a> for unit detail and verification notes.</p>
   </Card>
 </CardGroup>
 "#
@@ -1996,7 +1981,7 @@ fn compile_generic_source_mvp_artifacts(
         GeneratedPlanArtifact {
             path: "wiki/plans/index.mdx".to_string(),
             content: format!(
-                "---\ntitle: \"Plans\"\ndescription: \"Current source-grounded implementation plans.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Plans</h1><p>Current source-grounded implementation plans for {title}.</p></PlanHero><PlanSummary><ul><li>Status: active planning</li><li>Active plan: <a href=\"/wiki/plans/mvp/index.mdx\">{title} MVP Plan</a></li><li>Shape: single-stage MVP with three executable units</li><li>Current unit: <a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">{unit_01_title}</a></li><li>Next action: implement the source-decided {source_focus} surface.</li><li>Blockers: none from accepted import decisions.</li><li>Validation: repository checks plus manual verification of the {source_focus} workflow.</li></ul></PlanSummary>"
+                "---\ntitle: \"Plans\"\ndescription: \"Source-grounded implementation plan index.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Plans</h1><p>Source-grounded implementation plan tracks for {title}.</p></PlanHero><CardGroup><Card title=\"Plan track\" description=\"Source-grounded MVP for {title}\"><p><a href=\"/wiki/plans/mvp/index.mdx\">Open the MVP plan</a> for unit detail and verification notes.</p></Card></CardGroup>"
             ),
         },
         GeneratedPlanArtifact {

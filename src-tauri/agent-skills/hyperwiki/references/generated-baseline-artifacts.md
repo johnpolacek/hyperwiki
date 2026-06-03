@@ -315,19 +315,9 @@ wikiKind: "plans-index"
 
 This directory holds durable implementation plans for **[Project Name]**.
 
-## Reader Goal
+## Planning State
 
-After 2 minutes, the reader can identify the active plan, current unit, blocker, or next decision.
-
-## Current Planning State
-
-| Field | Value |
-| --- | --- |
-| Active plan | [none | features/example.mdx | mvp/index.mdx] |
-| Shape | [none | compact feature plan | single-stage MVP | multi-stage MVP] |
-| Current unit | [unit name or none] |
-| Next action | [one concrete action or decision] |
-| Blockers | [none or short list] |
+This index lists plan tracks. Keep status, shape, current-unit detail, next action, blockers, and validation in the plan page instead of duplicating them here.
 
 ## Planning Rule
 

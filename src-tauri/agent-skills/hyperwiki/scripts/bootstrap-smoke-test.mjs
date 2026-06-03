@@ -165,19 +165,11 @@ wikiKind: "plans-index"
 
 [Back to wiki index](../index.mdx)
 
-## Reader Goal
+## Planning State
 
-After 2 minutes, the reader can open the active feature plan and name the next decision required before code changes.
+Plan tracks:
 
-## Current Planning State
-
-| Field | Value |
-| --- | --- |
-| Active plan | [features/review-queue.mdx](features/review-queue.mdx) |
-| Shape | Focused feature plan |
-| Current unit | Confirm data and audit boundaries |
-| Next action | Confirm invoice schema, auth/session access, audit persistence, and export destination. |
-| Blockers | Invoice schema and export destination unknown. |
+- [Review Queue](features/review-queue.mdx) captures the next implementation decisions.
 
 ## Planning Rule
 
