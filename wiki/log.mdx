@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-03 fix | plan delete control</h2>
+  <ul>
+    <li>Added a compact X action beside the plan page Copy control that expands inline to Cancel and Delete Plan.</li>
+    <li>Scoped the action to top-level plan roots, including index-root plans such as <code>/wiki/plans/mvp/index.mdx</code>, while excluding stage, unit, and structural index pages.</li>
+    <li>Added a guarded Tauri wiki delete endpoint that removes the selected plan root and its associated child plan directory, with static and focused Rust test coverage.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-03 fix | project-wide terminal pane persistence</h2>
   <ul>
     <li>Changed the React terminal pane to load all visible live sessions for the active project instead of replacing panes when sidebar navigation changes the route scope.</li>

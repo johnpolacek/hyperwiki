@@ -184,6 +184,13 @@ pub struct WikiSkillExport {
     pub content: String,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiPlanDeletion {
+    pub path: String,
+    pub deleted_paths: Vec<String>,
+}
+
 pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> WikiPageList {
     let wiki_root = root.as_ref().join("wiki");
     if !wiki_root.is_dir() {
@@ -309,6 +316,57 @@ pub fn wiki_page_markdown(
     request_path: &str,
 ) -> Result<WikiSource, String> {
     read_wiki_source(root, request_path)
+}
+
+pub fn delete_wiki_plan(
+    root: impl AsRef<Path>,
+    request_path: &str,
+) -> Result<WikiPlanDeletion, (u16, String)> {
+    let Some(relative) = wiki_relative_path(request_path) else {
+        return Err((400, "Not a wiki page path.".to_string()));
+    };
+    if relative
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err((400, "Invalid wiki page path.".to_string()));
+    }
+    if !is_deletable_plan_relative_path(relative) {
+        return Err((400, "Only top-level plan pages can be deleted.".to_string()));
+    }
+    let wiki_root = root.as_ref().join("wiki");
+    let page_path = wiki_root.join(relative);
+    if page_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
+        return Err((400, "Only MDX plan pages can be deleted.".to_string()));
+    }
+    if !page_path.is_file() {
+        return Err((404, "Plan page not found.".to_string()));
+    }
+
+    let mut deleted_paths = Vec::new();
+    let Some(plan_directory_relative) = associated_plan_directory_relative_path(relative) else {
+        return Err((400, "Invalid plan page path.".to_string()));
+    };
+    let plan_directory = wiki_root.join(&plan_directory_relative);
+
+    if relative.ends_with("/index.mdx") {
+        collect_relative_files(&wiki_root, &plan_directory, &mut deleted_paths);
+        fs::remove_dir_all(&plan_directory).map_err(|error| (500, error.to_string()))?;
+    } else {
+        fs::remove_file(&page_path).map_err(|error| (500, error.to_string()))?;
+        deleted_paths.push(format!("wiki/{relative}"));
+        if plan_directory.is_dir() {
+            collect_relative_files(&wiki_root, &plan_directory, &mut deleted_paths);
+            fs::remove_dir_all(&plan_directory).map_err(|error| (500, error.to_string()))?;
+        }
+    }
+
+    deleted_paths.sort();
+    deleted_paths.dedup();
+    Ok(WikiPlanDeletion {
+        path: format!("/wiki/{relative}"),
+        deleted_paths,
+    })
 }
 
 pub fn wiki_llms_txt(root: impl AsRef<Path>) -> String {
@@ -586,6 +644,59 @@ fn wiki_relative_path(path: &str) -> Option<&str> {
     let marker = "/wiki/";
     path.find(marker)
         .and_then(|index| path.get(index + marker.len()..))
+}
+
+fn is_deletable_plan_relative_path(relative: &str) -> bool {
+    if !relative.starts_with("plans/") || !relative.ends_with(".mdx") {
+        return false;
+    }
+    if matches!(
+        relative,
+        "plans/index.mdx" | "plans/zzz_completed/index.mdx"
+    ) {
+        return false;
+    }
+
+    let parts = relative.split('/').collect::<Vec<_>>();
+    if parts
+        .iter()
+        .any(|part| part.starts_with("stage-") || part.starts_with("unit-"))
+    {
+        return false;
+    }
+
+    match parts.len() {
+        2 => parts[1] != "index.mdx",
+        3 if matches!(parts[1], "features" | "zzz_completed") => parts[2] != "index.mdx",
+        3 if parts[2] == "index.mdx" => !matches!(parts[1], "features" | "zzz_completed"),
+        _ => false,
+    }
+}
+
+fn associated_plan_directory_relative_path(relative: &str) -> Option<String> {
+    relative
+        .strip_suffix("/index.mdx")
+        .or_else(|| relative.strip_suffix(".mdx"))
+        .map(str::to_string)
+}
+
+fn collect_relative_files(base_root: &Path, directory: &Path, files: &mut Vec<String>) {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let full_path = entry.path();
+        if full_path.is_dir() {
+            collect_relative_files(base_root, &full_path, files);
+            continue;
+        }
+        if !full_path.is_file() {
+            continue;
+        }
+        if let Ok(relative) = full_path.strip_prefix(base_root) {
+            files.push(format!("wiki/{}", slash_path(relative)));
+        }
+    }
 }
 
 pub fn mdx_markdown_derivative(mdx: &str) -> String {
@@ -2822,6 +2933,73 @@ wikiKind: "plan"
         assert!(html.contains("<h1>Import Q&amp;A</h1>"));
         assert!(!html.contains("&lt;h1&gt;"));
         assert!(!html.contains("wikiKind: &quot;source&quot;"));
+    }
+
+    #[test]
+    fn deletes_top_level_plan_and_associated_child_directory() {
+        let root = temp_root("delete-plan");
+        let plan_dir = root.join("wiki").join("plans").join("features");
+        let child_dir = plan_dir.join("sample-plan");
+        fs::create_dir_all(&child_dir).unwrap();
+        fs::write(plan_dir.join("sample-plan.mdx"), "<h1>Sample Plan</h1>").unwrap();
+        fs::write(child_dir.join("unit-01-sample.mdx"), "<h1>Unit 01</h1>").unwrap();
+
+        let deletion = delete_wiki_plan(&root, "/wiki/plans/features/sample-plan.mdx").unwrap();
+
+        assert_eq!(deletion.path, "/wiki/plans/features/sample-plan.mdx");
+        assert_eq!(
+            deletion.deleted_paths,
+            vec![
+                "wiki/plans/features/sample-plan.mdx",
+                "wiki/plans/features/sample-plan/unit-01-sample.mdx",
+            ]
+        );
+        assert!(!plan_dir.join("sample-plan.mdx").exists());
+        assert!(!child_dir.exists());
+    }
+
+    #[test]
+    fn deletes_index_plan_root_and_child_tree() {
+        let root = temp_root("delete-index-plan");
+        let plan_dir = root.join("wiki").join("plans").join("mvp");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(plan_dir.join("index.mdx"), "<h1>MVP Plan</h1>").unwrap();
+        fs::write(plan_dir.join("stage-01-foundation.mdx"), "<h1>Stage</h1>").unwrap();
+
+        let deletion = delete_wiki_plan(&root, "/wiki/plans/mvp/index.mdx").unwrap();
+
+        assert_eq!(deletion.path, "/wiki/plans/mvp/index.mdx");
+        assert_eq!(
+            deletion.deleted_paths,
+            vec![
+                "wiki/plans/mvp/index.mdx",
+                "wiki/plans/mvp/stage-01-foundation.mdx",
+            ]
+        );
+        assert!(!plan_dir.exists());
+    }
+
+    #[test]
+    fn rejects_non_plan_root_deletions() {
+        let root = temp_root("delete-plan-reject");
+        let plans_dir = root.join("wiki").join("plans");
+        let mvp_dir = plans_dir.join("mvp");
+        let unit_dir = mvp_dir.join("stage-01-foundation");
+        fs::create_dir_all(&unit_dir).unwrap();
+        fs::write(plans_dir.join("index.mdx"), "<h1>Plans</h1>").unwrap();
+        fs::write(mvp_dir.join("index.mdx"), "<h1>MVP</h1>").unwrap();
+        fs::write(mvp_dir.join("stage-01-foundation.mdx"), "<h1>Stage</h1>").unwrap();
+        fs::write(unit_dir.join("unit-01-foundation.mdx"), "<h1>Unit</h1>").unwrap();
+
+        for path in [
+            "/wiki/plans/index.mdx",
+            "/wiki/plans/mvp/stage-01-foundation.mdx",
+            "/wiki/plans/mvp/stage-01-foundation/unit-01-foundation.mdx",
+        ] {
+            let error = delete_wiki_plan(&root, path).unwrap_err();
+            assert_eq!(error.0, 400);
+            assert_eq!(error.1, "Only top-level plan pages can be deleted.");
+        }
     }
 
     #[test]

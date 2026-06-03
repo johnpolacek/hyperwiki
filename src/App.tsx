@@ -156,6 +156,11 @@ interface WikiMarkdownZipDownloadResponse {
   revealError?: string | null;
 }
 
+interface WikiPlanDeletionResponse {
+  path: string;
+  deletedPaths?: string[];
+}
+
 interface ProjectRecord {
   id: string;
   name: string;
@@ -2432,6 +2437,16 @@ function App() {
     setStatus(deleteFiles ? "Project removed and files deleted" : "Project removed from hyperwiki");
   }
 
+  async function deletePlanPage(path: string) {
+    const displayPath = displayWikiPath(path);
+    setStatus("Deleting plan");
+    await hyperwikiApi.json<WikiPlanDeletionResponse>(withProjectQuery(`/api/wiki/plan?path=${encodeURIComponent(displayPath)}`, activeProject), {
+      method: "DELETE",
+    });
+    await refreshWikiStateFromDisk("plan-delete");
+    setStatus("Plan deleted");
+  }
+
   async function downloadWikiMarkdownZip() {
     setStatus("Preparing wiki Markdown export");
     setWikiExportStatus("Saving export...");
@@ -2514,6 +2529,7 @@ function App() {
           onPlanImportedProject={planImportedProject}
           onResumeImportPlanning={resumeImportPlanning}
           onRemoveProject={removeProject}
+          onDeletePlan={deletePlanPage}
           onRunCommand={runCommandAction}
           onAnswerPlanningQuestion={answerPlanningQuestion}
           onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
@@ -2919,6 +2935,7 @@ function WorkspacePane(props: {
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
+  onDeletePlan: (path: string) => Promise<void>;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
@@ -3003,7 +3020,9 @@ function WorkspacePane(props: {
           <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
         ) : props.wikiSource && isReactRenderedMdxPath(props.wikiPath) ? (
           <MdxPlanRenderer
+            canDeletePlan={isDeletablePlanRootPage(props.wikiPath, props.wikiPages)}
             markdown={props.wikiSource.markdown}
+            onDeletePlan={() => props.onDeletePlan(props.wikiPath)}
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
             path={props.wikiPath}
             status={props.wikiSource.status}
@@ -5126,6 +5145,22 @@ function isTopLevelPlanPage(page: WikiPage) {
   if (/^\/wiki\/plans\/(?!zzz_completed\/)[^/]+\/index\.mdx$/.test(path)) return true;
   if (/^\/wiki\/plans\/features\/[^/]+\.mdx$/.test(path)) return true;
   return /^\/wiki\/plans\/[^/]+\.mdx$/.test(path) && !path.endsWith("/index.mdx");
+}
+
+function isDeletablePlanRootPage(path: string, pages: WikiPage[]) {
+  const displayPath = displayWikiPath(path);
+  if (!displayPath.startsWith("/wiki/plans/") || !displayPath.endsWith(".mdx")) return false;
+  if (
+    displayPath.endsWith("/wiki/plans/index.mdx")
+    || displayPath.endsWith("/wiki/plans/zzz_completed/index.mdx")
+  ) {
+    return false;
+  }
+  if (/\/stage-\d+[^/]*\.mdx$/.test(displayPath) || /\/unit-\d+[^/]*\.mdx$/.test(displayPath)) {
+    return false;
+  }
+  const page = pages.find((candidate) => displayWikiPath(candidate.path) === displayPath);
+  return Boolean(page && isTopLevelPlanPage(page));
 }
 
 function isPlansIndexPage(page: WikiPage) {

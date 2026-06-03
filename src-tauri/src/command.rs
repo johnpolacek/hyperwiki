@@ -326,6 +326,25 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(404, error),
         };
     }
+    if request.method == "DELETE" && request.path.starts_with("/api/wiki/plan") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let source_path = query_param(&request.path, "path")
+            .and_then(|path| percent_decode_path_segment(&path))
+            .unwrap_or_else(|| String::new());
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::wiki::delete_wiki_plan(project_root, &source_path) {
+            Ok(deletion) => json_response(200, &deletion),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/wiki") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");

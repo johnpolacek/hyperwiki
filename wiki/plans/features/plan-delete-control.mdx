@@ -1,0 +1,22 @@
+---
+title: "Plan Delete Control"
+description: "Add a scoped delete affordance for top-level plan pages."
+wikiKind: "plan"
+---
+
+<PlanHero title="Plan Delete Control" status="complete" description="Add a plan-only delete affordance that stays out of stage and unit pages." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Current unit: plan-only delete control</li>
+    <li>Next action: none; the scoped control is implemented.</li>
+    <li>Validation: <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml delete</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml rejects_non_plan_root_deletions</code>.</li>
+  </ul>
+</PlanSummary>
+
+<PlanUnit title="Unit 01 - Plan delete affordance" status="complete">
+  <p>Top-level plan pages should expose a compact destructive action next to Copy. Clicking the X should show inline Cancel and Delete Plan actions. Stage, unit, and structural index pages must not show the control.</p>
+  <p>The backend should delete only validated plan roots and their associated child plan directory when present, refusing indexes, stages, units, and unsafe paths.</p>
+  <p>Complete on 2026-06-03: the React renderer shows the X and inline confirmation only when the app marks the route as a deletable plan root, and the Tauri endpoint deletes validated plan roots plus associated child trees.</p>
+</PlanUnit>
