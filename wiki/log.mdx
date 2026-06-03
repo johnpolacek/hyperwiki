@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-03 fix | blank + plan first question</h2>
+  <ul>
+    <li>Changed regular <code>+ plan</code> prompt construction so a blank initial intent asks the user for the planning focus before any repo or wiki inspection.</li>
+    <li>Kept the evidence-first planning workflow after the user supplies that focus.</li>
+    <li>Added a static smoke test for the prompt ordering so future changes do not reintroduce the long pre-question exploration path.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-02 fix | derived parent plan completion</h2>
   <ul>
     <li>Changed wiki status derivation so stages and plans become effectively complete when all immediate child units or stages are complete.</li>

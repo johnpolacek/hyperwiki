@@ -5785,10 +5785,20 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
     "Goal:",
     "Run a terminal-native one-question-at-a-time planning interview, then create or update MDX wiki plan docs only when no blocking unknowns remain.",
     "",
+    ...(normalizedIntent ? [] : [
+      "Immediate blank-intent handling:",
+      "- No initial user intent was provided.",
+      "- Your first response must ask one focused terminal question asking what plan the user wants to create, then stop and wait.",
+      "- Do not inspect the repo, read wiki files, run commands, or summarize existing plans before that first answer.",
+      "- After the user answers, read wiki/index.mdx and wiki/plans/index.mdx first if they exist, then inspect repo evidence before asking questions the repo can answer.",
+      "",
+    ]),
     "hyperwiki requirements:",
-    "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
-    "- Inspect repo evidence before asking questions the repo can answer.",
-    "- If the initial user intent below is blank, ask the user for the planning focus first and wait.",
+    normalizedIntent
+      ? "- Read wiki/index.mdx and wiki/plans/index.mdx first if they exist."
+      : "- After the user supplies the planning focus, read wiki/index.mdx and wiki/plans/index.mdx first if they exist.",
+    "- Inspect repo evidence before asking questions the repo can answer, except for the initial planning-focus question when the initial user intent is blank.",
+    "- If the initial user intent below is blank, ask the user for the planning focus first and wait; do not do any repo or wiki exploration before that first answer.",
     "- Ask one focused terminal question at a time. When tradeoffs exist, include a recommended answer first and 2-3 concise alternatives.",
     "- After each question, stop and wait for the user's answer in the terminal.",
     "- After receiving an answer, briefly reconcile it, then either ask the next blocking question or create the plan if no blocking unknowns remain.",

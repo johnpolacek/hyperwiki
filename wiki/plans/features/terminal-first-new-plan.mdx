@@ -32,9 +32,19 @@ wikiKind: "plan"
 </section>
 
 <section>
+  <h2>2026-06-03 Regression Fix</h2>
+  <ul>
+    <li>Blank regular <code>+ plan</code> prompts now tell the planning agent to ask for the planning focus first and wait.</li>
+    <li>The blank-intent prompt explicitly forbids repo inspection, wiki reads, command execution, and existing-plan summaries before that first answer.</li>
+    <li>After the user supplies a focus, the normal evidence-first planning workflow resumes.</li>
+  </ul>
+</section>
+
+<section>
   <h2>Verification</h2>
   <ul>
     <li><code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+    <li><code>tests/plan-creation-prompt-static-smoke.mjs</code> guards the blank-intent first-question ordering.</li>
     <li>Manual app dogfooding should confirm <code>+ plan</code> keeps sidebars and terminals visible.</li>
   </ul>
 </section>
