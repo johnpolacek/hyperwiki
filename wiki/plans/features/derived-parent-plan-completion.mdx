@@ -20,6 +20,7 @@ When every unit under a stage is complete, the stage is effectively complete. Wh
 <PlanSection title="Implementation">
 - Derive effective plan status bottom-up in the Rust wiki listing and source APIs.
 - Preserve explicit <code>complete</code>, <code>blocked</code>, and <code>deferred</code> statuses.
+- Normalize project-scoped paths before parent-child matching so <code>/projects/&lt;id&gt;/wiki/...</code> pages derive the same status as <code>/wiki/...</code> pages.
 - Keep the public <code>status</code> field unchanged so React surfaces continue using the canonical status source.
 </PlanSection>
 

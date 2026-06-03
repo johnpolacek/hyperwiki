@@ -947,6 +947,8 @@ fn immediate_plan_child_paths(path: &str, paths: &[String]) -> Vec<String> {
 }
 
 fn is_immediate_plan_child_path(parent: &str, candidate: &str) -> bool {
+    let parent = display_wiki_path_for_status(parent);
+    let candidate = display_wiki_path_for_status(candidate);
     if parent == candidate {
         return false;
     }
@@ -955,8 +957,8 @@ fn is_immediate_plan_child_path(parent: &str, candidate: &str) -> bool {
             && candidate.ends_with(".mdx")
             && !candidate.trim_start_matches("/wiki/plans/mvp/").contains('/');
     }
-    let Some((stage_root, stage_number)) = stage_page_parts(parent) else {
-        let base = plan_tree_base_path_for_status(parent);
+    let Some((stage_root, stage_number)) = stage_page_parts(&parent) else {
+        let base = plan_tree_base_path_for_status(&parent);
         return candidate.starts_with(&format!("{base}/"))
             && !candidate[base.len() + 1..].contains('/');
     };
@@ -991,6 +993,13 @@ fn plan_tree_base_path_for_status(path: &str) -> String {
     path.strip_suffix("/index.mdx")
         .map(str::to_string)
         .unwrap_or_else(|| path.trim_end_matches(".mdx").to_string())
+}
+
+fn display_wiki_path_for_status(path: &str) -> String {
+    if let Some(wiki_index) = path.find("/wiki/") {
+        return path[wiki_index..].to_string();
+    }
+    path.to_string()
 }
 
 fn first_heading(mdx: &str) -> Option<String> {
@@ -2435,6 +2444,52 @@ Agent-only text.
         assert_eq!(status("/wiki/plans/mvp/index.mdx"), Some("complete"));
         assert_eq!(
             status("/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx"),
+            Some("complete")
+        );
+    }
+
+    #[test]
+    fn derives_project_scoped_mvp_plan_status_when_only_stage_is_complete() {
+        let root = temp_root("wiki-derived-project-scoped-parent-status");
+        let stage_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("mvp")
+            .join("stage-01-static-mvp-foundation");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("index.mdx"),
+            r#"<PlanHero status="active"><h1>MVP Plan</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            root.join("wiki")
+                .join("plans")
+                .join("mvp")
+                .join("stage-01-static-mvp-foundation.mdx"),
+            r#"<PlanHero status="planned"><h1>Stage 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-01-done.mdx"),
+            r#"<PlanHero status="complete"><h1>Unit 01</h1></PlanHero>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, Some("project-1")).pages;
+        let status = |path: &str| {
+            pages
+                .iter()
+                .find(|page| page.path == path)
+                .and_then(|page| page.status.as_deref())
+        };
+
+        assert_eq!(
+            status("/projects/project-1/wiki/plans/mvp/index.mdx"),
+            Some("complete")
+        );
+        assert_eq!(
+            status("/projects/project-1/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx"),
             Some("complete")
         );
     }
