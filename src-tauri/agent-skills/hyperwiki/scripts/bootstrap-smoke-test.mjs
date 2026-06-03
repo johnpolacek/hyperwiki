@@ -65,7 +65,7 @@ Confirm invoice schema, authentication/session boundary, audit persistence, and 
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Plans index and implementation contract. |
+| [Plans](plans/index.mdx) | Structural Plans route target. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 
 ## Source Briefs
@@ -157,7 +157,7 @@ Confirm schema, session boundary, audit persistence, and export destination.
 `],
   ["wiki/plans/index.mdx", `---
 title: "Invoice Review Plans"
-description: "Plans index and implementation contract for Invoice Review."
+description: "Structural Plans route target for Invoice Review."
 wikiKind: "plans-index"
 ---
 
@@ -165,11 +165,9 @@ wikiKind: "plans-index"
 
 [Back to wiki index](../index.mdx)
 
-## Planning State
+## Plans Route
 
-Plan tracks:
-
-- [Review Queue](features/review-queue.mdx) captures the next implementation decisions.
+This structural file exists so the app can route to Plans. Active plan content lives in the focused plan files.
 
 ## Planning Rule
 

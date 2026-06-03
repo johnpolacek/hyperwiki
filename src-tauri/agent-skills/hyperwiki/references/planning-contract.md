@@ -73,9 +73,9 @@ For larger plans, the agent may first propose the outline of stages and units, t
 
 Plan files must be useful from a terminal. Optimize the first 80 lines of every active plan for quick inspection with `sed`, `head`, or `less`.
 
-`wiki/plans/index.mdx` is the Plans index. Keep it focused on active and completed plan links plus a brief orientation note. Do not add a status/current-unit summary table to the plans index; put current-unit detail, next action, blockers, and validation in the active plan page itself.
+`wiki/plans/index.mdx` is a structural route target, not a visible top-level Plans page. Keep it minimal and do not add visible plan summaries, active-plan cards, current-unit detail, next action, blockers, or validation there. The app renders an empty "No active plans" state on this route when no incomplete plan exists; put current-unit detail, next action, blockers, and validation in the active plan page itself.
 
-Completed plans should not remain in active current-plan or current-unit slots. When a whole plan is complete, move it under `wiki/plans/zzz_completed/` and keep only a compact completed-plan link in `wiki/plans/index.mdx`.
+Completed plans should not remain in active current-plan or current-unit slots. When a whole plan is complete, move it under `wiki/plans/zzz_completed/`.
 
 Every active plan should start with a compact summary section:
 
@@ -421,7 +421,7 @@ Before moving a plan, confirm:
 After moving a plan, update active plan indexes:
 
 - remove the archived plan from active current-plan, current-stage, and current-unit fields
-- add or update a compact completed section in `wiki/plans/index.mdx` linking to the archived location
+- move completed plan content out of active plan locations and rely on the app's Completed Plans navigation
 - choose the next active plan or state that no active plan exists
 - append `wiki/log.mdx` only when completion changes durable project context, validation status, source truth, roadmap direction, or future planning
 

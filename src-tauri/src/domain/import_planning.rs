@@ -515,7 +515,7 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
         );
     }
     if path == "wiki/plans/index.mdx" {
-        for (label, needle) in [("plans index navigation", "plans"), ("plan link", "href")] {
+        for (label, needle) in [("plans route marker", "plans")] {
             if !lower.contains(needle) {
                 errors.push(format!("Plans index must include {label}"));
             }
@@ -550,7 +550,7 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
             }
         }
     }
-    if path.ends_with("/index.mdx") {
+    if path.ends_with("/index.mdx") && path != "wiki/plans/index.mdx" {
         if !lower.contains("stage") && !lower.contains("unit") {
             errors.push("plan index must reference stages or units".to_string());
         }

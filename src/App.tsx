@@ -765,7 +765,6 @@ function App() {
   useEffect(() => {
     if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
     if (isImportedPlanningActive) return;
-    if (hasExplicitWikiRouteLocation()) return;
     const landingPath = planLandingPath(wikiPages);
     if (!landingPath || landingPath === defaultWikiPath) return;
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
@@ -2989,6 +2988,31 @@ function WorkspacePane(props: {
       />
     );
   }
+  if (displayWikiPath(props.wikiPath) === defaultWikiPath) {
+    return (
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+        <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <Button
+              aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
+              className="size-8"
+              size="icon"
+              title={props.isExpanded ? "Restore sidebars" : "Expand document"}
+              variant="outline"
+              onClick={props.onToggleExpanded}
+            >
+              {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
+            </Button>
+            <span className="truncate text-xs font-bold uppercase">Plans</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+          </div>
+        </div>
+        <PlansIndexEmptyState onCreatePlan={() => props.onRunCommand("new-plan")} />
+      </section>
+    );
+  }
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
       <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
@@ -3034,6 +3058,26 @@ function WorkspacePane(props: {
         )}
       </div>
     </section>
+  );
+}
+
+function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
+      <div className="flex max-w-lg flex-col items-center gap-5 text-center">
+        <div className="grid size-14 place-items-center rounded-md border bg-card">
+          <BookOpen aria-hidden="true" className="size-6 text-muted-foreground" />
+        </div>
+        <div className="grid gap-2">
+          <h1 className="font-ui m-0 text-3xl font-bold">No active plans</h1>
+          <p className="m-0 text-base leading-7 text-muted-foreground">Create a plan to start a new implementation track.</p>
+        </div>
+        <Button className="min-h-12 px-6 text-base" onClick={onCreatePlan}>
+          <Plus aria-hidden="true" data-icon="inline-start" />
+          New Plan
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -5275,7 +5319,7 @@ function planLandingPath(pages: WikiPage[]) {
   const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
   const currentPath = currentPlanWorkPath(sorted, roots);
   if (currentPath && currentPath !== defaultWikiPath) return currentPath;
-  return sorted.find((page) => !isPlansIndexPage(page) && displayWikiPath(page.path).startsWith("/wiki/plans/"))?.path || defaultWikiPath;
+  return defaultWikiPath;
 }
 
 function firstIncompleteWorkPath(pages: WikiPage[], roots: WikiPage[]) {
@@ -5788,7 +5832,7 @@ function importedProjectPlanGenerationPrompt(project: ProjectRecord, requestId: 
     "Plan artifact contract:",
     "- Write wiki/plans/mvp/index.mdx.",
     "- Write separate stage and executable unit files under wiki/plans/mvp/.",
-    "- Update wiki/plans/index.mdx so the current plan, current stage/unit, blockers, and next action are obvious.",
+    "- Keep wiki/plans/index.mdx structural only; put current plan, current stage/unit, blockers, and next action in the active plan files.",
     "- Update wiki/log.mdx and source briefs only when the import decisions created durable project context.",
     "- Choose a planning composition pattern before writing: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
     "- Use CardGroup for full-width stacked cards and Columns only for logical grouping; avoid multi-column plan layouts so generated briefs read as one full-width column.",
@@ -5814,7 +5858,7 @@ function importedProjectPlanRepairPrompt(project: ProjectRecord, requestId: stri
     "",
     `- requestId: ${requestId}`,
     "- Write the missing MVP plan files now under wiki/plans/mvp/.",
-    "- Update wiki/plans/index.mdx.",
+    "- Keep wiki/plans/index.mdx structural only.",
     "- Do not ask another question unless the imported source and Q&A make MVP planning impossible.",
     "- If you ask a question, emit exactly one hyperwiki-question JSON object and stop.",
     "- Do not emit future-tense procedural prose.",

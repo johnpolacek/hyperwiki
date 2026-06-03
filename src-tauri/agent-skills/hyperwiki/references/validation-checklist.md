@@ -59,11 +59,11 @@ Use this checklist to validate project wiki bootstrap, planning, maintenance, an
 
 - Creates or updates plans before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.
 - Skips durable plans for small, local, reversible fixes with no durable project impact.
-- Optimizes `wiki/plans/index.mdx` and active plans for terminal inspection.
+- Keeps `wiki/plans/index.mdx` structural and optimizes active plans for terminal inspection.
 - Sets exactly one next execution unit or planning target when `wiki/plans/mvp/index.mdx` exists.
 - Includes design considerations in plans or units that touch UI, preferably by linking to `wiki/sources/design-brief.mdx`.
 - Moves fully complete plans into `wiki/plans/zzz_completed/` only after status, units, gates, and verification support completion.
-- Removes archived plans from active current-plan/current-unit slots while preserving compact completed-plan links from `wiki/plans/index.mdx`.
+- Removes archived plans from active current-plan/current-unit slots while relying on the app's Completed Plans navigation.
 
 ## Sync And Log
 

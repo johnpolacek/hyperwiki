@@ -30,7 +30,7 @@ Confirm the input file format and output report shape before app scaffold work.
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Plans index and implementation contract. |
+| [Plans](plans/index.mdx) | Structural Plans route target. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 ```
 

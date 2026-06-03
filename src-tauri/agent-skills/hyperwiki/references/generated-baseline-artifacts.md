@@ -159,7 +159,7 @@ After 2 minutes, the reader can identify the current project focus, the authorit
 | [Wiki Agent Guide](AGENTS.md) | Local wiki maintenance contract. |
 | [Project Log](log.mdx) | Durable project-context changelog. |
 | [Sources](sources.mdx) | Source material, evidence, and unknowns. |
-| [Plans](plans/index.mdx) | Plans index and implementation contract. |
+| [Plans](plans/index.mdx) | Structural Plans route target. |
 | [Roadmap](roadmap.mdx) | Current goal, next decision, and staged direction. |
 
 ## Source Briefs
@@ -305,7 +305,7 @@ wikiKind: "source-brief"
 ```mdx
 ---
 title: "[Project Name] Plans"
-description: "Plans index and implementation contract for [Project Name]."
+description: "Structural Plans route target for [Project Name]."
 wikiKind: "plans-index"
 ---
 
@@ -317,7 +317,7 @@ This directory holds durable implementation plans for **[Project Name]**.
 
 ## Planning State
 
-This index lists plan tracks. Keep status, shape, current-unit detail, next action, blockers, and validation in the plan page instead of duplicating them here.
+This structural file exists so the app can route to Plans. Do not add visible plan content here; the app renders the top-level empty state when there are no incomplete plans.
 
 ## Planning Rule
 
