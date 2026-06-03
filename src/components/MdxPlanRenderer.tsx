@@ -193,21 +193,16 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                     </Button>
                   </div>
                 ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        aria-label="Delete plan"
-                        className="pointer-events-auto size-8"
-                        size="icon"
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsDeleteConfirming(true)}
-                      >
-                        <X aria-hidden="true" data-icon="inline-start" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">Delete plan</TooltipContent>
-                  </Tooltip>
+                  <Button
+                    aria-label="Delete plan"
+                    className="pointer-events-auto size-8 text-muted-foreground hover:bg-transparent hover:text-foreground"
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsDeleteConfirming(true)}
+                  >
+                    <X aria-hidden="true" data-icon="inline-start" />
+                  </Button>
                 )
               ) : null}
               <span className="sr-only" aria-live="polite">{copyStatus || deleteStatus}</span>
