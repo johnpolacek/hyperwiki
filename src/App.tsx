@@ -6384,11 +6384,20 @@ function isAgentPromptReady(text: string) {
   const lastPrompt = Math.max(normalized.lastIndexOf("›"), normalized.lastIndexOf("\u203a"));
   const promptAfterStartup = lastPrompt !== -1 && lastPrompt > lastStartup;
   if (!promptAfterStartup) return false;
-  const promptTail = normalized.slice(lastPrompt, lastPrompt + 120);
+  const promptTail = normalized.slice(lastPrompt, lastPrompt + 260);
   return /\u203a\s*$/.test(text)
     || /›\s*$/.test(text)
-    || /\u203a\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail)
-    || /›\s*(?:Implement \{feature\}|Explain this codebase|Write tests for @filename)/i.test(promptTail);
+    || isCodexPromptPlaceholderReady(promptTail);
+}
+
+function isCodexPromptPlaceholderReady(promptTail: string) {
+  const knownPrompts = /(?:Implement \{feature\}|Explain this codebase|Write tests for @filename|Run \/review on my current changes|Use \/skills to list available skills)/i;
+  if (new RegExp(`[›\u203a]\\s*${knownPrompts.source}`, "i").test(promptTail)) return true;
+  const promptMatch = promptTail.match(/[›\u203a]\s*([^\r\n]{1,220})/);
+  const promptLine = promptMatch?.[1]?.trim() || "";
+  if (!promptLine) return false;
+  if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs|starting\s+mcp|startingmcp|model:\s*loading/i.test(promptLine)) return false;
+  return /(?:gpt-\d|gpt-\d\.\d|default|low|medium|high|xhigh|\/model|·|~\/|\/Users\/)/i.test(promptLine);
 }
 
 function isAgentStartupInProgress(text: string) {
