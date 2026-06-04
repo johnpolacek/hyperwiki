@@ -206,6 +206,7 @@ pub fn list_wiki_pages(root: impl AsRef<Path>, project_id: Option<&str>) -> Wiki
         })
         .collect::<Vec<_>>();
     apply_effective_plan_statuses(&mut pages);
+    apply_plan_structure_warnings(&mut pages);
     pages.sort_by(|left, right| left.path.cmp(&right.path));
     WikiPageList { pages }
 }
@@ -1029,6 +1030,9 @@ fn wiki_page_from_file(
     }
     let status_warnings = status_validation_warnings(status.as_ref(), &document, &summary);
     document.validation_warnings.extend(status_warnings);
+    document
+        .validation_warnings
+        .extend(unit_detail_validation_warnings(&path, &document));
     Some(WikiPage {
         title,
         summary,
@@ -1060,6 +1064,187 @@ fn apply_effective_plan_statuses(pages: &mut [WikiPage]) {
             }
         }
     }
+}
+
+fn apply_plan_structure_warnings(pages: &mut [WikiPage]) {
+    let paths = pages
+        .iter()
+        .map(|page| page.path.clone())
+        .collect::<Vec<_>>();
+    for page in pages {
+        if !is_plan_page_path(&page.path) {
+            continue;
+        }
+        let has_stage_signal = page_has_plan_signal(page, "stage");
+        let has_unit_signal = page_has_plan_signal(page, "unit");
+        if is_top_level_plan_path(&page.path) && has_stage_signal && has_unit_signal {
+            let children = immediate_plan_child_paths(&page.path, &paths);
+            let has_stage_child = children.iter().any(|path| {
+                display_wiki_path_for_status(path)
+                    .rsplit('/')
+                    .next()
+                    .is_some_and(|name| name.starts_with("stage-") && name.ends_with(".mdx"))
+            });
+            if !has_stage_child {
+                page.validation_warnings.push(WikiValidationWarning {
+                    kind: "missing-stage-pages".to_string(),
+                    message: "Plan declares a staged execution sequence but has no child stage pages. Use a plan-root index with separate stage and unit MDX files.".to_string(),
+                    href: None,
+                    line: 1,
+                });
+            }
+        }
+
+        if is_stage_plan_path(&page.path) && has_unit_signal {
+            let children = immediate_plan_child_paths(&page.path, &paths);
+            let has_unit_child = children.iter().any(|path| {
+                display_wiki_path_for_status(path)
+                    .rsplit('/')
+                    .next()
+                    .is_some_and(|name| name.starts_with("unit-") && name.ends_with(".mdx"))
+            });
+            if !has_unit_child {
+                page.validation_warnings.push(WikiValidationWarning {
+                    kind: "missing-unit-pages".to_string(),
+                    message: "Stage page declares executable units but has no child unit pages."
+                        .to_string(),
+                    href: None,
+                    line: 1,
+                });
+            }
+        }
+    }
+}
+
+fn page_has_plan_signal(page: &WikiPage, signal: &str) -> bool {
+    let signal = signal.to_ascii_lowercase();
+    page.summary
+        .iter()
+        .chain(page.headings.iter().map(|heading| &heading.text))
+        .chain(page.links.iter().map(|link| &link.label))
+        .any(|value| value.to_ascii_lowercase().contains(&signal))
+}
+
+fn is_plan_page_path(path: &str) -> bool {
+    let path = display_wiki_path_for_status(path);
+    path.starts_with("/wiki/plans/") && path.ends_with(".mdx")
+}
+
+fn is_stage_plan_path(path: &str) -> bool {
+    display_wiki_path_for_status(path)
+        .rsplit('/')
+        .next()
+        .is_some_and(|name| name.starts_with("stage-") && name.ends_with(".mdx"))
+}
+
+fn is_unit_plan_path(path: &str) -> bool {
+    display_wiki_path_for_status(path)
+        .rsplit('/')
+        .next()
+        .is_some_and(|name| name.starts_with("unit-") && name.ends_with(".mdx"))
+}
+
+fn is_top_level_plan_path(path: &str) -> bool {
+    let path = display_wiki_path_for_status(path);
+    if !is_plan_page_path(&path)
+        || path.ends_with("/wiki/plans/index.mdx")
+        || path.ends_with("/wiki/plans/zzz_completed/index.mdx")
+        || is_stage_plan_path(&path)
+    {
+        return false;
+    }
+    if path.ends_with("/index.mdx") {
+        let relative = path.trim_start_matches("/wiki/plans/");
+        return relative.matches('/').count() == 1;
+    }
+    matches!(
+        path.trim_start_matches("/wiki/plans/").matches('/').count(),
+        0 | 1
+    )
+}
+
+fn unit_detail_validation_warnings(
+    path: &str,
+    document: &WikiDocument,
+) -> Vec<WikiValidationWarning> {
+    if !is_unit_plan_path(path) {
+        return Vec::new();
+    }
+    let mut warnings = Vec::new();
+    let missing = missing_unit_sections(&document.markdown);
+    if !missing.is_empty() {
+        warnings.push(WikiValidationWarning {
+            kind: "incomplete-unit-detail".to_string(),
+            message: format!(
+                "Executable unit page is missing required implementation detail sections: {}.",
+                missing.join(", ")
+            ),
+            href: None,
+            line: 1,
+        });
+    }
+    if !unit_has_concrete_verification(&document.markdown) {
+        warnings.push(WikiValidationWarning {
+            kind: "thin-unit-verification".to_string(),
+            message: "Executable unit verification must name concrete automated, manual, or explicitly deferred checks before the next unit starts.".to_string(),
+            href: None,
+            line: 1,
+        });
+    }
+    warnings
+}
+
+fn missing_unit_sections(markdown: &str) -> Vec<&'static str> {
+    let text = markdown.to_ascii_lowercase();
+    [
+        ("Intent or Goal", &["intent", "goal"][..]),
+        ("Scope", &["scope"][..]),
+        (
+            "Implementation Notes",
+            &["implementation notes", "implementation"][..],
+        ),
+        (
+            "Dependencies or Blockers",
+            &["dependencies", "dependency", "blockers", "blocker"][..],
+        ),
+        ("Verification", &["verification"][..]),
+        ("Completion Gate", &["completion gate"][..]),
+    ]
+    .into_iter()
+    .filter_map(|(label, alternatives)| {
+        alternatives
+            .iter()
+            .any(|needle| text.contains(needle))
+            .then_some(())
+            .is_none()
+            .then_some(label)
+    })
+    .collect()
+}
+
+fn unit_has_concrete_verification(markdown: &str) -> bool {
+    let text = markdown.to_ascii_lowercase();
+    if !text.contains("verification") {
+        return false;
+    }
+    let has_check_kind = [
+        "pnpm ",
+        "cargo ",
+        "test",
+        "lint",
+        "build",
+        "typecheck",
+        "manual",
+        "browser",
+        "open ",
+        "reload",
+        "confirm",
+        "inspect",
+        "deferred",
+    ]
+    .iter()
+    .any(|needle| text.contains(needle));
+    has_check_kind && text.split_whitespace().count() >= 40
 }
 
 fn effective_plan_status_for_path(
@@ -2507,6 +2692,123 @@ Agent-only text.
         );
         assert_eq!(pages[0].status.as_deref(), Some("complete"));
         assert_eq!(pages[0].summary[0], "Status: complete");
+    }
+
+    #[test]
+    fn warns_when_staged_plan_has_no_stage_pages() {
+        let root = temp_root("wiki-monolithic-staged-plan");
+        let plan_dir = root.join("wiki").join("plans").join("features");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("saas-local-pwa.mdx"),
+            r#"<PlanHero status="active"><h1>SaaS Local PWA</h1></PlanHero>
+<PlanSummary><ul><li>Status: active</li><li>Current stage: Stage 01 - Next.js PWA Local Migration</li><li>Current unit: Unit 01 - Next.js Shell And Local Journal Preservation</li></ul></PlanSummary>
+<h2>Stage 01 - Next.js PWA Local Migration</h2>
+<p>Unit 01 moves the local journal.</p>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let page = pages
+            .iter()
+            .find(|page| page.path == "/wiki/plans/features/saas-local-pwa.mdx")
+            .unwrap();
+
+        assert!(page
+            .validation_warnings
+            .iter()
+            .any(|warning| warning.kind == "missing-stage-pages"));
+    }
+
+    #[test]
+    fn accepts_staged_plan_with_stage_and_detailed_unit_pages() {
+        let root = temp_root("wiki-valid-staged-plan");
+        let plan_dir = root.join("wiki").join("plans").join("saas-local-pwa");
+        let stage_dir = plan_dir.join("stage-01-next-js-pwa-local-migration");
+        fs::create_dir_all(&stage_dir).unwrap();
+        fs::write(
+            plan_dir.join("index.mdx"),
+            r#"<PlanHero status="active"><h1>SaaS Local PWA</h1></PlanHero>
+<PlanSummary><ul><li>Status: active</li><li>Current stage: <a href="/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration.mdx">Stage 01 - Next.js PWA Local Migration</a></li><li>Current unit: <a href="/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration/unit-01-next-js-shell-and-local-journal-preservation.mdx">Unit 01 - Next.js Shell And Local Journal Preservation</a></li></ul></PlanSummary>"#,
+        )
+        .unwrap();
+        fs::write(
+            plan_dir.join("stage-01-next-js-pwa-local-migration.mdx"),
+            r#"<PlanHero status="active"><h1>Stage 01 - Next.js PWA Local Migration</h1></PlanHero>
+<h2>Stage Goal</h2><p>Move the static local journal into Next.js.</p>
+<h2>Unit Sequence</h2><ul><li><a href="/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration/unit-01-next-js-shell-and-local-journal-preservation.mdx">Unit 01 - Next.js Shell And Local Journal Preservation</a></li></ul>
+<h2>Verification</h2><p>Run pnpm build and manually reload the local journal before Stage 02.</p>
+<h2>Completion Gate</h2><p>Complete when local journal behavior is preserved.</p>"#,
+        )
+        .unwrap();
+        fs::write(
+            stage_dir.join("unit-01-next-js-shell-and-local-journal-preservation.mdx"),
+            r#"<PlanHero status="active"><h1>Unit 01 - Next.js Shell And Local Journal Preservation</h1></PlanHero>
+<h2>Intent</h2><p>Create the Next.js shell while preserving local journal behavior.</p>
+<h2>Scope</h2><p>Move the static shell and local persistence only.</p>
+<h2>Implementation Notes</h2><p>Preserve microjournal.entries and microjournal.activeEntryId before adding accounts or sync.</p>
+<h2>Dependencies</h2><p>Depends on the current static journal source and pnpm package scripts.</p>
+<h2>Verification</h2><ul><li>Run <code>pnpm build</code>.</li><li>Run <code>pnpm test</code> once configured.</li><li>Manual browser check: open the PWA, create an entry, reload, list entries, and reopen the saved entry without account or network sync.</li></ul>
+<h2>Completion Gate</h2><p>Complete when local entries save, reload, list, and open in the Next.js shell with verification recorded before Unit 02 starts.</p>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let warnings_for = |path: &str| {
+            pages
+                .iter()
+                .find(|page| page.path == path)
+                .unwrap()
+                .validation_warnings
+                .iter()
+                .map(|warning| warning.kind.as_str())
+                .collect::<Vec<_>>()
+        };
+
+        assert!(
+            !warnings_for("/wiki/plans/saas-local-pwa/index.mdx").contains(&"missing-stage-pages")
+        );
+        assert!(!warnings_for(
+            "/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration.mdx"
+        )
+        .contains(&"missing-unit-pages"));
+        assert!(!warnings_for("/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration/unit-01-next-js-shell-and-local-journal-preservation.mdx")
+            .contains(&"thin-unit-verification"));
+    }
+
+    #[test]
+    fn warns_when_unit_page_lacks_concrete_verification() {
+        let root = temp_root("wiki-thin-unit-verification");
+        let unit_dir = root
+            .join("wiki")
+            .join("plans")
+            .join("saas-local-pwa")
+            .join("stage-01-next-js-pwa-local-migration");
+        fs::create_dir_all(&unit_dir).unwrap();
+        fs::write(
+            unit_dir.join("unit-01-shell.mdx"),
+            r#"<h1>Unit 01 - Shell</h1>
+<h2>Intent</h2><p>Create the shell.</p>
+<h2>Scope</h2><p>Local shell only.</p>
+<h2>Implementation Notes</h2><p>Use current behavior.</p>
+<h2>Dependencies</h2><p>None.</p>
+<h2>Verification</h2><p>Run checks.</p>
+<h2>Completion Gate</h2><p>Complete when done.</p>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let page = pages
+            .iter()
+            .find(|page| {
+                page.path == "/wiki/plans/saas-local-pwa/stage-01-next-js-pwa-local-migration/unit-01-shell.mdx"
+            })
+            .unwrap();
+
+        assert!(page
+            .validation_warnings
+            .iter()
+            .any(|warning| warning.kind == "thin-unit-verification"));
     }
 
     #[test]

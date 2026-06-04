@@ -1,0 +1,46 @@
+---
+title: "Staged Plan Artifact Contract"
+description: "Require multi-stage plan generation to create navigable stage and unit MDX pages."
+wikiKind: "plan"
+---
+
+<PlanHero status="complete">
+  <h1>Staged Plan Artifact Contract</h1>
+  <p>Make staged hyperwiki plans produce the file tree the sidebar and execution workflow expect.</p>
+</PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan with one implementation unit</li>
+    <li>Current unit: complete</li>
+    <li>Next action: use the strengthened staged-plan contract for future complex plan generation.</li>
+    <li>Blockers: none</li>
+    <li>Validation: targeted Rust wiki tests plus <code>pnpm run check</code>.</li>
+  </ul>
+</PlanSummary>
+
+## Reader Goal
+
+After 2 minutes, the reader can understand why staged plans must create child pages and how the implementation prevents monolithic staged plan files.
+
+## Intent
+
+The existing imported-MVP planner already requires separate stage and executable unit files, but the general new-plan workflow still allows a multi-stage plan to be written as one compact feature page. That breaks navigation and execution because feature pages are sidebar leaves.
+
+## Scope
+
+- Tighten the general plan creation prompt so explicit multi-stage plans use a plan-root directory with stage and unit MDX pages.
+- Add wiki validation warnings for plan pages that declare stages or current units but have no child stage/unit files.
+- Keep compact feature plans valid when they do not claim a staged execution sequence.
+
+<Verification>
+  <ul>
+    <li>Rust tests cover monolithic staged plans and valid staged plan trees.</li>
+    <li><code>pnpm run check</code> passes.</li>
+  </ul>
+</Verification>
+
+## Completion Gate
+
+Complete. The prompt contract, bundled skill guidance, validation warnings, and tests are in place.

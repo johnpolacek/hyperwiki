@@ -69,6 +69,8 @@ When unsure, start smaller. A plan can be promoted later from feature plan to si
 
 For larger plans, the agent may first propose the outline of stages and units, then ask the user to confirm or adjust the planning shape before creating the detailed files.
 
+When the accepted plan has explicit stages, a `Current stage`, a multi-stage implementation sequence, or more than one phase gate, the final artifacts must be navigable stage/unit MDX files. Do not write a single `wiki/plans/features/*.mdx` page with stage headings for that shape. Use `wiki/plans/<slug>/index.mdx`, child `stage-XX-*.mdx` pages, and unit pages under each stage directory. Create all currently planned stage and unit pages before handoff so the sidebar and Execute workflow have a precise current unit.
+
 ## CLI Plan Workflow
 
 Plan files must be useful from a terminal. Optimize the first 80 lines of every active plan for quick inspection with `sed`, `head`, or `less`.
@@ -282,6 +284,7 @@ wiki/plans/
 `wiki/plans/mvp/index.mdx` should act as the live roadmap index. It should name the current status, most recent completed unit when known, and exactly one next execution unit or planning target.
 
 Stage files should describe the stage goal, completion gate, and unit sequence. Unit files should be small enough for one implementation pass.
+For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk.
 
 When all MVP stages and units are complete, move the whole `wiki/plans/mvp/` tree to `wiki/plans/zzz_completed/mvp/`. Do not move an MVP tree while any stage, unit, completion gate, or required verification remains incomplete, blocked, or unresolved.
 
