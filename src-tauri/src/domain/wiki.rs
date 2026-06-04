@@ -2175,7 +2175,7 @@ fn status_validation_warnings(
         }
     }
     for component in &document.component_refs {
-        if component.name != "StatusBadge" && component.name != "Badge" && component.name != "PlanUnit" {
+        if component.name != "StatusBadge" && component.name != "Badge" {
             continue;
         }
         let Some(value) = component
@@ -2856,6 +2856,32 @@ Agent-only text.
             .validation_warnings
             .iter()
             .any(|warning| warning.kind == "status-source-conflict"));
+    }
+
+    #[test]
+    fn does_not_compare_plan_unit_status_to_page_status() {
+        let root = temp_root("wiki-planunit-status-is-local");
+        let plan_dir = root.join("wiki").join("plans").join("features");
+        fs::create_dir_all(&plan_dir).unwrap();
+        fs::write(
+            plan_dir.join("draft-plan.mdx"),
+            r#"<PlanHero status="draft"><h1>Draft Plan</h1></PlanHero>
+<PlanSummary><ul><li>Status: draft</li><li>Current unit: Unit 01</li></ul></PlanSummary>
+<PlanUnit title="Unit 01 - First Slice" status="planned"><p>Plan the first implementation slice.</p></PlanUnit>
+<PlanUnit title="Unit 02 - Second Slice" status="planned"><p>Plan the second implementation slice.</p></PlanUnit>"#,
+        )
+        .unwrap();
+
+        let pages = list_wiki_pages(&root, None).pages;
+        let page = pages
+            .iter()
+            .find(|page| page.path == "/wiki/plans/features/draft-plan.mdx")
+            .unwrap();
+
+        assert_eq!(page.status.as_deref(), Some("draft"));
+        assert!(!page.validation_warnings.iter().any(|warning| {
+            warning.kind == "status-source-conflict" && warning.message.contains("PlanUnit")
+        }));
     }
 
     #[test]
