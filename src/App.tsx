@@ -7,6 +7,7 @@ import {
   Command,
   Download,
   ExternalLink,
+  FolderPlus,
   FolderOpen,
   FolderGit2,
   GitBranch,
@@ -20,7 +21,6 @@ import {
   RefreshCw,
   Search,
   Settings,
-  Sparkles,
   Square,
   Trash2,
   Upload,
@@ -3069,7 +3069,7 @@ function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
           <BookOpen aria-hidden="true" className="size-6 text-muted-foreground" />
         </div>
         <div className="grid gap-2">
-          <h1 className="font-ui m-0 text-3xl font-bold">No active plans</h1>
+          <h1 className="font-ui m-0 text-3xl font-semibold tracking-tight">No active plans</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground">Create a plan to start a new implementation track.</p>
         </div>
         <Button className="min-h-12 px-6 text-base" onClick={onCreatePlan}>
@@ -3090,7 +3090,7 @@ function WikiErrorState({ error, onNewProject, onProjects }: { error: string; on
           <FolderOpen aria-hidden="true" className="size-5 text-muted-foreground" />
         </div>
         <div className="grid gap-2">
-          <h2 className="font-ui m-0 text-2xl font-bold">{missing ? "Project files are unavailable" : "Wiki page unavailable"}</h2>
+          <h2 className="font-ui m-0 text-2xl font-semibold tracking-tight">{missing ? "Project files are unavailable" : "Wiki page unavailable"}</h2>
           <p className="m-0 text-sm text-muted-foreground">
             {missing ? "The selected project points to files that no longer exist. Pick another project or create a new one." : "hyperwiki could not load this wiki page."}
           </p>
@@ -3254,8 +3254,8 @@ function ImportedPlanningQAView({
   const canSubmitBatch = questions.length > 1 && questions.every((question) => answerForQuestion(question)) && !isAnswering;
   const title = "Planning Q&A";
   const waitingLabel = status === "streaming"
-    ? "Checking Codex output..."
-    : lastAnswer ? "Waiting for next question..." : "Waiting for first question...";
+    ? "Checking Codex output"
+    : lastAnswer ? "Waiting for next question" : "Waiting for first question";
   const activityLabel = questions.length ? "Planning activity" : waitingLabel;
   const isRetryableFailure = status === "stalled" || status === "schema_mismatch" || status === "failed";
   const isRunning = Boolean(activeRun && activeRun.status === "running") || ["starting", "waiting_for_question", "streaming", "answering"].includes(status) || isStarting;
@@ -3264,11 +3264,11 @@ function ImportedPlanningQAView({
   const description = "Answer questions and make important decisions to create your project.";
 
   return (
-    <main className="grid min-h-0 place-items-start overflow-auto bg-background px-8 pt-12 antialiased">
-      <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_18px_42px_rgba(0,0,0,0.06)]">
+    <main className="grid min-h-0 place-items-start overflow-auto bg-background px-5 pt-8 antialiased md:px-8 md:pt-12">
+      <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg border bg-card p-5 shadow-sm md:p-6">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creating project</p>
-          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight text-balance">{title}</h1>
+          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance">{title}</h1>
           <p className="m-0 text-base leading-7 text-muted-foreground text-pretty">{description}</p>
         </div>
         {questions.length ? (
@@ -3281,7 +3281,7 @@ function ImportedPlanningQAView({
             {questions.map((question, questionIndex) => (
               <div className="grid gap-4 rounded-md border bg-background p-4" key={question.id}>
                 <div className="grid gap-2">
-                  <h2 className="font-ui m-0 text-xl font-semibold leading-snug">{question.question}</h2>
+                  <h2 className="font-ui m-0 text-xl font-semibold leading-snug tracking-tight">{question.question}</h2>
                   {question.recommendedAnswer ? (
                     <p className="m-0 rounded-md bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
                       <span className="font-semibold">Recommended:</span> {question.recommendedAnswer}
@@ -3398,7 +3398,7 @@ function ImportedPlanningQAView({
               {workstream.length ? (
                 workstream.map((line, index) => <p className="m-0 whitespace-pre-wrap" key={`${index}:${line}`}>{line}</p>)
               ) : (
-                <p className="m-0 whitespace-pre-wrap">{activity || "Starting the planning agent..."}</p>
+                <p className="m-0 whitespace-pre-wrap">{activity || "Starting the planning agent"}</p>
               )}
             </div>
           </div>
@@ -3498,7 +3498,7 @@ function ProjectCard({
   async function confirmRemoval() {
     if (!selected) return;
     setIsRemoving(true);
-    setRemoveStatus(deleteFiles ? "Deleting project files..." : "Removing project...");
+    setRemoveStatus(deleteFiles ? "Deleting project files" : "Removing project");
     try {
       await onRemoveProject(selected, deleteFiles);
       setIsConfirmingRemoval(false);
@@ -3535,7 +3535,8 @@ function ProjectCard({
       </div>
       <div className="mt-auto flex items-end justify-between pt-5">
         <Button onClick={() => selected && onOpenProject(selected)} disabled={!selected}>
-          » Open Project
+          <ExternalLink aria-hidden="true" data-icon="inline-start" />
+          Open Project
         </Button>
         <button className="rounded p-1 text-muted-foreground hover:text-foreground" type="button" aria-label={`Remove ${group.name}`} onClick={() => setIsConfirmingRemoval(true)}>
           <Trash2 aria-hidden="true" className="size-4" />
@@ -3559,7 +3560,7 @@ function ProjectCard({
               Cancel
             </Button>
             <Button disabled={isRemoving} onClick={() => void confirmRemoval()}>
-              {isRemoving ? (deleteFiles ? "Deleting..." : "Removing...") : deleteFiles ? "Confirm Delete" : "Confirm Remove"}
+              {isRemoving ? (deleteFiles ? "Deleting" : "Removing") : deleteFiles ? "Confirm Delete" : "Confirm Remove"}
             </Button>
           </div>
         </div>
@@ -3589,7 +3590,7 @@ function PendingImportView({ project }: { project: ProjectRecord }) {
     <section className="flex min-h-0 items-center justify-center bg-background p-8">
       <div className="grid max-w-md gap-3 text-center">
         <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
-        <h1 className="font-ui m-0 text-2xl font-bold">Opening {project.name}</h1>
+        <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">Opening {project.name}</h1>
         <p className="m-0 text-sm text-muted-foreground">Waiting for the imported project to appear in the local registry.</p>
       </div>
     </section>
@@ -3623,7 +3624,7 @@ function NewProjectView({
     clearImportLog();
     setImportLog([]);
     setIsSubmitting(true);
-    setStatus(files.length === 1 ? `Reading ${files[0].name}...` : `Reading ${files.length} files...`);
+    setStatus(files.length === 1 ? `Reading ${files[0].name}` : `Reading ${files.length} files`);
     logImport(files.length === 1 ? `Reading ${files[0].name}` : `Reading ${files.length} selected files`);
     try {
       const sourceDocuments = await Promise.all(files.map(async (file) => {
@@ -3684,7 +3685,7 @@ function NewProjectView({
     };
     setIsSubmitting(true);
     setHandoffProject(pendingProject);
-    setStatus("Initializing project...");
+    setStatus("Initializing project");
     logImport(`Handoff view set for ${pendingProject.projectSlug}/${pendingProject.worktreeSlug}`);
     logImport("Creating imported project");
     const fallbackTimer = window.setTimeout(routeToWorkspace, 900);
@@ -3693,7 +3694,7 @@ function NewProjectView({
         if (!project) return;
         window.clearTimeout(fallbackTimer);
         setHandoffProject(project);
-        setStatus("Project imported. Opening planning workspace...");
+        setStatus("Project imported. Opening planning workspace");
         logImport(`Created project ${project.name} (${project.id})`);
         routeToWorkspace(project);
       })
@@ -3710,7 +3711,7 @@ function NewProjectView({
       <section className="flex min-h-0 items-center justify-center bg-background p-8">
         <div className="grid max-w-md gap-3 text-center">
           <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
-          <h1 className="font-ui m-0 text-2xl font-bold">Opening {handoffProject.name}</h1>
+          <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">Opening {handoffProject.name}</h1>
           <p className="m-0 text-sm text-muted-foreground">Switching to the planning workspace and starting the agent.</p>
         </div>
       </section>
@@ -3727,44 +3728,44 @@ function NewProjectView({
     <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
       <div className="mx-auto grid w-full max-w-[60rem] gap-9">
         <header className="px-1">
-          <h1 className="font-ui m-0 text-5xl font-bold leading-none tracking-normal text-balance text-foreground">{heading}</h1>
-          <p className="m-0 mt-3 text-lg leading-8 text-muted-foreground text-pretty">
+          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-5xl">{heading}</h1>
+          <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground text-pretty md:text-lg">
             {subhead}
           </p>
         </header>
 
-        <form className="grid gap-6 rounded-lg bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,0.06),0_24px_72px_rgba(0,0,0,0.08)] md:p-10" data-testid="new-project-form" onSubmit={handleSubmit}>
-          <label className="group flex min-h-44 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:text-foreground">
-            <Upload aria-hidden="true" className="mb-5 size-11 text-primary transition-transform group-hover:-translate-y-0.5" />
-            <span className="rounded-md bg-primary px-5 py-2.5 text-base font-bold text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.10),0_8px_22px_rgba(0,0,0,0.10)] transition-transform group-active:scale-[0.96]">Import Project Doc</span>
-            <small className="mt-3 text-base text-muted-foreground">Markdown, HTML, or text files</small>
+        <form className="grid gap-6 rounded-lg border bg-card p-5 shadow-sm md:p-8" data-testid="new-project-form" onSubmit={handleSubmit}>
+          <label className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:bg-secondary/40 hover:text-foreground">
+            <Upload aria-hidden="true" className="mb-4 size-10 text-primary transition-transform group-hover:-translate-y-0.5" />
+            <span className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform group-active:scale-[0.98]">Import Project Doc</span>
+            <small className="mt-3 text-sm text-muted-foreground">Markdown, HTML, or text files</small>
             <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,.txt,.text,.csv,.tsv,.json,.yaml,.yml,text/*,application/json,application/x-yaml" multiple onChange={(event) => void handleFiles(event.target.files)} />
           </label>
 
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-sm font-bold uppercase text-muted-foreground" aria-hidden="true">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground" aria-hidden="true">
             <span className="h-px bg-border" />
             <span>OR</span>
             <span className="h-px bg-border" />
           </div>
 
           <label className="grid gap-2">
-            <span className="text-base font-bold text-card-foreground">Project Name</span>
-            <input {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-14 rounded-md border bg-background px-4 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name..." required value={title} onChange={(event) => setTitle(event.target.value)} />
+            <span className="text-sm font-semibold text-card-foreground">Project Name</span>
+            <input {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-12 rounded-md border bg-background px-3 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name" required value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
 
           <label className="grid gap-2">
-            <span className="text-base font-bold text-card-foreground">Brief</span>
-            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[9rem] resize-y rounded-md border bg-background p-4 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Enter project brief..." required value={document} onChange={(event) => setDocument(event.target.value)} />
+            <span className="text-sm font-semibold text-card-foreground">Brief</span>
+            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[9rem] resize-y rounded-md border bg-background p-3 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Paste the project brief" required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
 
-          <label className="flex min-h-10 items-center gap-3 text-base text-card-foreground">
+          <label className="flex min-h-10 items-center gap-3 text-sm font-medium text-card-foreground">
             <input className="size-5 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
             <span>Initialize Git and create an initial commit</span>
           </label>
 
-          <Button className="min-h-14 w-full text-base active:scale-[0.96] transition-transform" disabled={isSubmitting || !canSubmitBrief} type="submit">
-            {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Sparkles aria-hidden="true" data-icon="inline-start" />}
-            {isSubmitting ? "Starting Agent Planning..." : "Start Agent Planning"}
+          <Button className="min-h-12 w-full text-sm font-semibold transition-transform active:scale-[0.98] disabled:border-border disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100" disabled={isSubmitting || !canSubmitBrief} type="submit">
+            {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <FolderPlus aria-hidden="true" data-icon="inline-start" />}
+            {isSubmitting ? "Starting Agent Planning" : "Start Agent Planning"}
           </Button>
 
           {status ? <p className="m-0 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
@@ -4032,7 +4033,6 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={revertTheme}>Revert</Button><Button onClick={completeThemeEditor}>Done</Button></>}
           description="Theme changes apply immediately and save automatically."
-          fontFamily={editTheme.tokens.docs?.serifFont}
           title="Edit Theme"
         />
         <div className="grid min-w-0 gap-4 p-8">
@@ -4053,7 +4053,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <SelectField label="Body Style" value={fontStyle(editTheme.tokens.docs?.serifFont)} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "docs", "serifFont", value === "sans" ? "Work Sans, sans-serif" : "Instrument Serif, serif"))} options={[["serif", "Serif"], ["sans", "Sans Serif"]]} />
-                <SelectField label="Sidebar" value={editTheme.tokens.ui?.sidebarFont === editTheme.tokens.docs?.serifFont ? "body" : "mono"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "sidebarFont", value === "body" ? editTheme.tokens.docs?.serifFont || "Work Sans, sans-serif" : editTheme.tokens.docs?.monoFont || "Space Mono, monospace"))} options={[["body", "Body copy font"], ["mono", "Mono font"]]} />
+                <SelectField label="Sidebar" value={editTheme.tokens.ui?.sidebarFont === editTheme.tokens.ui?.sansFont ? "body" : "mono"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "sidebarFont", value === "body" ? editTheme.tokens.ui?.sansFont || "Rethink Sans, sans-serif" : editTheme.tokens.docs?.monoFont || "Space Mono, monospace"))} options={[["body", "UI font"], ["mono", "Mono font"]]} />
                 <SelectField label="Mono Font" value={editTheme.tokens.docs?.monoFont || "Space Mono, monospace"} onChange={(value) => setThemeDraft(updateThemeToken(updateThemeToken(editableTheme, "docs", "monoFont", value), "terminal", "font", value))} options={[["Space Mono, monospace", "Space Mono"], ["IBM Plex Mono, monospace", "IBM Plex Mono"], ["Fira Code, monospace", "Fira Code"], ["Roboto Mono, monospace", "Roboto Mono"]]} />
                 <SelectField label="Terminal Mode" value={editTheme.tokens.terminal?.mode || "dark"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "mode", value))} options={[["dark", "Dark"], ["light", "Light"], ["match", "Match UI"]]} />
               </div>
@@ -4067,7 +4067,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
               <div className="grid grid-cols-[190px_1fr] gap-8">
                 <div className="border-r pr-6 font-ui">
                   <p className="text-xs font-bold uppercase text-muted-foreground">Plans</p>
-                  <p className="mt-3 text-sm">Stage-08 Settings, Soul...</p>
+                  <p className="mt-3 text-sm">Stage 08 Settings</p>
                   <p className="mt-3 text-sm">Unit 02 - Theme System</p>
                 </div>
                 <div style={{ fontFamily: editTheme.tokens.docs?.serifFont }}>
@@ -4091,7 +4091,6 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
           description="Saving updates global instructions and syncs the current project AGENTS.md."
-          fontFamily={theme.tokens.docs?.serifFont}
           title="Edit Agent Instructions"
         />
         <div className="grid gap-4 p-8">
@@ -4113,7 +4112,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                     entries[index] = next;
                     setAgentDraft({ ...editableAgent, memory: { entries } });
                   }} onRemove={() => setAgentDraft({ ...editableAgent, memory: { entries: (editableAgent.memory?.entries || []).filter((_, itemIndex) => itemIndex !== index) } })} />
-                )) : <p className="text-sm text-muted-foreground">No memory entries added yet...</p>}
+                )) : <p className="text-sm text-muted-foreground">No memory entries added yet.</p>}
               </div>
             </section>
           </div>
@@ -4132,7 +4131,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
 
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." fontFamily={theme.tokens.docs?.serifFont} />
+      <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
       <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
         <section className="rounded-md border bg-card p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -4166,12 +4165,12 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
   );
 }
 
-function SettingsPageHeader({ actions, description, fontFamily, title }: { actions?: ReactNode; description: string; fontFamily?: string; title: string }) {
+function SettingsPageHeader({ actions, description, title }: { actions?: ReactNode; description: string; title: string }) {
   return (
     <header className="flex min-h-36 items-start justify-between gap-6 bg-muted/20 px-8 py-10">
       <div>
-        <h1 className="m-0 text-5xl font-bold leading-none tracking-normal" style={{ fontFamily }}>{title}</h1>
-        <p className="m-0 mt-3 text-base text-muted-foreground" style={{ fontFamily }}>{description}</p>
+        <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight md:text-5xl">{title}</h1>
+        <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-2 pt-10">{actions}</div> : null}
     </header>
@@ -4232,7 +4231,7 @@ function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: strin
         <span className="text-xs text-muted-foreground">{meta}</span>
       </header>
       <ul className="m-0 grid gap-1 pl-5 text-sm text-muted-foreground">
-        {(values.length ? values : ["No entries added yet..."]).map((line, index) => <li key={index}>{line}</li>)}
+        {(values.length ? values : ["No entries added yet."]).map((line, index) => <li key={index}>{line}</li>)}
       </ul>
     </article>
   );
@@ -4301,12 +4300,12 @@ function ThemePresetCard({ large = false, presetKey, theme }: { large?: boolean;
             <span>
               <small className="block text-xs font-bold uppercase text-muted-foreground">Text</small>
               <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.serifFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
-              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog...</em>
+              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog.</em>
             </span>
             <span>
               <small className="block text-xs font-bold uppercase text-muted-foreground">Mono</small>
               <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.monoFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
-              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog...</em>
+              <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog.</em>
             </span>
           </span>
         ) : (
@@ -4414,6 +4413,7 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const accent = normalizeColor(ui.accent || docs.link || "#276ef1", "#276ef1");
   const secondary = mixHex(accent, theme.mode === "dark" ? "#ffffff" : panel, theme.mode === "dark" ? 0.18 : 0.9);
   const muted = mixHex(mutedForeground, background, theme.mode === "dark" ? 0.68 : 0.84);
+  const uiFont = cssFontValue(ui.sansFont || ui.font || docs.sansFont, "\"Rethink Sans\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif");
   const primaryFont = cssFontValue(docs.serifFont, "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif");
   const monoFont = cssFontValue(docs.monoFont, "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace");
   const terminalFont = cssFontValue(terminal.font, monoFont);
@@ -4437,10 +4437,11 @@ function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--border": border,
     "--input": border,
     "--ring": accent,
+    "--ui-sans-font": uiFont,
     "--docs-serif-font": primaryFont,
     "--docs-mono-font": monoFont,
     "--terminal-font": terminalFont,
-    "--sidebar-font": cssFontValue(ui.sidebarFont, primaryFont),
+    "--sidebar-font": cssFontValue(ui.sidebarFont, uiFont),
   });
 }
 
@@ -4455,9 +4456,7 @@ function setCssVars(element: HTMLElement, vars: Record<string, string>) {
 function normalizePreset(preset?: ThemePreset): NormalizedTheme {
   const docs = { ...(preset?.tokens?.docs || {}) };
   const ui = { ...(preset?.tokens?.ui || {}) };
-  if (preset?.label === "Signal" && docs.serifFont) {
-    ui.sidebarFont = docs.serifFont;
-  }
+  ui.sansFont ||= "Rethink Sans, sans-serif";
   return {
     label: preset?.label || "Custom",
     mode: preset?.mode || "light",
@@ -5382,9 +5381,9 @@ function terminalPaneLabel(session: SessionRecord, index: number) {
 
 function terminalStartupNotice(session: SessionRecord) {
   if (!session.command || isStandbySession(session)) return "";
-  if (session.role === "agent") return "Starting agent terminal...";
-  if (session.role === "dev") return "Starting dev terminal...";
-  return "Starting terminal...";
+  if (session.role === "agent") return "Starting agent terminal";
+  if (session.role === "dev") return "Starting dev terminal";
+  return "Starting terminal";
 }
 
 function isLiveTerminalSession(session: SessionRecord) {

@@ -12,7 +12,6 @@ import {
   Lightbulb,
   MessageSquareText,
   ShieldAlert,
-  Sparkles,
   X,
 } from "lucide-react";
 import {

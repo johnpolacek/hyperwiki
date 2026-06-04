@@ -1,0 +1,37 @@
+---
+title: "Design System Polish Audit"
+description: "Targeted product UI polish for hyperwiki's React, Tailwind v4, and shadcn app shell."
+wikiKind: "plan"
+status: "complete"
+---
+
+<PlanHero
+  title="Design System Polish Audit"
+  status="complete"
+  description="Tighten hyperwiki's product UI after the React rewrite without changing routes, Tauri APIs, or wiki contracts."
+/>
+
+<PlanSummary
+  status="complete"
+  currentUnit="Complete"
+  nextAction="Dogfood in the Tauri desktop app during the next UI pass."
+  blockers="None."
+  validation="Use pnpm checks, frontend build, and agent-browser desktop/mobile screenshots."
+/>
+
+## Intent
+
+hyperwiki should keep its quiet local-devtool identity while reading less like a document page on operational surfaces. This pass preserves IA and behavior, then improves app typography, form hierarchy, CTA contrast, and token consistency.
+
+## Implementation Notes
+
+- Split app UI typography from document typography so shell chrome, forms, settings, and project controls use a sans UI voice while rendered docs can keep their reader font.
+- Reduce heavy onboarding card treatment and improve disabled CTA readability.
+- Keep lucide icons because the project shadcn configuration selects lucide.
+- Route terminal and status color choices through existing semantic tokens where practical, without changing terminal behavior.
+
+## Verification
+
+- `pnpm run check`
+- `pnpm run build:frontend`
+- `agent-browser` desktop and mobile checks for `/projects/new`
