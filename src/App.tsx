@@ -2974,6 +2974,7 @@ function WorkspacePane(props: {
   if (props.hasLoadedProjects && !props.activeProject) {
     return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
   }
+  const isActivePlanPage = displayWikiPath(props.wikiPath) === displayWikiPath(props.activePlanState.currentPath);
   if (props.isImportPlanningView) {
     return (
       <ImportedPlanningQAView
@@ -3051,7 +3052,7 @@ function WorkspacePane(props: {
             onDeletePlan={() => props.onDeletePlan(props.wikiPath)}
             onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
             path={props.wikiPath}
-            status={props.wikiSource.status}
+            status={isActivePlanPage ? "active" : props.wikiSource.status}
             source={props.wikiSource.source}
             validationWarnings={props.wikiSource.validationWarnings}
           />
