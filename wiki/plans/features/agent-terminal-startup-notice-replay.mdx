@@ -1,0 +1,29 @@
+---
+title: "Agent Terminal Startup Notice Replay"
+description: "Clear the temporary agent terminal startup notice when replay/output bytes arrive."
+wikiKind: "plan"
+status: "completed"
+---
+
+<PlanHero status="completed" title="Agent Terminal Startup Notice Replay" subtitle="Prevent visible Execute terminals from staying on the startup placeholder after Codex output is available." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="completed" />
+  <PlanSummaryItem label="Scope" value="terminal display replay" />
+  <PlanSummaryItem label="Trigger" value="Execute terminal showed Starting agent terminal while logs showed active Codex output" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+Visible command-backed terminals should show an immediate startup notice only until real terminal bytes arrive. Replay and live output may contain Codex control sequences or cleaned display chunks, but their arrival still means the startup placeholder is stale.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- Clear the startup notice as soon as replay or live terminal bytes arrive for the visible session.
+- Keep writing cleaned display text to xterm only when there is display-safe content.
+- Preserve standby-session hiding, prompt readiness, and terminal selection behavior.
+</PlanSection>
+
+<PlanSection title="Verification">
+- Static smoke coverage checks that startup notices clear on terminal bytes before display-text filtering.
+- `pnpm run check`
+</PlanSection>

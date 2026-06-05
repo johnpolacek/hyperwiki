@@ -764,6 +764,7 @@ function App() {
 
   useEffect(() => {
     if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
+    if (hasExplicitWikiRouteLocation()) return;
     if (isImportedPlanningActive) return;
     const landingPath = planLandingPath(wikiPages);
     if (!landingPath || landingPath === defaultWikiPath) return;
@@ -4872,6 +4873,12 @@ function XtermSession({
       terminal.write(`\x1b[2m${startupNotice}\x1b[0m\r\n`);
     }
 
+    const clearStartupNotice = () => {
+      if (!startupNoticeVisible) return;
+      terminal.clear();
+      startupNoticeVisible = false;
+    };
+
     const fit = () => {
       if (closedRef.current || container.clientWidth <= 0 || container.clientHeight <= 0) return;
       try {
@@ -4919,11 +4926,8 @@ function XtermSession({
       );
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
+      clearStartupNotice();
       if (displayText) {
-        if (startupNoticeVisible) {
-          terminal.clear();
-          startupNoticeVisible = false;
-        }
         terminal.write(displayText);
       }
     };
@@ -4950,11 +4954,8 @@ function XtermSession({
           );
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
+          clearStartupNotice();
           if (displayText) {
-            if (startupNoticeVisible) {
-              terminal.clear();
-              startupNoticeVisible = false;
-            }
             terminal.write(displayText);
           }
         }
