@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-04 fix | terminal close and zsh launcher</h2>
+  <ul>
+    <li>Changed command-backed terminal launch scripts to use a zsh-safe <code>hyperwiki_launch_status</code> variable before execing the user's login shell.</li>
+    <li>Changed the terminal pane close action to call the project-scoped terminal delete endpoint and remove the pane after confirmed closure.</li>
+    <li>Added visible xterm feedback for failed input writes plus Rust regression coverage for launcher recovery and closed-session writes.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-04 polish | design system audit</h2>
   <ul>
     <li>Split app UI typography from document typography so operational surfaces use the UI sans token while rendered docs keep their reading font.</li>

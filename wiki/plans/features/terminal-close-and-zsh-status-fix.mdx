@@ -1,0 +1,37 @@
+---
+title: "Terminal Close and zsh Status Fix"
+description: "Fix terminal command launch recovery and pane close behavior."
+wikiKind: "plan"
+---
+
+<PlanHero status="complete" owner="codex" updated="2026-06-04">
+  <h1>Terminal Close and zsh Status Fix</h1>
+  <p>Repair command-backed terminal sessions that failed to return to an interactive shell under zsh and make the pane close control reliably tear down the live terminal process.</p>
+</PlanHero>
+
+<PlanSection title="Problem">
+  <p>The command launcher assigned to <code>status</code> after startup commands. In zsh, <code>status</code> is a read-only special parameter, so the launcher can fail before it execs the user's interactive shell. The UI close action also sent a non-project-aware terminal delete request first, making pane close behavior brittle across selected projects.</p>
+</PlanSection>
+
+<PlanSection title="Implementation">
+  <PlanChecklist
+    items={[
+      { label: "Use a zsh-safe launcher exit-code variable before execing the login shell.", state: "complete" },
+      { label: "Make the visible close action send project-scoped terminal delete requests and remove the pane once the backend confirms closure.", state: "complete" },
+      { label: "Surface terminal input write failures inside the xterm pane instead of silently swallowing dead-session writes.", state: "complete" },
+      { label: "Add regression coverage for the launcher string and terminal close endpoint.", state: "complete" },
+    ]}
+  />
+</PlanSection>
+
+<PlanSection title="Result">
+  <p>Command-backed terminals now avoid zsh's read-only <code>status</code> parameter, return to a login shell after startup commands, close through the project-scoped terminal endpoint, and report failed input writes in-pane.</p>
+</PlanSection>
+
+<PlanSection title="Verification">
+  <ul>
+    <li><code>pnpm run check</code></li>
+    <li><code>pnpm run check:tauri</code></li>
+    <li><code>pnpm run test:tauri</code></li>
+  </ul>
+</PlanSection>

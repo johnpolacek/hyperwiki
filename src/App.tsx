@@ -2246,11 +2246,12 @@ function App() {
   async function closeSession(sessionId: string) {
     setStatus("Closing session");
     try {
-      let response = await hyperwikiApi.request(`/api/terminal/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+      let response = await hyperwikiApi.request(withProjectQuery(`/api/terminal/${encodeURIComponent(sessionId)}`, activeProject), { method: "DELETE" });
       if (!response.ok) {
         response = await hyperwikiApi.request(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, activeProject), { method: "DELETE" });
       }
       if (!response.ok) throw new Error(response.text || `Request failed: ${response.status}`);
+      setSessions((current) => current.filter((session) => session.id !== sessionId));
       await loadSessions();
       setStatus("Session closed");
     } catch (error) {
@@ -4884,7 +4885,15 @@ function XtermSession({
     const flush = async () => {
       while (!closedRef.current && pendingRef.current.length) {
         const input = pendingRef.current.shift() || "";
-        await sendInput(session.id, input);
+        try {
+          await sendInput(session.id, input);
+        } catch (error) {
+          pendingRef.current = [];
+          const message = error instanceof Error ? error.message : String(error);
+          appendImportLog(`Terminal input failed session=${session.id}`, error);
+          terminal.write(`\r\n\x1b[31m[hyperwiki] terminal input failed: ${message}\x1b[0m\r\n`);
+          break;
+        }
       }
     };
 

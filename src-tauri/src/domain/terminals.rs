@@ -478,7 +478,7 @@ fn terminal_launch_script(command: Option<&str>) -> Option<String> {
         .map(str::trim)
         .filter(|command| !command.is_empty())?;
     Some(format!(
-        "{command}\nstatus=$?\nif [ $status -ne 0 ]; then printf '\\n[hyperwiki] launch command exited with status %s\\n' \"$status\"; fi\nexec \"${{SHELL:-/bin/sh}}\" -l"
+        "{command}\nhyperwiki_launch_status=$?\nif [ \"$hyperwiki_launch_status\" -ne 0 ]; then printf '\\n[hyperwiki] launch command exited with status %s\\n' \"$hyperwiki_launch_status\"; fi\nexec \"${{SHELL:-/bin/sh}}\" -l"
     ))
 }
 
@@ -728,6 +728,15 @@ mod tests {
             .unwrap();
         assert_eq!(resized.cols, Some(90));
         manager.close("preferred-one").unwrap();
+    }
+
+    #[test]
+    fn launch_script_uses_zsh_safe_status_variable() {
+        let script = terminal_launch_script(Some("printf ready\\n")).unwrap();
+        assert!(script.contains("hyperwiki_launch_status=$?"));
+        assert!(script.contains("exec \"${SHELL:-/bin/sh}\" -l"));
+        assert!(!script.contains("\nstatus=$?"));
+        assert!(!script.contains("[ $status"));
     }
 
     #[test]

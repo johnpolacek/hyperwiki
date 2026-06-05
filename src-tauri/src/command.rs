@@ -2166,6 +2166,11 @@ mod tests {
             method: "DELETE".to_string(),
             body: None,
         });
+        let write_after_close = hyperwiki_request(HyperwikiRequest {
+            path: "/api/terminal/terminal-command/write".to_string(),
+            method: "POST".to_string(),
+            body: Some("{\"input\":\"printf should-not-write\\\\n\\n\"}".to_string()),
+        });
 
         std::env::set_current_dir(previous_dir).unwrap();
         match previous_home {
@@ -2185,6 +2190,8 @@ mod tests {
         assert!(replay.text.contains("\"bytes\""));
         assert!(close.ok);
         assert!(close.text.contains("\"status\":\"closed\""));
+        assert!(!write_after_close.ok);
+        assert_eq!(write_after_close.status, 404);
     }
 
     #[test]
