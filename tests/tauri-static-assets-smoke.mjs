@@ -141,6 +141,9 @@ if (!appSource.includes("function prewarmGeneralSessionForScope") || !appSource.
 if (!appSource.includes("function PendingTerminalSession") || !appSource.includes("Starting Codex") || !appSource.includes("Terminal first output session=") || !appSource.includes("Manual terminal backend start returned")) {
   throw new Error("Manual + agent should render an instant pending pane and log startup timing milestones.");
 }
+if (!appSource.includes("ensureAgentSession optimistic pane inserted") || !appSource.includes("optimistic-agent-start-failed") || !appSource.includes('const agentPurpose = kind === "modify" ? "modify" : "general"')) {
+  throw new Error("Execute, planning, review, and worktree handoffs should use the shared optimistic agent startup path.");
+}
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal output plain\", bytes.length, payload.seq, text, loggedPlainTextRef);\n      clearStartupNotice();") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal replay plain\", bytes.length, replay.seq, text, loggedPlainTextRef);\n          clearStartupNotice();")) {
   throw new Error("Visible command terminal startup notices must clear on replay/output bytes before display-text filtering.");
 }

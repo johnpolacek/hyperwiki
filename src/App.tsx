@@ -1249,6 +1249,7 @@ function App() {
           scope: terminalScope.scope,
           scopeKind: terminalScope.scopeKind,
           planPath: terminalScope.planPath,
+          purpose: role === "agent" ? "general" : null,
         },
       });
       if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-terminal", select: true });
@@ -1307,7 +1308,7 @@ function App() {
   }
 
   async function ensureAgentSession() {
-    const session = await ensureAgentSessionForProject(activeProject, layout, terminalScope, sessions);
+    const session = await ensureAgentSessionForProject(activeProject, layout, terminalScope, sessions, { purpose: "general", promote: true });
     return session;
   }
 
@@ -1360,22 +1361,53 @@ function App() {
     if (!command) {
       throw new Error("No agent launch command is configured for this project. Set agent.launchCommand in .hyperwiki/config.json, for example codex --yolo.");
     }
-    const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", project), {
-      method: "POST",
-      body: {
+    const pendingId = options.visibility === "standby" ? "" : nextClientTerminalId();
+    const startedAt = Date.now();
+    if (pendingId) {
+      const pendingSession = pendingTerminalSession({
+        id: pendingId,
         name: "Agent",
         role: "agent",
         command,
-        scope: normalizedScope.scope,
-        scopeKind: normalizedScope.scopeKind,
-        planPath: normalizedScope.planPath,
-        visibility: options.visibility || "visible",
-        purpose: options.purpose || null,
-      },
-    });
-    appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""} purpose=${started.session.purpose || "none"} visibility=${started.session.visibility || "visible"}`);
-    upsertTerminalSession(project.id, started.session, { reason: "start-agent", select: !isStandbySession(started.session) });
-    return started.session;
+        scope: normalizedScope,
+      });
+      pendingSession.purpose = options.purpose || "general";
+      upsertTerminalSession(project.id, pendingSession, { reason: "optimistic-agent-start", select: true });
+      appendImportLog(`ensureAgentSession optimistic pane inserted project=${project.id} session=${pendingId} scope=${normalizedScope.scope} purpose=${pendingSession.purpose || "none"}`);
+    }
+    try {
+      const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", project), {
+        method: "POST",
+        body: {
+          id: pendingId || undefined,
+          name: "Agent",
+          role: "agent",
+          command,
+          scope: normalizedScope.scope,
+          scopeKind: normalizedScope.scopeKind,
+          planPath: normalizedScope.planPath,
+          visibility: options.visibility || "visible",
+          purpose: options.purpose || null,
+        },
+      });
+      appendImportLog(`ensureAgentSession started terminal project=${project.id} session=${started.session.id} scope=${started.session.scope || ""} role=${started.session.role || ""} purpose=${started.session.purpose || "none"} visibility=${started.session.visibility || "visible"} elapsedMs=${Date.now() - startedAt}`);
+      upsertTerminalSession(project.id, started.session, { reason: "start-agent", select: !isStandbySession(started.session) });
+      return started.session;
+    } catch (error) {
+      if (pendingId) {
+        const failed = failedTerminalSession({
+          id: pendingId,
+          name: "Agent",
+          role: "agent",
+          command,
+          scope: normalizedScope,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        failed.purpose = options.purpose || "general";
+        upsertTerminalSession(project.id, failed, { reason: "optimistic-agent-start-failed", select: true });
+      }
+      throw error;
+    }
   }
 
   async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
@@ -1643,7 +1675,7 @@ function App() {
   }
 
   async function sendAgentPromptToProject(project: ProjectRecord | null, prompt: string, currentPage = currentWikiPath, scope = terminalScope, projectLayout = layout, knownSessions = sessions, options: { commandOverride?: string; forceNew?: boolean; requestId?: string } = {}) {
-    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { commandOverride: options.commandOverride, forceNew: options.forceNew });
+    const session = await ensureAgentSessionForProject(project, projectLayout, scope, knownSessions, { commandOverride: options.commandOverride, forceNew: options.forceNew, purpose: "general", promote: !options.forceNew });
     const ready = await waitForAgentPromptReady(session.id);
     appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready}`);
     let lastError: unknown;
@@ -1685,7 +1717,8 @@ function App() {
     const runId = existingRunId || startAgentRun(kind, label);
     const promptProject = options.project || activeProject;
     try {
-      const session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: kind === "modify" ? "modify" : undefined, promote: kind === "modify" });
+      const agentPurpose = kind === "modify" ? "modify" : "general";
+      const session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: agentPurpose, promote: kind === "modify" || (!options.forceNewSession && agentPurpose === "general") });
       updateAgentRun(runId, {
         sessionId: session.id,
         phase: "waiting",
@@ -5744,8 +5777,7 @@ function selectReusableAgentSession(sessions: SessionRecord[], options: { purpos
   if (options.visibility === "standby") {
     return newestSession(liveWithCommand);
   }
-  return newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession))
-    || newestSession(liveWithCommand);
+  return newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession));
 }
 
 function newestSession(sessions: SessionRecord[]) {

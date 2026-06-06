@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | instant agent handoff buttons</h2>
+  <ul>
+    <li>Extended optimistic terminal panes from manual <code>+ agent</code> to shared visible agent startup, covering Execute, New Plan, review, worktree, and import-planning handoffs.</li>
+    <li>Marked non-Modify handoff sessions as <code>purpose="general"</code> so they share the general prewarm and promotion model without stealing Modify prewarm sessions.</li>
+    <li>Failed shared agent starts now reconcile the pending pane into a dismissible failed pane instead of leaving it stuck in <code>starting</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 feature | instant agent terminal open</h2>
   <ul>
     <li>Changed manual <code>+ agent</code> and <code>+ cli</code> starts to insert an optimistic visible terminal pane before backend terminal startup returns.</li>

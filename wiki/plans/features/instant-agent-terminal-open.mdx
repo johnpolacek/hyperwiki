@@ -1,6 +1,6 @@
 ---
 title: "Instant Agent Terminal Open"
-description: "Make + agent show a terminal pane immediately while Codex starts or a prewarmed session is promoted."
+description: "Make terminal-backed agent starts show a pane immediately while Codex starts or a prewarmed session is promoted."
 wikiKind: "plan"
 status: "completed"
 ---
@@ -9,12 +9,12 @@ status: "completed"
 
 <PlanSummary>
   <PlanSummaryItem label="Status" value="completed" />
-  <PlanSummaryItem label="Scope" value="manual + agent startup latency" />
+  <PlanSummaryItem label="Scope" value="terminal-backed agent startup latency" />
   <PlanSummaryItem label="Direction" value="hybrid TUI: terminal-first UI with hidden active-plan prewarm" />
 </PlanSummary>
 
 <PlanSection title="Intent">
-Clicking <code>+ agent</code> should produce a visible terminal pane immediately. If a hidden general Codex session is already warm for the active plan scope, the click should promote it; otherwise the pane should appear optimistically while the backend starts the real terminal session.
+Clicking <code>+ agent</code> or any button that starts a visible terminal-backed agent should produce a visible terminal pane immediately. If a hidden general Codex session is already warm for the active plan scope, the click should promote it where reuse is allowed; otherwise the pane should appear optimistically while the backend starts the real terminal session.
 </PlanSection>
 
 <PlanSection title="Implementation">
@@ -22,6 +22,7 @@ Clicking <code>+ agent</code> should produce a visible terminal pane immediately
 - Preserve pending panes during session reloads until the matching real session arrives or startup fails.
 - Add one hidden standby <code>purpose="general"</code> agent prewarm for the active incomplete plan scope, separate from Modify prewarm.
 - Promote matching hidden general sessions when <code>+ agent</code> is clicked.
+- Route Execute, New Plan, review, worktree, and import-planning handoffs through the same optimistic visible agent startup path.
 - Add timing logs for click, pending pane insertion, backend start, first output, and prompt readiness.
 </PlanSection>
 
@@ -31,5 +32,5 @@ Clicking <code>+ agent</code> should produce a visible terminal pane immediately
 </PlanSection>
 
 <PlanSection title="Result">
-Completed on 2026-06-06. Manual <code>+ agent</code> now promotes a hidden general agent when available, otherwise it inserts a pending visible pane immediately with a client-generated terminal id and reconciles that pane when the backend start returns. Session reloads preserve pending panes, failed optimistic starts stay dismissible, and timing milestones are logged.
+Completed on 2026-06-06. Manual <code>+ agent</code> now promotes a hidden general agent when available, otherwise it inserts a pending visible pane immediately with a client-generated terminal id and reconciles that pane when the backend start returns. Follow-up extended that same optimistic pane path to Execute, New Plan, review, worktree, and import-planning handoffs. Session reloads preserve pending panes, failed optimistic starts stay dismissible, and timing milestones are logged.
 </PlanSection>
