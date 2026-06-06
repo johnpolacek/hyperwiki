@@ -1,0 +1,56 @@
+---
+title: "GridBeam Layout Design"
+description: "Adopt GridBeam as a structural visual layer across hyperwiki's React shell."
+wikiKind: "plan"
+status: "complete"
+---
+
+<PlanHero
+  title="GridBeam Layout Design"
+  status="complete"
+  description="Use GridBeam extensively across the app shell while preserving hyperwiki's dense, quiet Localhost Tooling interface."
+/>
+
+<PlanSummary
+  status="complete"
+  currentUnit="Complete"
+  nextAction="Dogfood in the Tauri desktop app when the backend runtime is available."
+  blockers="None."
+  validation="Completed with pnpm run check, pnpm run build:frontend, and agent-browser screenshots against the Vite preview."
+/>
+
+## Intent
+
+GridBeam should become a structural visual language for hyperwiki, not a marketing decoration. The grid and animated beams should reinforce work areas, active local context, project cards, settings previews, import planning panels, and empty/error states while leaving navigation, terminals, and document reading surfaces scannable.
+
+## Scope
+
+- Add the GridBeam shadcn registry component from Cult UI and keep imports aligned with the repo's `@/components/ui` alias.
+- Wrap the persistent app shell, sidebar, wiki viewport, projects view, new-project form, settings panels, and import planning state panels with GridBeam where it adds useful spatial structure.
+- Keep terminal xterm panes visually stable and avoid canvas overlays that could interfere with focus, text selection, or prompt input.
+- Respect the current theme tokens and reduced-motion expectations.
+
+## Non-Goals
+
+- Do not change routes, Tauri commands, session lifecycle, wiki parsing, MDX contracts, or project data models.
+- Do not replace shadcn primitives or introduce a new design system beyond the GridBeam component.
+- Do not turn the app into a hero/landing-page composition.
+
+## Design Notes
+
+- Link this pass to the existing <a href="/wiki/sources/design-brief.mdx">Design Brief</a>: dense, quiet, work-focused, with visible local runtime boundaries.
+- Prefer low-strength beams and semantic card/background colors so the effect reads as an operational grid.
+- Use varied row/column counts to map to layout regions instead of repeating one decorative preset everywhere.
+
+## Unit 01 - GridBeam Shell Adoption
+
+Status: complete.
+
+Installed and inspected GridBeam, normalized its Tailwind z-index classes, stopped its canvas RAF loop when inactive, and composed it into reusable shell wrappers plus selected route surfaces. The shell background, topbar popovers, sidebar, wiki viewport, Projects page/cards, New Project import form, import planning panels, Settings surfaces, empty states, and error states now use GridBeam while terminal panes remain stable.
+
+## Verification
+
+- `pnpm run check`
+- `pnpm run build:frontend`
+- `agent-browser` visual pass against `http://127.0.0.1:1421/projects/new`, `/projects`, and `/settings`
+- Desktop and narrow screenshots reviewed locally; generated screenshot files were not kept as repository artifacts.

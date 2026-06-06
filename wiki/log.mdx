@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 polish | GridBeam layout design</h2>
+  <ul>
+    <li>Adopted Cult UI GridBeam as a structural layout treatment across the React shell, sidebar, wiki viewport, Projects page, New Project flow, import planning panels, Settings surfaces, empty states, and error states.</li>
+    <li>Kept terminal panes outside beam overlays so xterm focus, text selection, and agent prompt input remain stable.</li>
+    <li>Recorded GridBeam as durable UI direction in the source index and design brief, with verification captured in <a href="/wiki/plans/features/gridbeam-layout-design.mdx">GridBeam Layout Design</a>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-05 fix | terminal start active focus race</h2>
   <ul>
     <li>Changed terminal session reloads to accept an explicit selected session id so newly started CLI, agent, restart, and dev panes remain the active input target after async session refresh.</li>

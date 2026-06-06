@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   BookOpen,
   Check,
@@ -31,6 +31,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { Button } from "@/components/ui/button";
+import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
 import { hyperwikiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
@@ -58,6 +59,10 @@ const DISABLE_TEXT_CORRECTION_PROPS = {
   spellCheck: false,
 } as const;
 const THEME_AUTOSAVE_DELAY_MS = 350;
+const GridBeamRuntimeContext = createContext<{ prefersReducedMotion: boolean; theme: GridBeamColorScheme }>({
+  prefersReducedMotion: false,
+  theme: "light",
+});
 
 interface WikiPage {
   title: string;
@@ -2517,6 +2522,12 @@ function App() {
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
   const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute;
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const gridBeamTheme = useDocumentGridBeamTheme();
+  const gridBeamRuntime = useMemo(
+    () => ({ prefersReducedMotion, theme: gridBeamTheme }),
+    [gridBeamTheme, prefersReducedMotion],
+  );
 
   useEffect(() => {
     if (!isUtilityRoute) return;
@@ -2525,107 +2536,120 @@ function App() {
 
   return (
     <main className="hyperwiki-shell flex h-svh min-h-0 flex-col overflow-hidden bg-background text-foreground">
-      <TopBar
-        activeProject={activeProject}
-        homePath={planLandingPath(wikiPages)}
-        isProjectsOpen={isProjectsOpen}
-        isUpNextOpen={isUpNextOpen}
-        onRefresh={loadBaseData}
-        onNavigate={navigate}
-        onSwitchProject={switchProject}
-        preview={preview}
-        projectGroups={projectGroups}
-        setIsProjectsOpen={setIsProjectsOpen}
-        setIsUpNextOpen={setIsUpNextOpen}
-        status={status}
-        workspace={workspace}
-      />
-      <section
-        className={cn(
-          "grid h-full min-h-0 flex-1 overflow-hidden",
-          isMainPaneExpanded || isUtilityRoute
-            ? "grid-cols-1"
-            : isImportPlanningView
-            ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
-            : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
-        )}
+      <GridBeamRuntimeContext.Provider value={gridBeamRuntime}>
+      <BeamSurface
+        borderRadius={0}
+        className="flex h-full min-h-0 flex-col bg-background"
+        colorVariant="mono"
+        cols={8}
+        contentClassName="flex h-full min-h-0 flex-col"
+        duration={7}
+        rows={5}
+        strength={0.18}
       >
-        {isMainPaneExpanded || isUtilityRoute ? null : (
-          <WikiSidebar
-            currentPath={currentWikiPath}
-            exportStatus={wikiExportStatus}
-            isExporting={isWikiExporting}
-            model={sidebarModel}
-            onCreatePlan={() => runCommandAction("new-plan")}
-            onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
-            onNavigate={(path) => navigate({ kind: "wiki", path })}
-            route={route}
-            workspace={workspace}
-          />
-        )}
-        <WorkspacePane
+        <TopBar
           activeProject={activeProject}
-          hasLoadedProjects={hasLoadedProjects}
-          isExpanded={isMainPaneExpanded}
-          isLoading={isWikiLoading}
+          homePath={planLandingPath(wikiPages)}
+          isProjectsOpen={isProjectsOpen}
+          isUpNextOpen={isUpNextOpen}
+          onRefresh={loadBaseData}
           onNavigate={navigate}
-          onCreateProject={createProject}
-          activeImportPlanningRun={activeImportPlanningRun}
-          onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
-          onPlanImportedProject={planImportedProject}
-          onResumeImportPlanning={resumeImportPlanning}
-          onRemoveProject={removeProject}
-          onDeletePlan={deletePlanPage}
-          onRunCommand={runCommandAction}
-          onAnswerPlanningQuestion={answerPlanningQuestion}
-          onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
           onSwitchProject={switchProject}
-          planningActivity={planningActivity}
-          planningWorkstream={planningWorkstream}
-          lastPlanningAnswer={lastPlanningAnswer}
-          pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
-          isImportPlanningView={isImportPlanningView}
-          canResumeImportPlanning={canResumeImportPlanning}
-          planningInterviewStatus={planningInterviewStatus}
-          planningQuestions={activePlanningQuestions}
+          preview={preview}
           projectGroups={projectGroups}
-          reviewWorkflows={reviewWorkflows}
-          route={route}
-          settings={settings}
-          wikiError={wikiError}
-          wikiHtml={wikiHtml}
-          wikiSource={wikiSource}
-          wikiPath={currentWikiPath}
-          wikiPages={wikiPages}
-          activePlanState={activePlanState}
+          setIsProjectsOpen={setIsProjectsOpen}
+          setIsUpNextOpen={setIsUpNextOpen}
+          status={status}
+          workspace={workspace}
         />
-        {isMainPaneExpanded || isUtilityRoute ? null : isImportPlanningView ? null : (
-          <div className="h-full min-h-0 overflow-hidden">
-            <TerminalPane
-              activeSessionId={activeSessionId}
-              activeProject={activeProject}
-              isLoading={isSessionsLoading}
-              onCloseSession={closeSession}
-              onCreateWorktree={createWorktreeFromTerminal}
-              onInitializeGit={initializeGitFromTerminal}
-              onRenameSession={renameSession}
-              onRestartSession={restartSession}
-              onRunDev={startDevTerminal}
-              onSelectSession={setActiveSessionId}
-              onStart={startTerminal}
-              onTerminalText={handleTerminalText}
-              preview={preview}
-              repoContext={repoContext}
-              scope={terminalScope}
-              thinkingEffort={thinkingEffort}
-              onThinkingEffortChange={setThinkingEffort}
-              currentWorkTitle={activePlanState.currentTitle}
+        <section
+          className={cn(
+            "grid h-full min-h-0 flex-1 overflow-hidden",
+            isMainPaneExpanded || isUtilityRoute
+              ? "grid-cols-1"
+              : isImportPlanningView
+              ? "grid-cols-[300px_minmax(420px,1fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]"
+              : "grid-cols-[300px_minmax(420px,1fr)_minmax(380px,0.92fr)] max-xl:grid-cols-[260px_minmax(0,1fr)]",
+          )}
+        >
+          {isMainPaneExpanded || isUtilityRoute ? null : (
+            <WikiSidebar
+              currentPath={currentWikiPath}
+              exportStatus={wikiExportStatus}
+              isExporting={isWikiExporting}
+              model={sidebarModel}
+              onCreatePlan={() => runCommandAction("new-plan")}
+              onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
+              onNavigate={(path) => navigate({ kind: "wiki", path })}
+              route={route}
               workspace={workspace}
-              sessions={sessions}
             />
-          </div>
-        )}
-      </section>
+          )}
+          <WorkspacePane
+            activeProject={activeProject}
+            hasLoadedProjects={hasLoadedProjects}
+            isExpanded={isMainPaneExpanded}
+            isLoading={isWikiLoading}
+            onNavigate={navigate}
+            onCreateProject={createProject}
+            activeImportPlanningRun={activeImportPlanningRun}
+            onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
+            onPlanImportedProject={planImportedProject}
+            onResumeImportPlanning={resumeImportPlanning}
+            onRemoveProject={removeProject}
+            onDeletePlan={deletePlanPage}
+            onRunCommand={runCommandAction}
+            onAnswerPlanningQuestion={answerPlanningQuestion}
+            onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
+            onSwitchProject={switchProject}
+            planningActivity={planningActivity}
+            planningWorkstream={planningWorkstream}
+            lastPlanningAnswer={lastPlanningAnswer}
+            pendingImportProject={isPendingImportRoute ? pendingImportProject : null}
+            isImportPlanningView={isImportPlanningView}
+            canResumeImportPlanning={canResumeImportPlanning}
+            planningInterviewStatus={planningInterviewStatus}
+            planningQuestions={activePlanningQuestions}
+            projectGroups={projectGroups}
+            reviewWorkflows={reviewWorkflows}
+            route={route}
+            settings={settings}
+            wikiError={wikiError}
+            wikiHtml={wikiHtml}
+            wikiSource={wikiSource}
+            wikiPath={currentWikiPath}
+            wikiPages={wikiPages}
+            activePlanState={activePlanState}
+          />
+          {isMainPaneExpanded || isUtilityRoute ? null : isImportPlanningView ? null : (
+            <div className="h-full min-h-0 overflow-hidden">
+              <TerminalPane
+                activeSessionId={activeSessionId}
+                activeProject={activeProject}
+                isLoading={isSessionsLoading}
+                onCloseSession={closeSession}
+                onCreateWorktree={createWorktreeFromTerminal}
+                onInitializeGit={initializeGitFromTerminal}
+                onRenameSession={renameSession}
+                onRestartSession={restartSession}
+                onRunDev={startDevTerminal}
+                onSelectSession={setActiveSessionId}
+                onStart={startTerminal}
+                onTerminalText={handleTerminalText}
+                preview={preview}
+                repoContext={repoContext}
+                scope={terminalScope}
+                thinkingEffort={thinkingEffort}
+                onThinkingEffortChange={setThinkingEffort}
+                currentWorkTitle={activePlanState.currentTitle}
+                workspace={workspace}
+                sessions={sessions}
+              />
+            </div>
+          )}
+        </section>
+      </BeamSurface>
+      </GridBeamRuntimeContext.Provider>
     </main>
   );
 }
@@ -2660,7 +2684,7 @@ function TopBar(props: {
   }, [props.isProjectsOpen, props.setIsProjectsOpen]);
 
   return (
-    <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card px-3 text-sm">
+    <header className="flex min-h-12 shrink-0 items-center justify-between gap-4 border-b bg-card/95 px-3 text-sm backdrop-blur">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
@@ -2698,17 +2722,90 @@ function BrandMark() {
   );
 }
 
+function BeamSurface({
+  active = true,
+  borderRadius = 8,
+  breathe = true,
+  children,
+  className,
+  colorVariant = "mono",
+  cols = 4,
+  contentClassName,
+  duration = 5,
+  rows = 3,
+  strength = 0.32,
+}: {
+  active?: boolean;
+  borderRadius?: number;
+  breathe?: boolean;
+  children: ReactNode;
+  className?: string;
+  colorVariant?: GridBeamPaletteKey;
+  cols?: number;
+  contentClassName?: string;
+  duration?: number;
+  rows?: number;
+  strength?: number;
+}) {
+  const { prefersReducedMotion, theme } = useContext(GridBeamRuntimeContext);
+  return (
+    <GridBeam
+      active={active && !prefersReducedMotion}
+      borderRadius={borderRadius}
+      breathe={breathe}
+      className={className}
+      colorVariant={colorVariant}
+      cols={cols}
+      duration={duration}
+      rows={rows}
+      strength={strength}
+      theme={theme}
+    >
+      <div className={cn("relative", contentClassName)}>{children}</div>
+    </GridBeam>
+  );
+}
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return prefersReducedMotion;
+}
+
+function useDocumentGridBeamTheme(): GridBeamColorScheme {
+  const [scheme, setScheme] = useState<GridBeamColorScheme>(() => documentGridBeamTheme());
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () => setScheme(documentGridBeamTheme());
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributeFilter: ["style"], attributes: true });
+    return () => observer.disconnect();
+  }, []);
+  return scheme;
+}
+
+function documentGridBeamTheme(): GridBeamColorScheme {
+  return document.documentElement.style.colorScheme === "dark" ? "dark" : "light";
+}
+
 function UpNextPopover({ workspace }: { workspace: WorkspaceResponse | null }) {
   const item = workspace?.status;
   return (
-    <div className="absolute left-0 top-10 z-20 w-96 border bg-popover p-3 text-popover-foreground shadow-lg">
+    <BeamSurface className="absolute left-0 top-10 z-20 w-96 border bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur" colorVariant="ocean" cols={3} rows={2} strength={0.2}>
       <div className="flex flex-col gap-2">
         <div className="text-xs font-bold uppercase text-muted-foreground">Current focus</div>
         <div className="font-bold">{item?.current || item?.stage || "No current task"}</div>
         {item?.currentPath ? <div className="break-all text-xs text-muted-foreground">{item.currentPath}</div> : null}
         {item?.next ? <div className="border-t pt-2 text-sm text-muted-foreground">{item.next}</div> : null}
       </div>
-    </div>
+    </BeamSurface>
   );
 }
 
@@ -2730,7 +2827,7 @@ function ProjectsPopover({
     }))
     .filter((item): item is { group: ProjectGroup; project: ProjectRecord } => Boolean(item.project));
   return (
-    <div className="absolute right-0 top-11 z-20 max-h-[70vh] w-[25rem] overflow-auto rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg">
+    <BeamSurface className="absolute right-0 top-11 z-20 max-h-[70vh] w-[25rem] overflow-auto rounded-lg border bg-popover/95 p-3 text-popover-foreground shadow-lg backdrop-blur" colorVariant="ocean" cols={4} rows={4} strength={0.22}>
       <div className="mb-4 flex flex-col gap-2">
         <button
           className="flex min-h-11 items-center justify-center gap-2 rounded-md border bg-foreground px-3 text-sm font-bold text-background shadow-sm"
@@ -2778,7 +2875,7 @@ function ProjectsPopover({
       ) : (
         <div className="rounded-md border border-dashed bg-background p-4 text-center text-sm text-muted-foreground">No projects available.</div>
       )}
-    </div>
+    </BeamSurface>
   );
 }
 
@@ -2799,7 +2896,8 @@ function WikiSidebar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card/95">
+      <BeamSurface className="h-full bg-card/90" colorVariant="mono" cols={3} contentClassName="h-full" duration={6} rows={5} strength={0.2}>
       <nav className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
@@ -2835,6 +2933,7 @@ function WikiSidebar(props: {
           </div>
         </details>
       </nav>
+      </BeamSurface>
     </aside>
   );
 }
@@ -3038,8 +3137,35 @@ function WorkspacePane(props: {
   }
   if (displayWikiPath(props.wikiPath) === defaultWikiPath) {
     return (
-      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-        <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background/80">
+        <BeamSurface className="flex h-full min-h-0 flex-col bg-background/88" colorVariant="mono" cols={5} contentClassName="flex h-full min-h-0 flex-col" duration={6} rows={4} strength={0.2}>
+          <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card/95 px-3 backdrop-blur">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <Button
+                aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
+                className="size-8"
+                size="icon"
+                title={props.isExpanded ? "Restore sidebars" : "Expand document"}
+                variant="outline"
+                onClick={props.onToggleExpanded}
+              >
+                {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
+              </Button>
+              <span className="truncate text-xs font-bold uppercase">Plans</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+            </div>
+          </div>
+          <PlansIndexEmptyState onCreatePlan={() => props.onRunCommand("new-plan")} />
+        </BeamSurface>
+      </section>
+    );
+  }
+  return (
+    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background/80">
+      <BeamSurface className="flex h-full min-h-0 flex-col bg-background/88" colorVariant="mono" cols={6} contentClassName="flex h-full min-h-0 flex-col" duration={6.5} rows={5} strength={0.18}>
+        <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card/95 px-3 backdrop-blur">
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <Button
               aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
@@ -3051,60 +3177,37 @@ function WorkspacePane(props: {
             >
               {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
             </Button>
-            <span className="truncate text-xs font-bold uppercase">Plans</span>
+            <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
           </div>
         </div>
-        <PlansIndexEmptyState onCreatePlan={() => props.onRunCommand("new-plan")} />
-      </section>
-    );
-  }
-  return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
-      <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card px-3">
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          <Button
-            aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
-            className="size-8"
-            size="icon"
-            title={props.isExpanded ? "Restore sidebars" : "Expand document"}
-            variant="outline"
-            onClick={props.onToggleExpanded}
-          >
-            {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
-          </Button>
-          <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          {props.isLoading ? (
+            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-card/95 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+              Loading wiki page
+            </div>
+          ) : null}
+          {props.wikiError ? (
+            <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
+          ) : props.wikiSource && isReactRenderedMdxPath(props.wikiPath) ? (
+            <MdxPlanRenderer
+              canDeletePlan={isDeletablePlanRootPage(props.wikiPath, props.wikiPages)}
+              markdown={props.wikiSource.markdown}
+              onDeletePlan={() => props.onDeletePlan(props.wikiPath)}
+              onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
+              path={props.wikiPath}
+              status={isActivePlanPage ? "active" : props.wikiSource.status}
+              source={props.wikiSource.source}
+              validationWarnings={props.wikiSource.validationWarnings}
+            />
+          ) : (
+            <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
-        </div>
-      </div>
-      <div className="relative min-h-0 flex-1 overflow-hidden">
-        {props.isLoading ? (
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-card px-3 py-2 text-xs text-muted-foreground">
-            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-            Loading wiki page
-          </div>
-        ) : null}
-        {props.wikiError ? (
-          <WikiErrorState error={props.wikiError} onNewProject={() => props.onNavigate({ kind: "new-project" })} onProjects={() => props.onNavigate({ kind: "projects" })} />
-        ) : props.wikiSource && isReactRenderedMdxPath(props.wikiPath) ? (
-          <MdxPlanRenderer
-            canDeletePlan={isDeletablePlanRootPage(props.wikiPath, props.wikiPages)}
-            markdown={props.wikiSource.markdown}
-            onDeletePlan={() => props.onDeletePlan(props.wikiPath)}
-            onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
-            path={props.wikiPath}
-            status={isActivePlanPage ? "active" : props.wikiSource.status}
-            source={props.wikiSource.source}
-            validationWarnings={props.wikiSource.validationWarnings}
-          />
-        ) : (
-          <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
-        )}
-      </div>
+      </BeamSurface>
     </section>
   );
 }
@@ -3112,7 +3215,7 @@ function WorkspacePane(props: {
 function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
-      <div className="flex max-w-lg flex-col items-center gap-5 text-center">
+      <BeamSurface className="flex max-w-lg flex-col items-center gap-5 rounded-md border bg-card/90 p-8 text-center shadow-sm" colorVariant="ocean" cols={3} rows={3} strength={0.24}>
         <div className="grid size-14 place-items-center rounded-md border bg-card">
           <BookOpen aria-hidden="true" className="size-6 text-muted-foreground" />
         </div>
@@ -3124,7 +3227,7 @@ function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => void }) {
           <Plus aria-hidden="true" data-icon="inline-start" />
           New Plan
         </Button>
-      </div>
+      </BeamSurface>
     </div>
   );
 }
@@ -3133,7 +3236,7 @@ function WikiErrorState({ error, onNewProject, onProjects }: { error: string; on
   const missing = isMissingFileError(error);
   return (
     <div className="flex min-h-full items-center justify-center p-8">
-      <div className="flex max-w-lg flex-col items-center gap-4 text-center">
+      <BeamSurface className="flex max-w-lg flex-col items-center gap-4 rounded-md border bg-card/90 p-8 text-center shadow-sm" colorVariant="sunset" cols={3} rows={3} strength={0.22}>
         <div className="grid size-12 place-items-center rounded-md border bg-card">
           <FolderOpen aria-hidden="true" className="size-5 text-muted-foreground" />
         </div>
@@ -3147,7 +3250,7 @@ function WikiErrorState({ error, onNewProject, onProjects }: { error: string; on
           <Button onClick={onProjects}>Projects</Button>
           <Button variant="outline" onClick={onNewProject}>New Project</Button>
         </div>
-      </div>
+      </BeamSurface>
     </div>
   );
 }
@@ -3312,8 +3415,9 @@ function ImportedPlanningQAView({
   const description = "Answer questions and make important decisions to create your project.";
 
   return (
-    <main className="grid min-h-0 place-items-start overflow-auto bg-background px-5 pt-8 antialiased md:px-8 md:pt-12">
-      <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg border bg-card p-5 shadow-sm md:p-6">
+    <main className="min-h-0 overflow-auto bg-background/80 antialiased">
+      <BeamSurface className="grid min-h-full place-items-start bg-background/86 px-5 pt-8 md:px-8 md:pt-12" colorVariant="mono" cols={5} duration={7} rows={5} strength={0.18}>
+      <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg border bg-card/92 p-5 shadow-sm md:p-6">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creating project</p>
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance">{title}</h1>
@@ -3477,6 +3581,7 @@ function ImportedPlanningQAView({
           </Button>
         </div>
       </section>
+      </BeamSurface>
     </main>
   );
 }
@@ -3493,31 +3598,33 @@ function ProjectsView({
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
 }) {
   return (
-    <section className="min-h-0 overflow-auto bg-background">
-      <header className="flex min-h-40 items-center justify-between px-10">
-        <div>
-          <h1 className="m-0 text-4xl font-bold leading-none">Projects</h1>
-          <p className="m-0 mt-3 text-sm text-muted-foreground">Switch between registered local hyperwiki projects.</p>
-        </div>
-        <Button className="min-h-11 px-5" variant="outline" onClick={onNewProject}>
-          <Plus aria-hidden="true" data-icon="inline-start" />
-          New Project
-        </Button>
-      </header>
-      <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
-        {groups.length ? (
-          groups.map((group) => <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />)
-        ) : (
-          <div className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card p-8">
-            <h2 className="m-0 text-3xl font-bold">No projects yet</h2>
-            <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh hyperwiki project from a brief to start the workspace.</p>
-            <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
-              <Plus aria-hidden="true" data-icon="inline-start" />
-              New Project
-            </Button>
+    <section className="min-h-0 overflow-auto bg-background/80">
+      <BeamSurface className="min-h-full bg-background/85" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={4} strength={0.18}>
+        <header className="flex min-h-40 items-center justify-between px-10">
+          <div>
+            <h1 className="m-0 text-4xl font-bold leading-none">Projects</h1>
+            <p className="m-0 mt-3 text-sm text-muted-foreground">Switch between registered local hyperwiki projects.</p>
           </div>
-        )}
-      </div>
+          <Button className="min-h-11 px-5" variant="outline" onClick={onNewProject}>
+            <Plus aria-hidden="true" data-icon="inline-start" />
+            New Project
+          </Button>
+        </header>
+        <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
+          {groups.length ? (
+            groups.map((group) => <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />)
+          ) : (
+            <BeamSurface className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card/92 p-8 shadow-sm" colorVariant="ocean" cols={4} rows={3} strength={0.26}>
+              <h2 className="m-0 text-3xl font-bold">No projects yet</h2>
+              <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh hyperwiki project from a brief to start the workspace.</p>
+              <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
+                <Plus aria-hidden="true" data-icon="inline-start" />
+                New Project
+              </Button>
+            </BeamSurface>
+          )}
+        </div>
+      </BeamSurface>
     </section>
   );
 }
@@ -3558,7 +3665,8 @@ function ProjectCard({
   }
 
   return (
-    <article className={cn("flex min-h-[23rem] flex-col rounded-md border bg-card p-5", isActive && "border-primary/45 ring-1 ring-primary/25")}>
+    <BeamSurface className={cn("min-h-[23rem] rounded-md border bg-card/92 shadow-sm", isActive && "border-primary/45 ring-1 ring-primary/25")} colorVariant={isActive ? "ocean" : "mono"} cols={4} rows={4} strength={isActive ? 0.32 : 0.2}>
+    <article className="flex min-h-[23rem] flex-col p-5">
       <div className="mb-7 flex items-start justify-between gap-4">
         <h2 className="m-0 min-w-0 truncate text-lg font-bold">{group.name || selected?.name || group.projectSlug}</h2>
         <span className={cn("rounded-full border px-2 py-1 text-xs font-bold uppercase", isActive ? "bg-primary/10 text-secondary-foreground" : "bg-secondary text-muted-foreground")}>
@@ -3614,12 +3722,13 @@ function ProjectCard({
         </div>
       ) : null}
     </article>
+    </BeamSurface>
   );
 }
 
 function ProjectDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-background px-3 py-3">
+    <div className="rounded-md border bg-background/86 px-3 py-3">
       <div className="text-[10px] font-bold uppercase text-muted-foreground">{label}</div>
       <div className="truncate text-sm font-bold">{value}</div>
     </div>
@@ -3635,12 +3744,12 @@ function formatProjectDate(value?: string | null) {
 
 function PendingImportView({ project }: { project: ProjectRecord }) {
   return (
-    <section className="flex min-h-0 items-center justify-center bg-background p-8">
-      <div className="grid max-w-md gap-3 text-center">
+    <section className="flex min-h-0 items-center justify-center bg-background/80 p-8">
+      <BeamSurface className="grid max-w-md gap-3 rounded-md border bg-card/92 p-8 text-center shadow-sm" colorVariant="ocean" cols={3} rows={3} strength={0.28}>
         <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
         <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">Opening {project.name}</h1>
         <p className="m-0 text-sm text-muted-foreground">Waiting for the imported project to appear in the local registry.</p>
-      </div>
+      </BeamSurface>
     </section>
   );
 }
@@ -3756,12 +3865,12 @@ function NewProjectView({
 
   if (handoffProject) {
     return (
-      <section className="flex min-h-0 items-center justify-center bg-background p-8">
-        <div className="grid max-w-md gap-3 text-center">
+      <section className="flex min-h-0 items-center justify-center bg-background/80 p-8">
+        <BeamSurface className="grid max-w-md gap-3 rounded-md border bg-card/92 p-8 text-center shadow-sm" colorVariant="ocean" cols={3} rows={3} strength={0.28}>
           <Loader2 aria-hidden="true" className="mx-auto size-5 animate-spin text-muted-foreground" />
           <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">Opening {handoffProject.name}</h1>
           <p className="m-0 text-sm text-muted-foreground">Switching to the planning workspace and starting the agent.</p>
-        </div>
+        </BeamSurface>
       </section>
     );
   }
@@ -3773,16 +3882,18 @@ function NewProjectView({
   const canSubmitBrief = Boolean(title.trim() && document.trim());
 
   return (
-    <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
-      <div className="mx-auto grid w-full max-w-[60rem] gap-9">
-        <header className="px-1">
-          <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-5xl">{heading}</h1>
-          <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground text-pretty md:text-lg">
-            {subhead}
-          </p>
-        </header>
+    <section className="min-h-0 overflow-auto bg-background/80">
+      <BeamSurface className="min-h-full bg-background/86 px-5 py-10 md:px-10 md:py-14" colorVariant="mono" cols={5} duration={7} rows={4} strength={0.18}>
+        <div className="mx-auto grid w-full max-w-[60rem] gap-9">
+          <header className="px-1">
+            <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-5xl">{heading}</h1>
+            <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground text-pretty md:text-lg">
+              {subhead}
+            </p>
+          </header>
 
-        <form className="grid gap-6 rounded-lg border bg-card p-5 shadow-sm md:p-8" data-testid="new-project-form" onSubmit={handleSubmit}>
+          <BeamSurface className="rounded-lg border bg-card/92 shadow-sm" colorVariant="ocean" cols={4} rows={5} strength={0.24}>
+          <form className="grid gap-6 p-5 md:p-8" data-testid="new-project-form" onSubmit={handleSubmit}>
           <label className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:bg-secondary/40 hover:text-foreground">
             <Upload aria-hidden="true" className="mb-4 size-10 text-primary transition-transform group-hover:-translate-y-0.5" />
             <span className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform group-active:scale-[0.98]">Import Project Doc</span>
@@ -3818,8 +3929,10 @@ function NewProjectView({
 
           {status ? <p className="m-0 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
           <ImportLog lines={importLog} />
-        </form>
-      </div>
+          </form>
+          </BeamSurface>
+        </div>
+      </BeamSurface>
     </section>
   );
 }
@@ -3859,14 +3972,14 @@ function clearImportLog() {
 function ImportLog({ lines }: { lines: string[] }) {
   if (!lines.length) return null;
   return (
-    <section className="mt-4 rounded-md border bg-background p-3">
+    <BeamSurface className="mt-4 rounded-md border bg-background/88 p-3" colorVariant="mono" cols={4} rows={2} strength={0.14}>
       <h3 className="m-0 text-xs font-bold uppercase text-muted-foreground">Import Log</h3>
       <ol className="m-0 mt-2 grid gap-1 p-0 text-xs text-muted-foreground">
         {lines.map((line, index) => (
           <li className="list-none break-words" key={`${index}-${line}`}>{line}</li>
         ))}
       </ol>
-    </section>
+    </BeamSurface>
   );
 }
 
@@ -4061,9 +4174,11 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
 
   if (!draft) {
     return (
-      <section className="min-h-0 overflow-auto bg-background">
+      <section className="min-h-0 overflow-auto bg-background/80">
+        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={5} contentClassName="min-h-full" duration={7} rows={4} strength={0.18}>
         <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
         <div className="m-8 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
+        </BeamSurface>
       </section>
     );
   }
@@ -4077,7 +4192,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
     const editTheme = effectiveTheme(editableTheme);
     const presets = editableTheme.presets || {};
     return (
-      <section className="min-h-0 overflow-auto bg-background">
+      <section className="min-h-0 overflow-auto bg-background/80">
+        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={revertTheme}>Revert</Button><Button onClick={completeThemeEditor}>Done</Button></>}
           description="Theme changes apply immediately and save automatically."
@@ -4087,7 +4203,7 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
           <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
           <ThemePresetStrip activePreset={editableTheme.activePreset || ""} onSelect={(key) => setThemeDraft(selectThemePreset(editableTheme, key))} presets={presets} />
           <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
-            <section className="rounded-md border bg-card p-4">
+            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
               <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
                 Mode
                 <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={editTheme.mode} onChange={(event) => setThemeDraft(updateThemeMode(editableTheme, event.target.value))}>
@@ -4110,8 +4226,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                 <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">Advanced JSON</summary>
                 <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
               </details>
-            </section>
-            <section className="grid rounded-md border bg-card p-6">
+            </BeamSurface>
+            <BeamSurface className="grid rounded-md border bg-card/92 p-6 shadow-sm" colorVariant="ocean" cols={4} rows={3} strength={0.24}>
               <div className="grid grid-cols-[190px_1fr] gap-8">
                 <div className="border-r pr-6 font-ui">
                   <p className="text-xs font-bold uppercase text-muted-foreground">Plans</p>
@@ -4124,10 +4240,11 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                   <code className="mt-5 inline-block bg-muted px-2 py-1 font-mono text-sm">wiki/plans/mvp/stage-08-settings-soul-memory.mdx</code>
                 </div>
               </div>
-            </section>
+            </BeamSurface>
           </div>
         </div>
         <SettingsStatus status={status} />
+        </BeamSurface>
       </section>
     );
   }
@@ -4135,7 +4252,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
   if (mode === "agent") {
     const editableAgent = agentDraft || { soul: draft.soul || {}, memory: draft.memory || { entries: [] } };
     return (
-      <section className="min-h-0 overflow-auto bg-background">
+      <section className="min-h-0 overflow-auto bg-background/80">
+        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
           description="Saving updates global instructions and syncs the current project AGENTS.md."
@@ -4143,12 +4261,12 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
         />
         <div className="grid gap-4 p-8">
           <div className="grid grid-cols-[minmax(360px,0.78fr)_minmax(320px,1fr)] gap-4 max-lg:grid-cols-1">
-            <section className="rounded-md border bg-card p-4">
+            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
               <TextareaField label="Principles" value={(editableAgent.soul?.principles || []).join("\n")} rows={8} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), principles: value.split("\n").map((line) => line.trim()).filter(Boolean) } })} />
               <TextareaField label="Interface Guidance" value={editableAgent.soul?.interface || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), interface: value } })} />
               <TextareaField label="Agent Guidance" value={editableAgent.soul?.agent || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), agent: value } })} />
-            </section>
-            <section className="rounded-md border bg-card p-4">
+            </BeamSurface>
+            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-bold uppercase">Memory</h2>
                 <Button variant="outline" onClick={() => setAgentDraft({ ...editableAgent, memory: { entries: [...(editableAgent.memory?.entries || []), { title: "", content: "", enabled: true }] } })}>+ Memory</Button>
@@ -4162,26 +4280,28 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
                   }} onRemove={() => setAgentDraft({ ...editableAgent, memory: { entries: (editableAgent.memory?.entries || []).filter((_, itemIndex) => itemIndex !== index) } })} />
                 )) : <p className="text-sm text-muted-foreground">No memory entries added yet.</p>}
               </div>
-            </section>
+            </BeamSurface>
           </div>
-          <section className="rounded-md border bg-card p-4">
+          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={5} rows={3} strength={0.16}>
             <div className="mb-3 flex items-center justify-between gap-4">
               <h2 className="text-sm font-bold uppercase">AGENTS.md</h2>
               <span className="truncate text-xs text-muted-foreground">{agentsFile.path || "AGENTS.md"}</span>
             </div>
             <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[360px] w-full rounded-md border bg-background p-4 font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
-          </section>
+          </BeamSurface>
         </div>
         <SettingsStatus status={status} />
+        </BeamSurface>
       </section>
     );
   }
 
   return (
-    <section className="min-h-0 overflow-auto bg-background">
+    <section className="min-h-0 overflow-auto bg-background/80">
+      <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
       <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
       <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
-        <section className="rounded-md border bg-card p-4">
+        <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="ocean" cols={4} rows={4} strength={0.22}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold uppercase">Theme</h2>
             <Button variant="outline" onClick={openThemeEditor}>Edit</Button>
@@ -4195,8 +4315,8 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
             <ThemeSurfaceSummary label="Docs" description="Planning and wiki pages" tokens={theme.tokens.docs} fontKeys={[["Primary Font", "serifFont"], ["Mono Font", "monoFont"]]} />
             <ThemeSurfaceSummary label="Terminal" description="Pane chrome and session frames" tokens={theme.tokens.terminal} fontKeys={[["Font", "font"]]} />
           </div>
-        </section>
-        <section className="rounded-md border bg-card p-4">
+        </BeamSurface>
+        <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
             <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
@@ -4206,9 +4326,10 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
             <AgentSummaryCard title="Agent" meta="Guidance" lines={[soul.agent || "No agent guidance recorded."]} />
             <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
           </div>
-        </section>
+        </BeamSurface>
       </div>
       <SettingsStatus status={status} />
+      </BeamSurface>
     </section>
   );
 }
@@ -4232,7 +4353,7 @@ function SettingsStatus({ status }: { status: string }) {
 
 function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { description: string; fontKeys: Array<[string, string]>; label: string; tokens?: Record<string, string> }) {
   return (
-    <article className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background p-4">
+    <BeamSurface className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background/88 p-4" colorVariant="mono" cols={4} rows={2} strength={0.16}>
       <header>
         <strong className="block text-sm">{label}</strong>
         <span className="text-xs text-muted-foreground">{description}</span>
@@ -4251,7 +4372,7 @@ function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { descrip
           ))}
         </dl>
       </div>
-    </article>
+    </BeamSurface>
   );
 }
 
@@ -4273,7 +4394,7 @@ function ThemeSwatches({ colors, tall = false }: { colors: Array<string | undefi
 function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: string; title: string }) {
   const values = lines.filter(Boolean);
   return (
-    <article className="rounded-md border bg-background p-3">
+    <BeamSurface className="rounded-md border bg-background/88 p-3" colorVariant="mono" cols={3} rows={2} strength={0.14}>
       <header className="mb-2 flex items-center justify-between gap-3">
         <strong>{title}</strong>
         <span className="text-xs text-muted-foreground">{meta}</span>
@@ -4281,7 +4402,7 @@ function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: strin
       <ul className="m-0 grid gap-1 pl-5 text-sm text-muted-foreground">
         {(values.length ? values : ["No entries added yet."]).map((line, index) => <li key={index}>{line}</li>)}
       </ul>
-    </article>
+    </BeamSurface>
   );
 }
 
@@ -4289,7 +4410,7 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
   const entries = Object.entries(presets);
   if (!entries.length) return null;
   return (
-    <section className="min-w-0 overflow-hidden rounded-md border bg-card p-3">
+    <BeamSurface className="min-w-0 overflow-hidden rounded-md border bg-card/92 p-3 shadow-sm" colorVariant="mono" cols={5} rows={2} strength={0.16}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
         <span className="truncate text-xs text-muted-foreground">Choosing a preset applies and autosaves.</span>
@@ -4328,7 +4449,7 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
           );
         })}
       </div>
-    </section>
+    </BeamSurface>
   );
 }
 
