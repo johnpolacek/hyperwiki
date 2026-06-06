@@ -35,11 +35,15 @@ Use them conservatively:
 | Stage or unit sequence | `Steps` and `Step` |
 | Alternatives, risks, dependencies, work tracks | `CardGroup`, `Card`, `Columns`, `Column` |
 | API, MCP, command, event, or schema contracts | `RequestExample`, `ResponseExample`, `ParamField`, `ResponseField` |
+| File snippets, schemas, config, API examples | `CodeBlock` |
+| Exact shell commands | `CommandBlock` |
 | Compact secondary context | `Aside` |
 | Important notes, constraints, risks | `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check` |
 | Long source context for agents only | `Visibility for="agents"` |
 
 Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
+
+Prefer `CodeBlock` over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose `Tabs`/`Tab` with one `CodeBlock` per tab instead of dumping repeated fences.
 
 ## Planning Composition Cookbook
 
@@ -83,7 +87,7 @@ Use for endpoints, Tauri commands, MCP tools/resources, generated schemas, or ev
 
 - `RequestExample` and `ResponseExample` for concrete examples.
 - `ParamField` and `ResponseField` for required fields and response shape.
-- `CodeBlock` for short schema or handler snippets.
+- `CodeBlock` for file snippets, schema/config examples, handler snippets, and API payloads.
 - `CommandBlock` for exact local commands or manual command-line checks.
 - `Verification` for contract tests and manual probes.
 
@@ -97,6 +101,21 @@ Use for endpoints, Tauri commands, MCP tools/resources, generated schemas, or ev
     Agent-readable Markdown derivative.
   </ResponseField>
 </ResponseExample>
+```
+
+Use `Tabs` and `Tab` around multiple `CodeBlock` examples when the same contract needs alternate languages, files, or clients:
+
+```mdx
+<Tabs default="tsx">
+  <Tab title="React" value="tsx">
+    <CodeBlock title="Page.tsx" language="tsx">export default function Page() {
+  return <main>Hello</main>
+}</CodeBlock>
+  </Tab>
+  <Tab title="curl" value="curl">
+    <CodeBlock title="Probe" language="bash">curl http://127.0.0.1:1421/api/wiki</CodeBlock>
+  </Tab>
+</Tabs>
 ```
 
 ### Implementation Unit

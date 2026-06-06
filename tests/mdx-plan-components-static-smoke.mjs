@@ -126,9 +126,23 @@ for (const generationContract of [
   "full-width CardGroup cards for alternatives or work tracks",
   "avoid multi-column plan layouts",
   "RequestExample/ResponseExample/ParamField/ResponseField for contracts",
+  "Prefer CodeBlock over raw fenced code blocks",
+  "one CodeBlock per tab",
 ]) {
   if (!app.includes(generationContract)) {
     throw new Error(`Plan generation prompt must advertise rich MDX composition: ${generationContract}`);
+  }
+}
+
+const hyperwikiSkill = await readFile(path.resolve("src-tauri/agent-skills/hyperwiki/SKILL.md"), "utf8");
+const mdxPatterns = await readFile(path.resolve("src-tauri/agent-skills/hyperwiki/references/mdx-artifact-patterns.md"), "utf8");
+
+for (const codeBlockGuidance of [
+  "Prefer `CodeBlock` over raw fenced code blocks",
+  "one `CodeBlock` per tab",
+]) {
+  if (!hyperwikiSkill.includes(codeBlockGuidance) || !mdxPatterns.includes(codeBlockGuidance)) {
+    throw new Error(`Hyperwiki skill guidance must prefer CodeBlock for rich visible code examples: ${codeBlockGuidance}`);
   }
 }
 

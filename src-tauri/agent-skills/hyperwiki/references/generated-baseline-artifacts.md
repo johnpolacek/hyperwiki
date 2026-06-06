@@ -124,6 +124,8 @@ All generated `wiki/*.mdx` and `wiki/**/*.mdx` pages should be renderer-agnostic
 - Use hyperwiki planning components for plan pages when available: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 - Before writing a substantial plan, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.
 - Use `CardGroup` or `Columns` for alternatives, risks, dependencies, work tracks, and stage overviews when they make the plan easier to scan.
+- Prefer `CodeBlock` over raw fenced code blocks for visible file snippets, schema/config examples, and API examples when a title, language label, copy affordance, or tabbed alternatives would help. Compose `Tabs`/`Tab` with one `CodeBlock` per tab for alternate files, languages, clients, or package-manager examples.
+- Use `CommandBlock` for exact local shell commands.
 - Use `RequestExample`, `ResponseExample`, `ParamField`, and `ResponseField` for API, MCP, command, event, or schema contracts.
 - Use `Visibility for="agents"` for long source context, raw Q&A, or handoff detail that should remain in Markdown derivatives but stay hidden in the rendered app.
 - Do not use inline scripts by default.
