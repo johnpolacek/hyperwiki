@@ -78,7 +78,7 @@ if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
 }
-if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("isAgentStartupInProgress") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("model:\\s*loading") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills")) {
+if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("isAgentStartupInProgress") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("lastModelLoading") || !appSource.includes("lastModelReady") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills")) {
   throw new Error("Agent prompt readiness must wait through Codex model and MCP startup before submitting agent prompts.");
 }
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
@@ -113,6 +113,9 @@ if (!appSource.includes("function hasExplicitWikiRouteLocation") || !appSource.i
 }
 if (!appSource.includes("const isImportPlanningView = false") || !appSource.includes("terminalImportPlanningPrompt") || !appSource.includes("Mode: terminal_import_planning.") || !appSource.includes("Do not emit hyperwiki-question JSON")) {
   throw new Error("Imported-project planning must use the terminal-owned planning handoff instead of the app-rendered Q&A layout.");
+}
+if (!appSource.includes("activePlanScopeComplete || isImportedPlanningActive") || !appSource.includes("isImportedPlanningActive, layout, sessions")) {
+  throw new Error("Import planning intake must not prewarm hidden Modify sessions before the visible terminal-owned import handoff.");
 }
 if (!appSource.includes("terminal-native one-question-at-a-time planning interview") || !appSource.includes("ask the user for the planning focus first and wait") || appSource.includes("For every user-facing question, emit only one JSON object containing type \\\"hyperwiki-question\\\"")) {
   throw new Error("Regular + plan prompt must use terminal-native Q&A instead of app-rendered JSON questions.");

@@ -977,9 +977,9 @@ function App() {
   }, [activeProject?.id, hasLoadedProjects]);
 
   useEffect(() => {
-    if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete) return;
+    if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete || isImportedPlanningActive) return;
     void prewarmModifySessionForScope(activeProject, layout, terminalScope, sessions);
-  }, [activeProject?.id, activePlanScopeComplete, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
+  }, [activeProject?.id, activePlanScopeComplete, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || !activePlanScopeComplete) return;
@@ -6623,6 +6623,9 @@ function isAgentStartupInProgress(text: string) {
   const lower = text.toLowerCase();
   const recent = lower.slice(-1800);
   if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(recent)) return true;
+  const lastModelLoading = lower.lastIndexOf("model: loading");
+  const lastModelReady = Math.max(lower.lastIndexOf("model: gpt"), lower.lastIndexOf("model: default"));
+  if (lastModelLoading !== -1 && lastModelLoading > lastModelReady) return true;
   const lastPrompt = Math.max(lower.lastIndexOf("›"), lower.lastIndexOf("\u203a"));
   const markerAfterPrompt = (pattern: RegExp) => {
     const match = [...lower.matchAll(pattern)].at(-1);
