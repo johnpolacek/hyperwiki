@@ -147,8 +147,11 @@ if (!appSource.includes("ensureAgentSession optimistic pane inserted") || !appSo
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("writeDisplayText(\"output\", bytes.length, payload.seq, displayText, text);") || !appSource.includes("writeDisplayText(\"replay\", bytes.length, replay.seq, displayText, text);") || !appSource.includes("terminalDisplayHasVisibleText") || !appSource.includes("Terminal display empty session=")) {
   throw new Error("Visible command terminal startup notices must clear only after displayable replay/output reaches xterm.");
 }
-if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}") || !appSource.includes("Terminal xterm render check") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("terminalFallbackTextForDisplay") || !appSource.includes("countVisibleCanvasPixels")) {
+if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}") || !appSource.includes("Terminal xterm render check") || !appSource.includes("Terminal xterm cleanup") || !appSource.includes("effect=${effectRun}") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("terminalBufferTextForDisplay") || !appSource.includes("countVisibleCanvasPixels") || !appSource.includes('aria-label="Terminal transcript"') || !appSource.includes("select-text")) {
   throw new Error("Terminal panes must fall back to a readable transcript and log xterm paint diagnostics when output is received but xterm does not visibly render it.");
+}
+if (!appSource.includes("Agent handoff start kind=") || !appSource.includes("Agent handoff session ready") || !appSource.includes("elapsedMs=${Date.now() - handoffStartedAt}") || !appSource.includes("elapsedMs=${Date.now() - startedAt}")) {
+  throw new Error("Agent handoffs and readiness waits must log elapsed timing for startup troubleshooting.");
 }
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");

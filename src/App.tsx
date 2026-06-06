@@ -1726,9 +1726,12 @@ function App() {
   ) {
     const runId = existingRunId || startAgentRun(kind, label);
     const promptProject = options.project || activeProject;
+    const handoffStartedAt = Date.now();
+    appendImportLog(`Agent handoff start kind=${kind} label=${label} project=${promptProject?.id || "none"} scope=${scope.scope} forceNew=${options.forceNewSession ? "yes" : "no"}`);
     try {
       const agentPurpose = kind === "modify" ? "modify" : "general";
       const session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: agentPurpose, promote: kind === "modify" || (!options.forceNewSession && agentPurpose === "general") });
+      appendImportLog(`Agent handoff session ready kind=${kind} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
       updateAgentRun(runId, {
         sessionId: session.id,
         phase: "waiting",
@@ -1742,7 +1745,7 @@ function App() {
           ? { maxAttempts: 60, intervalMs: 250, reason: "execute-submit" }
           : undefined;
       const ready = await waitForAgentPromptReady(session.id, readinessOptions);
-      appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120}`);
+      appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120} elapsedMs=${Date.now() - handoffStartedAt}`);
       updateAgentRun(runId, {
         phase: "sent",
         activity: ready ? "Sending prompt to agent" : "Sending prompt after readiness timeout",
@@ -1752,7 +1755,7 @@ function App() {
       let lastError: unknown;
       for (let attempt = 0; attempt < 8; attempt += 1) {
         try {
-          appendImportLog(`Agent prompt submit attempt=${attempt + 1} session=${session.id} scope=${scope.scope}`);
+          appendImportLog(`Agent prompt submit attempt=${attempt + 1} session=${session.id} scope=${scope.scope} elapsedMs=${Date.now() - handoffStartedAt}`);
           await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", promptProject), {
             method: "POST",
             body: {
@@ -1762,7 +1765,7 @@ function App() {
               scope: scope.scope,
             },
           });
-          appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id}`);
+          appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
           updateAgentRun(runId, {
             phase: "sent",
             activity: "Prompt sent; waiting for agent activity",
@@ -5150,6 +5153,8 @@ function XtermSession({
   const displayWriteLogCountRef = useRef(0);
   const renderCheckLogCountRef = useRef(0);
   const fitLogCountRef = useRef(0);
+  const fallbackUpdateLogCountRef = useRef(0);
+  const xtermEffectRunRef = useRef(0);
   const xtermPaintHealthyRef = useRef(false);
   const fallbackVisibleRef = useRef(false);
   const fallbackTextRef = useRef("");
@@ -5165,6 +5170,11 @@ function XtermSession({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const effectRun = xtermEffectRunRef.current + 1;
+    xtermEffectRunRef.current = effectRun;
+    const mountedAt = Date.now();
+    let disposed = false;
+    const renderCheckTimers: number[] = [];
     closedRef.current = false;
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
@@ -5172,6 +5182,7 @@ function XtermSession({
     displayWriteLogCountRef.current = 0;
     renderCheckLogCountRef.current = 0;
     fitLogCountRef.current = 0;
+    fallbackUpdateLogCountRef.current = 0;
     xtermPaintHealthyRef.current = false;
     fallbackVisibleRef.current = false;
     fallbackTextRef.current = "";
@@ -5203,7 +5214,8 @@ function XtermSession({
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(new WebLinksAddon());
     terminal.open(container);
-    appendImportLog(`Terminal xterm opened session=${session.id} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} active=${isActive}`);
+    const isCurrentEffect = () => !disposed && xtermEffectRunRef.current === effectRun && !closedRef.current;
+    appendImportLog(`Terminal xterm opened session=${session.id} effect=${effectRun} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} active=${isActive} elapsedMs=${Date.now() - mountedAt}`);
     if (isActive) {
       terminal.focus();
     }
@@ -5224,31 +5236,47 @@ function XtermSession({
     };
 
     const setTerminalFallbackVisible = (visible: boolean, reason: string, snapshot?: XtermRenderSnapshot) => {
+      if (!isCurrentEffect()) return;
       if (fallbackVisibleRef.current === visible) return;
       fallbackVisibleRef.current = visible;
       setFallbackVisible(visible);
       appendImportLog(`Terminal fallback ${visible ? "shown" : "hidden"} session=${session.id} reason=${reason}${snapshot ? ` ${xtermRenderSnapshotSummary(snapshot)}` : ""}`);
     };
 
-    const appendFallbackText = (text: string) => {
-      const nextText = appendTerminalFallbackText(fallbackTextRef.current, terminalFallbackTextForDisplay(text));
+    const setFallbackTranscript = (text: string, reason: string) => {
+      if (!isCurrentEffect()) return;
+      const nextText = text.trimEnd().slice(-12000);
       if (nextText === fallbackTextRef.current) return;
       fallbackTextRef.current = nextText;
       setFallbackText(nextText);
+      if (fallbackUpdateLogCountRef.current < 8) {
+        fallbackUpdateLogCountRef.current += 1;
+        appendImportLog(`Terminal fallback transcript updated session=${session.id} effect=${effectRun} reason=${reason} chars=${nextText.length} lines=${nextText.split("\n").length} elapsedMs=${Date.now() - mountedAt} count=${fallbackUpdateLogCountRef.current}`);
+      }
+    };
+
+    const appendFallbackText = (text: string, reason: string) => {
+      const nextText = appendTerminalFallbackText(fallbackTextRef.current, terminalFallbackTextForDisplay(text));
+      setFallbackTranscript(nextText, reason);
+    };
+
+    const refreshFallbackFromTerminalBuffer = (reason: string) => {
+      const bufferText = terminalBufferTextForDisplay(terminal);
+      if (bufferText) setFallbackTranscript(bufferText, reason);
     };
 
     const logDisplayWrite = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, hasVisibleText: boolean) => {
       if (displayWriteLogCountRef.current >= 8) return;
       displayWriteLogCountRef.current += 1;
-      appendImportLog(`Terminal display write session=${session.id} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} displayChars=${displayText.length} visible=${hasVisibleText} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} count=${displayWriteLogCountRef.current}`);
+      appendImportLog(`Terminal display write session=${session.id} effect=${effectRun} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} displayChars=${displayText.length} visible=${hasVisibleText} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} elapsedMs=${Date.now() - mountedAt} count=${displayWriteLogCountRef.current}`);
     };
 
     const checkXtermRender = (source: "output" | "replay", seq: number | null, finalCheck: boolean) => {
-      if (closedRef.current) return;
+      if (!isCurrentEffect()) return;
       const snapshot = xtermRenderSnapshot(container, terminal);
       if (renderCheckLogCountRef.current < 12) {
         renderCheckLogCountRef.current += 1;
-        appendImportLog(`Terminal xterm render check session=${session.id} source=${source} seq=${seq ?? "none"} final=${finalCheck} ${xtermRenderSnapshotSummary(snapshot)} count=${renderCheckLogCountRef.current}`);
+        appendImportLog(`Terminal xterm render check session=${session.id} effect=${effectRun} source=${source} seq=${seq ?? "none"} final=${finalCheck} ${xtermRenderSnapshotSummary(snapshot)} elapsedMs=${Date.now() - mountedAt} count=${renderCheckLogCountRef.current}`);
       }
       if (snapshot.painted) {
         xtermPaintHealthyRef.current = true;
@@ -5256,18 +5284,19 @@ function XtermSession({
         return;
       }
       if (finalCheck && fallbackTextRef.current.trim()) {
+        refreshFallbackFromTerminalBuffer("xterm-unpainted");
         setTerminalFallbackVisible(true, "xterm-unpainted", snapshot);
       }
     };
 
     const scheduleXtermRenderChecks = (source: "output" | "replay", seq: number | null) => {
       if (xtermPaintHealthyRef.current && !fallbackVisibleRef.current) return;
-      window.setTimeout(() => checkXtermRender(source, seq, false), 120);
-      window.setTimeout(() => checkXtermRender(source, seq, true), 650);
+      renderCheckTimers.push(window.setTimeout(() => checkXtermRender(source, seq, false), 120));
+      renderCheckTimers.push(window.setTimeout(() => checkXtermRender(source, seq, true), 650));
     };
 
     const writeDisplayText = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, text: string) => {
-      appendFallbackText(text);
+      appendFallbackText(text, `${source}-raw`);
       if (!displayText) {
         logEmptyDisplay(source, bytesLength, seq, text);
         if (terminalFallbackTextForDisplay(text)) {
@@ -5279,6 +5308,8 @@ function XtermSession({
       logDisplayWrite(source, bytesLength, seq, displayText, hasVisibleText);
       if (!hasVisibleText) logEmptyDisplay(source, bytesLength, seq, text);
       terminal.write(displayText, () => {
+        if (!isCurrentEffect()) return;
+        refreshFallbackFromTerminalBuffer(`${source}-buffer`);
         if (!hasVisibleText) return;
         clearStartupNotice();
         scheduleXtermRenderChecks(source, seq);
@@ -5286,11 +5317,11 @@ function XtermSession({
     };
 
     const fit = () => {
-      if (closedRef.current) return;
+      if (!isCurrentEffect()) return;
       if (container.clientWidth <= 0 || container.clientHeight <= 0) {
         if (fitLogCountRef.current < 8) {
           fitLogCountRef.current += 1;
-          appendImportLog(`Terminal fit skipped session=${session.id} container=${container.clientWidth}x${container.clientHeight} count=${fitLogCountRef.current}`);
+          appendImportLog(`Terminal fit skipped session=${session.id} effect=${effectRun} container=${container.clientWidth}x${container.clientHeight} elapsedMs=${Date.now() - mountedAt} count=${fitLogCountRef.current}`);
         }
         return;
       }
@@ -5299,7 +5330,7 @@ function XtermSession({
         void sendResize(session.id, terminal.cols, terminal.rows);
         if (fitLogCountRef.current < 8) {
           fitLogCountRef.current += 1;
-          appendImportLog(`Terminal fit session=${session.id} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} count=${fitLogCountRef.current}`);
+          appendImportLog(`Terminal fit session=${session.id} effect=${effectRun} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} elapsedMs=${Date.now() - mountedAt} count=${fitLogCountRef.current}`);
         }
       } catch {
         // xterm fit can throw while the panel is resizing; the next observer tick retries.
@@ -5307,7 +5338,7 @@ function XtermSession({
     };
 
     const flush = async () => {
-      while (!closedRef.current && pendingRef.current.length) {
+      while (isCurrentEffect() && pendingRef.current.length) {
         const input = pendingRef.current.shift() || "";
         try {
           await sendInput(session.id, input);
@@ -5322,16 +5353,19 @@ function XtermSession({
     };
 
     const dataDisposable = terminal.onData((data) => {
+      if (!isCurrentEffect()) return;
       pendingRef.current.push(data);
       void flush();
     });
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
+      if (!isCurrentEffect()) return;
       void sendResize(session.id, cols, rows);
     });
     const observer = new ResizeObserver(fit);
     observer.observe(container);
 
     const writeTerminalChunk = (payload: TerminalOutputEventPayload) => {
+      if (!isCurrentEffect()) return;
       if (payload.sessionId !== session.id || payload.seq <= seenSeqRef.current) return;
       const firstOutput = seenSeqRef.current === 0;
       seenSeqRef.current = payload.seq;
@@ -5349,6 +5383,7 @@ function XtermSession({
     };
 
     const handleTerminalChunk = (payload: TerminalOutputEventPayload) => {
+      if (!isCurrentEffect()) return;
       if (payload.sessionId !== session.id) return;
       if (!hasLoadedReplay) {
         eventBuffer.push(payload);
@@ -5361,6 +5396,7 @@ function XtermSession({
       try {
         unlisten = await listenTerminalOutput(handleTerminalChunk);
         const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(session.id)}/replay`);
+        if (!isCurrentEffect()) return;
         if (replay.bytes?.length) {
           const bytes = Uint8Array.from(replay.bytes);
           const text = terminalBytesToText(bytes);
@@ -5380,6 +5416,7 @@ function XtermSession({
         fit();
         void flush();
       } catch (error) {
+        if (!isCurrentEffect()) return;
         terminal.writeln("");
         terminal.writeln(error instanceof Error ? error.message : String(error));
       }
@@ -5389,8 +5426,11 @@ function XtermSession({
     const fitTimer = window.setTimeout(fit, 0);
 
     return () => {
+      disposed = true;
       closedRef.current = true;
+      appendImportLog(`Terminal xterm cleanup session=${session.id} effect=${effectRun} elapsedMs=${Date.now() - mountedAt}`);
       if (unlisten) unlisten();
+      renderCheckTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(fitTimer);
       observer.disconnect();
       dataDisposable.dispose();
@@ -5421,7 +5461,7 @@ function XtermSession({
         ref={containerRef}
       />
       {fallbackVisible && fallbackText ? (
-        <pre aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5] m-0 overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4]">
+        <pre aria-label="Terminal transcript" className="absolute inset-0 z-[5] m-0 select-text overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4]">
           {fallbackText}
         </pre>
       ) : null}
@@ -7039,7 +7079,7 @@ async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts
       lastText = snapshot.tail;
       const logKey = agentPromptReadinessLogKey(snapshot);
       if (logKey !== lastLogKey) {
-        appendImportLog(`Agent prompt readiness state session=${sessionId} reason=${options.reason || "default"} attempt=${attempt + 1}/${maxAttempts} ready=${snapshot.ready} detail=${logKey} tail=${JSON.stringify(snapshot.tail)}`);
+        appendImportLog(`Agent prompt readiness state session=${sessionId} reason=${options.reason || "default"} attempt=${attempt + 1}/${maxAttempts} ready=${snapshot.ready} detail=${logKey} elapsedMs=${Date.now() - startedAt} tail=${JSON.stringify(snapshot.tail)}`);
         lastLogKey = logKey;
       }
       if (snapshot.ready) return true;
@@ -7257,6 +7297,16 @@ function terminalFallbackTextForDisplay(data: string) {
     .slice(-120)
     .join("\n")
     .slice(-12000);
+}
+
+function terminalBufferTextForDisplay(terminal: Terminal) {
+  const buffer = terminal.buffer.active;
+  const lines: string[] = [];
+  for (let index = 0; index < buffer.length; index += 1) {
+    const line = buffer.getLine(index)?.translateToString(true).trimEnd() || "";
+    if (line.trim()) lines.push(line);
+  }
+  return lines.slice(-180).join("\n").slice(-12000);
 }
 
 function appendTerminalFallbackText(previous: string, next: string) {

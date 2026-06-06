@@ -52,3 +52,7 @@ When terminal output reaches the React parser but xterm does not visibly paint c
 <PlanSection title="2026-06-06 Stale MCP Counter Follow-up">
 Prompt readiness now treats an incomplete MCP counter as stale when a known Codex starter prompt appears after it. This avoids the full readiness timeout in cases where terminal replay still contains old <code>2/3</code> startup text but Codex is already accepting input.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Selectable Fallback and Timing Follow-up">
+Terminal render diagnostics now include elapsed timings for handoff, readiness, prompt submit, xterm open, fit, display writes, render checks, and cleanup. Xterm render checks are tied to the current React effect run and canceled on cleanup so StrictMode's first disposed terminal cannot show a stale fallback. The fallback transcript is selectable and is derived from xterm's interpreted buffer instead of concatenated raw output chunks.
+</PlanSection>

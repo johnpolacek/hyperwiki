@@ -12,6 +12,7 @@ wikiKind: "page"
     <li>Added xterm paint diagnostics for terminal open, fit, display writes, render checks, and fallback show/hide state so blank-pane reports include geometry and canvas evidence.</li>
     <li>Added an automatic plain transcript overlay when terminal output is received but xterm does not visibly paint text, keeping the mounted xterm available for focus and input.</li>
     <li>Adjusted agent readiness so stale incomplete MCP counters do not force a full timeout once a later Codex starter prompt is visible.</li>
+    <li>Follow-up: tied render checks to the active React terminal effect run, canceled stale timers on cleanup, added elapsed timing logs for handoff/readiness/submit milestones, and made the fallback transcript selectable from xterm's interpreted buffer.</li>
   </ul>
 </article>
 <article>
