@@ -2758,6 +2758,7 @@ function BeamSurface({
       className={className}
       colorVariant={colorVariant}
       cols={cols}
+      contentClassName={contentClassName}
       dividerStroke={dividerStroke}
       duration={duration}
       rows={rows}
@@ -2901,7 +2902,7 @@ function WikiSidebar(props: {
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
       <BeamSurface className="h-full bg-card" colorVariant="mono" cols={3} contentClassName="h-full" dividerStroke="transparent" duration={6} rows={5} strength={0.12}>
-      <nav className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <nav className="flex h-full min-h-0 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
             <h2 className="text-xs font-bold uppercase text-muted-foreground">Plans</h2>
@@ -2927,7 +2928,7 @@ function WikiSidebar(props: {
           {props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} />
         </section>
-        <details className="border-t bg-card p-3" open={false}>
+        <details className="shrink-0 border-t bg-card p-3">
           <summary className="cursor-pointer list-none text-xs font-bold uppercase text-muted-foreground">Project</summary>
           <div className="mt-2 grid gap-1">
             {props.model.projectPages.map((page) => (

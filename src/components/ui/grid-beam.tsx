@@ -723,6 +723,8 @@ export type GridBeamProps = UseGridBeamOptions &
     borderRadius?: number
     /** Grid line color (default `var(--border)` from shadcn theme). */
     dividerStroke?: string
+    /** Class name applied to the content slot above dividers and canvas. */
+    contentClassName?: string
   }>
 
 /**
@@ -743,6 +745,7 @@ export function GridBeam({
   strength,
   breathe,
   dividerStroke,
+  contentClassName,
   ...props
 }: GridBeamProps) {
   const {
@@ -769,7 +772,7 @@ export function GridBeam({
     >
       <GridBeamDividers cols={c} dividerStroke={dividerStroke} rows={r} />
       <GridBeamCanvas borderRadius={borderRadius} ref={canvasRef} />
-      <GridBeamContent>{children}</GridBeamContent>
+      <GridBeamContent className={contentClassName}>{children}</GridBeamContent>
     </div>
   )
 }
