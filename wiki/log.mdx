@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 feature | instant agent terminal open</h2>
+  <ul>
+    <li>Changed manual <code>+ agent</code> and <code>+ cli</code> starts to insert an optimistic visible terminal pane before backend terminal startup returns.</li>
+    <li>Added a hidden active-plan <code>purpose="general"</code> agent prewarm path that is separate from Modify prewarm and promoted by manual <code>+ agent</code>.</li>
+    <li>Preserved pending terminal panes across session reloads, added local dismissal for failed optimistic starts, and logged startup timing milestones through first output and prompt readiness.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | agent startup notice overlay</h2>
   <ul>
     <li>Changed visible command terminal startup notices from xterm-buffer text to a React overlay that clears on replay or live output bytes.</li>

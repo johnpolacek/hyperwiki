@@ -135,6 +135,12 @@ if (!appSource.includes("function applyTerminalSessions") || !appSource.includes
 if (!appSource.includes("function terminalStartupNotice") || !appSource.includes("Starting agent terminal") || !appSource.includes("startupNoticeVisible") || !appSource.includes("setStartupNoticeVisible(startupNoticeIsVisible)") || !appSource.includes("pointer-events-none absolute")) {
   throw new Error("Visible command terminals must show an immediate React startup notice until real replay/output arrives.");
 }
+if (!appSource.includes("function prewarmGeneralSessionForScope") || !appSource.includes('purpose: "general"') || !appSource.includes("isGeneralPrewarmSession") || !appSource.includes("Manual agent promoting prewarmed general session")) {
+  throw new Error("Manual + agent should use a separate hidden general prewarm path before spawning a fresh Codex terminal.");
+}
+if (!appSource.includes("function PendingTerminalSession") || !appSource.includes("Starting Codex") || !appSource.includes("Terminal first output session=") || !appSource.includes("Manual terminal backend start returned")) {
+  throw new Error("Manual + agent should render an instant pending pane and log startup timing milestones.");
+}
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal output plain\", bytes.length, payload.seq, text, loggedPlainTextRef);\n      clearStartupNotice();") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal replay plain\", bytes.length, replay.seq, text, loggedPlainTextRef);\n          clearStartupNotice();")) {
   throw new Error("Visible command terminal startup notices must clear on replay/output bytes before display-text filtering.");
 }

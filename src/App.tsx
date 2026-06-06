@@ -319,7 +319,7 @@ interface SessionRecord {
   scopeKind?: string;
   planPath?: string | null;
   visibility?: "visible" | "standby" | string;
-  purpose?: "modify" | string | null;
+  purpose?: "modify" | "general" | string | null;
   connectedClients?: number;
   retained?: boolean;
   reconnectable?: boolean;
@@ -653,6 +653,7 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
+  const prewarmingGeneralSessions = useRef<Set<string>>(new Set());
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const [resumedImportPlanningProjectId, setResumedImportPlanningProjectId] = useState<string | null>(null);
   const baseDataRequestId = useRef(0);
@@ -987,9 +988,14 @@ function App() {
   }, [activeProject?.id, activePlanScopeComplete, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
 
   useEffect(() => {
+    if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete || isImportedPlanningActive) return;
+    void prewarmGeneralSessionForScope(activeProject, layout, terminalScope, sessions);
+  }, [activeProject?.id, activePlanScopeComplete, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
+
+  useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || !activePlanScopeComplete) return;
     const closable = sessions.filter((session) =>
-      isModifySession(session)
+      (isModifySession(session) || isGeneralPrewarmSession(session))
       && isLiveTerminalSession(session)
       && session.scope === terminalScope.scope
       && (isStandbySession(session) || !agentRun || agentRun.sessionId !== session.id || agentRun.phase === "complete" || agentRun.phase === "blocked")
@@ -1199,11 +1205,44 @@ function App() {
 
   async function startTerminal(role: "agent" | "cli") {
     const name = role;
+    const startedAt = Date.now();
+    const pendingId = nextClientTerminalId();
     setStatus(`Starting ${name.toLowerCase()}`);
+    appendImportLog(`Manual terminal start clicked role=${role} project=${activeProject?.id || "none"} scope=${terminalScope.scope}`);
     try {
+      if (role === "agent" && activeProject) {
+        const normalizedScope = normalizeTerminalScope(terminalScope);
+        const existing = selectReusableAgentSession(sessions.filter((session) =>
+          isGeneralSession(session)
+          && sessionMatchesScope(session, normalizedScope)
+        ), { purpose: "general", promote: true });
+        if (existing?.command && isLiveTerminalSession(existing) && isStandbySession(existing)) {
+          appendImportLog(`Manual agent promoting prewarmed general session project=${activeProject.id} session=${existing.id} scope=${normalizedScope.scope}`);
+          const promoted = await promoteSession(activeProject, existing.id, "general");
+          appendImportLog(`Manual agent promoted prewarmed general session project=${activeProject.id} session=${promoted.id} elapsedMs=${Date.now() - startedAt}`);
+          setStatus("Agent ready");
+          void waitForAgentPromptReady(promoted.id, { maxAttempts: 8, intervalMs: 250, reason: "manual-agent-promote" }).then((ready) => {
+            appendImportLog(`Manual agent promoted readiness session=${promoted.id} ready=${ready} elapsedMs=${Date.now() - startedAt}`);
+          });
+          void loadSessions({ selectSessionId: promoted.id });
+          return;
+        }
+      }
+      if (activeProject) {
+        const pendingSession = pendingTerminalSession({
+          id: pendingId,
+          name,
+          role,
+          command: role === "agent" ? agentLaunchCommand(layout, thinkingEffort) : null,
+          scope: terminalScope,
+        });
+        upsertTerminalSession(activeProject.id, pendingSession, { reason: "optimistic-start", select: true });
+        appendImportLog(`Manual terminal optimistic pane inserted role=${role} session=${pendingId} elapsedMs=${Date.now() - startedAt}`);
+      }
       const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
         method: "POST",
         body: {
+          id: pendingId,
           name,
           role,
           command: role === "agent" ? agentLaunchCommand(layout, thinkingEffort) : null,
@@ -1213,9 +1252,26 @@ function App() {
         },
       });
       if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-terminal", select: true });
-      await loadSessions({ selectSessionId: started.session.id });
+      appendImportLog(`Manual terminal backend start returned role=${role} session=${started.session.id} elapsedMs=${Date.now() - startedAt}`);
+      void loadSessions({ selectSessionId: started.session.id });
+      if (role === "agent") {
+        void waitForAgentPromptReady(started.session.id, { maxAttempts: 20, intervalMs: 250, reason: "manual-agent-start" }).then((ready) => {
+          appendImportLog(`Manual agent prompt readiness session=${started.session.id} ready=${ready} elapsedMs=${Date.now() - startedAt}`);
+        });
+      }
       setStatus(`${name} started`);
     } catch (error) {
+      if (activeProject) {
+        const failed = failedTerminalSession({
+          id: pendingId,
+          name,
+          role,
+          command: role === "agent" ? agentLaunchCommand(layout, thinkingEffort) : null,
+          scope: terminalScope,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        upsertTerminalSession(activeProject.id, failed, { reason: "optimistic-start-failed", select: true });
+      }
       setStatus(error instanceof Error ? error.message : String(error));
     }
   }
@@ -1226,7 +1282,7 @@ function App() {
       return;
     }
     setSessions((current) => {
-      const currentVisible = current.filter(isVisibleLiveTerminalSession);
+      const currentVisible = current.filter(isVisibleTerminalPaneSession);
       const incomingIds = new Set(incomingSessions.map((session) => session.id));
       const preserved = currentVisible.filter((session) => !incomingIds.has(session.id));
       const nextSessions = [...incomingSessions, ...preserved].sort(compareSessions);
@@ -1345,10 +1401,33 @@ function App() {
     }
   }
 
-  async function promoteSession(project: ProjectRecord, sessionId: string) {
+  async function prewarmGeneralSessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
+    const normalizedScope = normalizeTerminalScope(scope);
+    const key = `${project.id}:${normalizedScope.scope}`;
+    if (prewarmingGeneralSessions.current.has(key)) return;
+    if (knownSessions.some((session) => isGeneralSession(session) && sessionMatchesScope(session, normalizedScope) && (isLiveTerminalSession(session) || isPendingTerminalSession(session)))) return;
+    const command = agentLaunchCommand(projectLayout, thinkingEffort);
+    if (!command) return;
+    prewarmingGeneralSessions.current.add(key);
+    try {
+      appendImportLog(`Prewarming general agent project=${project.id} scope=${normalizedScope.scope}`);
+      const session = await ensureAgentSessionForProject(project, projectLayout, normalizedScope, knownSessions, { commandOverride: command, purpose: "general", visibility: "standby" });
+      appendImportLog(`Prewarmed general agent started project=${project.id} session=${session.id} scope=${normalizedScope.scope} visibility=${session.visibility || "visible"}`);
+      await loadSessionsForProject(project, normalizedScope);
+      void waitForAgentPromptReady(session.id, { maxAttempts: 20, intervalMs: 250, reason: "general-prewarm" }).then((ready) => {
+        appendImportLog(`Prewarmed general agent readiness project=${project.id} session=${session.id} scope=${normalizedScope.scope} ready=${ready}`);
+      });
+    } catch (error) {
+      appendImportLog(`Prewarm general agent failed project=${project.id} scope=${normalizedScope.scope}`, error);
+    } finally {
+      prewarmingGeneralSessions.current.delete(key);
+    }
+  }
+
+  async function promoteSession(project: ProjectRecord, sessionId: string, purpose = "modify") {
     const response = await hyperwikiApi.json<SessionResponse>(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, project), {
       method: "PATCH",
-      body: { visibility: "visible", purpose: "modify" },
+      body: { visibility: "visible", purpose },
     });
     const promoted = response.session;
     upsertTerminalSession(project.id, promoted, { reason: "promote", select: true });
@@ -2296,6 +2375,13 @@ function App() {
   }
 
   async function closeSession(sessionId: string) {
+    const localSession = sessions.find((session) => session.id === sessionId);
+    if (localSession && isPendingTerminalSession(localSession)) {
+      setSessions((current) => current.filter((session) => session.id !== sessionId));
+      setActiveSessionId((currentActive) => currentActive === sessionId ? selectActiveSessionId(sessions.filter((session) => session.id !== sessionId), null, null) : currentActive);
+      setStatus("Session closed");
+      return;
+    }
     setStatus("Closing session");
     try {
       let response = await hyperwikiApi.request(withProjectQuery(`/api/terminal/${encodeURIComponent(sessionId)}`, activeProject), { method: "DELETE" });
@@ -4789,7 +4875,7 @@ function TerminalPane(props: {
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
-  const liveSessions = props.sessions.filter(isVisibleLiveTerminalSession);
+  const liveSessions = props.sessions.filter(isVisibleTerminalPaneSession);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
@@ -4915,7 +5001,11 @@ function TerminalPane(props: {
                   </Button>
                 </header>
                 <div className="min-h-0 flex-1">
-                  <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
+                  {isPendingTerminalSession(session) ? (
+                    <PendingTerminalSession session={session} />
+                  ) : (
+                    <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
+                  )}
                 </div>
               </section>
             ))}
@@ -4977,6 +5067,23 @@ function TerminalSessionTab(props: {
         {props.session.reconnectable ? <span className="border px-2 py-1">reconnectable</span> : null}
       </div>
     </article>
+  );
+}
+
+function PendingTerminalSession({ session }: { session: SessionRecord }) {
+  const failed = session.status === "failed";
+  return (
+    <div className="flex h-full min-h-0 flex-col justify-between bg-[#20231f] p-3 font-mono text-[13px] text-[#d8ded9]">
+      <div className="grid gap-2">
+        <div className="flex items-center gap-2 text-[#8c958e]">
+          {failed ? null : <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />}
+          <span>{failed ? "Agent terminal failed to start" : "Starting Codex"}</span>
+        </div>
+        {failed && session.shell ? <p className="m-0 max-w-full whitespace-pre-wrap text-[#f4b8b8]">{session.shell}</p> : null}
+        {!failed ? <p className="m-0 text-[#8c958e]">Preparing the terminal session...</p> : null}
+      </div>
+      <p className="m-0 truncate text-[11px] text-[#69736c]">{session.command || session.id}</p>
+    </div>
   );
 }
 
@@ -5085,6 +5192,7 @@ function XtermSession({
 
     const writeTerminalChunk = (payload: TerminalOutputEventPayload) => {
       if (payload.sessionId !== session.id || payload.seq <= seenSeqRef.current) return;
+      const firstOutput = seenSeqRef.current === 0;
       seenSeqRef.current = payload.seq;
       const bytes = Uint8Array.from(payload.bytes || []);
       if (!bytes.length) return;
@@ -5095,6 +5203,7 @@ function XtermSession({
       );
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
+      if (firstOutput) appendImportLog(`Terminal first output session=${session.id} seq=${payload.seq} bytes=${bytes.length}`);
       clearStartupNotice();
       if (displayText) {
         terminal.write(displayText);
@@ -5123,6 +5232,7 @@ function XtermSession({
           );
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
+          appendImportLog(`Terminal first replay output session=${session.id} seq=${replay.seq} bytes=${bytes.length}`);
           clearStartupNotice();
           if (displayText) {
             terminal.write(displayText);
@@ -5563,8 +5673,20 @@ function isModifySession(session: SessionRecord) {
   return isAgentSession(session) && session.purpose === "modify";
 }
 
+function isGeneralSession(session: SessionRecord) {
+  return isAgentSession(session) && session.purpose === "general";
+}
+
+function isGeneralPrewarmSession(session: SessionRecord) {
+  return isGeneralSession(session) && isStandbySession(session);
+}
+
 function isStandbySession(session: SessionRecord) {
   return session.visibility === "standby";
+}
+
+function isPendingTerminalSession(session: SessionRecord) {
+  return session.status === "starting" || session.status === "failed";
 }
 
 function terminalPaneLabel(session: SessionRecord, index: number) {
@@ -5587,6 +5709,10 @@ function isVisibleLiveTerminalSession(session: SessionRecord) {
   return isLiveTerminalSession(session) && !isStandbySession(session);
 }
 
+function isVisibleTerminalPaneSession(session: SessionRecord) {
+  return (isLiveTerminalSession(session) || isPendingTerminalSession(session)) && !isStandbySession(session);
+}
+
 function upsertSessionRecord(sessions: SessionRecord[], nextSession: SessionRecord) {
   const didReplace = sessions.some((session) => session.id === nextSession.id);
   if (didReplace) return sessions.map((session) => session.id === nextSession.id ? nextSession : session);
@@ -5601,7 +5727,7 @@ function compareSessions(left: SessionRecord, right: SessionRecord) {
 }
 
 function selectActiveSessionId(sessions: SessionRecord[], preferredId?: string | null, currentId?: string | null) {
-  const visible = sessions.filter(isVisibleLiveTerminalSession);
+  const visible = sessions.filter(isVisibleTerminalPaneSession);
   if (preferredId && visible.some((session) => session.id === preferredId)) return preferredId;
   if (currentId && visible.some((session) => session.id === currentId)) return currentId;
   return newestSession(visible)?.id || null;
@@ -5610,7 +5736,7 @@ function selectActiveSessionId(sessions: SessionRecord[], preferredId?: string |
 function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean }) {
   const liveWithCommand = sessions.filter((session) => session.command && isLiveTerminalSession(session));
   if (!liveWithCommand.length) return null;
-  if (options.purpose === "modify" && options.promote) {
+  if ((options.purpose === "modify" || options.purpose === "general") && options.promote) {
     return newestSession(liveWithCommand.filter(isStandbySession))
       || newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession))
       || newestSession(liveWithCommand);
@@ -5637,6 +5763,40 @@ function sessionSortMs(session: SessionRecord) {
   if (Number.isFinite(parsed)) return parsed;
   const idTimestamp = session.id.match(/(\d{10,})/)?.[1];
   return idTimestamp ? Number(idTimestamp) : 0;
+}
+
+function nextClientTerminalId() {
+  return `terminal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function pendingTerminalSession(options: { id: string; name: string; role: "agent" | "cli"; command: string | null; scope: TerminalScope }): SessionRecord {
+  const now = new Date().toISOString();
+  return {
+    id: options.id,
+    name: options.name,
+    kind: "terminal",
+    status: "starting",
+    mode: "pending",
+    role: options.role,
+    command: options.command,
+    scope: options.scope.scope,
+    scopeKind: options.scope.scopeKind,
+    planPath: options.scope.planPath,
+    visibility: "visible",
+    purpose: options.role === "agent" ? "general" : null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function failedTerminalSession(options: { id: string; name: string; role: "agent" | "cli"; command: string | null; scope: TerminalScope; error: string }): SessionRecord {
+  return {
+    ...pendingTerminalSession(options),
+    status: "failed",
+    mode: "failed",
+    shell: options.error,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function sessionMatchesScope(session: SessionRecord, scope: TerminalScope) {

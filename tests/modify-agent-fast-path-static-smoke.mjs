@@ -7,7 +7,7 @@ const requiredSnippets = [
   "function normalizeTerminalScope(scope: TerminalScope): TerminalScope",
   "function sessionMatchesScope(session: SessionRecord, scope: TerminalScope)",
   "function selectReusableAgentSession",
-  'options.purpose === "modify" && options.promote',
+  'options.purpose === "modify" || options.purpose === "general"',
   "newestSession(liveWithCommand.filter(isStandbySession))",
   'kind === "modify"',
   '{ maxAttempts: 8, intervalMs: 250, reason: "modify-submit" }',
@@ -26,7 +26,7 @@ for (const snippet of requiredSnippets) {
 }
 
 const prewarmStart = source.indexOf("async function prewarmModifySessionForScope");
-const prewarmEnd = source.indexOf("async function promoteSession", prewarmStart);
+const prewarmEnd = source.indexOf("async function prewarmGeneralSessionForScope", prewarmStart);
 const prewarmBody = source.slice(prewarmStart, prewarmEnd);
 if (prewarmBody.includes("const ready = await waitForAgentPromptReady")) {
   throw new Error("Modify prewarm must not block on the full readiness wait.");

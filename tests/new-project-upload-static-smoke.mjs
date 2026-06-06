@@ -55,7 +55,9 @@ assert.ok(source.includes("onMouseDown={() => terminalRef.current?.focus()}") &&
 assert.ok(source.includes('const name = role;'), "New CLI sessions should be named cli instead of Terminal");
 assert.ok(source.includes("async function loadSessions(options: { selectSessionId?: string | null } = {})"), "Session reloads should accept an explicit selected session id.");
 assert.ok(source.includes('applyTerminalSessions(requestedProjectId, nextSessions, { reason: "load", selectSessionId: options.selectSessionId });'), "Session reloads should preserve explicit terminal selection through async refreshes.");
-assert.ok(source.includes("await loadSessions({ selectSessionId: started.session.id });"), "New terminal starts should keep the started session active after reload.");
+assert.ok(source.includes("const pendingId = nextClientTerminalId();") && source.includes("upsertTerminalSession(activeProject.id, pendingSession, { reason: \"optimistic-start\", select: true });"), "New terminal starts should insert an optimistic pane before backend startup returns.");
+assert.ok(source.includes("void loadSessions({ selectSessionId: started.session.id });"), "New terminal starts should reconcile session state without blocking the visible pane.");
+assert.ok(source.includes("isVisibleTerminalPaneSession") && source.includes("preserved = currentVisible.filter"), "Session reloads should preserve pending visible terminal panes until backend reconciliation.");
 assert.ok(source.includes("function terminalPaneLabel") && source.includes("`${label} --`"), "Terminal pane labels should render as cli -- and agent --");
 
 console.log("new project upload static smoke passed");

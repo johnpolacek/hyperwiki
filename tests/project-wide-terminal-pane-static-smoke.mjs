@@ -40,8 +40,8 @@ assert.notEqual(applyStart, -1, "applyTerminalSessions should exist");
 assert.notEqual(applyEnd, -1, "upsertTerminalSession should follow applyTerminalSessions");
 const applySessions = source.slice(applyStart, applyEnd);
 assert.ok(
-  applySessions.includes("const currentVisible = current.filter(isVisibleLiveTerminalSession);"),
-  "Session application should preserve visible sessions across the whole project.",
+  applySessions.includes("const currentVisible = current.filter(isVisibleTerminalPaneSession);"),
+  "Session application should preserve visible and pending sessions across the whole project.",
 );
 assert.ok(
   applySessions.includes("selectActiveSessionId(nextSessions, options.selectSessionId, currentActive)"),
@@ -54,8 +54,8 @@ assert.notEqual(selectStart, -1, "selectActiveSessionId should exist");
 assert.notEqual(selectEnd, -1, "selectReusableAgentSession should follow selectActiveSessionId");
 const selectActive = source.slice(selectStart, selectEnd);
 assert.ok(
-  selectActive.includes("const visible = sessions.filter(isVisibleLiveTerminalSession);"),
-  "Active terminal selection should consider all visible live project sessions.",
+  selectActive.includes("const visible = sessions.filter(isVisibleTerminalPaneSession);"),
+  "Active terminal selection should consider all visible live and pending project sessions.",
 );
 assert.equal(
   selectActive.includes("sessionMatchesScope"),
