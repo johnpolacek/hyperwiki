@@ -78,7 +78,7 @@ if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
 }
-if (!appSource.includes("isAgentMcpStartupInProgress") || !appSource.includes("isAgentStartupInProgress") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("lastModelLoading") || !appSource.includes("lastModelReady") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("promptAfterStartup") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills") || !appSource.includes("startingmcpservers") || !appSource.includes("count[1] !== count[2]")) {
+if (!appSource.includes("agentPromptReadinessSnapshot") || !appSource.includes("agentPromptReadinessLogKey") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("lastModelLoading") || !appSource.includes("lastModelReady") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("prompt-before-mcp-complete") || !appSource.includes("mcp-starting-no-count") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills") || !appSource.includes("startingmcp") || !appSource.includes("mcp.latestCount.current < mcp.latestCount.total")) {
   throw new Error("Agent prompt readiness must wait through Codex model and MCP startup before submitting agent prompts.");
 }
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
@@ -135,7 +135,7 @@ if (!appSource.includes("function applyTerminalSessions") || !appSource.includes
 if (!appSource.includes("function terminalStartupNotice") || !appSource.includes("Starting agent terminal") || !appSource.includes("if (isStandbySession(session)) return \"\";") || !appSource.includes("startupNoticeVisible") || !appSource.includes("setStartupNoticeVisible(startupNoticeIsVisible)") || !appSource.includes("pointer-events-none absolute")) {
   throw new Error("Visible command terminals must show an immediate React startup notice until real replay/output arrives.");
 }
-if (!appSource.includes("function prewarmGeneralSessionForScope") || !appSource.includes('purpose: "general"') || !appSource.includes("isGeneralPrewarmSession") || !appSource.includes("Manual agent promoting prewarmed general session")) {
+if (!appSource.includes("function prewarmAgentSessionsForScope") || !appSource.includes("Prewarm batch scheduled") || !appSource.includes("function prewarmGeneralSessionForScope") || !appSource.includes('purpose: "general"') || !appSource.includes("isGeneralPrewarmSession") || !appSource.includes("Manual agent promoting prewarmed general session")) {
   throw new Error("Manual + agent should use a separate hidden general prewarm path before spawning a fresh Codex terminal.");
 }
 if (!appSource.includes("function PendingTerminalSession") || !appSource.includes("Starting Codex") || !appSource.includes("Terminal first output session=") || !appSource.includes("Manual terminal backend start returned")) {
@@ -144,8 +144,8 @@ if (!appSource.includes("function PendingTerminalSession") || !appSource.include
 if (!appSource.includes("ensureAgentSession optimistic pane inserted") || !appSource.includes("optimistic-agent-start-failed") || !appSource.includes('const agentPurpose = kind === "modify" ? "modify" : "general"')) {
   throw new Error("Execute, planning, review, and worktree handoffs should use the shared optimistic agent startup path.");
 }
-if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal output plain\", bytes.length, payload.seq, text, loggedPlainTextRef);\n      clearStartupNotice();") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal replay plain\", bytes.length, replay.seq, text, loggedPlainTextRef);\n          clearStartupNotice();")) {
-  throw new Error("Visible command terminal startup notices must clear on replay/output bytes before display-text filtering.");
+if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("writeDisplayText(\"output\", bytes.length, payload.seq, displayText, text);") || !appSource.includes("writeDisplayText(\"replay\", bytes.length, replay.seq, displayText, text);") || !appSource.includes("terminalDisplayHasVisibleText") || !appSource.includes("Terminal display empty session=")) {
+  throw new Error("Visible command terminal startup notices must clear only after displayable replay/output reaches xterm.");
 }
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");

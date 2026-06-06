@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | robust terminal readiness and display</h2>
+  <ul>
+    <li>Replaced agent prompt readiness with diagnostic snapshots that distinguish queued follow-up input, model loading, incomplete MCP startup, missing prompts, and prompts seen before MCP completion.</li>
+    <li>Changed visible terminal startup overlays to clear only after displayable xterm replay or live output is written, with bounded logging for parser-visible output that produces no display text.</li>
+    <li>Debounced hidden general/modify prewarm into one serialized batch so route changes do not launch multiple background Codex terminals while visible Execute or planning handoffs start.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | execute readiness and startup visibility</h2>
   <ul>
     <li>Changed Codex prompt readiness detection to treat partial MCP startup counts such as <code>2/3</code> as not ready, including compact terminal text variants.</li>

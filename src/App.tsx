@@ -984,13 +984,16 @@ function App() {
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete || isImportedPlanningActive) return;
-    void prewarmModifySessionForScope(activeProject, layout, terminalScope, sessions);
-  }, [activeProject?.id, activePlanScopeComplete, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
-
-  useEffect(() => {
-    if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete || isImportedPlanningActive) return;
-    void prewarmGeneralSessionForScope(activeProject, layout, terminalScope, sessions);
-  }, [activeProject?.id, activePlanScopeComplete, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, thinkingEffort]);
+    if (agentRun && agentRun.phase !== "complete" && agentRun.phase !== "blocked") return;
+    const project = activeProject;
+    const projectLayout = layout;
+    const scope = terminalScope;
+    const knownSessions = sessions;
+    const timer = window.setTimeout(() => {
+      void prewarmAgentSessionsForScope(project, projectLayout, scope, knownSessions);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [activeProject?.id, activePlanScopeComplete, agentRun?.phase, isImportedPlanningActive, layout, sessions, terminalScope.scope, terminalScope.scopeKind, terminalScope.planPath, thinkingEffort]);
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || !activePlanScopeComplete) return;
@@ -1408,6 +1411,13 @@ function App() {
       }
       throw error;
     }
+  }
+
+  async function prewarmAgentSessionsForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
+    const normalizedScope = normalizeTerminalScope(scope);
+    appendImportLog(`Prewarm batch scheduled project=${project.id} scope=${normalizedScope.scope}`);
+    await prewarmGeneralSessionForScope(project, projectLayout, normalizedScope, knownSessions);
+    await prewarmModifySessionForScope(project, projectLayout, normalizedScope, knownSessions);
   }
 
   async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
@@ -5136,6 +5146,7 @@ function XtermSession({
   const fitRef = useRef<FitAddon | null>(null);
   const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
+  const emptyDisplayLogCountRef = useRef(0);
   const initialDisplayBufferRef = useRef<string | null>("");
   const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
@@ -5149,6 +5160,7 @@ function XtermSession({
     closedRef.current = false;
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
+    emptyDisplayLogCountRef.current = 0;
     initialDisplayBufferRef.current = "";
     displayControlCarryRef.current.current = "";
     pendingRef.current = [];
@@ -5186,6 +5198,24 @@ function XtermSession({
       if (!startupNoticeIsVisible) return;
       startupNoticeIsVisible = false;
       setStartupNoticeVisible(false);
+    };
+
+    const logEmptyDisplay = (source: "output" | "replay", bytesLength: number, seq: number | null, text: string) => {
+      if (emptyDisplayLogCountRef.current >= 5) return;
+      emptyDisplayLogCountRef.current += 1;
+      appendImportLog(`Terminal display empty session=${session.id} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} count=${emptyDisplayLogCountRef.current} parsedTail=${JSON.stringify(terminalDisplayDebugTail(text))}`);
+    };
+
+    const writeDisplayText = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, text: string) => {
+      if (!displayText) {
+        logEmptyDisplay(source, bytesLength, seq, text);
+        return;
+      }
+      const hasVisibleText = terminalDisplayHasVisibleText(displayText);
+      if (!hasVisibleText) logEmptyDisplay(source, bytesLength, seq, text);
+      terminal.write(displayText, () => {
+        if (hasVisibleText) clearStartupNotice();
+      });
     };
 
     const fit = () => {
@@ -5237,10 +5267,7 @@ function XtermSession({
       onTerminalText(session.id, terminalTextForParsing(text));
       logTerminalPlainText(session.id, "Terminal output plain", bytes.length, payload.seq, text, loggedPlainTextRef);
       if (firstOutput) appendImportLog(`Terminal first output session=${session.id} seq=${payload.seq} bytes=${bytes.length}`);
-      clearStartupNotice();
-      if (displayText) {
-        terminal.write(displayText);
-      }
+      writeDisplayText("output", bytes.length, payload.seq, displayText, text);
     };
 
     const handleTerminalChunk = (payload: TerminalOutputEventPayload) => {
@@ -5266,10 +5293,7 @@ function XtermSession({
           onTerminalText(session.id, terminalTextForParsing(text));
           logTerminalPlainText(session.id, "Terminal replay plain", bytes.length, replay.seq, text, loggedPlainTextRef);
           appendImportLog(`Terminal first replay output session=${session.id} seq=${replay.seq} bytes=${bytes.length}`);
-          clearStartupNotice();
-          if (displayText) {
-            terminal.write(displayText);
-          }
+          writeDisplayText("replay", bytes.length, replay.seq, displayText, text);
         }
         seenSeqRef.current = replay.seq || 0;
         hasLoadedReplay = true;
@@ -6904,9 +6928,22 @@ async function sendPasteSubmitInput(sessionId: string, message: string) {
   appendImportLog(`Terminal paste submit complete session=${sessionId}`);
 }
 
+type AgentPromptReadinessSnapshot = {
+  ready: boolean;
+  reason: string;
+  tail: string;
+  promptReady: boolean;
+  promptIndex: number;
+  mcpSeen: boolean;
+  mcpCurrent: number | null;
+  mcpTotal: number | null;
+};
+
 async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts?: number; intervalMs?: number; reason?: string } = {}) {
   const startedAt = Date.now();
   let lastText = "";
+  let lastSnapshot: AgentPromptReadinessSnapshot | null = null;
+  let lastLogKey = "";
   const maxAttempts = options.maxAttempts || 120;
   const intervalMs = options.intervalMs || 250;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
@@ -6914,34 +6951,85 @@ async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts
       const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
       const bytes = Uint8Array.from(replay.bytes || []);
       const plain = terminalTextForParsing(terminalBytesToText(bytes));
-      lastText = plain.slice(-500);
-      if (isAgentPromptReady(plain)) return true;
+      const snapshot = agentPromptReadinessSnapshot(plain);
+      lastSnapshot = snapshot;
+      lastText = snapshot.tail;
+      const logKey = agentPromptReadinessLogKey(snapshot);
+      if (logKey !== lastLogKey) {
+        appendImportLog(`Agent prompt readiness state session=${sessionId} reason=${options.reason || "default"} attempt=${attempt + 1}/${maxAttempts} ready=${snapshot.ready} detail=${logKey} tail=${JSON.stringify(snapshot.tail)}`);
+        lastLogKey = logKey;
+      }
+      if (snapshot.ready) return true;
     } catch (error) {
       lastText = error instanceof Error ? error.message : String(error);
     }
     await delay(intervalMs);
   }
-  appendImportLog(`Agent prompt readiness timed out session=${sessionId} reason=${options.reason || "default"} waitedMs=${Date.now() - startedAt} attempts=${maxAttempts} tail=${JSON.stringify(lastText)}`);
+  appendImportLog(`Agent prompt readiness timed out session=${sessionId} reason=${options.reason || "default"} waitedMs=${Date.now() - startedAt} attempts=${maxAttempts} state=${lastSnapshot ? agentPromptReadinessLogKey(lastSnapshot) : "none"} tail=${JSON.stringify(lastText)}`);
   return false;
 }
 
 function isAgentPromptReady(text: string) {
+  return agentPromptReadinessSnapshot(text).ready;
+}
+
+function agentPromptReadinessSnapshot(text: string): AgentPromptReadinessSnapshot {
   const normalized = text.replace(/\s+/g, " ");
-  const compact = normalized.toLowerCase().replace(/\s+/g, "");
-  if (isAgentStartupInProgress(normalized)) return false;
-  if (isAgentMcpStartupInProgress(normalized)) return false;
-  if (compact.includes("startingmcpservers") && !/startingmcpservers\(\s*(\d+)\/\1\)/i.test(compact)) return false;
-  const lastStartup = Math.max(
-    normalized.toLowerCase().lastIndexOf("starting mcp servers"),
-    compact.lastIndexOf("startingmcpservers")
-  );
+  const lower = normalized.toLowerCase();
+  const compact = lower.replace(/\s+/g, "");
   const lastPrompt = Math.max(normalized.lastIndexOf("›"), normalized.lastIndexOf("\u203a"));
-  const promptAfterStartup = lastPrompt !== -1 && lastPrompt > lastStartup;
-  if (!promptAfterStartup) return false;
-  const promptTail = normalized.slice(lastPrompt, lastPrompt + 260);
-  return /\u203a\s*$/.test(text)
-    || /›\s*$/.test(text)
-    || isCodexPromptPlaceholderReady(promptTail);
+  const compactLastPrompt = Math.max(compact.lastIndexOf("›"), compact.lastIndexOf("\u203a"));
+  const tail = normalized.slice(-500);
+  const queuedFollowUp = /queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(lower.slice(-3500)) || compact.slice(-3500).includes("queuedfollow-upinputs");
+  const lastModelLoading = lower.lastIndexOf("model: loading");
+  const lastModelReady = Math.max(lower.lastIndexOf("model: gpt"), lower.lastIndexOf("model: default"));
+  const modelLoading = lastModelLoading !== -1 && lastModelLoading > lastModelReady;
+  const mcp = agentMcpStartupState(lower, compact);
+  const promptTail = lastPrompt === -1 ? "" : normalized.slice(lastPrompt, lastPrompt + 260);
+  const promptReady = lastPrompt !== -1 && (/\u203a\s*$/.test(text) || /›\s*$/.test(text) || isCodexPromptPlaceholderReady(promptTail));
+  const base: Omit<AgentPromptReadinessSnapshot, "ready" | "reason"> = {
+    tail,
+    promptReady,
+    promptIndex: lastPrompt,
+    mcpSeen: mcp.seen,
+    mcpCurrent: mcp.latestCount?.current ?? null,
+    mcpTotal: mcp.latestCount?.total ?? null,
+  };
+
+  if (queuedFollowUp) return { ...base, ready: false, reason: "queued-follow-up" };
+  if (modelLoading) return { ...base, ready: false, reason: "model-loading" };
+  if (mcp.seen) {
+    if (!mcp.latestCount) return { ...base, ready: false, reason: "mcp-starting-no-count" };
+    if (mcp.latestCount.current < mcp.latestCount.total) return { ...base, ready: false, reason: `mcp-starting-${mcp.latestCount.current}/${mcp.latestCount.total}` };
+    if (compactLastPrompt === -1) return { ...base, ready: false, reason: "no-prompt-after-mcp" };
+    if (compactLastPrompt < mcp.latestCount.endIndex) return { ...base, ready: false, reason: "prompt-before-mcp-complete" };
+  }
+  if (lastPrompt === -1) return { ...base, ready: false, reason: "no-prompt" };
+  if (!promptReady) return { ...base, ready: false, reason: "prompt-not-ready" };
+  return { ...base, ready: true, reason: mcp.seen ? "prompt-after-mcp" : "prompt-ready" };
+}
+
+function agentPromptReadinessLogKey(snapshot: AgentPromptReadinessSnapshot) {
+  const mcp = snapshot.mcpCurrent === null || snapshot.mcpTotal === null ? "mcp=none" : `mcp=${snapshot.mcpCurrent}/${snapshot.mcpTotal}`;
+  return `${snapshot.reason};prompt=${snapshot.promptReady ? "ready" : snapshot.promptIndex === -1 ? "none" : "seen"};${mcp}`;
+}
+
+function agentMcpStartupState(lower: string, compact: string) {
+  const seen = /starting\s*mcp|mcp\s*servers|servers\s*\(\s*\d+\s*\/\s*\d+\s*\)|codex_apps|codx_apps|computer-use|node_repl/.test(lower)
+    || /startingmcp|mcpservers|servers\(\d+\/\d+\)|codex_apps|codx_apps|computer-use|node_repl/.test(compact);
+  let latestCount: { current: number; total: number; endIndex: number } | null = null;
+  const counts = compact.matchAll(/(?:mcp)?servers?\((\d{1,2})\/(\d{1,2})\)/g);
+  for (const count of counts) {
+    const current = Number.parseInt(count[1], 10);
+    const total = Number.parseInt(count[2], 10);
+    if (!Number.isFinite(current) || !Number.isFinite(total) || total < 1 || total > 20 || current > total) continue;
+    latestCount = {
+      current,
+      total,
+      endIndex: (count.index || 0) + count[0].length,
+    };
+  }
+  return { seen: seen || Boolean(latestCount), latestCount };
 }
 
 function isCodexPromptPlaceholderReady(promptTail: string) {
@@ -7055,6 +7143,22 @@ function cleanInitialTerminalDisplayText(data: string, initialBuffer: { current:
 
 function terminalDisplayTextForXterm(data: string, carry: { current: string }) {
   return stripTerminalDisplayControlSequences(data, carry);
+}
+
+function terminalDisplayHasVisibleText(data: string) {
+  return stripTerminalDisplayControlSequences(data)
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+    .replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b[()][A-Za-z0-9]/g, "")
+    .replace(/[\u001b\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+    .replace(/\r/g, "\n")
+    .trim()
+    .length > 0;
+}
+
+function terminalDisplayDebugTail(data: string) {
+  return terminalPlainTextForLog(data)
+    || terminalTextForParsing(data).replace(/[ \t]+/g, " ").trim().slice(-500);
 }
 
 function terminalTextForParsing(data: string) {

@@ -38,3 +38,9 @@ Completed on 2026-06-06. Manual <code>+ agent</code> now promotes a hidden gener
 <PlanSection title="2026-06-06 Readiness Follow-up">
 Execute readiness now treats incomplete MCP startup counters, including compact <code>startingmcpservers(2/3)</code> terminal text, as not ready before prompt submission. Visible agent panes also keep showing the startup notice even when session metadata does not include a command string yet.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Terminal Robustness Follow-up">
+- Replaced the opaque prompt-ready boolean with a readiness snapshot that logs blocking states for queued follow-up input, model loading, missing prompts, incomplete MCP counts, and prompts that appear before MCP startup has completed.
+- Kept the React startup notice visible until xterm receives displayable replay or live output, with limited diagnostics for chunks that produce parser-visible text but no xterm display text.
+- Debounced and serialized hidden general/modify prewarm so route changes do not start a burst of background Codex sessions while visible Execute or planning handoffs are launching.
+</PlanSection>
