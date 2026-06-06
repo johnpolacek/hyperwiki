@@ -5000,6 +5000,8 @@ function XtermSession({
   const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
+  const [startupNoticeVisible, setStartupNoticeVisible] = useState(false);
+  const startupNotice = terminalStartupNotice(session);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -5013,7 +5015,7 @@ function XtermSession({
     let hasLoadedReplay = false;
     let eventBuffer: TerminalOutputEventPayload[] = [];
     let unlisten: (() => void) | null = null;
-    let startupNoticeVisible = false;
+    let startupNoticeIsVisible = Boolean(startupNotice);
 
     const terminalFont = getComputedStyle(document.documentElement).getPropertyValue("--terminal-font").trim() || "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     const terminal = new Terminal({
@@ -5038,16 +5040,12 @@ function XtermSession({
     if (isActive) {
       terminal.focus();
     }
-    const startupNotice = terminalStartupNotice(session);
-    if (startupNotice) {
-      startupNoticeVisible = true;
-      terminal.write(`\x1b[2m${startupNotice}\x1b[0m\r\n`);
-    }
+    setStartupNoticeVisible(startupNoticeIsVisible);
 
     const clearStartupNotice = () => {
-      if (!startupNoticeVisible) return;
-      terminal.clear();
-      startupNoticeVisible = false;
+      if (!startupNoticeIsVisible) return;
+      startupNoticeIsVisible = false;
+      setStartupNoticeVisible(false);
     };
 
     const fit = () => {
@@ -5165,12 +5163,19 @@ function XtermSession({
   }, [isActive]);
 
   return (
-    <div
-      className="terminal-scrollbar-thin h-full min-h-0 p-1"
-      onClick={() => terminalRef.current?.focus()}
-      onMouseDown={() => terminalRef.current?.focus()}
-      ref={containerRef}
-    />
+    <div className="relative h-full min-h-0">
+      {startupNoticeVisible && startupNotice ? (
+        <div className="pointer-events-none absolute left-3 top-2 z-10 font-mono text-[13px] text-[#8c958e]">
+          {startupNotice}
+        </div>
+      ) : null}
+      <div
+        className="terminal-scrollbar-thin h-full min-h-0 p-1"
+        onClick={() => terminalRef.current?.focus()}
+        onMouseDown={() => terminalRef.current?.focus()}
+        ref={containerRef}
+      />
+    </div>
   );
 }
 

@@ -27,3 +27,7 @@ Visible command-backed terminals should show an immediate startup notice only un
 - Static smoke coverage checks that startup notices clear on terminal bytes before display-text filtering.
 - `pnpm run check`
 </PlanSection>
+
+<PlanSection title="2026-06-06 Follow-up">
+The visible startup notice is now rendered as a React overlay instead of xterm-buffer text. Replay and live output bytes still clear the notice before display-text filtering, but xterm no longer needs to clear queued placeholder text from terminal history.
+</PlanSection>

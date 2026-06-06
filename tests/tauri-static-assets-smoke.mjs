@@ -132,8 +132,8 @@ if (!appSource.includes("latestTerminalContext") || !appSource.includes("Ignorin
 if (!appSource.includes("function applyTerminalSessions") || !appSource.includes("preserved = currentVisible.filter") || !appSource.includes("function upsertTerminalSession") || !appSource.includes("function selectActiveSessionId")) {
   throw new Error("Terminal pane sessions must use one canonical apply/upsert path that preserves newly started visible sessions.");
 }
-if (!appSource.includes("function terminalStartupNotice") || !appSource.includes("Starting agent terminal") || !appSource.includes("startupNoticeVisible") || !appSource.includes("terminal.clear();")) {
-  throw new Error("Visible command terminals must show an immediate startup notice until real replay/output arrives.");
+if (!appSource.includes("function terminalStartupNotice") || !appSource.includes("Starting agent terminal") || !appSource.includes("startupNoticeVisible") || !appSource.includes("setStartupNoticeVisible(startupNoticeIsVisible)") || !appSource.includes("pointer-events-none absolute")) {
+  throw new Error("Visible command terminals must show an immediate React startup notice until real replay/output arrives.");
 }
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal output plain\", bytes.length, payload.seq, text, loggedPlainTextRef);\n      clearStartupNotice();") || !appSource.includes("logTerminalPlainText(session.id, \"Terminal replay plain\", bytes.length, replay.seq, text, loggedPlainTextRef);\n          clearStartupNotice();")) {
   throw new Error("Visible command terminal startup notices must clear on replay/output bytes before display-text filtering.");
