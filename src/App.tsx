@@ -5039,7 +5039,14 @@ function XtermSession({
     }
   }, [isActive]);
 
-  return <div className="terminal-scrollbar-thin h-full min-h-0 p-1" ref={containerRef} />;
+  return (
+    <div
+      className="terminal-scrollbar-thin h-full min-h-0 p-1"
+      onClick={() => terminalRef.current?.focus()}
+      onMouseDown={() => terminalRef.current?.focus()}
+      ref={containerRef}
+    />
+  );
 }
 
 function routeFromLocation(): ViewRoute {
