@@ -721,6 +721,8 @@ export type GridBeamProps = UseGridBeamOptions &
   Readonly<{
     /** Corner radius for the root and canvas (divider SVG is rectangular). */
     borderRadius?: number
+    /** Grid line color (default `var(--border)` from shadcn theme). */
+    dividerStroke?: string
   }>
 
 /**
@@ -740,6 +742,7 @@ export function GridBeam({
   duration,
   strength,
   breathe,
+  dividerStroke,
   ...props
 }: GridBeamProps) {
   const {
@@ -764,7 +767,7 @@ export function GridBeam({
       style={{ borderRadius, ...style }}
       {...props}
     >
-      <GridBeamDividers cols={c} rows={r} />
+      <GridBeamDividers cols={c} dividerStroke={dividerStroke} rows={r} />
       <GridBeamCanvas borderRadius={borderRadius} ref={canvasRef} />
       <GridBeamContent>{children}</GridBeamContent>
     </div>

@@ -2731,6 +2731,7 @@ function BeamSurface({
   colorVariant = "mono",
   cols = 4,
   contentClassName,
+  dividerStroke,
   duration = 5,
   rows = 3,
   strength = 0.32,
@@ -2743,6 +2744,7 @@ function BeamSurface({
   colorVariant?: GridBeamPaletteKey;
   cols?: number;
   contentClassName?: string;
+  dividerStroke?: string;
   duration?: number;
   rows?: number;
   strength?: number;
@@ -2756,6 +2758,7 @@ function BeamSurface({
       className={className}
       colorVariant={colorVariant}
       cols={cols}
+      dividerStroke={dividerStroke}
       duration={duration}
       rows={rows}
       strength={strength}
@@ -2896,8 +2899,8 @@ function WikiSidebar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card/95">
-      <BeamSurface className="h-full bg-card/90" colorVariant="mono" cols={3} contentClassName="h-full" duration={6} rows={5} strength={0.2}>
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
+      <BeamSurface className="h-full bg-card" colorVariant="mono" cols={3} contentClassName="h-full" dividerStroke="transparent" duration={6} rows={5} strength={0.12}>
       <nav className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
