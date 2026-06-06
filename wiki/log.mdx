@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | terminal fallback input</h2>
+  <ul>
+    <li>Changed the selectable terminal fallback transcript from a read-only overlay into a focusable input bridge for live xterm sessions.</li>
+    <li>Forwarded typed characters, paste, Enter, Backspace, arrows, Tab, Escape, Delete, and common Ctrl terminal controls while preserving transcript selection and copy behavior.</li>
+    <li>Added static coverage so fallback transcript rendering cannot regress into a non-interactive pane when xterm fails to paint.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | full terminal history retention</h2>
   <ul>
     <li>Removed the live terminal replay byte drain so a running session keeps the earliest output bytes available through replay.</li>

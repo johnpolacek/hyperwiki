@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import {
   BookOpen,
   Check,
@@ -5213,10 +5213,54 @@ function XtermSession({
   const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
+  const flushingInputRef = useRef(false);
   const [startupNoticeVisible, setStartupNoticeVisible] = useState(false);
   const [fallbackVisible, setFallbackVisible] = useState(false);
   const [fallbackText, setFallbackText] = useState("");
   const startupNotice = terminalStartupNotice(session);
+
+  const flushPendingInput = useCallback(async function flushPendingInput() {
+    if (flushingInputRef.current) return;
+    flushingInputRef.current = true;
+    try {
+      while (!closedRef.current && pendingRef.current.length) {
+        const input = pendingRef.current.shift() || "";
+        try {
+          await sendInput(session.id, input);
+        } catch (error) {
+          pendingRef.current = [];
+          const message = error instanceof Error ? error.message : String(error);
+          appendImportLog(`Terminal input failed session=${session.id}`, error);
+          terminalRef.current?.write(`\r\n\x1b[31m[hyperwiki] terminal input failed: ${message}\x1b[0m\r\n`);
+          break;
+        }
+      }
+    } finally {
+      flushingInputRef.current = false;
+      if (!closedRef.current && pendingRef.current.length) void flushPendingInput();
+    }
+  }, [session.id]);
+
+  const queueTerminalInput = useCallback((input: string) => {
+    if (!input || closedRef.current) return;
+    pendingRef.current.push(input);
+    void flushPendingInput();
+  }, [flushPendingInput]);
+
+  const handleFallbackKeyDown = useCallback((event: KeyboardEvent<HTMLPreElement>) => {
+    if (event.defaultPrevented || event.nativeEvent.isComposing) return;
+    const input = terminalInputForKeyboardEvent(event);
+    if (!input) return;
+    event.preventDefault();
+    queueTerminalInput(input);
+  }, [queueTerminalInput]);
+
+  const handleFallbackPaste = useCallback((event: ClipboardEvent<HTMLPreElement>) => {
+    const text = event.clipboardData.getData("text");
+    if (!text) return;
+    event.preventDefault();
+    queueTerminalInput(text);
+  }, [queueTerminalInput]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -5390,25 +5434,9 @@ function XtermSession({
       }
     };
 
-    const flush = async () => {
-      while (isCurrentEffect() && pendingRef.current.length) {
-        const input = pendingRef.current.shift() || "";
-        try {
-          await sendInput(session.id, input);
-        } catch (error) {
-          pendingRef.current = [];
-          const message = error instanceof Error ? error.message : String(error);
-          appendImportLog(`Terminal input failed session=${session.id}`, error);
-          terminal.write(`\r\n\x1b[31m[hyperwiki] terminal input failed: ${message}\x1b[0m\r\n`);
-          break;
-        }
-      }
-    };
-
     const dataDisposable = terminal.onData((data) => {
       if (!isCurrentEffect()) return;
-      pendingRef.current.push(data);
-      void flush();
+      queueTerminalInput(data);
     });
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
       if (!isCurrentEffect()) return;
@@ -5467,7 +5495,7 @@ function XtermSession({
         eventBuffer.sort((left, right) => left.seq - right.seq).forEach(writeTerminalChunk);
         eventBuffer = [];
         fit();
-        void flush();
+        void flushPendingInput();
       } catch (error) {
         if (!isCurrentEffect()) return;
         terminal.writeln("");
@@ -5492,7 +5520,7 @@ function XtermSession({
       terminalRef.current = null;
       fitRef.current = null;
     };
-  }, [activeProject?.id, onTerminalText, session.id]);
+  }, [activeProject?.id, flushPendingInput, onTerminalText, queueTerminalInput, session.id]);
 
   useEffect(() => {
     if (isActive) {
@@ -5514,7 +5542,14 @@ function XtermSession({
         ref={containerRef}
       />
       {fallbackVisible && fallbackText ? (
-        <pre aria-label="Terminal transcript" className="absolute inset-0 z-[5] m-0 select-text overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4]">
+        <pre
+          aria-label="Terminal transcript"
+          className="absolute inset-0 z-[5] m-0 select-text overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4] outline-none"
+          onClick={(event) => event.currentTarget.focus()}
+          onKeyDown={handleFallbackKeyDown}
+          onPaste={handleFallbackPaste}
+          tabIndex={0}
+        >
           {fallbackText}
         </pre>
       ) : null}
@@ -7348,6 +7383,66 @@ function terminalDisplayHasVisibleText(data: string) {
     .replace(/\r/g, "\n")
     .trim()
     .length > 0;
+}
+
+function terminalInputForKeyboardEvent(event: KeyboardEvent<HTMLElement>) {
+  const key = event.key;
+  const lowerKey = key.toLowerCase();
+  if ((event.metaKey || (event.ctrlKey && (lowerKey === "a" || lowerKey === "c"))) && selectionIsInside(event.currentTarget)) return "";
+  if (event.metaKey) return "";
+  if (event.altKey) return "";
+  if (event.ctrlKey) {
+    if (lowerKey.length === 1 && lowerKey >= "a" && lowerKey <= "z") {
+      return String.fromCharCode(lowerKey.charCodeAt(0) - 96);
+    }
+    if (key === " " || key === "@") return "\x00";
+    if (key === "[") return "\x1b";
+    if (key === "\\") return "\x1c";
+    if (key === "]") return "\x1d";
+    if (key === "^") return "\x1e";
+    if (key === "_") return "\x1f";
+    if (key === "?") return "\x7f";
+    return "";
+  }
+  if (key.length === 1) return key;
+  switch (key) {
+    case "Enter":
+      return "\r";
+    case "Backspace":
+      return "\x7f";
+    case "Tab":
+      return "\t";
+    case "Escape":
+      return "\x1b";
+    case "ArrowUp":
+      return "\x1b[A";
+    case "ArrowDown":
+      return "\x1b[B";
+    case "ArrowRight":
+      return "\x1b[C";
+    case "ArrowLeft":
+      return "\x1b[D";
+    case "Home":
+      return "\x1b[H";
+    case "End":
+      return "\x1b[F";
+    case "PageUp":
+      return "\x1b[5~";
+    case "PageDown":
+      return "\x1b[6~";
+    case "Delete":
+      return "\x1b[3~";
+    default:
+      return "";
+  }
+}
+
+function selectionIsInside(element: HTMLElement) {
+  const selection = window.getSelection();
+  if (!selection || selection.isCollapsed) return false;
+  const anchor = selection.anchorNode;
+  const focus = selection.focusNode;
+  return Boolean(anchor && focus && element.contains(anchor) && element.contains(focus));
 }
 
 function terminalDisplayDebugTail(data: string) {

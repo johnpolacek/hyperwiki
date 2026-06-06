@@ -159,6 +159,9 @@ if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}")
 if (!appSource.includes("terminalXtermScrollback = 100000") || appSource.includes("nextText = text.trimEnd().slice(-12000)") || appSource.includes("lines.slice(-180)") || appSource.includes(".split(\"\\n\").slice(-180)") || appSource.includes(".slice(-12000);")) {
   throw new Error("Terminal transcript fallback and xterm scrollback must preserve full live output history instead of tail-slicing early output.");
 }
+if (!appSource.includes("terminalInputForKeyboardEvent") || !appSource.includes("onKeyDown={handleFallbackKeyDown}") || !appSource.includes("onPaste={handleFallbackPaste}") || !appSource.includes("queueTerminalInput(text)") || !appSource.includes("tabIndex={0}")) {
+  throw new Error("Terminal fallback transcript must remain keyboard/paste interactive when it covers xterm.");
+}
 if (!appSource.includes("Agent handoff start kind=") || !appSource.includes("Agent handoff session ready") || !appSource.includes("elapsedMs=${Date.now() - handoffStartedAt}") || !appSource.includes("elapsedMs=${Date.now() - startedAt}")) {
   throw new Error("Agent handoffs and readiness waits must log elapsed timing for startup troubleshooting.");
 }

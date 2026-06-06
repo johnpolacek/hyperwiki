@@ -64,3 +64,7 @@ Execute no longer forces a fresh general Codex launch. It promotes an existing h
 <PlanSection title="2026-06-06 Full Terminal History Follow-up">
 Live terminal replay no longer drains the earliest bytes after a small fixed cap, xterm scrollback was raised substantially, and the selectable fallback transcript now accumulates parsed terminal history instead of replacing it with a 12k-character tail from the xterm buffer. Codex can still collapse individual command output internally with its own transcript marker, but hyperwiki should preserve the beginning of the live session output it receives.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Fallback Input Follow-up">
+When xterm does not visibly paint and the selectable transcript fallback covers the pane, the fallback now remains keyboard and paste interactive. Click-to-type, Enter, Backspace, arrows, Tab, Escape, Delete, and common Ctrl terminal controls are translated into terminal input while selection and copy shortcuts remain available for the transcript.
+</PlanSection>
