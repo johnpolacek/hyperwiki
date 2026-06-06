@@ -78,7 +78,7 @@ if (appSource.includes('action === "modify" ? { forceNewSession: true')) {
 if (!app.includes("/api/wiki/fingerprint") || !app.includes("Wiki fingerprint changed") || !app.includes("Wiki changes loaded")) {
   throw new Error("App must refresh wiki sidebar state when plan agents or focus checks detect wiki file changes.");
 }
-if (!appSource.includes("agentPromptReadinessSnapshot") || !appSource.includes("agentPromptReadinessLogKey") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("lastModelLoading") || !appSource.includes("lastModelReady") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("prompt-before-mcp-complete") || !appSource.includes("mcp-starting-no-count") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills") || !appSource.includes("startingmcp") || !appSource.includes("mcp.latestCount.current < mcp.latestCount.total")) {
+if (!appSource.includes("agentPromptReadinessSnapshot") || !appSource.includes("agentPromptReadinessLogKey") || !appSource.includes("isCodexPromptPlaceholderReady") || !appSource.includes("queuedfollow-upinputs") || !appSource.includes("lastModelLoading") || !appSource.includes("lastModelReady") || !appSource.includes("maxAttempts = options.maxAttempts || 120") || !appSource.includes("prompt-before-mcp-complete") || !appSource.includes("prompt-after-stale-mcp") || !appSource.includes("mcp-starting-no-count") || !appSource.includes("Run \\/review on my current changes") || !appSource.includes("Use \\/skills to list available skills") || !appSource.includes("startingmcp") || !appSource.includes("mcp.latestCount.current < mcp.latestCount.total")) {
   throw new Error("Agent prompt readiness must wait through Codex model and MCP startup before submitting agent prompts.");
 }
 if (!appSource.includes("planningPromptContext") || !appSource.includes("displayWikiPath(currentPage)") || !appSource.includes("Report only repo-visible non-wiki changes as a caution")) {
@@ -146,6 +146,9 @@ if (!appSource.includes("ensureAgentSession optimistic pane inserted") || !appSo
 }
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("writeDisplayText(\"output\", bytes.length, payload.seq, displayText, text);") || !appSource.includes("writeDisplayText(\"replay\", bytes.length, replay.seq, displayText, text);") || !appSource.includes("terminalDisplayHasVisibleText") || !appSource.includes("Terminal display empty session=")) {
   throw new Error("Visible command terminal startup notices must clear only after displayable replay/output reaches xterm.");
+}
+if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}") || !appSource.includes("Terminal xterm render check") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("terminalFallbackTextForDisplay") || !appSource.includes("countVisibleCanvasPixels")) {
+  throw new Error("Terminal panes must fall back to a readable transcript and log xterm paint diagnostics when output is received but xterm does not visibly render it.");
 }
 if (appSource.includes("Run relevant checks before finishing.")) {
   throw new Error("Agent prompt preamble must not require checks for no-edit standby turns.");

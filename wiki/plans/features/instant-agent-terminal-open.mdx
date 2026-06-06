@@ -44,3 +44,11 @@ Execute readiness now treats incomplete MCP startup counters, including compact 
 - Kept the React startup notice visible until xterm receives displayable replay or live output, with limited diagnostics for chunks that produce parser-visible text but no xterm display text.
 - Debounced and serialized hidden general/modify prewarm so route changes do not start a burst of background Codex sessions while visible Execute or planning handoffs are launching.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Xterm Display Fallback">
+When terminal output reaches the React parser but xterm does not visibly paint canvas text, the pane now shows a read-only plain transcript overlay while keeping xterm mounted for input. The display path logs xterm open, fit, write, render-check, and fallback show/hide state with geometry, row/column, canvas, and painted-pixel details for troubleshooting.
+</PlanSection>
+
+<PlanSection title="2026-06-06 Stale MCP Counter Follow-up">
+Prompt readiness now treats an incomplete MCP counter as stale when a known Codex starter prompt appears after it. This avoids the full readiness timeout in cases where terminal replay still contains old <code>2/3</code> startup text but Codex is already accepting input.
+</PlanSection>

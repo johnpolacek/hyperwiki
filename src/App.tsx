@@ -5147,11 +5147,19 @@ function XtermSession({
   const seenSeqRef = useRef(0);
   const loggedPlainTextRef = useRef("");
   const emptyDisplayLogCountRef = useRef(0);
+  const displayWriteLogCountRef = useRef(0);
+  const renderCheckLogCountRef = useRef(0);
+  const fitLogCountRef = useRef(0);
+  const xtermPaintHealthyRef = useRef(false);
+  const fallbackVisibleRef = useRef(false);
+  const fallbackTextRef = useRef("");
   const initialDisplayBufferRef = useRef<string | null>("");
   const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
   const [startupNoticeVisible, setStartupNoticeVisible] = useState(false);
+  const [fallbackVisible, setFallbackVisible] = useState(false);
+  const [fallbackText, setFallbackText] = useState("");
   const startupNotice = terminalStartupNotice(session);
 
   useEffect(() => {
@@ -5161,6 +5169,12 @@ function XtermSession({
     seenSeqRef.current = 0;
     loggedPlainTextRef.current = "";
     emptyDisplayLogCountRef.current = 0;
+    displayWriteLogCountRef.current = 0;
+    renderCheckLogCountRef.current = 0;
+    fitLogCountRef.current = 0;
+    xtermPaintHealthyRef.current = false;
+    fallbackVisibleRef.current = false;
+    fallbackTextRef.current = "";
     initialDisplayBufferRef.current = "";
     displayControlCarryRef.current.current = "";
     pendingRef.current = [];
@@ -5189,10 +5203,13 @@ function XtermSession({
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(new WebLinksAddon());
     terminal.open(container);
+    appendImportLog(`Terminal xterm opened session=${session.id} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} active=${isActive}`);
     if (isActive) {
       terminal.focus();
     }
     setStartupNoticeVisible(startupNoticeIsVisible);
+    setFallbackVisible(false);
+    setFallbackText("");
 
     const clearStartupNotice = () => {
       if (!startupNoticeIsVisible) return;
@@ -5206,23 +5223,84 @@ function XtermSession({
       appendImportLog(`Terminal display empty session=${session.id} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} count=${emptyDisplayLogCountRef.current} parsedTail=${JSON.stringify(terminalDisplayDebugTail(text))}`);
     };
 
+    const setTerminalFallbackVisible = (visible: boolean, reason: string, snapshot?: XtermRenderSnapshot) => {
+      if (fallbackVisibleRef.current === visible) return;
+      fallbackVisibleRef.current = visible;
+      setFallbackVisible(visible);
+      appendImportLog(`Terminal fallback ${visible ? "shown" : "hidden"} session=${session.id} reason=${reason}${snapshot ? ` ${xtermRenderSnapshotSummary(snapshot)}` : ""}`);
+    };
+
+    const appendFallbackText = (text: string) => {
+      const nextText = appendTerminalFallbackText(fallbackTextRef.current, terminalFallbackTextForDisplay(text));
+      if (nextText === fallbackTextRef.current) return;
+      fallbackTextRef.current = nextText;
+      setFallbackText(nextText);
+    };
+
+    const logDisplayWrite = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, hasVisibleText: boolean) => {
+      if (displayWriteLogCountRef.current >= 8) return;
+      displayWriteLogCountRef.current += 1;
+      appendImportLog(`Terminal display write session=${session.id} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} displayChars=${displayText.length} visible=${hasVisibleText} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} count=${displayWriteLogCountRef.current}`);
+    };
+
+    const checkXtermRender = (source: "output" | "replay", seq: number | null, finalCheck: boolean) => {
+      if (closedRef.current) return;
+      const snapshot = xtermRenderSnapshot(container, terminal);
+      if (renderCheckLogCountRef.current < 12) {
+        renderCheckLogCountRef.current += 1;
+        appendImportLog(`Terminal xterm render check session=${session.id} source=${source} seq=${seq ?? "none"} final=${finalCheck} ${xtermRenderSnapshotSummary(snapshot)} count=${renderCheckLogCountRef.current}`);
+      }
+      if (snapshot.painted) {
+        xtermPaintHealthyRef.current = true;
+        setTerminalFallbackVisible(false, "xterm-painted", snapshot);
+        return;
+      }
+      if (finalCheck && fallbackTextRef.current.trim()) {
+        setTerminalFallbackVisible(true, "xterm-unpainted", snapshot);
+      }
+    };
+
+    const scheduleXtermRenderChecks = (source: "output" | "replay", seq: number | null) => {
+      if (xtermPaintHealthyRef.current && !fallbackVisibleRef.current) return;
+      window.setTimeout(() => checkXtermRender(source, seq, false), 120);
+      window.setTimeout(() => checkXtermRender(source, seq, true), 650);
+    };
+
     const writeDisplayText = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, text: string) => {
+      appendFallbackText(text);
       if (!displayText) {
         logEmptyDisplay(source, bytesLength, seq, text);
+        if (terminalFallbackTextForDisplay(text)) {
+          setTerminalFallbackVisible(true, "empty-display-with-parsed-text");
+        }
         return;
       }
       const hasVisibleText = terminalDisplayHasVisibleText(displayText);
+      logDisplayWrite(source, bytesLength, seq, displayText, hasVisibleText);
       if (!hasVisibleText) logEmptyDisplay(source, bytesLength, seq, text);
       terminal.write(displayText, () => {
-        if (hasVisibleText) clearStartupNotice();
+        if (!hasVisibleText) return;
+        clearStartupNotice();
+        scheduleXtermRenderChecks(source, seq);
       });
     };
 
     const fit = () => {
-      if (closedRef.current || container.clientWidth <= 0 || container.clientHeight <= 0) return;
+      if (closedRef.current) return;
+      if (container.clientWidth <= 0 || container.clientHeight <= 0) {
+        if (fitLogCountRef.current < 8) {
+          fitLogCountRef.current += 1;
+          appendImportLog(`Terminal fit skipped session=${session.id} container=${container.clientWidth}x${container.clientHeight} count=${fitLogCountRef.current}`);
+        }
+        return;
+      }
       try {
         fitAddon.fit();
         void sendResize(session.id, terminal.cols, terminal.rows);
+        if (fitLogCountRef.current < 8) {
+          fitLogCountRef.current += 1;
+          appendImportLog(`Terminal fit session=${session.id} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} count=${fitLogCountRef.current}`);
+        }
       } catch {
         // xterm fit can throw while the panel is resizing; the next observer tick retries.
       }
@@ -5342,6 +5420,11 @@ function XtermSession({
         onMouseDown={() => terminalRef.current?.focus()}
         ref={containerRef}
       />
+      {fallbackVisible && fallbackText ? (
+        <pre aria-hidden="true" className="pointer-events-none absolute inset-0 z-[5] m-0 overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4]">
+          {fallbackText}
+        </pre>
+      ) : null}
     </div>
   );
 }
@@ -7000,7 +7083,12 @@ function agentPromptReadinessSnapshot(text: string): AgentPromptReadinessSnapsho
   if (modelLoading) return { ...base, ready: false, reason: "model-loading" };
   if (mcp.seen) {
     if (!mcp.latestCount) return { ...base, ready: false, reason: "mcp-starting-no-count" };
-    if (mcp.latestCount.current < mcp.latestCount.total) return { ...base, ready: false, reason: `mcp-starting-${mcp.latestCount.current}/${mcp.latestCount.total}` };
+    if (mcp.latestCount.current < mcp.latestCount.total) {
+      if (promptReady && compactLastPrompt > mcp.latestCount.endIndex) {
+        return { ...base, ready: true, reason: `prompt-after-stale-mcp-${mcp.latestCount.current}/${mcp.latestCount.total}` };
+      }
+      return { ...base, ready: false, reason: `mcp-starting-${mcp.latestCount.current}/${mcp.latestCount.total}` };
+    }
     if (compactLastPrompt === -1) return { ...base, ready: false, reason: "no-prompt-after-mcp" };
     if (compactLastPrompt < mcp.latestCount.endIndex) return { ...base, ready: false, reason: "prompt-before-mcp-complete" };
   }
@@ -7159,6 +7247,112 @@ function terminalDisplayHasVisibleText(data: string) {
 function terminalDisplayDebugTail(data: string) {
   return terminalPlainTextForLog(data)
     || terminalTextForParsing(data).replace(/[ \t]+/g, " ").trim().slice(-500);
+}
+
+function terminalFallbackTextForDisplay(data: string) {
+  return terminalTextForParsing(data)
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trimEnd())
+    .filter(isUsefulTerminalLogLine)
+    .slice(-120)
+    .join("\n")
+    .slice(-12000);
+}
+
+function appendTerminalFallbackText(previous: string, next: string) {
+  const trimmedNext = next.trim();
+  if (!trimmedNext) return previous;
+  const trimmedPrevious = previous.trim();
+  if (!trimmedPrevious) return trimmedNext;
+  if (trimmedPrevious.endsWith(trimmedNext)) return previous;
+  const previousTail = trimmedPrevious.slice(-1200);
+  if (previousTail && trimmedNext.includes(previousTail)) {
+    return trimmedNext.slice(-12000);
+  }
+  return `${trimmedPrevious}\n${trimmedNext}`.split("\n").slice(-180).join("\n").slice(-12000);
+}
+
+type XtermRenderSnapshot = {
+  containerWidth: number;
+  containerHeight: number;
+  terminalWidth: number;
+  terminalHeight: number;
+  cols: number;
+  rows: number;
+  canvasCount: number;
+  paintedPixels: number;
+  painted: boolean;
+  display: string;
+  visibility: string;
+  opacity: string;
+};
+
+function xtermRenderSnapshot(container: HTMLElement, terminal: Terminal): XtermRenderSnapshot {
+  const containerRect = container.getBoundingClientRect();
+  const element = terminal.element || (container.querySelector(".xterm") as HTMLElement | null);
+  const terminalRect = element?.getBoundingClientRect();
+  const style = element ? getComputedStyle(element) : null;
+  const canvases = Array.from(container.querySelectorAll("canvas"));
+  let paintedPixels = 0;
+  for (const canvas of canvases) {
+    paintedPixels += countVisibleCanvasPixels(canvas, 220 - paintedPixels);
+    if (paintedPixels >= 220) break;
+  }
+  const hasUsableGeometry = containerRect.width > 0 && containerRect.height > 0 && (terminalRect?.width || 0) > 0 && (terminalRect?.height || 0) > 0 && terminal.cols > 0 && terminal.rows > 0;
+  const isElementVisible = !style || (style.display !== "none" && style.visibility !== "hidden" && Number.parseFloat(style.opacity || "1") > 0);
+  return {
+    containerWidth: Math.round(containerRect.width),
+    containerHeight: Math.round(containerRect.height),
+    terminalWidth: Math.round(terminalRect?.width || 0),
+    terminalHeight: Math.round(terminalRect?.height || 0),
+    cols: terminal.cols,
+    rows: terminal.rows,
+    canvasCount: canvases.length,
+    paintedPixels,
+    painted: hasUsableGeometry && isElementVisible && paintedPixels >= 220,
+    display: style?.display || "unknown",
+    visibility: style?.visibility || "unknown",
+    opacity: style?.opacity || "unknown",
+  };
+}
+
+function xtermRenderSnapshotSummary(snapshot: XtermRenderSnapshot) {
+  return `container=${snapshot.containerWidth}x${snapshot.containerHeight} terminal=${snapshot.terminalWidth}x${snapshot.terminalHeight} cols=${snapshot.cols} rows=${snapshot.rows} canvases=${snapshot.canvasCount} paintedPixels=${snapshot.paintedPixels} painted=${snapshot.painted} display=${snapshot.display} visibility=${snapshot.visibility} opacity=${snapshot.opacity}`;
+}
+
+function countVisibleCanvasPixels(canvas: HTMLCanvasElement, needed: number) {
+  if (needed <= 0 || canvas.width <= 0 || canvas.height <= 0) return 0;
+  let context: CanvasRenderingContext2D | null = null;
+  try {
+    context = canvas.getContext("2d", { willReadFrequently: true });
+  } catch {
+    return 0;
+  }
+  if (!context) return 0;
+  try {
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      const alpha = pixels[index + 3];
+      if (alpha < 24) continue;
+      if (isTerminalBackgroundPixel(pixels[index], pixels[index + 1], pixels[index + 2])) continue;
+      count += 1;
+      if (count >= needed) return count;
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+function isTerminalBackgroundPixel(red: number, green: number, blue: number) {
+  return colorDistance(red, green, blue, 32, 35, 31) < 14
+    || colorDistance(red, green, blue, 0, 0, 0) < 10
+    || colorDistance(red, green, blue, 17, 19, 18) < 14;
+}
+
+function colorDistance(red: number, green: number, blue: number, targetRed: number, targetGreen: number, targetBlue: number) {
+  return Math.abs(red - targetRed) + Math.abs(green - targetGreen) + Math.abs(blue - targetBlue);
 }
 
 function terminalTextForParsing(data: string) {

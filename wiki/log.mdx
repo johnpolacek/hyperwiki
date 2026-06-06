@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | terminal display fallback</h2>
+  <ul>
+    <li>Added xterm paint diagnostics for terminal open, fit, display writes, render checks, and fallback show/hide state so blank-pane reports include geometry and canvas evidence.</li>
+    <li>Added an automatic plain transcript overlay when terminal output is received but xterm does not visibly paint text, keeping the mounted xterm available for focus and input.</li>
+    <li>Adjusted agent readiness so stale incomplete MCP counters do not force a full timeout once a later Codex starter prompt is visible.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | robust terminal readiness and display</h2>
   <ul>
     <li>Replaced agent prompt readiness with diagnostic snapshots that distinguish queued follow-up input, model loading, incomplete MCP startup, missing prompts, and prompts seen before MCP completion.</li>
