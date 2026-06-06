@@ -616,6 +616,10 @@ const importLogStorageKey = "hyperwiki.importLog";
 const importPlanningWorkstreamLimit = 1000;
 const defaultThinkingEffort: ThinkingEffort = "low";
 const thinkingEffortStorageKey = "hyperwiki.thinkingEffort";
+const generalAgentPrewarmTarget = 2;
+const modifyAgentPrewarmTarget = 1;
+const prewarmAgentReadinessAttempts = 80;
+const generalAgentPrewarmRefillDelayMs = 1500;
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -654,6 +658,7 @@ function App() {
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const prewarmingGeneralSessions = useRef<Set<string>>(new Set());
+  const generalPrewarmRefillTimers = useRef<Map<string, number>>(new Map());
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const [resumedImportPlanningProjectId, setResumedImportPlanningProjectId] = useState<string | null>(null);
   const baseDataRequestId = useRef(0);
@@ -1224,6 +1229,7 @@ function App() {
           const promoted = await promoteSession(activeProject, existing.id, "general");
           appendImportLog(`Manual agent promoted prewarmed general session project=${activeProject.id} session=${promoted.id} elapsedMs=${Date.now() - startedAt}`);
           setStatus("Agent ready");
+          scheduleGeneralAgentPrewarmRefill(activeProject, layout, normalizedScope, "manual-agent-promote");
           void waitForAgentPromptReady(promoted.id, { maxAttempts: 8, intervalMs: 250, reason: "manual-agent-promote" }).then((ready) => {
             appendImportLog(`Manual agent promoted readiness session=${promoted.id} ready=${ready} elapsedMs=${Date.now() - startedAt}`);
           });
@@ -1259,6 +1265,7 @@ function App() {
       appendImportLog(`Manual terminal backend start returned role=${role} session=${started.session.id} elapsedMs=${Date.now() - startedAt}`);
       void loadSessions({ selectSessionId: started.session.id });
       if (role === "agent") {
+        if (activeProject) scheduleGeneralAgentPrewarmRefill(activeProject, layout, terminalScope, "manual-agent-start");
         void waitForAgentPromptReady(started.session.id, { maxAttempts: 20, intervalMs: 250, reason: "manual-agent-start" }).then((ready) => {
           appendImportLog(`Manual agent prompt readiness session=${started.session.id} ready=${ready} elapsedMs=${Date.now() - startedAt}`);
         });
@@ -1350,7 +1357,9 @@ function App() {
     if (existing?.command && isLiveTerminalSession(existing) && !options.forceNew) {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"} createdAt=${existing.createdAt || "unknown"}`);
       if (options.promote && isStandbySession(existing)) {
-        const promoted = await promoteSession(project, existing.id);
+        const promotedPurpose = options.purpose || existing.purpose || "general";
+        const promoted = await promoteSession(project, existing.id, promotedPurpose);
+        appendImportLog(`ensureAgentSession promoted standby project=${project.id} session=${existing.id} purpose=${promotedPurpose} scope=${normalizedScope.scope}`);
         upsertTerminalSession(project.id, promoted, { reason: "promote-reuse", select: true });
         return promoted;
       }
@@ -1420,11 +1429,40 @@ function App() {
     await prewarmModifySessionForScope(project, projectLayout, normalizedScope, knownSessions);
   }
 
+  function scheduleGeneralAgentPrewarmRefill(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, reason: string) {
+    const normalizedScope = normalizeTerminalScope(scope);
+    if (normalizedScope.scopeKind !== "plan") return;
+    const key = `${project.id}:${normalizedScope.scope}`;
+    if (generalPrewarmRefillTimers.current.has(key)) {
+      appendImportLog(`General prewarm refill already scheduled project=${project.id} scope=${normalizedScope.scope} reason=${reason}`);
+      return;
+    }
+    appendImportLog(`General prewarm refill scheduled project=${project.id} scope=${normalizedScope.scope} reason=${reason} delayMs=${generalAgentPrewarmRefillDelayMs}`);
+    const timer = window.setTimeout(() => {
+      generalPrewarmRefillTimers.current.delete(key);
+      const refillStartedAt = Date.now();
+      if (!isCurrentTerminalProject(project.id, latestTerminalContext.current) || latestTerminalContext.current.scope !== normalizedScope.scope) {
+        appendImportLog(`General prewarm refill skipped stale scope project=${project.id} scope=${normalizedScope.scope} currentProject=${latestTerminalContext.current.projectId || "none"} currentScope=${latestTerminalContext.current.scope} reason=${reason}`);
+        return;
+      }
+      void loadSessionsForProject(project, normalizedScope)
+        .then((latestSessions) => {
+          appendImportLog(`General prewarm refill loaded sessions project=${project.id} scope=${normalizedScope.scope} count=${latestSessions.length} reason=${reason} elapsedMs=${Date.now() - refillStartedAt}`);
+          return prewarmGeneralSessionForScope(project, projectLayout, normalizedScope, latestSessions);
+        })
+        .catch((error) => {
+          appendImportLog(`General prewarm refill failed project=${project.id} scope=${normalizedScope.scope} reason=${reason} elapsedMs=${Date.now() - refillStartedAt}`, error);
+        });
+    }, generalAgentPrewarmRefillDelayMs);
+    generalPrewarmRefillTimers.current.set(key, timer);
+  }
+
   async function prewarmModifySessionForScope(project: ProjectRecord, projectLayout: LayoutResponse | null, scope: TerminalScope, knownSessions: SessionRecord[]) {
     const normalizedScope = normalizeTerminalScope(scope);
     const key = `${project.id}:${normalizedScope.scope}`;
     if (prewarmingModifySessions.current.has(key)) return;
-    if (knownSessions.some((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session))) return;
+    const existingModifyCount = knownSessions.filter((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session)).length;
+    if (existingModifyCount >= modifyAgentPrewarmTarget) return;
     const command = agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) return;
     prewarmingModifySessions.current.add(key);
@@ -1447,18 +1485,27 @@ function App() {
     const normalizedScope = normalizeTerminalScope(scope);
     const key = `${project.id}:${normalizedScope.scope}`;
     if (prewarmingGeneralSessions.current.has(key)) return;
-    if (knownSessions.some((session) => isGeneralSession(session) && sessionMatchesScope(session, normalizedScope) && (isLiveTerminalSession(session) || isPendingTerminalSession(session)))) return;
     const command = agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) return;
+    const existingPool = knownSessions.filter((session) => isGeneralPrewarmSession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session));
+    const missing = Math.max(0, generalAgentPrewarmTarget - existingPool.length);
+    if (missing <= 0) return;
     prewarmingGeneralSessions.current.add(key);
+    const prewarmStartedAt = Date.now();
+    const createdSessions: SessionRecord[] = [];
     try {
-      appendImportLog(`Prewarming general agent project=${project.id} scope=${normalizedScope.scope}`);
-      const session = await ensureAgentSessionForProject(project, projectLayout, normalizedScope, knownSessions, { commandOverride: command, purpose: "general", visibility: "standby" });
-      appendImportLog(`Prewarmed general agent started project=${project.id} session=${session.id} scope=${normalizedScope.scope} visibility=${session.visibility || "visible"}`);
-      await loadSessionsForProject(project, normalizedScope);
-      void waitForAgentPromptReady(session.id, { maxAttempts: 20, intervalMs: 250, reason: "general-prewarm" }).then((ready) => {
-        appendImportLog(`Prewarmed general agent readiness project=${project.id} session=${session.id} scope=${normalizedScope.scope} ready=${ready}`);
-      });
+      appendImportLog(`Prewarming general agent pool project=${project.id} scope=${normalizedScope.scope} existing=${existingPool.length} target=${generalAgentPrewarmTarget} starting=${missing}`);
+      for (let index = 0; index < missing; index += 1) {
+        const slot = existingPool.length + index + 1;
+        const slotStartedAt = Date.now();
+        const session = await ensureAgentSessionForProject(project, projectLayout, normalizedScope, [...knownSessions, ...createdSessions], { commandOverride: command, purpose: "general", visibility: "standby", forceNew: true });
+        createdSessions.push(session);
+        appendImportLog(`Prewarmed general agent pool slot started project=${project.id} session=${session.id} scope=${normalizedScope.scope} slot=${slot}/${generalAgentPrewarmTarget} visibility=${session.visibility || "visible"} elapsedMs=${Date.now() - slotStartedAt} totalElapsedMs=${Date.now() - prewarmStartedAt}`);
+        void waitForAgentPromptReady(session.id, { maxAttempts: prewarmAgentReadinessAttempts, intervalMs: 250, reason: `general-prewarm-${slot}` }).then((ready) => {
+          appendImportLog(`Prewarmed general agent readiness project=${project.id} session=${session.id} scope=${normalizedScope.scope} slot=${slot}/${generalAgentPrewarmTarget} ready=${ready} elapsedMs=${Date.now() - prewarmStartedAt}`);
+        });
+      }
+      if (createdSessions.length) await loadSessionsForProject(project, normalizedScope);
     } catch (error) {
       appendImportLog(`Prewarm general agent failed project=${project.id} scope=${normalizedScope.scope}`, error);
     } finally {
@@ -1766,6 +1813,9 @@ function App() {
             },
           });
           appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
+          if (kind === "execute" && promptProject) {
+            scheduleGeneralAgentPrewarmRefill(promptProject, projectLayout, scope, "execute-submit");
+          }
           updateAgentRun(runId, {
             phase: "sent",
             activity: "Prompt sent; waiting for agent activity",
@@ -2365,7 +2415,7 @@ function App() {
           layout,
           sessions,
           undefined,
-          action === "modify" ? {} : { forceNewSession: true },
+          {},
         );
         setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
       }
@@ -5917,7 +5967,10 @@ function selectActiveSessionId(sessions: SessionRecord[], preferredId?: string |
 function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean }) {
   const liveWithCommand = sessions.filter((session) => session.command && isLiveTerminalSession(session));
   if (!liveWithCommand.length) return null;
-  if ((options.purpose === "modify" || options.purpose === "general") && options.promote) {
+  if (options.purpose === "general" && options.promote) {
+    return oldestSession(liveWithCommand.filter(isStandbySession));
+  }
+  if (options.purpose === "modify" && options.promote) {
     return newestSession(liveWithCommand.filter(isStandbySession))
       || newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession))
       || newestSession(liveWithCommand);
@@ -5926,6 +5979,16 @@ function selectReusableAgentSession(sessions: SessionRecord[], options: { purpos
     return newestSession(liveWithCommand);
   }
   return newestSession(liveWithCommand.filter(isVisibleLiveTerminalSession));
+}
+
+function oldestSession(sessions: SessionRecord[]) {
+  return sessions.reduce<SessionRecord | null>((oldest, session) => {
+    if (!oldest) return session;
+    const oldestMs = sessionSortMs(oldest);
+    const currentMs = sessionSortMs(session);
+    if (currentMs !== oldestMs) return currentMs < oldestMs ? session : oldest;
+    return session.id < oldest.id ? session : oldest;
+  }, null);
 }
 
 function newestSession(sessions: SessionRecord[]) {

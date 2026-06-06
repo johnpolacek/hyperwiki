@@ -102,7 +102,7 @@ if (appSource.includes('kind: "plan-create"') || appSource.includes("PlanCreatio
 if (!appSource.includes('if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" }')) {
   throw new Error("Direct /plans/new URLs must fall back to the Plans index.");
 }
-if (!appSource.includes('planCreationPrompt(activeProject)') || !appSource.includes('"planning"') || !appSource.includes('"Create Plan"') || !appSource.includes('{ forceNewSession: true }')) {
+if (!appSource.includes('planCreationPrompt(activeProject)') || !appSource.includes('kind: "planning"') || !appSource.includes('label: "Create Plan"') || !appSource.includes("forceNewSession: true,")) {
   throw new Error("Regular + plan must start a fresh visible planning agent terminal.");
 }
 if (!appSource.includes("async function openVisibleAgentPromptSession") || !appSource.includes("await openVisibleAgentPromptSession({") || appSource.includes("navigate(planIndexRoute);")) {
@@ -120,8 +120,14 @@ if (!appSource.includes("activePlanScopeComplete || isImportedPlanningActive") |
 if (!appSource.includes("terminal-native one-question-at-a-time planning interview") || !appSource.includes("ask the user for the planning focus first and wait") || appSource.includes("For every user-facing question, emit only one JSON object containing type \\\"hyperwiki-question\\\"")) {
   throw new Error("Regular + plan prompt must use terminal-native Q&A instead of app-rendered JSON questions.");
 }
-if (!appSource.includes('action === "modify" ? {} : { forceNewSession: true }')) {
-  throw new Error("Execute must start a fresh general agent session while Modify keeps its prewarmed session behavior.");
+if (appSource.includes('action === "modify" ? {} : { forceNewSession: true }')) {
+  throw new Error("Execute must reuse a warm general agent when available instead of forcing a fresh launch.");
+}
+if (!appSource.includes("generalAgentPrewarmTarget = 2") || !appSource.includes("Prewarming general agent pool") || !appSource.includes("scheduleGeneralAgentPrewarmRefill") || !appSource.includes("General prewarm refill scheduled") || !appSource.includes('"execute-submit"')) {
+  throw new Error("Execute must use the bounded general-agent prewarm pool and schedule a refill after prompt handoff.");
+}
+if (!appSource.includes("const promotedPurpose = options.purpose || existing.purpose || \"general\"") || !appSource.includes("oldestSession(liveWithCommand.filter(isStandbySession))")) {
+  throw new Error("Promoted general prewarm sessions must preserve purpose and prefer the warmest standby slot.");
 }
 if (!appSource.includes('name: "dev"') || !appSource.includes('role: "dev"') || !appSource.includes('const command = preview?.startCommand || ""')) {
   throw new Error("Run dev must start a configured dev terminal instead of an empty CLI or worktree agent handoff.");

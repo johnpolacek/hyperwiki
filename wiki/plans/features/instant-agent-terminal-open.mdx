@@ -56,3 +56,7 @@ Prompt readiness now treats an incomplete MCP counter as stale when a known Code
 <PlanSection title="2026-06-06 Selectable Fallback and Timing Follow-up">
 Terminal render diagnostics now include elapsed timings for handoff, readiness, prompt submit, xterm open, fit, display writes, render checks, and cleanup. Xterm render checks are tied to the current React effect run and canceled on cleanup so StrictMode's first disposed terminal cannot show a stale fallback. The fallback transcript is selectable and is derived from xterm's interpreted buffer instead of concatenated raw output chunks.
 </PlanSection>
+
+<PlanSection title="2026-06-06 General Agent Pool Follow-up">
+Execute no longer forces a fresh general Codex launch. It promotes an existing hidden <code>purpose="general"</code> standby session when one is available, preserves that promoted session's general purpose, and schedules a delayed refill after the prompt handoff. The hidden active-plan general pool is bounded to two standby sessions so a consumed warm slot can be replaced without creating an unbounded background terminal burst.
+</PlanSection>

@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | general agent warm pool</h2>
+  <ul>
+    <li>Changed Execute Unit handoffs to reuse and promote hidden <code>purpose="general"</code> standby agents instead of forcing a fresh Codex terminal.</li>
+    <li>Bounded active-plan general prewarm to two standby sessions and scheduled a delayed refill after Execute consumes a warm slot.</li>
+    <li>Preserved general purpose on promoted sessions and made selector policy prefer the oldest standby general session so the warmest slot is used first.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | terminal display fallback</h2>
   <ul>
     <li>Added xterm paint diagnostics for terminal open, fit, display writes, render checks, and fallback show/hide state so blank-pane reports include geometry and canvas evidence.</li>
