@@ -651,6 +651,8 @@ function App() {
   const [isWorkspaceExpanded, setIsWorkspaceExpanded] = useState(false);
   const [resumedImportPlanningProjectId, setResumedImportPlanningProjectId] = useState<string | null>(null);
   const baseDataRequestId = useRef(0);
+  const projectDataRequestId = useRef(0);
+  const requestedProjectDataId = useRef("");
   const lastImportPlanningDiagnostic = useRef("");
   const importedPlanningRuns = useRef(new Map<string, Promise<void>>());
   const importedPlanningCompletedKeys = useRef(new Set<string>());
@@ -761,6 +763,18 @@ function App() {
     lastImportPlanningDiagnostic.current = diagnostic;
     appendImportLog(`Planning intake state ${diagnostic}`);
   }, [activeProject?.id, importPlanningState, route, wikiPages.length]);
+
+  useEffect(() => {
+    if (!activeProject || !hasLoadedProjects) return;
+    if (requestedProjectDataId.current === activeProject.id) return;
+    requestedProjectDataId.current = activeProject.id;
+    setWikiPages([]);
+    setWikiHtml("");
+    setWikiSource(null);
+    setWikiError("");
+    appendImportLog(`Hydrating active project data project=${activeProject.id}`);
+    void loadProjectData(activeProject);
+  }, [activeProject?.id, hasLoadedProjects]);
 
   useEffect(() => {
     if (route.kind !== "wiki" || route.path !== defaultWikiPath) return;
@@ -1143,6 +1157,9 @@ function App() {
   }
 
   async function loadProjectData(project: ProjectRecord) {
+    requestedProjectDataId.current = project.id;
+    const requestId = projectDataRequestId.current + 1;
+    projectDataRequestId.current = requestId;
     setStatus("Loading workspace");
     const [wikiResult, workspaceResult, previewResult, layoutResult, reviewResult, repoResult] = await Promise.allSettled([
       hyperwikiApi.json<WikiListResponse>(withProjectQuery("/api/wiki", project)),
@@ -1152,6 +1169,10 @@ function App() {
       hyperwikiApi.json<ReviewWorkflowResponse>(withProjectQuery("/api/review-workflows", project)),
       hyperwikiApi.json<RepoContextResponse>(withProjectQuery("/api/repo", project)),
     ]);
+    if (requestId !== projectDataRequestId.current) {
+      appendImportLog(`Ignoring stale project data load project=${project.id}`);
+      return { workspace: null, layout: null, pages: [] };
+    }
 
     if (wikiResult.status === "fulfilled") {
       const pages = wikiResult.value.pages || [];

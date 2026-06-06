@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-05 fix | project switch wiki hydration</h2>
+  <ul>
+    <li>Changed active project selection to clear stale wiki/page state and hydrate the selected project's wiki, workspace, preview, layout, review, and repo context.</li>
+    <li>Fixes imported projects showing the previous project's plan sidebar while preserving project-scoped terminal sessions independently.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-04 fix | agent terminal startup notice replay</h2>
   <ul>
     <li>Changed visible xterm sessions to clear the temporary startup notice as soon as replay or live terminal bytes arrive, even when the cleaned display chunk is empty.</li>

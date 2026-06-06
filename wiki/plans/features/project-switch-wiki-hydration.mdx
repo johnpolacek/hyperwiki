@@ -1,0 +1,30 @@
+---
+title: "Project Switch Wiki Hydration"
+description: "Load selected project wiki state after imports and project switches."
+wikiKind: "plan"
+status: "completed"
+---
+
+<PlanHero status="completed" title="Project Switch Wiki Hydration" subtitle="Keep the sidebar, page content, and planning state tied to the selected project." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="completed" />
+  <PlanSummaryItem label="Scope" value="project selection and import workspace state" />
+  <PlanSummaryItem label="Trigger" value="New imported project showed the previous project's plan sidebar" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+Project selection should preserve background terminal processes, but visible wiki state must belong to the active project. Import-created projects, direct workspace routes, and Projects menu switches should all hydrate the selected project's wiki, workspace, preview, layout, review, and repo context.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- Track the last project whose data has been hydrated in the current app session.
+- When <code>activeProject</code> changes, clear stale wiki/page state and load that project's data unless it is already current.
+- Preserve project-wide terminal session loading separately so switching away does not close another project's running terminals.
+</PlanSection>
+
+<PlanSection title="Verification">
+- Static smoke coverage asserts active-project hydration and stale wiki clearing.
+- Existing terminal-pane smoke coverage still asserts project-scoped sessions remain project-wide and route-independent.
+- <code>pnpm run check</code>
+</PlanSection>

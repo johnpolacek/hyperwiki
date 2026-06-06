@@ -25,6 +25,10 @@ assert.ok(!source.includes("hyperwiki-question-batch\\\"\",\n    `- requestId"),
 assert.ok(!source.includes("Planning answer probe saw MVP plan path"), "Import Q&A should not treat prompt text MVP paths as completion");
 assert.ok(source.includes("planningQuestionOptionFromValue"), "Import Q&A should normalize structured option objects before rendering");
 assert.ok(source.includes("option.description"), "Import Q&A should render option descriptions inside their parent choice");
+assert.ok(source.includes("requestedProjectDataId"), "Project selection should track project data hydration separately from terminal sessions");
+assert.ok(source.includes("Hydrating active project data project="), "Active project changes should trigger selected-project data hydration");
+assert.ok(source.includes("setWikiPages([]);\n    setWikiHtml(\"\");\n    setWikiSource(null);"), "Active project hydration should clear stale wiki/sidebar state before loading the selected project");
+assert.ok(source.includes("Ignoring stale project data load project="), "Project data hydration should ignore stale async loads");
 assert.ok(mdxRenderer.includes("expandEscapedSourceContextParagraphs"), "React MDX plan renderer should repair stale escaped import source bundles");
 assert.ok(mdxRenderer.includes("renderCollapsedSourceContext"), "React MDX plan renderer should render collapsed source bundles as HTML");
 assert.ok(mdxRenderer.includes("source-decision"), "React MDX plan renderer should wrap repaired source content in source-decision articles");
