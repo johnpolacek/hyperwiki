@@ -57,25 +57,6 @@
   --sidebar-font: var(--docs-serif-font);
 }
 
-.welcome-pattern-surface {
-  background-color: var(--background);
-  background-image:
-    linear-gradient(180deg, color-mix(in srgb, var(--background) 76%, transparent), var(--background) 72%),
-    linear-gradient(90deg, color-mix(in srgb, var(--background) 62%, transparent), color-mix(in srgb, var(--background) 82%, transparent)),
-    url("/assets/gplaypattern.webp");
-  background-repeat: no-repeat, no-repeat, repeat;
-  background-size: 100% 100%, 100% 100%, 188px 178px;
-  background-blend-mode: normal, normal, multiply;
-}
-
-.dark .welcome-pattern-surface {
-  background-image:
-    linear-gradient(180deg, color-mix(in srgb, var(--background) 86%, transparent), var(--background) 68%),
-    linear-gradient(90deg, color-mix(in srgb, var(--background) 78%, transparent), color-mix(in srgb, var(--background) 92%, transparent)),
-    url("/assets/gplaypattern.webp");
-  background-blend-mode: normal, normal, soft-light;
-}
-
 @font-face {
   font-family: "Instrument Serif";
   font-style: normal;

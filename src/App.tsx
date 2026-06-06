@@ -3773,7 +3773,7 @@ function NewProjectView({
   const canSubmitBrief = Boolean(title.trim() && document.trim());
 
   return (
-    <section className={cn("min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14", isFirstProject && "welcome-pattern-surface")}>
+    <section className="min-h-0 overflow-auto bg-background px-5 py-10 md:px-10 md:py-14">
       <div className="mx-auto grid w-full max-w-[60rem] gap-9">
         <header className="px-1">
           <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-5xl">{heading}</h1>
