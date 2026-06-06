@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | execute readiness and startup visibility</h2>
+  <ul>
+    <li>Changed Codex prompt readiness detection to treat partial MCP startup counts such as <code>2/3</code> as not ready, including compact terminal text variants.</li>
+    <li>Kept visible agent startup notices independent of the persisted command field so active xterm panes do not appear as blank terminals while waiting for first output.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | instant agent handoff buttons</h2>
   <ul>
     <li>Extended optimistic terminal panes from manual <code>+ agent</code> to shared visible agent startup, covering Execute, New Plan, review, worktree, and import-planning handoffs.</li>

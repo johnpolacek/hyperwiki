@@ -34,3 +34,7 @@ Clicking <code>+ agent</code> or any button that starts a visible terminal-backe
 <PlanSection title="Result">
 Completed on 2026-06-06. Manual <code>+ agent</code> now promotes a hidden general agent when available, otherwise it inserts a pending visible pane immediately with a client-generated terminal id and reconciles that pane when the backend start returns. Follow-up extended that same optimistic pane path to Execute, New Plan, review, worktree, and import-planning handoffs. Session reloads preserve pending panes, failed optimistic starts stay dismissible, and timing milestones are logged.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Readiness Follow-up">
+Execute readiness now treats incomplete MCP startup counters, including compact <code>startingmcpservers(2/3)</code> terminal text, as not ready before prompt submission. Visible agent panes also keep showing the startup notice even when session metadata does not include a command string yet.
+</PlanSection>

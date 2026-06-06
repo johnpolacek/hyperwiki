@@ -5728,9 +5728,10 @@ function terminalPaneLabel(session: SessionRecord, index: number) {
 }
 
 function terminalStartupNotice(session: SessionRecord) {
-  if (!session.command || isStandbySession(session)) return "";
+  if (isStandbySession(session)) return "";
   if (session.role === "agent") return "Starting agent terminal";
   if (session.role === "dev") return "Starting dev terminal";
+  if (!session.command) return "";
   return "Starting terminal";
 }
 
@@ -6926,10 +6927,14 @@ async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts
 
 function isAgentPromptReady(text: string) {
   const normalized = text.replace(/\s+/g, " ");
+  const compact = normalized.toLowerCase().replace(/\s+/g, "");
   if (isAgentStartupInProgress(normalized)) return false;
   if (isAgentMcpStartupInProgress(normalized)) return false;
-  if (normalized.includes("starting mcp servers") && !normalized.match(/starting mcp servers\s*\(\s*2\s*\/\s*2\s*\)/i)) return false;
-  const lastStartup = normalized.toLowerCase().lastIndexOf("starting mcp servers");
+  if (compact.includes("startingmcpservers") && !/startingmcpservers\(\s*(\d+)\/\1\)/i.test(compact)) return false;
+  const lastStartup = Math.max(
+    normalized.toLowerCase().lastIndexOf("starting mcp servers"),
+    compact.lastIndexOf("startingmcpservers")
+  );
   const lastPrompt = Math.max(normalized.lastIndexOf("›"), normalized.lastIndexOf("\u203a"));
   const promptAfterStartup = lastPrompt !== -1 && lastPrompt > lastStartup;
   if (!promptAfterStartup) return false;
@@ -6951,6 +6956,7 @@ function isCodexPromptPlaceholderReady(promptTail: string) {
 
 function isAgentStartupInProgress(text: string) {
   const lower = text.toLowerCase();
+  const compact = lower.replace(/\s+/g, "");
   const recent = lower.slice(-1800);
   if (/queued\s*follow-up\s*inputs|queuedfollow-upinputs/.test(recent)) return true;
   const lastModelLoading = lower.lastIndexOf("model: loading");
@@ -6964,18 +6970,32 @@ function isAgentStartupInProgress(text: string) {
   if (markerAfterPrompt(/model:\s*loading/g)) return true;
   if (markerAfterPrompt(/starting\s+\d+\s*\(/g)) return true;
   if (markerAfterPrompt(/starting\s+mcp|startingmcp/g)) return true;
-  if (markerAfterPrompt(/mcp\s+servers\s*\(\s*[01]\s*\/\s*2\s*\)/g)) return true;
+  if (markerAfterPrompt(/mcp\s+servers\s*\(\s*\d+\s*\/\s*\d+\s*\)/g)) {
+    const afterPrompt = lastPrompt === -1 ? lower : lower.slice(lastPrompt);
+    const complete = afterPrompt.match(/mcp\s+servers\s*\(\s*(\d+)\s*\/\s*\1\s*\)/g);
+    const lastCount = [...afterPrompt.matchAll(/mcp\s+servers\s*\(\s*(\d+)\s*\/\s*(\d+)\s*\)/g)].at(-1);
+    if (lastCount && lastCount[1] !== lastCount[2]) return true;
+    if (!complete) return true;
+  }
+  const compactAfterPrompt = lastPrompt === -1 ? compact : compact.slice(lastPrompt);
+  const compactLastCount = [...compactAfterPrompt.matchAll(/mcpservers\((\d+)\/(\d+)\)/g)].at(-1);
+  if (compactLastCount && compactLastCount[1] !== compactLastCount[2]) return true;
   return false;
 }
 
 function isAgentMcpStartupInProgress(text: string) {
   const lastPrompt = Math.max(text.lastIndexOf("›"), text.lastIndexOf("\u203a"));
   const tail = (lastPrompt === -1 ? text : text.slice(lastPrompt)).toLowerCase();
-  const startupIndex = tail.lastIndexOf("starting mcp servers");
+  const compactTail = tail.replace(/\s+/g, "");
+  const startupIndex = Math.max(tail.lastIndexOf("starting mcp servers"), compactTail.lastIndexOf("startingmcpservers"));
   if (startupIndex === -1) return false;
-  const startupTail = tail.slice(startupIndex);
-  if (/starting mcp servers\s*\(\s*2\s*\/\s*2\s*\)/i.test(startupTail)) return false;
-  return /starting mcp servers|servers\s*\(\s*[01]\s*\/\s*2\s*\)|codex_apps|computer-use/.test(startupTail);
+  const startupTail = tail.slice(Math.max(0, Math.min(startupIndex, tail.length - 1)));
+  const compactStartupTail = compactTail.slice(Math.max(0, Math.min(startupIndex, compactTail.length - 1)));
+  const spacedCount = [...startupTail.matchAll(/servers\s*\(\s*(\d+)\s*\/\s*(\d+)\s*\)/g)].at(-1);
+  const compactCount = [...compactStartupTail.matchAll(/servers\((\d+)\/(\d+)\)/g)].at(-1);
+  const count = spacedCount || compactCount;
+  if (count) return count[1] !== count[2];
+  return /starting\s*mcp|startingmcp|codex_apps|computer-use|node_repl/.test(startupTail) || /startingmcp|codex_apps|computer-use|node_repl/.test(compactStartupTail);
 }
 
 async function sendResize(sessionId: string, cols: number, rows: number) {
