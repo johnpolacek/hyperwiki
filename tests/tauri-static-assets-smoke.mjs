@@ -153,14 +153,14 @@ if (!appSource.includes("ensureAgentSession optimistic pane inserted") || !appSo
 if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includes("writeDisplayText(\"output\", bytes.length, payload.seq, displayText, text);") || !appSource.includes("writeDisplayText(\"replay\", bytes.length, replay.seq, displayText, text);") || !appSource.includes("terminalDisplayHasVisibleText") || !appSource.includes("Terminal display empty session=")) {
   throw new Error("Visible command terminal startup notices must clear only after displayable replay/output reaches xterm.");
 }
-if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}") || !appSource.includes("Terminal xterm render check") || !appSource.includes("Terminal xterm cleanup") || !appSource.includes("effect=${effectRun}") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("terminalBufferTextForDisplay") || !appSource.includes("countVisibleCanvasPixels") || !appSource.includes('aria-label="Terminal transcript"') || !appSource.includes("select-text")) {
-  throw new Error("Terminal panes must fall back to a readable transcript and log xterm paint diagnostics when output is received but xterm does not visibly render it.");
+if (!appSource.includes("Terminal xterm render check") || !appSource.includes("Terminal xterm render unresolved") || !appSource.includes("keeping=xterm") || !appSource.includes("effect=${effectRun}") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("countVisibleCanvasPixels") || !appSource.includes("domChars=${snapshot.domTextLength}") || !appSource.includes("helperTextarea=${snapshot.hasHelperTextarea}") || !appSource.includes("interactive=${snapshot.interactive}") || !appSource.includes("rendered=${snapshot.rendered}")) {
+  throw new Error("Terminal render checks must stay diagnostic-only and include canvas, DOM renderer, and input-layer health.");
 }
-if (!appSource.includes("terminalXtermScrollback = 100000") || appSource.includes("nextText = text.trimEnd().slice(-12000)") || appSource.includes("lines.slice(-180)") || appSource.includes(".split(\"\\n\").slice(-180)") || appSource.includes(".slice(-12000);")) {
-  throw new Error("Terminal transcript fallback and xterm scrollback must preserve full live output history instead of tail-slicing early output.");
+if (!appSource.includes("terminalXtermScrollback = 100000") || !appSource.includes("terminalTranscriptRef") || !appSource.includes("appendTerminalTranscriptText") || appSource.includes("nextText = text.trimEnd().slice(-12000)") || appSource.includes("lines.slice(-180)") || appSource.includes(".split(\"\\n\").slice(-180)") || appSource.includes(".slice(-12000);")) {
+  throw new Error("Terminal transcript cache and xterm scrollback must preserve full live output history instead of tail-slicing early output.");
 }
-if (!appSource.includes("terminalInputForKeyboardEvent") || !appSource.includes("onKeyDown={handleFallbackKeyDown}") || !appSource.includes("onPaste={handleFallbackPaste}") || !appSource.includes("queueTerminalInput(text)") || !appSource.includes("tabIndex={0}")) {
-  throw new Error("Terminal fallback transcript must remain keyboard/paste interactive when it covers xterm.");
+if (appSource.includes('aria-label="Terminal transcript"') || appSource.includes("terminalInputForKeyboardEvent") || appSource.includes("handleFallbackKeyDown") || appSource.includes("handleFallbackPaste") || appSource.includes("tabIndex={0}")) {
+  throw new Error("Live terminal panes must not cover xterm with a fallback transcript or faux keyboard bridge.");
 }
 if (!appSource.includes("Agent handoff start kind=") || !appSource.includes("Agent handoff session ready") || !appSource.includes("elapsedMs=${Date.now() - handoffStartedAt}") || !appSource.includes("elapsedMs=${Date.now() - startedAt}")) {
   throw new Error("Agent handoffs and readiness waits must log elapsed timing for startup troubleshooting.");

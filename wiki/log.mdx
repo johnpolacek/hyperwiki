@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | terminal-first xterm hardening</h2>
+  <ul>
+    <li>Stopped the terminal transcript fallback from automatically covering live xterm panes when a canvas-only paint check could not see rendered pixels.</li>
+    <li>Kept xterm as the single interactive surface for attached sessions so click, type, paste, and selection behavior come from the terminal library instead of a parallel transcript shim.</li>
+    <li>Expanded render diagnostics to include xterm DOM-rendered text and helper textarea presence, making missing canvas elements a logged renderer detail rather than a terminal failure.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | terminal fallback input</h2>
   <ul>
     <li>Changed the selectable terminal fallback transcript from a read-only overlay into a focusable input bridge for live xterm sessions.</li>

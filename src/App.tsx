@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   BookOpen,
   Check,
@@ -5204,19 +5204,16 @@ function XtermSession({
   const displayWriteLogCountRef = useRef(0);
   const renderCheckLogCountRef = useRef(0);
   const fitLogCountRef = useRef(0);
-  const fallbackUpdateLogCountRef = useRef(0);
+  const terminalTranscriptLogCountRef = useRef(0);
   const xtermEffectRunRef = useRef(0);
-  const xtermPaintHealthyRef = useRef(false);
-  const fallbackVisibleRef = useRef(false);
-  const fallbackTextRef = useRef("");
+  const xtermRenderHealthyRef = useRef(false);
+  const terminalTranscriptRef = useRef("");
   const initialDisplayBufferRef = useRef<string | null>("");
   const displayControlCarryRef = useRef({ current: "" });
   const pendingRef = useRef<string[]>([]);
   const closedRef = useRef(false);
   const flushingInputRef = useRef(false);
   const [startupNoticeVisible, setStartupNoticeVisible] = useState(false);
-  const [fallbackVisible, setFallbackVisible] = useState(false);
-  const [fallbackText, setFallbackText] = useState("");
   const startupNotice = terminalStartupNotice(session);
 
   const flushPendingInput = useCallback(async function flushPendingInput() {
@@ -5247,21 +5244,6 @@ function XtermSession({
     void flushPendingInput();
   }, [flushPendingInput]);
 
-  const handleFallbackKeyDown = useCallback((event: KeyboardEvent<HTMLPreElement>) => {
-    if (event.defaultPrevented || event.nativeEvent.isComposing) return;
-    const input = terminalInputForKeyboardEvent(event);
-    if (!input) return;
-    event.preventDefault();
-    queueTerminalInput(input);
-  }, [queueTerminalInput]);
-
-  const handleFallbackPaste = useCallback((event: ClipboardEvent<HTMLPreElement>) => {
-    const text = event.clipboardData.getData("text");
-    if (!text) return;
-    event.preventDefault();
-    queueTerminalInput(text);
-  }, [queueTerminalInput]);
-
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -5277,10 +5259,9 @@ function XtermSession({
     displayWriteLogCountRef.current = 0;
     renderCheckLogCountRef.current = 0;
     fitLogCountRef.current = 0;
-    fallbackUpdateLogCountRef.current = 0;
-    xtermPaintHealthyRef.current = false;
-    fallbackVisibleRef.current = false;
-    fallbackTextRef.current = "";
+    terminalTranscriptLogCountRef.current = 0;
+    xtermRenderHealthyRef.current = false;
+    terminalTranscriptRef.current = "";
     initialDisplayBufferRef.current = "";
     displayControlCarryRef.current.current = "";
     pendingRef.current = [];
@@ -5315,8 +5296,6 @@ function XtermSession({
       terminal.focus();
     }
     setStartupNoticeVisible(startupNoticeIsVisible);
-    setFallbackVisible(false);
-    setFallbackText("");
 
     const clearStartupNotice = () => {
       if (!startupNoticeIsVisible) return;
@@ -5330,36 +5309,20 @@ function XtermSession({
       appendImportLog(`Terminal display empty session=${session.id} source=${source} bytes=${bytesLength} seq=${seq ?? "none"} count=${emptyDisplayLogCountRef.current} parsedTail=${JSON.stringify(terminalDisplayDebugTail(text))}`);
     };
 
-    const setTerminalFallbackVisible = (visible: boolean, reason: string, snapshot?: XtermRenderSnapshot) => {
-      if (!isCurrentEffect()) return;
-      if (fallbackVisibleRef.current === visible) return;
-      fallbackVisibleRef.current = visible;
-      setFallbackVisible(visible);
-      setFallbackText(visible ? fallbackTextRef.current : "");
-      appendImportLog(`Terminal fallback ${visible ? "shown" : "hidden"} session=${session.id} reason=${reason}${snapshot ? ` ${xtermRenderSnapshotSummary(snapshot)}` : ""}`);
-    };
-
-    const setFallbackTranscript = (text: string, reason: string) => {
+    const setTerminalTranscript = (text: string, reason: string) => {
       if (!isCurrentEffect()) return;
       const nextText = text.trimEnd();
-      if (nextText === fallbackTextRef.current) return;
-      fallbackTextRef.current = nextText;
-      if (fallbackVisibleRef.current) setFallbackText(nextText);
-      if (fallbackUpdateLogCountRef.current < 8) {
-        fallbackUpdateLogCountRef.current += 1;
-        appendImportLog(`Terminal fallback transcript updated session=${session.id} effect=${effectRun} reason=${reason} chars=${nextText.length} lines=${nextText.split("\n").length} elapsedMs=${Date.now() - mountedAt} count=${fallbackUpdateLogCountRef.current}`);
+      if (nextText === terminalTranscriptRef.current) return;
+      terminalTranscriptRef.current = nextText;
+      if (terminalTranscriptLogCountRef.current < 8) {
+        terminalTranscriptLogCountRef.current += 1;
+        appendImportLog(`Terminal transcript cache updated session=${session.id} effect=${effectRun} reason=${reason} chars=${nextText.length} lines=${nextText.split("\n").length} elapsedMs=${Date.now() - mountedAt} count=${terminalTranscriptLogCountRef.current}`);
       }
     };
 
-    const appendFallbackText = (text: string, reason: string) => {
-      const nextText = appendTerminalFallbackText(fallbackTextRef.current, terminalFallbackTextForDisplay(text));
-      setFallbackTranscript(nextText, reason);
-    };
-
-    const refreshFallbackFromTerminalBuffer = (reason: string) => {
-      if (fallbackTextRef.current.trim()) return;
-      const bufferText = terminalBufferTextForDisplay(terminal);
-      if (bufferText) setFallbackTranscript(bufferText, reason);
+    const appendTerminalTranscript = (text: string, reason: string) => {
+      const nextText = appendTerminalTranscriptText(terminalTranscriptRef.current, terminalTranscriptTextForDisplay(text));
+      setTerminalTranscript(nextText, reason);
     };
 
     const logDisplayWrite = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, hasVisibleText: boolean) => {
@@ -5375,30 +5338,25 @@ function XtermSession({
         renderCheckLogCountRef.current += 1;
         appendImportLog(`Terminal xterm render check session=${session.id} effect=${effectRun} source=${source} seq=${seq ?? "none"} final=${finalCheck} ${xtermRenderSnapshotSummary(snapshot)} elapsedMs=${Date.now() - mountedAt} count=${renderCheckLogCountRef.current}`);
       }
-      if (snapshot.painted) {
-        xtermPaintHealthyRef.current = true;
-        setTerminalFallbackVisible(false, "xterm-painted", snapshot);
+      if (snapshot.rendered || snapshot.interactive) {
+        xtermRenderHealthyRef.current = true;
         return;
       }
-      if (finalCheck && fallbackTextRef.current.trim()) {
-        refreshFallbackFromTerminalBuffer("xterm-unpainted");
-        setTerminalFallbackVisible(true, "xterm-unpainted", snapshot);
+      if (finalCheck && terminalTranscriptRef.current.trim()) {
+        appendImportLog(`Terminal xterm render unresolved session=${session.id} effect=${effectRun} keeping=xterm ${xtermRenderSnapshotSummary(snapshot)} transcriptChars=${terminalTranscriptRef.current.length} elapsedMs=${Date.now() - mountedAt}`);
       }
     };
 
     const scheduleXtermRenderChecks = (source: "output" | "replay", seq: number | null) => {
-      if (xtermPaintHealthyRef.current && !fallbackVisibleRef.current) return;
+      if (xtermRenderHealthyRef.current) return;
       renderCheckTimers.push(window.setTimeout(() => checkXtermRender(source, seq, false), 120));
       renderCheckTimers.push(window.setTimeout(() => checkXtermRender(source, seq, true), 650));
     };
 
     const writeDisplayText = (source: "output" | "replay", bytesLength: number, seq: number | null, displayText: string, text: string) => {
-      appendFallbackText(text, `${source}-raw`);
+      appendTerminalTranscript(text, `${source}-raw`);
       if (!displayText) {
         logEmptyDisplay(source, bytesLength, seq, text);
-        if (terminalFallbackTextForDisplay(text)) {
-          setTerminalFallbackVisible(true, "empty-display-with-parsed-text");
-        }
         return;
       }
       const hasVisibleText = terminalDisplayHasVisibleText(displayText);
@@ -5406,7 +5364,6 @@ function XtermSession({
       if (!hasVisibleText) logEmptyDisplay(source, bytesLength, seq, text);
       terminal.write(displayText, () => {
         if (!isCurrentEffect()) return;
-        refreshFallbackFromTerminalBuffer(`${source}-buffer`);
         if (!hasVisibleText) return;
         clearStartupNotice();
         scheduleXtermRenderChecks(source, seq);
@@ -5541,18 +5498,6 @@ function XtermSession({
         onMouseDown={() => terminalRef.current?.focus()}
         ref={containerRef}
       />
-      {fallbackVisible && fallbackText ? (
-        <pre
-          aria-label="Terminal transcript"
-          className="absolute inset-0 z-[5] m-0 select-text overflow-auto whitespace-pre-wrap bg-[#20231f] p-2 font-mono text-[13px] leading-[1.35] text-[#f7f7f4] outline-none"
-          onClick={(event) => event.currentTarget.focus()}
-          onKeyDown={handleFallbackKeyDown}
-          onPaste={handleFallbackPaste}
-          tabIndex={0}
-        >
-          {fallbackText}
-        </pre>
-      ) : null}
     </div>
   );
 }
@@ -7385,72 +7330,12 @@ function terminalDisplayHasVisibleText(data: string) {
     .length > 0;
 }
 
-function terminalInputForKeyboardEvent(event: KeyboardEvent<HTMLElement>) {
-  const key = event.key;
-  const lowerKey = key.toLowerCase();
-  if ((event.metaKey || (event.ctrlKey && (lowerKey === "a" || lowerKey === "c"))) && selectionIsInside(event.currentTarget)) return "";
-  if (event.metaKey) return "";
-  if (event.altKey) return "";
-  if (event.ctrlKey) {
-    if (lowerKey.length === 1 && lowerKey >= "a" && lowerKey <= "z") {
-      return String.fromCharCode(lowerKey.charCodeAt(0) - 96);
-    }
-    if (key === " " || key === "@") return "\x00";
-    if (key === "[") return "\x1b";
-    if (key === "\\") return "\x1c";
-    if (key === "]") return "\x1d";
-    if (key === "^") return "\x1e";
-    if (key === "_") return "\x1f";
-    if (key === "?") return "\x7f";
-    return "";
-  }
-  if (key.length === 1) return key;
-  switch (key) {
-    case "Enter":
-      return "\r";
-    case "Backspace":
-      return "\x7f";
-    case "Tab":
-      return "\t";
-    case "Escape":
-      return "\x1b";
-    case "ArrowUp":
-      return "\x1b[A";
-    case "ArrowDown":
-      return "\x1b[B";
-    case "ArrowRight":
-      return "\x1b[C";
-    case "ArrowLeft":
-      return "\x1b[D";
-    case "Home":
-      return "\x1b[H";
-    case "End":
-      return "\x1b[F";
-    case "PageUp":
-      return "\x1b[5~";
-    case "PageDown":
-      return "\x1b[6~";
-    case "Delete":
-      return "\x1b[3~";
-    default:
-      return "";
-  }
-}
-
-function selectionIsInside(element: HTMLElement) {
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed) return false;
-  const anchor = selection.anchorNode;
-  const focus = selection.focusNode;
-  return Boolean(anchor && focus && element.contains(anchor) && element.contains(focus));
-}
-
 function terminalDisplayDebugTail(data: string) {
   return terminalPlainTextForLog(data)
     || terminalTextForParsing(data).replace(/[ \t]+/g, " ").trim().slice(-500);
 }
 
-function terminalFallbackTextForDisplay(data: string) {
+function terminalTranscriptTextForDisplay(data: string) {
   return terminalTextForParsing(data)
     .split("\n")
     .map((line) => line.replace(/[ \t]+/g, " ").trimEnd())
@@ -7458,17 +7343,7 @@ function terminalFallbackTextForDisplay(data: string) {
     .join("\n");
 }
 
-function terminalBufferTextForDisplay(terminal: Terminal) {
-  const buffer = terminal.buffer.active;
-  const lines: string[] = [];
-  for (let index = 0; index < buffer.length; index += 1) {
-    const line = buffer.getLine(index)?.translateToString(true).trimEnd() || "";
-    if (line.trim()) lines.push(line);
-  }
-  return lines.join("\n");
-}
-
-function appendTerminalFallbackText(previous: string, next: string) {
+function appendTerminalTranscriptText(previous: string, next: string) {
   const trimmedNext = next.trim();
   if (!trimmedNext) return previous;
   const trimmedPrevious = previous.trim();
@@ -7489,8 +7364,11 @@ type XtermRenderSnapshot = {
   cols: number;
   rows: number;
   canvasCount: number;
+  domTextLength: number;
+  hasHelperTextarea: boolean;
+  interactive: boolean;
   paintedPixels: number;
-  painted: boolean;
+  rendered: boolean;
   display: string;
   visibility: string;
   opacity: string;
@@ -7501,6 +7379,12 @@ function xtermRenderSnapshot(container: HTMLElement, terminal: Terminal): XtermR
   const element = terminal.element || (container.querySelector(".xterm") as HTMLElement | null);
   const terminalRect = element?.getBoundingClientRect();
   const style = element ? getComputedStyle(element) : null;
+  const helperTextarea = container.querySelector(".xterm-helper-textarea") as HTMLTextAreaElement | null;
+  const domText = (container.querySelector(".xterm-rows")?.textContent
+    || container.querySelector(".xterm-screen")?.textContent
+    || element?.textContent
+    || "");
+  const domTextLength = domText.replace(/\s+/g, "").length;
   const canvases = Array.from(container.querySelectorAll("canvas"));
   let paintedPixels = 0;
   for (const canvas of canvases) {
@@ -7509,6 +7393,8 @@ function xtermRenderSnapshot(container: HTMLElement, terminal: Terminal): XtermR
   }
   const hasUsableGeometry = containerRect.width > 0 && containerRect.height > 0 && (terminalRect?.width || 0) > 0 && (terminalRect?.height || 0) > 0 && terminal.cols > 0 && terminal.rows > 0;
   const isElementVisible = !style || (style.display !== "none" && style.visibility !== "hidden" && Number.parseFloat(style.opacity || "1") > 0);
+  const hasInteractiveInput = Boolean(helperTextarea && !helperTextarea.disabled && !helperTextarea.readOnly);
+  const hasRenderedContent = paintedPixels >= 220 || domTextLength > 0;
   return {
     containerWidth: Math.round(containerRect.width),
     containerHeight: Math.round(containerRect.height),
@@ -7517,8 +7403,11 @@ function xtermRenderSnapshot(container: HTMLElement, terminal: Terminal): XtermR
     cols: terminal.cols,
     rows: terminal.rows,
     canvasCount: canvases.length,
+    domTextLength,
+    hasHelperTextarea: Boolean(helperTextarea),
+    interactive: hasUsableGeometry && isElementVisible && hasInteractiveInput,
     paintedPixels,
-    painted: hasUsableGeometry && isElementVisible && paintedPixels >= 220,
+    rendered: hasUsableGeometry && isElementVisible && hasRenderedContent,
     display: style?.display || "unknown",
     visibility: style?.visibility || "unknown",
     opacity: style?.opacity || "unknown",
@@ -7526,7 +7415,7 @@ function xtermRenderSnapshot(container: HTMLElement, terminal: Terminal): XtermR
 }
 
 function xtermRenderSnapshotSummary(snapshot: XtermRenderSnapshot) {
-  return `container=${snapshot.containerWidth}x${snapshot.containerHeight} terminal=${snapshot.terminalWidth}x${snapshot.terminalHeight} cols=${snapshot.cols} rows=${snapshot.rows} canvases=${snapshot.canvasCount} paintedPixels=${snapshot.paintedPixels} painted=${snapshot.painted} display=${snapshot.display} visibility=${snapshot.visibility} opacity=${snapshot.opacity}`;
+  return `container=${snapshot.containerWidth}x${snapshot.containerHeight} terminal=${snapshot.terminalWidth}x${snapshot.terminalHeight} cols=${snapshot.cols} rows=${snapshot.rows} canvases=${snapshot.canvasCount} paintedPixels=${snapshot.paintedPixels} domChars=${snapshot.domTextLength} helperTextarea=${snapshot.hasHelperTextarea} interactive=${snapshot.interactive} rendered=${snapshot.rendered} display=${snapshot.display} visibility=${snapshot.visibility} opacity=${snapshot.opacity}`;
 }
 
 function countVisibleCanvasPixels(canvas: HTMLCanvasElement, needed: number) {

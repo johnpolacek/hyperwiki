@@ -46,7 +46,7 @@ Execute readiness now treats incomplete MCP startup counters, including compact 
 </PlanSection>
 
 <PlanSection title="2026-06-06 Xterm Display Fallback">
-When terminal output reaches the React parser but xterm does not visibly paint canvas text, the pane now shows a read-only plain transcript overlay while keeping xterm mounted for input. The display path logs xterm open, fit, write, render-check, and fallback show/hide state with geometry, row/column, canvas, and painted-pixel details for troubleshooting.
+Superseded by the terminal-first hardening follow-up below. The display path still logs xterm open, fit, write, cleanup, and render-check diagnostics, but live panes no longer show an automatic transcript overlay based on paint checks.
 </PlanSection>
 
 <PlanSection title="2026-06-06 Stale MCP Counter Follow-up">
@@ -54,7 +54,7 @@ Prompt readiness now treats an incomplete MCP counter as stale when a known Code
 </PlanSection>
 
 <PlanSection title="2026-06-06 Selectable Fallback and Timing Follow-up">
-Terminal render diagnostics now include elapsed timings for handoff, readiness, prompt submit, xterm open, fit, display writes, render checks, and cleanup. Xterm render checks are tied to the current React effect run and canceled on cleanup so StrictMode's first disposed terminal cannot show a stale fallback. The fallback transcript is selectable and is derived from xterm's interpreted buffer instead of concatenated raw output chunks.
+Terminal render diagnostics now include elapsed timings for handoff, readiness, prompt submit, xterm open, fit, display writes, render checks, and cleanup. Xterm render checks are tied to the current React effect run and canceled on cleanup so StrictMode's first disposed terminal cannot show stale diagnostics. The selectable transcript overlay portion of this follow-up was later superseded by the terminal-first hardening follow-up.
 </PlanSection>
 
 <PlanSection title="2026-06-06 General Agent Pool Follow-up">
@@ -62,9 +62,13 @@ Execute no longer forces a fresh general Codex launch. It promotes an existing h
 </PlanSection>
 
 <PlanSection title="2026-06-06 Full Terminal History Follow-up">
-Live terminal replay no longer drains the earliest bytes after a small fixed cap, xterm scrollback was raised substantially, and the selectable fallback transcript now accumulates parsed terminal history instead of replacing it with a 12k-character tail from the xterm buffer. Codex can still collapse individual command output internally with its own transcript marker, but hyperwiki should preserve the beginning of the live session output it receives.
+Live terminal replay no longer drains the earliest bytes after a small fixed cap, xterm scrollback was raised substantially, and the internal transcript cache accumulates parsed terminal history instead of replacing it with a 12k-character tail from the xterm buffer. Codex can still collapse individual command output internally with its own transcript marker, but hyperwiki should preserve the beginning of the live session output it receives.
 </PlanSection>
 
 <PlanSection title="2026-06-06 Fallback Input Follow-up">
-When xterm does not visibly paint and the selectable transcript fallback covers the pane, the fallback now remains keyboard and paste interactive. Click-to-type, Enter, Backspace, arrows, Tab, Escape, Delete, and common Ctrl terminal controls are translated into terminal input while selection and copy shortcuts remain available for the transcript.
+Superseded by the terminal-first hardening follow-up below. Rather than maintain a second input shim for a covering transcript overlay, live panes now keep xterm as the single interactive surface.
+</PlanSection>
+
+<PlanSection title="2026-06-06 Terminal-First Hardening Follow-up">
+Live terminal panes now keep xterm as the only interactive surface. Render checks remain for diagnostics, but they no longer cover an attached terminal with a transcript overlay based on canvas-pixel heuristics. The diagnostics now account for xterm's DOM renderer and helper textarea so a missing canvas is not treated as a failed terminal.
 </PlanSection>
