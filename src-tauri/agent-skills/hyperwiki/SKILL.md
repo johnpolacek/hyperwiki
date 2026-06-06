@@ -79,7 +79,7 @@ Planning shape is flexible:
 - maintenance or release plan when that better fits the work
 
 The structure must still support `plan > stages > units`. Compact plans may use one implicit stage, but executable units always need verification.
-If a plan has explicit stages, a current stage, a multi-stage sequence, or more than one phase gate, create a plan-root directory with separate stage and unit MDX pages instead of collapsing the stages into headings inside one page. Stage pages must name the stage goal, dependencies or blockers, detailed unit sequence, completion gate, and verification expectations. Unit pages must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate, with concrete automated, manual, or explicitly deferred verification before the next unit starts.
+If a plan has explicit stages, a current stage, a multi-stage sequence, or more than one phase gate, create a plan-root directory with separate stage and unit MDX pages instead of collapsing the stages into headings inside one page. Stage pages must name the stage goal, dependencies or blockers, detailed unit sequence, completion gate, and verification expectations. Unit pages must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate, with concrete automated, manual, or explicitly deferred verification before the next unit starts. Manual verification must be user-actionable: identify who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
 
 For agent-guided plan creation:
 

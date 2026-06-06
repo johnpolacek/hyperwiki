@@ -1,0 +1,36 @@
+---
+title: "Manual Unit Gate Clarity"
+description: "Require explicit user-actionable handoffs whenever a unit reaches a manual completion gate."
+wikiKind: "plan"
+status: "complete"
+---
+
+<PlanHero status="complete" title="Manual Unit Gate Clarity" subtitle="Manual gates must tell the user exactly what to do, what success looks like, and how to resume." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="complete" />
+  <PlanSummaryItem label="Scope" value="execute prompts, plan-generation guidance, and bundled hyperwiki skill contract" />
+  <PlanSummaryItem label="Current unit" value="complete" />
+  <PlanSummaryItem label="Validation" value="pnpm run check; pnpm run smoke:tauri-static-assets" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+Any manual step required to complete a unit must be impossible to miss. Hyperwiki and its LLM agents should not end with vague wording such as "manual gate remains" when the user needs to perform an external setup, approval, browser check, credential action, deployment setting, or other human validation step.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- Runtime Execute and worktree-execute prompts require a clearly titled <code>Manual step required</code> handoff before the general summary.
+- That handoff must include what is blocked, why it is blocked, who must perform the step, exact commands/settings/UI paths when known, expected success signal/output, files or status intentionally left unchanged, and what button or command to rerun afterward.
+- Plan creation and import-planning prompts now require exact user-facing manual verification steps and expected success signals in unit Verification and Completion Gate sections.
+- The bundled hyperwiki skill, planning contract, MDX artifact patterns, and validation checklist all record the same manual-gate standard.
+- Static smoke coverage protects the contract across runtime prompts and skill references.
+</PlanSection>
+
+<PlanSection title="Verification">
+- <code>pnpm run check</code>
+- <code>pnpm run smoke:tauri-static-assets</code>
+</PlanSection>
+
+<PlanSection title="Completion Gate">
+Complete when agents executing a unit are explicitly prompted to surface manual blockers as user-actionable steps, generated unit plans carry the same standard, and smoke coverage fails if those strings are removed.
+</PlanSection>

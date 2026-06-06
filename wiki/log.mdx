@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | manual unit gate clarity</h2>
+  <ul>
+    <li>Updated Execute and worktree-execute agent prompts so any manual gate must appear as a clearly titled <code>Manual step required</code> section before the general summary.</li>
+    <li>Required that manual gate handoffs include what is blocked, why, who must act, exact commands/settings/UI paths when known, expected success signals, intentionally unchanged files/status, and what to rerun afterward.</li>
+    <li>Updated plan-generation prompts and the bundled hyperwiki skill references so future unit Verification and Completion Gate sections carry the same user-actionable manual-step standard.</li>
+    <li>Added static smoke coverage for the runtime prompts and skill/reference contract.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | terminal-first xterm hardening</h2>
   <ul>
     <li>Stopped the terminal transcript fallback from automatically covering live xterm panes when a canvas-only paint check could not see rendered pixels.</li>

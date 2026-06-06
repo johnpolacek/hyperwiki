@@ -126,6 +126,7 @@ Use for executable unit pages.
 - Plain sections for Intent, Scope, Implementation Notes, Dependencies or Blockers, and Completion Gate.
 - `Evidence` only when the unit depends on source-grounded facts.
 - `Verification` is mandatory before marking complete.
+- Manual verification or completion gates must include exact user steps, commands/settings paths when known, expected success signals, and what to rerun afterward.
 
 ### Verification Handoff
 

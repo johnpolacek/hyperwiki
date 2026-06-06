@@ -284,7 +284,7 @@ wiki/plans/
 `wiki/plans/mvp/index.mdx` should act as the live roadmap index. It should name the current status, most recent completed unit when known, and exactly one next execution unit or planning target.
 
 Stage files should describe the stage goal, completion gate, and unit sequence. Unit files should be small enough for one implementation pass.
-For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk.
+For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk. Any required manual step must be user-actionable, naming who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
 
 When all MVP stages and units are complete, move the whole `wiki/plans/mvp/` tree to `wiki/plans/zzz_completed/mvp/`. Do not move an MVP tree while any stage, unit, completion gate, or required verification remains incomplete, blocked, or unresolved.
 
@@ -343,6 +343,15 @@ Use one or more of:
 - Deferred: only when verification cannot be run yet; explain why, what will verify it later, and what risk remains.
 
 Do not mark a unit complete unless verification is recorded or explicitly deferred with a reason.
+
+If a unit cannot be completed until the user performs a manual step, make that gate impossible to miss in both the unit page and the agent handoff. Use a clearly titled `Manual step required` section that includes:
+
+- what is blocked and why
+- who must perform the step
+- exact commands, settings paths, URLs, or UI navigation when known
+- the expected success signal or output
+- which files/status were intentionally left unchanged until the evidence exists
+- the exact button or command to rerun after the user completes the step
 
 ## Execution Notes
 
