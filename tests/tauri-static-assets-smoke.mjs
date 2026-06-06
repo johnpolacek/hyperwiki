@@ -111,8 +111,8 @@ if (!appSource.includes("async function openVisibleAgentPromptSession") || !appS
 if (!appSource.includes("function hasExplicitWikiRouteLocation") || !appSource.includes("if (hasExplicitWikiRouteLocation()) return;")) {
   throw new Error("Explicit Plans index routes must not be redirected to the active plan before + plan can show its terminal.");
 }
-if (!appSource.includes("Boolean(activeProject?.importPlanning && isImportedPlanningActive)") || appSource.includes("const isImportPlanningView = isImportedPlanningActive || isImportPlanningStarting || isImportPlanningResume")) {
-  throw new Error("Regular Plans index planning must not be captured by the imported-project Q&A layout that hides the terminal pane.");
+if (!appSource.includes("const isImportPlanningView = false") || !appSource.includes("terminalImportPlanningPrompt") || !appSource.includes("Mode: terminal_import_planning.") || !appSource.includes("Do not emit hyperwiki-question JSON")) {
+  throw new Error("Imported-project planning must use the terminal-owned planning handoff instead of the app-rendered Q&A layout.");
 }
 if (!appSource.includes("terminal-native one-question-at-a-time planning interview") || !appSource.includes("ask the user for the planning focus first and wait") || appSource.includes("For every user-facing question, emit only one JSON object containing type \\\"hyperwiki-question\\\"")) {
   throw new Error("Regular + plan prompt must use terminal-native Q&A instead of app-rendered JSON questions.");

@@ -42,6 +42,7 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
    - `intake_discovery`: interview before files exist or project direction is too vague.
    - `bootstrap_new`: create a fresh MDX hyperwiki scaffold.
    - `import_existing`: add hyperwiki memory to an existing repo without overwriting user files.
+   - `terminal_import_planning`: run imported-project Q&A in the terminal, then create MVP plan docs.
    - `plan_feature`: create a decision-complete implementation plan before meaningful app changes.
    - `update_plan`: revise an existing plan after decisions, implementation discoveries, or validation.
    - `sync_changes`: reconcile recent code changes back into wiki/log/plans/source briefs.
@@ -58,6 +59,7 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
 | `intake_discovery` | `references/intake-discovery-contract.md` |
 | `bootstrap_new` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md` |
 | `import_existing` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md`, `references/validation-checklist.md` |
+| `terminal_import_planning` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
 | `plan_feature` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
 | `update_plan` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
 | `sync_changes` | `references/planning-contract.md`; add `references/mdx-artifact-patterns.md` when creating or materially revising MDX |
@@ -86,6 +88,17 @@ For agent-guided plan creation:
 - Continue until there are no blocking unknowns.
 - Write summarized evidence, decisions, assumptions, unknowns, plan structure, and verification targets into MDX.
 - Keep full chat transcript in ignored runtime state unless the user explicitly asks to preserve it.
+
+## Terminal Import Planning
+
+Use `terminal_import_planning` for newly imported projects that already have source material under `wiki/sources/`.
+
+- Read `wiki/index.mdx`, `wiki/sources.mdx`, `wiki/sources/import.mdx`, and relevant source briefs before asking questions.
+- Ask exactly one focused question at a time in normal terminal prose, then stop and wait for the user's answer.
+- Do not emit `hyperwiki-question` JSON, `hyperwiki-question-batch` JSON, or app-rendered question objects.
+- Record summarized decisions and answers in `wiki/sources/import-qna.mdx`; update `wiki/sources/import-state.mdx` when it clarifies readiness, blockers, or next action.
+- When no blocking unknowns remain, create `wiki/plans/mvp/index.mdx` plus separate stage and executable unit files under `wiki/plans/mvp/`.
+- Keep `wiki/plans/index.mdx` structural only and update `wiki/log.mdx` only for durable import-planning decisions or plan creation history.
 
 ## Required Project Shape
 

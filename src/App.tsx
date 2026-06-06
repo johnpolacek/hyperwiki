@@ -687,9 +687,7 @@ function App() {
     && resumedImportPlanningProjectId === activeProject?.id
     && isIncompleteImportProject(activeProject)
     && !hasGeneratedPlanPages(wikiPages);
-  const isImportPlanningView = isImportPlanningStarting
-    || isImportPlanningResume
-    || Boolean(activeProject?.importPlanning && isImportedPlanningActive);
+  const isImportPlanningView = false;
   const canResumeImportPlanning = route.kind === "wiki"
     && route.path === defaultWikiPath
     && Boolean(activeProject)
@@ -955,8 +953,7 @@ function App() {
         setPendingImportProject(null);
         setActiveProject(project);
         setStatus("Imported project ready");
-        void prewarmImportOnboarding(project, "pending-import");
-        void planImportedProject(project);
+        void startTerminalImportPlanning(project, "pending-import");
       } catch (error) {
         console.warn("[hyperwiki] import ui pending poll failed", error);
       }
@@ -1148,7 +1145,7 @@ function App() {
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
     const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
-    if (isIncompleteImportProject(project)) void prewarmImportOnboarding(project, "switch-project");
+    if (isIncompleteImportProject(project)) void startTerminalImportPlanning(project, "switch-project");
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     latestTerminalContext.current = { projectId: project.id, scope: normalizeTerminalScope(scopeForRoute(nextRoute)).scope };
     setRoute(nextRoute);
@@ -1599,11 +1596,12 @@ function App() {
     projectLayout = layout,
     knownSessions = sessions,
     existingRunId?: string,
-    options: { forceNewSession?: boolean } = {},
+    options: { forceNewSession?: boolean; project?: ProjectRecord | null } = {},
   ) {
     const runId = existingRunId || startAgentRun(kind, label);
+    const promptProject = options.project || activeProject;
     try {
-      const session = await ensureAgentSessionForProject(activeProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: kind === "modify" ? "modify" : undefined, promote: kind === "modify" });
+      const session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: kind === "modify" ? "modify" : undefined, promote: kind === "modify" });
       updateAgentRun(runId, {
         sessionId: session.id,
         phase: "waiting",
@@ -1628,7 +1626,7 @@ function App() {
       for (let attempt = 0; attempt < 8; attempt += 1) {
         try {
           appendImportLog(`Agent prompt submit attempt=${attempt + 1} session=${session.id} scope=${scope.scope}`);
-          await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", activeProject), {
+          await hyperwikiApi.json(withProjectQuery("/api/agent/prompt", promptProject), {
             method: "POST",
             body: {
               prompt,
@@ -1671,12 +1669,14 @@ function App() {
     targetRoute?: ViewRoute;
     forceNewSession?: boolean;
     runId?: string;
+    project?: ProjectRecord | null;
   }) {
+    const promptProject = options.project || activeProject;
     if (options.targetRoute) {
-      latestTerminalContext.current = { projectId: activeProject?.id || "", scope: normalizeTerminalScope(options.scope).scope };
+      latestTerminalContext.current = { projectId: promptProject?.id || "", scope: normalizeTerminalScope(options.scope).scope };
       appendImportLog(`Visible agent prompt route kind=${options.kind} page=${options.currentPage} scope=${options.scope.scope}`);
       setRoute(options.targetRoute);
-      window.history.pushState(null, "", urlForRoute(options.targetRoute, activeProject));
+      window.history.pushState(null, "", urlForRoute(options.targetRoute, promptProject));
     }
     setIsWorkspaceExpanded(false);
     if (options.kind === "planning") {
@@ -1694,8 +1694,33 @@ function App() {
       layout,
       sessions,
       options.runId,
-      { forceNewSession: options.forceNewSession },
+      { forceNewSession: options.forceNewSession, project: promptProject },
     );
+  }
+
+  async function startTerminalImportPlanning(project: ProjectRecord, reason: "create-project" | "pending-import" | "switch-project" | "resume" | "retry" = "create-project") {
+    const projectRoute: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" };
+    const projectScope = scopeForRoute(projectRoute);
+    appendImportLog(`Terminal import planning start project=${project.id} reason=${reason}`);
+    clearPlanningQuestions();
+    setPlanningInterviewStatus("idle");
+    setPlanningActivity("Import planning is running in the terminal.");
+    setPlanningWorkstream(["Import planning is running in the terminal."]);
+    openImportedPlanningWorkspace(project, projectRoute);
+    const loaded = await loadProjectData(project);
+    const knownSessions = await loadSessionsForProject(project, projectScope);
+    await openVisibleAgentPromptSession({
+      kind: "planning",
+      label: "Import Planning",
+      prompt: terminalImportPlanningPrompt(project),
+      currentPage: "/wiki/plans/index.mdx",
+      scope: projectScope,
+      targetRoute: projectRoute,
+      forceNewSession: true,
+      project,
+      runId: `import-planning-${Date.now()}`,
+    });
+    appendImportLog(`Terminal import planning prompt sent project=${project.id} reason=${reason} sessions=${knownSessions.length} pages=${loaded.pages.length}`);
   }
 
   async function planImportedProject(project: ProjectRecord) {
@@ -2183,7 +2208,7 @@ function App() {
     setResumedImportPlanningProjectId(activeProject.id);
     setRoute(nextRoute);
     window.history.pushState(null, "", urlForRoute(nextRoute, activeProject));
-    void planImportedProject(activeProject);
+    void startTerminalImportPlanning(activeProject, "resume");
   }
 
   function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" }) {
@@ -2412,8 +2437,7 @@ function App() {
     setPlanningActivity("Preparing import planning");
     setPlanningWorkstream(["Preparing import planning"]);
     openImportedPlanningWorkspace(project);
-    void prewarmImportOnboarding(project, "create-project");
-    void planImportedProject(project);
+    void startTerminalImportPlanning(project, "create-project");
     void hyperwikiApi
       .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(project.id)}`)
       .then((projectsResult) => {
@@ -5670,6 +5694,47 @@ function updateProjectImportPlanning(projects: ProjectListResponse, projectId: s
       checkouts: group.checkouts.map(update),
     })) || [],
   };
+}
+
+function terminalImportPlanningPrompt(project: ProjectRecord) {
+  return [
+    "Use $hyperwiki and $grill-with-docs.",
+    "",
+    "Mode: terminal_import_planning.",
+    "Plan mode only: do not implement product code from this prompt.",
+    "",
+    "Goal:",
+    "Run a terminal-native one-question-at-a-time planning interview for this newly imported hyperwiki project, then create validated MDX MVP plan docs when no blocking unknowns remain.",
+    "",
+    "Immediate workflow:",
+    "- Read wiki/index.mdx and wiki/sources.mdx first.",
+    "- Read wiki/sources/import.mdx and any source briefs under wiki/sources/ that exist.",
+    "- Inspect repo evidence before asking questions the repo can answer.",
+    "- Ask exactly one focused terminal question at a time and stop for the user's answer.",
+    "- When tradeoffs exist, include a recommended answer first and 2-3 concise alternatives in normal terminal prose.",
+    "- Do not emit hyperwiki-question JSON, hyperwiki-question-batch JSON, or app-rendered question objects.",
+    "- After each user answer, reconcile it against the imported sources and saved Q&A, then ask the next blocking question or write the MVP plan.",
+    "",
+    "Durable Q&A:",
+    "- Record summarized import decisions and user answers in wiki/sources/import-qna.mdx.",
+    "- Update wiki/sources/import-state.mdx when useful to summarize readiness, blockers, and next action.",
+    "- Keep full terminal transcript out of visible wiki pages unless explicitly requested.",
+    "",
+    "Plan artifact contract:",
+    "- Write wiki/plans/mvp/index.mdx.",
+    "- Write separate stage and executable unit files under wiki/plans/mvp/.",
+    "- Keep wiki/plans/index.mdx structural only.",
+    "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, verification, and completion gate.",
+    "- Update wiki/log.mdx only with durable import-planning decisions or plan creation history.",
+    "- Name unknowns instead of inventing certainty.",
+    "",
+    "Completion:",
+    "- Stop after creating the MVP plan artifacts and recording verification/handoff notes.",
+    "- Do not commit unless repository instructions explicitly allow it and checks pass.",
+    "",
+    `Imported project: ${project.name}`,
+    `Project root: ${project.root}`,
+  ].join("\n");
 }
 
 function agentLaunchCommand(layout: LayoutResponse | null, effort: ThinkingEffort = defaultThinkingEffort) {

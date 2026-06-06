@@ -49,7 +49,6 @@ for (const endpoint of [
   "/api/import-onboarding/cancel",
 ]) {
   assert.match(command, new RegExp(endpoint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing endpoint ${endpoint}`);
-  assert.match(app, new RegExp(endpoint.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `frontend should use ${endpoint}`);
 }
 assert.match(command, /\/api\/import-onboarding\/events/, "missing import onboarding events endpoint");
 
@@ -70,6 +69,9 @@ assert.match(app, /applyImportOnboardingStatus/);
 assert.match(app, /applyImportOnboardingEventLines/);
 assert.match(app, /startImportOnboardingRuntime/);
 assert.match(app, /waitForImportOnboardingRuntime/);
+assert.match(app, /startTerminalImportPlanning/);
+assert.match(app, /terminalImportPlanningPrompt/);
+assert.match(app, /Mode: terminal_import_planning\./);
 assert.match(app, /importOnboardingPhaseLabel/);
 assert.match(app, /activeImportPlanningRun/);
 assert.match(app, /Cancel Run/);

@@ -1,0 +1,31 @@
+---
+title: "Terminal-Owned Import Q&A"
+description: "Move imported-project planning Q&A into the visible agent terminal."
+wikiKind: "plan"
+status: "completed"
+---
+
+<PlanHero status="completed" title="Terminal-Owned Import Q&A" subtitle="Use the visible terminal as the source of truth for imported-project planning interviews." />
+
+<PlanSummary>
+  <PlanSummaryItem label="Status" value="completed" />
+  <PlanSummaryItem label="Shape" value="compact corrective feature" />
+  <PlanSummaryItem label="Current unit" value="complete" />
+  <PlanSummaryItem label="Validation" value="pnpm run check" />
+</PlanSummary>
+
+<PlanSection title="Intent">
+Imported projects should follow the same terminal-first planning model as regular <code>+ plan</code>. hyperwiki opens the project, starts a visible Codex terminal, and sends an import-planning prompt. The agent asks one question at a time in the terminal, records durable Q&amp;A context in the wiki, and writes MVP plan files when ready.
+</PlanSection>
+
+<PlanSection title="Implementation">
+- New imports and incomplete-import resumes start a fresh visible agent terminal scoped to <code>/wiki/plans/index.mdx</code>.
+- The React app no longer routes active imports into app-rendered Q&amp;A controls or starts the import-onboarding runtime.
+- The existing bundled <code>hyperwiki</code> skill documents terminal-native import planning instead of adding a separate skill.
+- Backend import status and artifact validation remain available for project cards and future cleanup.
+</PlanSection>
+
+<PlanSection title="Verification">
+- Static smoke tests assert terminal-native import prompts and absence of active import-onboarding runtime calls from the React import flow.
+- <code>pnpm run check</code>
+</PlanSection>
