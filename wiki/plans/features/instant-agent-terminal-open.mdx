@@ -60,3 +60,7 @@ Terminal render diagnostics now include elapsed timings for handoff, readiness, 
 <PlanSection title="2026-06-06 General Agent Pool Follow-up">
 Execute no longer forces a fresh general Codex launch. It promotes an existing hidden <code>purpose="general"</code> standby session when one is available, preserves that promoted session's general purpose, and schedules a delayed refill after the prompt handoff. The hidden active-plan general pool is bounded to two standby sessions so a consumed warm slot can be replaced without creating an unbounded background terminal burst.
 </PlanSection>
+
+<PlanSection title="2026-06-06 Full Terminal History Follow-up">
+Live terminal replay no longer drains the earliest bytes after a small fixed cap, xterm scrollback was raised substantially, and the selectable fallback transcript now accumulates parsed terminal history instead of replacing it with a 12k-character tail from the xterm buffer. Codex can still collapse individual command output internally with its own transcript marker, but hyperwiki should preserve the beginning of the live session output it receives.
+</PlanSection>

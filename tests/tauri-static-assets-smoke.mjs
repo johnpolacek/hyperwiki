@@ -156,6 +156,9 @@ if (!appSource.includes("const clearStartupNotice = () =>") || !appSource.includ
 if (!appSource.includes("Terminal fallback ${visible ? \"shown\" : \"hidden\"}") || !appSource.includes("Terminal xterm render check") || !appSource.includes("Terminal xterm cleanup") || !appSource.includes("effect=${effectRun}") || !appSource.includes("xtermRenderSnapshot") || !appSource.includes("terminalBufferTextForDisplay") || !appSource.includes("countVisibleCanvasPixels") || !appSource.includes('aria-label="Terminal transcript"') || !appSource.includes("select-text")) {
   throw new Error("Terminal panes must fall back to a readable transcript and log xterm paint diagnostics when output is received but xterm does not visibly render it.");
 }
+if (!appSource.includes("terminalXtermScrollback = 100000") || appSource.includes("nextText = text.trimEnd().slice(-12000)") || appSource.includes("lines.slice(-180)") || appSource.includes(".split(\"\\n\").slice(-180)") || appSource.includes(".slice(-12000);")) {
+  throw new Error("Terminal transcript fallback and xterm scrollback must preserve full live output history instead of tail-slicing early output.");
+}
 if (!appSource.includes("Agent handoff start kind=") || !appSource.includes("Agent handoff session ready") || !appSource.includes("elapsedMs=${Date.now() - handoffStartedAt}") || !appSource.includes("elapsedMs=${Date.now() - startedAt}")) {
   throw new Error("Agent handoffs and readiness waits must log elapsed timing for startup troubleshooting.");
 }

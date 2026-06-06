@@ -26,7 +26,6 @@ pub fn surface() -> DomainSurface {
 }
 
 const OUTPUT_BUFFER_LIMIT: usize = 64 * 1024;
-const REPLAY_BUFFER_LIMIT: usize = 2 * 1024 * 1024;
 pub const TERMINAL_OUTPUT_EVENT: &str = "terminal://output";
 
 #[derive(Debug, Clone, Deserialize)]
@@ -569,10 +568,6 @@ fn append_output(
         let mut value = output.lock().unwrap_or_else(|error| error.into_inner());
         value.seq = value.seq.saturating_add(1);
         value.replay.extend_from_slice(chunk);
-        if value.replay.len() > REPLAY_BUFFER_LIMIT {
-            let drain_to = value.replay.len() - REPLAY_BUFFER_LIMIT;
-            value.replay.drain(..drain_to);
-        }
         value.transcript.push_str(&String::from_utf8_lossy(chunk));
         trim_output_buffer(&mut value.transcript);
         TerminalOutputEvent {
@@ -746,6 +741,21 @@ mod tests {
         assert!(output.len() <= OUTPUT_BUFFER_LIMIT);
         assert!(output.is_char_boundary(0));
         assert!(output.starts_with('a'));
+    }
+
+    #[test]
+    fn terminal_replay_keeps_full_live_history() {
+        let output = Arc::new(Mutex::new(TerminalOutputBuffers::default()));
+        let first = b"terminal-history-start\n";
+        append_output(&output, "history", first, None);
+        append_output(&output, "history", &vec![b'a'; 3 * 1024 * 1024], None);
+        let snapshot = output
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .replay
+            .clone();
+        assert!(snapshot.starts_with(first));
+        assert_eq!(snapshot.len(), first.len() + 3 * 1024 * 1024);
     }
 
     #[test]

@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 fix | full terminal history retention</h2>
+  <ul>
+    <li>Removed the live terminal replay byte drain so a running session keeps the earliest output bytes available through replay.</li>
+    <li>Raised xterm scrollback and changed the selectable fallback transcript to accumulate parsed output instead of replacing it with a short tail from the visible xterm buffer.</li>
+    <li>Added regression coverage for full replay retention and static frontend coverage for the no-tail-slice transcript path.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | general agent warm pool</h2>
   <ul>
     <li>Changed Execute Unit handoffs to reuse and promote hidden <code>purpose="general"</code> standby agents instead of forcing a fresh Codex terminal.</li>

@@ -620,6 +620,7 @@ const generalAgentPrewarmTarget = 2;
 const modifyAgentPrewarmTarget = 1;
 const prewarmAgentReadinessAttempts = 80;
 const generalAgentPrewarmRefillDelayMs = 1500;
+const terminalXtermScrollback = 100000;
 
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
@@ -5250,7 +5251,7 @@ function XtermSession({
       fontFamily: terminalFont,
       fontSize: 13,
       lineHeight: 1.3,
-      scrollback: 10000,
+      scrollback: terminalXtermScrollback,
       theme: {
         background: "#20231f",
         foreground: "#f7f7f4",
@@ -5290,15 +5291,16 @@ function XtermSession({
       if (fallbackVisibleRef.current === visible) return;
       fallbackVisibleRef.current = visible;
       setFallbackVisible(visible);
+      setFallbackText(visible ? fallbackTextRef.current : "");
       appendImportLog(`Terminal fallback ${visible ? "shown" : "hidden"} session=${session.id} reason=${reason}${snapshot ? ` ${xtermRenderSnapshotSummary(snapshot)}` : ""}`);
     };
 
     const setFallbackTranscript = (text: string, reason: string) => {
       if (!isCurrentEffect()) return;
-      const nextText = text.trimEnd().slice(-12000);
+      const nextText = text.trimEnd();
       if (nextText === fallbackTextRef.current) return;
       fallbackTextRef.current = nextText;
-      setFallbackText(nextText);
+      if (fallbackVisibleRef.current) setFallbackText(nextText);
       if (fallbackUpdateLogCountRef.current < 8) {
         fallbackUpdateLogCountRef.current += 1;
         appendImportLog(`Terminal fallback transcript updated session=${session.id} effect=${effectRun} reason=${reason} chars=${nextText.length} lines=${nextText.split("\n").length} elapsedMs=${Date.now() - mountedAt} count=${fallbackUpdateLogCountRef.current}`);
@@ -5311,6 +5313,7 @@ function XtermSession({
     };
 
     const refreshFallbackFromTerminalBuffer = (reason: string) => {
+      if (fallbackTextRef.current.trim()) return;
       const bufferText = terminalBufferTextForDisplay(terminal);
       if (bufferText) setFallbackTranscript(bufferText, reason);
     };
@@ -7357,9 +7360,7 @@ function terminalFallbackTextForDisplay(data: string) {
     .split("\n")
     .map((line) => line.replace(/[ \t]+/g, " ").trimEnd())
     .filter(isUsefulTerminalLogLine)
-    .slice(-120)
-    .join("\n")
-    .slice(-12000);
+    .join("\n");
 }
 
 function terminalBufferTextForDisplay(terminal: Terminal) {
@@ -7369,7 +7370,7 @@ function terminalBufferTextForDisplay(terminal: Terminal) {
     const line = buffer.getLine(index)?.translateToString(true).trimEnd() || "";
     if (line.trim()) lines.push(line);
   }
-  return lines.slice(-180).join("\n").slice(-12000);
+  return lines.join("\n");
 }
 
 function appendTerminalFallbackText(previous: string, next: string) {
@@ -7380,9 +7381,9 @@ function appendTerminalFallbackText(previous: string, next: string) {
   if (trimmedPrevious.endsWith(trimmedNext)) return previous;
   const previousTail = trimmedPrevious.slice(-1200);
   if (previousTail && trimmedNext.includes(previousTail)) {
-    return trimmedNext.slice(-12000);
+    return trimmedNext;
   }
-  return `${trimmedPrevious}\n${trimmedNext}`.split("\n").slice(-180).join("\n").slice(-12000);
+  return `${trimmedPrevious}\n${trimmedNext}`;
 }
 
 type XtermRenderSnapshot = {
