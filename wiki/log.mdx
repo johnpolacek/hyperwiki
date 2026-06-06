@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-05 fix | terminal start active focus race</h2>
+  <ul>
+    <li>Changed terminal session reloads to accept an explicit selected session id so newly started CLI, agent, restart, and dev panes remain the active input target after async session refresh.</li>
+    <li>Added static smoke coverage for the reload selection handoff and recorded the focused plan at <a href="/wiki/plans/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-05 fix | terminal-owned import q&amp;a</h2>
   <ul>
     <li>Changed imported-project planning to start a visible terminal-owned agent interview instead of the app-rendered structured Q&amp;A runtime.</li>

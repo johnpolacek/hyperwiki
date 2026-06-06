@@ -53,6 +53,9 @@ assert.ok(source.includes("terminal-scrollbar-thin") && css.includes(".terminal-
 assert.ok(source.includes("terminalRef.current?.focus()") && source.includes("session.id]"), "Active terminal panes should keep xterm focused without remounting on session-list refresh");
 assert.ok(source.includes("onMouseDown={() => terminalRef.current?.focus()}") && source.includes("onClick={() => terminalRef.current?.focus()}"), "Clicking an active terminal pane should refocus xterm for user input.");
 assert.ok(source.includes('const name = role;'), "New CLI sessions should be named cli instead of Terminal");
+assert.ok(source.includes("async function loadSessions(options: { selectSessionId?: string | null } = {})"), "Session reloads should accept an explicit selected session id.");
+assert.ok(source.includes('applyTerminalSessions(requestedProjectId, nextSessions, { reason: "load", selectSessionId: options.selectSessionId });'), "Session reloads should preserve explicit terminal selection through async refreshes.");
+assert.ok(source.includes("await loadSessions({ selectSessionId: started.session.id });"), "New terminal starts should keep the started session active after reload.");
 assert.ok(source.includes("function terminalPaneLabel") && source.includes("`${label} --`"), "Terminal pane labels should render as cli -- and agent --");
 
 console.log("new project upload static smoke passed");

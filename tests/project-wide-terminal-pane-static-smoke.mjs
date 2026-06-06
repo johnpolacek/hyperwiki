@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const source = await readFile("src/App.tsx", "utf8");
 
-const loadSessionsStart = source.indexOf("async function loadSessions()");
+const loadSessionsStart = source.indexOf("async function loadSessions(");
 const loadSessionsEnd = source.indexOf("function navigate", loadSessionsStart);
 assert.notEqual(loadSessionsStart, -1, "loadSessions should exist");
 assert.notEqual(loadSessionsEnd, -1, "navigate should follow loadSessions");
@@ -20,6 +20,10 @@ assert.equal(
 assert.ok(
   loadSessions.includes("isCurrentTerminalProject(requestedProjectId"),
   "Visible terminal pane loading should guard stale async results by project.",
+);
+assert.ok(
+  loadSessions.includes("selectSessionId: options.selectSessionId"),
+  "Visible terminal pane loading should preserve explicit active-session selections through reloads.",
 );
 
 const loadEffect = source.slice(source.indexOf("if (hasLoadedProjects && !activeProject)"), source.indexOf("useEffect(() => {\n    if (!activeProject || terminalScope.scopeKind", source.indexOf("if (hasLoadedProjects && !activeProject)")));

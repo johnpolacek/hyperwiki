@@ -1104,7 +1104,7 @@ function App() {
     setWikiSource(source);
   }
 
-  async function loadSessions() {
+  async function loadSessions(options: { selectSessionId?: string | null } = {}) {
     const requestedProjectId = activeProject?.id || "";
     setIsSessionsLoading(true);
     try {
@@ -1114,7 +1114,7 @@ function App() {
         return;
       }
       const nextSessions = response.sessions || [];
-      applyTerminalSessions(requestedProjectId, nextSessions, { reason: "load" });
+      applyTerminalSessions(requestedProjectId, nextSessions, { reason: "load", selectSessionId: options.selectSessionId });
     } catch {
       if (!isCurrentTerminalProject(requestedProjectId, latestTerminalContext.current)) return;
       setSessions([]);
@@ -1208,7 +1208,7 @@ function App() {
         },
       });
       if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-terminal", select: true });
-      await loadSessions();
+      await loadSessions({ selectSessionId: started.session.id });
       setStatus(`${name} started`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2350,7 +2350,7 @@ function App() {
         },
       });
       if (activeProject) upsertTerminalSession(activeProject.id, restarted.session, { reason: "restart", select: true });
-      await loadSessions();
+      await loadSessions({ selectSessionId: restarted.session.id });
       setStatus("Session attached");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2377,7 +2377,7 @@ function App() {
         },
       });
       if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-dev", select: true });
-      await loadSessions();
+      await loadSessions({ selectSessionId: started.session.id });
       setStatus(`Dev started: ${command}`);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
