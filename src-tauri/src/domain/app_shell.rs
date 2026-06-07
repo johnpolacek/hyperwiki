@@ -116,7 +116,7 @@ pub fn open_external_target(target: &str) -> Result<serde_json::Value, String> {
         return Err("Only http and https URLs can be opened externally.".to_string());
     }
     #[cfg(target_os = "macos")]
-    let result = Command::new("open").arg(target).output();
+    let result = open_url_in_default_browser(target);
     #[cfg(target_os = "linux")]
     let result = Command::new("xdg-open").arg(target).output();
     #[cfg(target_os = "windows")]
@@ -131,6 +131,43 @@ pub fn open_external_target(target: &str) -> Result<serde_json::Value, String> {
                 .ok_or_else(|| String::from_utf8_lossy(&output.stderr).trim().to_string())
         })?;
     Ok(serde_json::json!({ "ok": true, "target": target }))
+}
+
+#[cfg(target_os = "macos")]
+fn open_url_in_default_browser(target: &str) -> std::io::Result<std::process::Output> {
+    if let Some(bundle_id) = default_browser_bundle_id() {
+        let result = Command::new("open")
+            .args(["-b", bundle_id.as_str(), target])
+            .output();
+        if result.as_ref().is_ok_and(|output| output.status.success()) {
+            return result;
+        }
+    }
+    Command::new("open").arg(target).output()
+}
+
+#[cfg(target_os = "macos")]
+fn default_browser_bundle_id() -> Option<String> {
+    let home = std::env::var("HOME").ok()?;
+    let launch_services =
+        Path::new(&home).join("Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist");
+    let output = Command::new("plutil")
+        .args(["-extract", "LSHandlers", "json", "-o", "-"])
+        .arg(launch_services)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let handlers = serde_json::from_slice::<serde_json::Value>(&output.stdout).ok()?;
+    handlers.as_array()?.iter().find_map(|handler| {
+        let scheme = handler.get("LSHandlerURLScheme")?.as_str()?;
+        if scheme != "https" && scheme != "http" {
+            return None;
+        }
+        let bundle_id = handler.get("LSHandlerRoleAll")?.as_str()?.trim();
+        (!bundle_id.is_empty() && bundle_id != "-").then(|| bundle_id.to_string())
+    })
 }
 
 pub fn reveal_project_folder(root: impl AsRef<Path>) -> Result<serde_json::Value, String> {

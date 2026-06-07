@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 fix | terminal links use default browser bundle</h2>
+  <ul>
+    <li>Changed macOS external URL opening to resolve the user's default web browser bundle id and call <code>open -b</code> for that browser before falling back to plain <code>open</code>.</li>
+    <li>Stopped terminal link click propagation after xterm activation so webview-level fallback handlers do not also process the URL.</li>
+    <li>Verification: <code>node tests/terminal-web-links-static-smoke.mjs</code>, <code>node tests/app-shell-open-browser-static-smoke.mjs</code>, and <code>pnpm run check</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 polish | project env masked saved values</h2>
   <ul>
     <li>Changed saved Project Env values to render as <code>****************</code> when the drawer opens.</li>

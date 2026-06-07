@@ -18,6 +18,10 @@ assert.ok(
   "Terminal web link clicks should prevent default in-webview navigation.",
 );
 assert.ok(
+  xtermSession.includes("event.stopPropagation();") && xtermSession.includes("event.stopImmediatePropagation();"),
+  "Terminal web link clicks should not propagate to any webview or terminal fallback handler.",
+);
+assert.ok(
   xtermSession.includes("void openTerminalWebLink(uri);"),
   "Terminal web link clicks should delegate to the app-shell external opener.",
 );

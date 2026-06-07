@@ -5612,6 +5612,8 @@ function XtermSession({
     terminal.loadAddon(fitAddon);
     terminal.loadAddon(new WebLinksAddon((event, uri) => {
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       void openTerminalWebLink(uri);
     }));
     terminal.open(container);
