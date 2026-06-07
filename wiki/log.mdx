@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 fix | terminal web links open browser</h2>
+  <ul>
+    <li>Configured xterm's <code>WebLinksAddon</code> with an activation callback so clicked terminal URLs call Hyperwiki's app-shell external opener.</li>
+    <li>Reused the existing <code>/api/app/open-external</code> endpoint, preserving Rust-side <code>http</code>/<code>https</code> validation and OS browser opening.</li>
+    <li>Added static smoke coverage for the terminal link callback and opener endpoint wiring.</li>
+    <li>Verification: <code>node tests/terminal-web-links-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, and <code>pnpm run check</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 fix | project env saved-value clarity</h2>
   <ul>
     <li>Changed Project Env rows for existing keys to explicitly show <code>value set in .env.local</code> and a <code>set</code> badge.</li>

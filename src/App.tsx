@@ -5604,7 +5604,10 @@ function XtermSession({
     terminalRef.current = terminal;
     fitRef.current = fitAddon;
     terminal.loadAddon(fitAddon);
-    terminal.loadAddon(new WebLinksAddon());
+    terminal.loadAddon(new WebLinksAddon((event, uri) => {
+      event.preventDefault();
+      void openTerminalWebLink(uri);
+    }));
     terminal.open(container);
     const isCurrentEffect = () => !disposed && xtermEffectRunRef.current === effectRun && !closedRef.current;
     appendImportLog(`Terminal xterm opened session=${session.id} effect=${effectRun} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} active=${isActive} elapsedMs=${Date.now() - mountedAt}`);
@@ -7697,6 +7700,17 @@ function terminalDisplayHasVisibleText(data: string) {
 function terminalDisplayDebugTail(data: string) {
   return terminalPlainTextForLog(data)
     || terminalTextForParsing(data).replace(/[ \t]+/g, " ").trim().slice(-500);
+}
+
+async function openTerminalWebLink(uri: string) {
+  try {
+    await hyperwikiApi.request("/api/app/open-external", {
+      method: "POST",
+      body: { target: uri },
+    });
+  } catch (error) {
+    console.error("Failed to open terminal link", error);
+  }
 }
 
 function terminalTranscriptTextForDisplay(data: string) {

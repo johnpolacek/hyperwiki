@@ -1,0 +1,34 @@
+---
+title: "Terminal Web Links Open Browser"
+description: "Make clicked URLs in xterm-backed terminal output open in the user's external browser."
+wikiKind: "plan"
+status: "completed"
+currentUnit: "Completed on 2026-06-07."
+---
+
+<PlanHero title="Terminal Web Links Open Browser" subtitle="Terminal URLs already advertise link behavior on hover; clicking them should open the browser through the local Tauri app shell." status="completed" />
+
+<PlanSummary>
+  <ul>
+    <li>Status: completed</li>
+    <li>Current unit: Completed on 2026-06-07.</li>
+    <li>Scope: React terminal surface only; reuse the existing <code>/api/app/open-external</code> command transport endpoint.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Keep URL validation in the Rust app-shell domain, where external opening is already constrained to <code>http</code> and <code>https</code>.</li>
+    <li>Configure <code>WebLinksAddon</code> with an activation callback instead of relying on default hover-only detection.</li>
+    <li>Log opener failures to the console rather than writing error text into the terminal PTY stream.</li>
+  </ul>
+</section>
+
+<Verification>
+  <ul>
+    <li><code>node tests/terminal-web-links-static-smoke.mjs</code> passed.</li>
+    <li><code>pnpm exec tsc -b</code> passed.</li>
+    <li><code>pnpm run check</code> passed.</li>
+  </ul>
+</Verification>
