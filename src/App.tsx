@@ -4634,6 +4634,7 @@ function ProjectEnvEditor({
 }) {
   const [summary, setSummary] = useState<ProjectEnvResponse | null>(null);
   const [rows, setRows] = useState<Array<{ id: string; name: string; present: boolean; source: string; value: string }>>([]);
+  const [focusedValueRows, setFocusedValueRows] = useState<Record<string, boolean>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<ProjectEnvStatusTone>("neutral");
@@ -4653,6 +4654,7 @@ function ProjectEnvEditor({
         if (cancelled) return;
         setSummary(response);
         setRows(projectEnvRows(response, initialKey));
+        setFocusedValueRows({});
         setRevealed({});
         setStatus("");
         setStatusTone("neutral");
@@ -4716,6 +4718,7 @@ function ProjectEnvEditor({
       const savedNames = new Set(dirtyRows.map((row) => row.name));
       setSummary(saved);
       setRows((current) => current.map((row) => savedNames.has(row.name.trim()) ? { ...row, present: true, source: ".env.local" } : row));
+      setFocusedValueRows({});
       lastSavedSignatureRef.current = dirtySignature;
       setStatus(mode === "auto"
         ? "Saved"
@@ -4767,6 +4770,7 @@ function ProjectEnvEditor({
             <div className="grid gap-3">
               {rows.map((row) => {
                 const invalid = Boolean(row.name.trim()) && !isValidEnvKeyName(row.name.trim());
+                const showingStoredMask = row.present && !row.value && !focusedValueRows[row.id];
                 return (
                   <div className="grid min-w-0 gap-3 rounded-md border bg-background p-3" key={row.id}>
                     <label className="grid min-w-0 gap-1">
@@ -4793,9 +4797,11 @@ function ProjectEnvEditor({
                           {...DISABLE_TEXT_CORRECTION_PROPS}
                           className="h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
                           onChange={(event) => updateRow(row.id, { value: event.target.value })}
-                          placeholder={row.present ? "Stored value is set - paste to replace" : "Paste value"}
-                          type={revealed[row.id] ? "text" : "password"}
-                          value={row.value}
+                          onBlur={() => setFocusedValueRows((current) => ({ ...current, [row.id]: false }))}
+                          onFocus={() => setFocusedValueRows((current) => ({ ...current, [row.id]: true }))}
+                          placeholder={row.present ? "Paste to replace saved value" : "Paste value"}
+                          type={showingStoredMask || revealed[row.id] ? "text" : "password"}
+                          value={showingStoredMask ? "****************" : row.value}
                         />
                         <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "Secret is saved locally. Paste a new value only if you want to replace it." : ""}</span>
                       </label>

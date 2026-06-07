@@ -57,6 +57,10 @@ On 2026-06-07, autosave feedback changed to a concise <code>Saved</code> message
 On 2026-06-07, existing env rows changed to show a saved-value indicator and replacement-only helper copy. Empty value inputs now mean Hyperwiki did not load the secret, not that the saved value is empty.
 </PlanSection>
 
+<PlanSection title="Follow-up - Masked saved values">
+On 2026-06-07, saved env rows changed to render a display-only <code>****************</code> mask that clears on focus. The mask is not stored in row state and cannot be autosaved as a replacement value.
+</PlanSection>
+
 <PlanSection title="Verification">
 - <code>pnpm run check:all</code> passed.
 - <code>pnpm run test:tauri</code> passed with 134 Rust tests, including project-env parsing, masking, and Git-ignore safety cases.
@@ -66,5 +70,6 @@ On 2026-06-07, existing env rows changed to show a saved-value indicator and rep
 - 2026-06-07 autosave follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - 2026-06-07 autosave-status follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - 2026-06-07 saved-value clarity follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
+- 2026-06-07 masked saved-values follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - Manual acceptance remains available for a real Clerk/Convex key: add it through Hyperwiki, confirm <code>.env.local</code> is updated locally, and rerun the previously blocked command.
 </PlanSection>

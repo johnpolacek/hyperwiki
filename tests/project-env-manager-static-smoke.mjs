@@ -23,7 +23,10 @@ for (const needle of [
   "statusTone === \"success\" ? <Check",
   "isSaving ? <Loader2",
   "value set in .env.local",
-  "Stored value is set - paste to replace",
+  "showingStoredMask",
+  "****************",
+  "Paste to replace saved value",
+  "setFocusedValueRows",
   "Secret is saved locally. Paste a new value only if you want to replace it.",
 ]) {
   if (!appSource.includes(needle)) {
@@ -33,6 +36,10 @@ for (const needle of [
 
 if (appSource.includes('isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check')) {
   throw new Error("Project env manual save button should not show an idle check icon.");
+}
+
+if (appSource.includes('updateRow(row.id, { value: "****************"')) {
+  throw new Error("Project env stored-value mask must not be written into row values.");
 }
 
 if (appSource.includes("fixed inset-0 z-50 grid place-items-center bg-black/45") || appSource.includes('aria-modal="true"')) {

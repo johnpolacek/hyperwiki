@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 polish | project env masked saved values</h2>
+  <ul>
+    <li>Changed saved Project Env values to render as <code>****************</code> when the drawer opens.</li>
+    <li>Focused saved-value fields clear to an empty replacement input without loading or writing the mask string as a secret value.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 fix | terminal web links open browser</h2>
   <ul>
     <li>Configured xterm's <code>WebLinksAddon</code> with an activation callback so clicked terminal URLs call Hyperwiki's app-shell external opener.</li>
