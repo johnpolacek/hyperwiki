@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 pub fn surface() -> DomainSurface {
     DomainSurface {
@@ -81,9 +81,25 @@ pub struct AppPreview {
     pub status: String,
     pub running: bool,
     pub can_start: bool,
+    pub can_stop: bool,
+    pub can_restart: bool,
+    pub running_source: String,
     pub reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub managed_session: Option<ManagedDevSession>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub route: Option<PortlessRoute>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagedDevSession {
+    pub id: String,
+    pub status: String,
+    pub pid: Option<u32>,
+    pub process_group: Option<i32>,
+    pub stoppable: bool,
+    pub attachable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -218,6 +234,7 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
     let expected_url = preview_url_for_project(project, &layout);
     let start_command = layout.dev.command.clone();
     let can_start = !start_command.is_empty();
+    let managed_session = managed_dev_session(&project.root);
     if expected_url.is_empty() {
         return preview_state(
             project,
@@ -228,7 +245,11 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
                 status: "not-configured".to_string(),
                 running: false,
                 can_start: false,
+                can_stop: false,
+                can_restart: false,
+                running_source: "none".to_string(),
                 reason: "No app preview URL is configured.".to_string(),
+                managed_session,
                 route: None,
             },
         );
@@ -246,6 +267,15 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
         })
         .cloned();
     if let Some(route) = route {
+        let running_source = if managed_session.is_some() {
+            "managed".to_string()
+        } else {
+            "external-portless".to_string()
+        };
+        let can_stop = managed_session
+            .as_ref()
+            .map(|session| session.stoppable)
+            .unwrap_or(false);
         return preview_state(
             project,
             PreviewFields {
@@ -255,8 +285,31 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
                 status: "running".to_string(),
                 running: true,
                 can_start,
+                can_stop,
+                can_restart: can_stop,
+                running_source,
                 reason: format!("Portless route is active for {}.", route.url),
+                managed_session,
                 route: Some(route),
+            },
+        );
+    }
+    if let Some(session) = managed_session.clone().filter(|session| session.stoppable) {
+        return preview_state(
+            project,
+            PreviewFields {
+                url: expected_url.clone(),
+                expected_url,
+                start_command,
+                status: "running".to_string(),
+                running: true,
+                can_start,
+                can_stop: true,
+                can_restart: true,
+                running_source: "managed-detached".to_string(),
+                reason: "A Hyperwiki-managed dev process is still running from a previous app session.".to_string(),
+                managed_session: Some(session),
+                route: None,
             },
         );
     }
@@ -270,9 +323,13 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
                 status: "unknown".to_string(),
                 running: false,
                 can_start,
+                can_stop: false,
+                can_restart: false,
+                running_source: "unknown".to_string(),
                 reason: routes
                     .error
                     .unwrap_or_else(|| "Portless route status is unavailable.".to_string()),
+                managed_session,
                 route: None,
             },
         );
@@ -299,10 +356,55 @@ pub fn app_preview_for_project(project: &crate::domain::projects::ProjectRecord)
             .to_string(),
             running: false,
             can_start,
+            can_stop: false,
+            can_restart: false,
+            running_source: "none".to_string(),
             reason,
+            managed_session,
             route: None,
         },
     )
+}
+
+pub fn dev_session_id_for_project(project: &crate::domain::projects::ProjectRecord) -> String {
+    format!("dev-{}-{}", safe_id(&project.project_slug), safe_id(&project.worktree_slug))
+}
+
+pub fn process_is_alive(pid: u32) -> bool {
+    if pid == 0 {
+        return false;
+    }
+    Command::new("kill")
+        .arg("-0")
+        .arg(pid.to_string())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+pub fn stop_process(pid: Option<u32>, process_group: Option<i32>) -> bool {
+    let Some(pid) = pid else {
+        return false;
+    };
+    if !process_is_alive(pid) {
+        return true;
+    }
+    if let Some(group) = process_group.filter(|group| *group > 0) {
+        let target = format!("-{group}");
+        let _ = Command::new("kill").arg("-TERM").arg(&target).status();
+    }
+    let _ = Command::new("kill").arg("-TERM").arg(pid.to_string()).status();
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    if process_is_alive(pid) {
+        if let Some(group) = process_group.filter(|group| *group > 0) {
+            let target = format!("-{group}");
+            let _ = Command::new("kill").arg("-KILL").arg(&target).status();
+        }
+        let _ = Command::new("kill").arg("-KILL").arg(pid.to_string()).status();
+    }
+    !process_is_alive(pid)
 }
 
 pub fn parse_portless_routes(output: &str) -> Vec<PortlessRoute> {
@@ -468,7 +570,11 @@ struct PreviewFields {
     status: String,
     running: bool,
     can_start: bool,
+    can_stop: bool,
+    can_restart: bool,
+    running_source: String,
     reason: String,
+    managed_session: Option<ManagedDevSession>,
     route: Option<PortlessRoute>,
 }
 
@@ -494,9 +600,54 @@ fn preview_state(
         status: preview.status,
         running: preview.running,
         can_start: preview.can_start,
+        can_stop: preview.can_stop,
+        can_restart: preview.can_restart,
+        running_source: preview.running_source,
         reason: preview.reason,
+        managed_session: preview.managed_session,
         route: preview.route,
     }
+}
+
+fn managed_dev_session(root: &Path) -> Option<ManagedDevSession> {
+    let registry = crate::domain::sessions::SessionRegistry::new(root);
+    registry
+        .list(None, false)
+        .sessions
+        .into_iter()
+        .filter(|session| session.role == "dev" && session.status != "closed")
+        .filter_map(|session| {
+            let alive = session.pid.map(process_is_alive).unwrap_or(false);
+            if !alive {
+                return None;
+            }
+            Some(ManagedDevSession {
+                id: session.id,
+                status: if session.status == "active" {
+                    "detached".to_string()
+                } else {
+                    session.status
+                },
+                pid: session.pid,
+                process_group: session.process_group,
+                stoppable: true,
+                attachable: false,
+            })
+        })
+        .next()
+}
+
+fn safe_id(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '_' || character == '-' {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect()
 }
 
 fn portless_routes(cwd: &Path) -> PortlessRoutes {
@@ -721,6 +872,54 @@ mod tests {
         assert_eq!(
             feature_preview.expected_url,
             "https://feature-a.preview-smoke.localhost"
+        );
+    }
+
+    #[test]
+    fn preview_reports_alive_managed_dev_session_as_detached() {
+        let root = temp_root("preview-managed-dev");
+        make_project(
+            &root,
+            serde_json::json!({
+                "projectName": "Preview Managed Dev",
+                "dev": {
+                    "command": "pnpm run dev",
+                    "previewUrl": "https://preview-managed-dev.localhost"
+                }
+            }),
+        );
+        let registry = crate::domain::sessions::SessionRegistry::new(&root);
+        registry
+            .upsert(
+                "legacy-dev-session",
+                crate::domain::sessions::SessionUpdates {
+                    name: Some("dev".to_string()),
+                    role: Some("dev".to_string()),
+                    command: Some("pnpm run dev".to_string()),
+                    status: Some("active".to_string()),
+                    pid: Some(std::process::id()),
+                    cwd: Some(root.clone()),
+                    ..crate::domain::sessions::SessionUpdates::default()
+                },
+            )
+            .unwrap();
+        let fake_portless = fake_portless("");
+        let _path_guard = PathGuard::prepend(fake_portless);
+        let preview = app_preview_for_project(&record(
+            "main",
+            &root,
+            "Preview Managed Dev",
+            "preview-managed-dev",
+            "main",
+            true,
+        ));
+
+        assert_eq!(preview.status, "running");
+        assert_eq!(preview.running_source, "managed-detached");
+        assert!(preview.can_stop);
+        assert_eq!(
+            preview.managed_session.as_ref().map(|session| session.id.as_str()),
+            Some("legacy-dev-session")
         );
     }
 

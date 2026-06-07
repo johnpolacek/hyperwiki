@@ -35,6 +35,8 @@ pub struct SessionRecord {
     pub command: Option<String>,
     pub shell: Option<String>,
     pub pid: Option<u32>,
+    #[serde(default)]
+    pub process_group: Option<i32>,
     pub cwd: PathBuf,
     pub scope: String,
     pub scope_kind: String,
@@ -63,6 +65,7 @@ pub struct SessionUpdates {
     pub command: Option<String>,
     pub shell: Option<String>,
     pub pid: Option<u32>,
+    pub process_group: Option<i32>,
     pub cwd: Option<PathBuf>,
     pub scope: Option<String>,
     pub scope_kind: Option<String>,
@@ -153,6 +156,9 @@ impl SessionRegistry {
             pid: updates
                 .pid
                 .or_else(|| existing.as_ref().and_then(|session| session.pid)),
+            process_group: updates
+                .process_group
+                .or_else(|| existing.as_ref().and_then(|session| session.process_group)),
             cwd: updates
                 .cwd
                 .or_else(|| existing.as_ref().map(|session| session.cwd.clone()))

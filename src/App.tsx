@@ -247,9 +247,21 @@ type ProjectEnvStatusTone = "neutral" | "success" | "error";
 interface AppPreviewResponse {
   url?: string;
   canStart?: boolean;
+  running?: boolean;
+  canStop?: boolean;
+  canRestart?: boolean;
   reason?: string;
   startCommand?: string;
   status?: string;
+  runningSource?: string;
+  managedSession?: {
+    id?: string;
+    status?: string;
+    pid?: number | null;
+    processGroup?: number | null;
+    stoppable?: boolean;
+    attachable?: boolean;
+  } | null;
   projectSlug?: string;
   worktreeSlug?: string;
 }
@@ -375,6 +387,13 @@ interface SessionResponse {
 interface TerminalStartResponse {
   session: SessionRecord;
   replay?: string;
+}
+
+interface DevLifecycleResponse {
+  session?: SessionRecord | null;
+  replay?: string;
+  preview?: AppPreviewResponse | null;
+  stopped?: boolean;
 }
 
 interface TerminalReplayResponse {
@@ -2600,20 +2619,45 @@ function App() {
     }
     setStatus("Starting dev terminal");
     try {
-      const started = await hyperwikiApi.json<TerminalStartResponse>(withProjectQuery("/api/terminal/start", activeProject), {
+      const started = await hyperwikiApi.json<DevLifecycleResponse>(withProjectQuery("/api/dev/start", activeProject), {
         method: "POST",
-        body: {
-          name: "dev",
-          role: "dev",
-          command,
-          scope: terminalScope.scope,
-          scopeKind: terminalScope.scopeKind,
-          planPath: terminalScope.planPath,
-        },
+        body: {},
       });
-      if (activeProject) upsertTerminalSession(activeProject.id, started.session, { reason: "start-dev", select: true });
-      await loadSessions({ selectSessionId: started.session.id });
-      setStatus(`Dev started: ${command}`);
+      if (started.preview) setPreview(started.preview);
+      if (activeProject && started.session) upsertTerminalSession(activeProject.id, started.session, { reason: "start-dev", select: true });
+      await loadSessions({ selectSessionId: started.session?.id || preview?.managedSession?.id || null });
+      setStatus(started.session ? `Dev started: ${command}` : started.preview?.reason || "Dev already running");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function stopDevTerminal() {
+    setStatus("Stopping dev terminal");
+    try {
+      const result = await hyperwikiApi.json<DevLifecycleResponse>(withProjectQuery("/api/dev", activeProject), {
+        method: "DELETE",
+        body: {},
+      });
+      if (result.preview) setPreview(result.preview);
+      await loadSessions();
+      setStatus(result.stopped === false ? "Dev process was not stopped" : "Dev stopped");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function restartDevTerminal() {
+    setStatus("Restarting dev terminal");
+    try {
+      const result = await hyperwikiApi.json<DevLifecycleResponse>(withProjectQuery("/api/dev/restart", activeProject), {
+        method: "POST",
+        body: {},
+      });
+      if (result.preview) setPreview(result.preview);
+      if (activeProject && result.session) upsertTerminalSession(activeProject.id, result.session, { reason: "restart-dev", select: true });
+      await loadSessions({ selectSessionId: result.session?.id || null });
+      setStatus(result.session ? "Dev restarted" : "Dev restart requested");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -2863,7 +2907,9 @@ function App() {
                 onInitializeGit={initializeGitFromTerminal}
                 onRenameSession={renameSession}
                 onRestartSession={restartSession}
+                onRestartDev={restartDevTerminal}
                 onRunDev={startDevTerminal}
+                onStopDev={stopDevTerminal}
                 onOpenProjectEnv={openProjectEnvEditor}
                 onSelectSession={setActiveSessionId}
                 onStart={startTerminal}
@@ -5265,8 +5311,10 @@ function TerminalPane(props: {
   onInitializeGit: () => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRenameSession: (sessionId: string, name: string) => void;
+  onRestartDev: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onRunDev: () => void;
+  onStopDev: () => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
   onThinkingEffortChange: (effort: ThinkingEffort) => void;
@@ -5290,6 +5338,9 @@ function TerminalPane(props: {
   const hasGit = Boolean(props.repoContext?.git?.root);
   const canCreateWorktree = hasGit && ["main", "master"].includes(String(branchLabel || "").trim().toLowerCase());
   const canRunDev = props.preview?.canStart === true;
+  const canStopDev = props.preview?.canStop === true;
+  const canRestartDev = props.preview?.canRestart === true;
+  const devButtonLabel = canStopDev ? "stop dev" : props.preview?.running ? "dev running" : "run dev";
   const runDevTitle = canRunDev
     ? props.preview?.startCommand || "Run dev"
     : props.preview?.reason || "No package.json dev script is available.";
@@ -5346,9 +5397,14 @@ function TerminalPane(props: {
               {hasGit ? "+ worktree" : "init git"}
             </Button>
           ) : null}
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev} size="sm" title={runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
-            run dev
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev && !canStopDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={canStopDev ? props.onStopDev : props.onRunDev}>
+            {devButtonLabel}
           </Button>
+          {canRestartDev ? (
+            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" title="Restart managed dev process" variant="outline" type="button" onClick={props.onRestartDev}>
+              restart
+            </Button>
+          ) : null}
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!props.activeProject} size="sm" title="Edit project .env.local" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(undefined, "terminal")}>
             env
           </Button>
@@ -5420,7 +5476,9 @@ function TerminalPane(props: {
                   </Button>
                 </header>
                 <div className="min-h-0 flex-1">
-                  {isPendingTerminalSession(session) ? (
+                  {isDetachedDevSession(session) ? (
+                    <DetachedDevSession session={session} onRestart={props.onRestartDev} onStop={props.onStopDev} />
+                  ) : isPendingTerminalSession(session) ? (
                     <PendingTerminalSession session={session} />
                   ) : (
                     <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
@@ -5502,6 +5560,28 @@ function PendingTerminalSession({ session }: { session: SessionRecord }) {
         {!failed ? <p className="m-0 text-[#8c958e]">Preparing the terminal session...</p> : null}
       </div>
       <p className="m-0 truncate text-[11px] text-[#69736c]">{session.command || session.id}</p>
+    </div>
+  );
+}
+
+function DetachedDevSession({ session, onRestart, onStop }: { session: SessionRecord; onRestart: () => void; onStop: () => void }) {
+  return (
+    <div className="grid min-h-[180px] place-items-center bg-[#0c0f0d] p-6 text-center">
+      <div className="grid max-w-[360px] gap-3">
+        <strong className="text-sm text-[#eef2ec]">Dev process still running</strong>
+        <p className="m-0 text-xs leading-relaxed text-[#aeb8b0]">
+          Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can stop or restart it.
+        </p>
+        <div className="flex justify-center gap-2">
+          <Button className="h-8 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={onStop}>
+            stop
+          </Button>
+          <Button className="h-8 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={onRestart}>
+            restart
+          </Button>
+        </div>
+        <span className="text-[11px] text-[#68716a]">pid {session.pid || "unknown"}</span>
+      </div>
     </div>
   );
 }
@@ -6286,12 +6366,16 @@ function isLiveTerminalSession(session: SessionRecord) {
   return session.status === "active";
 }
 
+function isDetachedDevSession(session: SessionRecord) {
+  return session.role === "dev" && session.status === "detached";
+}
+
 function isVisibleLiveTerminalSession(session: SessionRecord) {
   return isLiveTerminalSession(session) && !isStandbySession(session);
 }
 
 function isVisibleTerminalPaneSession(session: SessionRecord) {
-  return (isLiveTerminalSession(session) || isPendingTerminalSession(session)) && !isStandbySession(session);
+  return (isLiveTerminalSession(session) || isPendingTerminalSession(session) || isDetachedDevSession(session)) && !isStandbySession(session);
 }
 
 function upsertSessionRecord(sessions: SessionRecord[], nextSession: SessionRecord) {

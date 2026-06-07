@@ -680,6 +680,11 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             if is_live {
                 session.status = "active".to_string();
                 session.connected_clients = session.connected_clients.max(1);
+            } else if session.role == "dev"
+                && session.pid.map(crate::domain::previews::process_is_alive).unwrap_or(false)
+            {
+                session.status = "detached".to_string();
+                session.connected_clients = 0;
             } else if session.status == "active" {
                 if let Ok(closed) = registry.close(&session.id) {
                     *session = closed;
@@ -703,6 +708,115 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .sessions
             .retain(|session| session.status != "closed");
         return json_response(200, &sessions);
+    }
+    if request.path.starts_with("/api/dev") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let Some(project) = project else {
+            return error_response(404, "Project not found for dev lifecycle request.");
+        };
+        let session_id = crate::domain::previews::dev_session_id_for_project(&project);
+        if request.method == "POST" && request.path.starts_with("/api/dev/start") {
+            let preview = crate::domain::previews::app_preview_for_project(&project);
+            if preview.running
+                && (preview.running_source == "external-portless"
+                    || preview.managed_session.is_some())
+            {
+                return json_response(
+                    200,
+                    &serde_json::json!({ "session": serde_json::Value::Null, "replay": "", "preview": preview }),
+                );
+            }
+            let command = preview.start_command.clone();
+            if command.trim().is_empty() {
+                return error_response(400, "No dev command is configured.");
+            }
+            let mut manager = terminal_manager()
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            let result = manager.start_session_with_app(
+                &project.root,
+                crate::domain::terminals::TerminalStartRequest {
+                    id: Some(session_id),
+                    name: Some("dev".to_string()),
+                    role: Some("dev".to_string()),
+                    command: Some(command),
+                    scope: Some("global".to_string()),
+                    scope_kind: Some("global".to_string()),
+                    plan_path: None,
+                    visibility: Some("visible".to_string()),
+                    purpose: None,
+                },
+                app.clone(),
+            );
+            return match result {
+                Ok(started) => {
+                    let preview = crate::domain::previews::app_preview_for_project(&project);
+                    json_response(
+                        200,
+                        &serde_json::json!({ "session": started.session, "replay": started.replay, "preview": preview }),
+                    )
+                }
+                Err(error) => error_response(500, error),
+            };
+        }
+        if request.method == "POST" && request.path.starts_with("/api/dev/restart") {
+            let preview = crate::domain::previews::app_preview_for_project(&project);
+            let stop_id = preview
+                .managed_session
+                .as_ref()
+                .map(|session| session.id.as_str())
+                .unwrap_or(&session_id);
+            let _ = stop_managed_dev_session(&project.root, stop_id);
+            let preview = crate::domain::previews::app_preview_for_project(&project);
+            let command = preview.start_command.clone();
+            if command.trim().is_empty() {
+                return error_response(400, "No dev command is configured.");
+            }
+            let mut manager = terminal_manager()
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            let result = manager.start_session_with_app(
+                &project.root,
+                crate::domain::terminals::TerminalStartRequest {
+                    id: Some(session_id),
+                    name: Some("dev".to_string()),
+                    role: Some("dev".to_string()),
+                    command: Some(command),
+                    scope: Some("global".to_string()),
+                    scope_kind: Some("global".to_string()),
+                    plan_path: None,
+                    visibility: Some("visible".to_string()),
+                    purpose: None,
+                },
+                app.clone(),
+            );
+            return match result {
+                Ok(started) => {
+                    let preview = crate::domain::previews::app_preview_for_project(&project);
+                    json_response(
+                        200,
+                        &serde_json::json!({ "session": started.session, "replay": started.replay, "preview": preview }),
+                    )
+                }
+                Err(error) => error_response(500, error),
+            };
+        }
+        if request.method == "DELETE" && request.path.starts_with("/api/dev") {
+            let preview = crate::domain::previews::app_preview_for_project(&project);
+            let stop_id = preview
+                .managed_session
+                .as_ref()
+                .map(|session| session.id.as_str())
+                .unwrap_or(&session_id);
+            let stopped = stop_managed_dev_session(&project.root, stop_id);
+            let preview = crate::domain::previews::app_preview_for_project(&project);
+            return json_response(200, &serde_json::json!({ "stopped": stopped, "preview": preview }));
+        }
     }
     if request.method == "POST" && request.path.starts_with("/api/sessions/prune") {
         let project_root = resolve_request_project(&request.path)
@@ -1175,6 +1289,27 @@ fn current_project_record() -> Option<crate::domain::projects::ProjectRecord> {
 fn terminal_manager() -> &'static Mutex<crate::domain::terminals::TerminalManager> {
     static MANAGER: OnceLock<Mutex<crate::domain::terminals::TerminalManager>> = OnceLock::new();
     MANAGER.get_or_init(|| Mutex::new(crate::domain::terminals::TerminalManager::new()))
+}
+
+fn stop_managed_dev_session(project_root: &std::path::Path, session_id: &str) -> bool {
+    let registry = crate::domain::sessions::SessionRegistry::new(project_root);
+    let persisted = registry
+        .list(None, false)
+        .sessions
+        .into_iter()
+        .find(|session| session.id == session_id && session.role == "dev");
+    let live_closed = {
+        let mut manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        manager.close(session_id).is_ok()
+    };
+    let process_stopped = persisted
+        .as_ref()
+        .map(|session| crate::domain::previews::stop_process(session.pid, session.process_group))
+        .unwrap_or(true);
+    let _ = registry.close(session_id);
+    live_closed || process_stopped
 }
 
 fn send_agent_prompt(

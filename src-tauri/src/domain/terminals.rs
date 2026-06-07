@@ -88,6 +88,8 @@ pub struct TerminalOutputResponse {
 pub struct TerminalWriteDiagnostics {
     pub live: bool,
     pub replay_seq: Option<u64>,
+    pub pid: Option<u32>,
+    pub process_group: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -231,6 +233,7 @@ impl TerminalManager {
             .slave
             .spawn_command(command)
             .map_err(|error| format!("Could not start PTY shell: {error}"))?;
+        let process_group = pair.master.process_group_leader();
         drop(pair.slave);
         let reader = pair
             .master
@@ -254,6 +257,7 @@ impl TerminalManager {
                     command: launch_command,
                     shell: Some(shell),
                     pid: child.process_id(),
+                    process_group,
                     cwd: Some(root.to_path_buf()),
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
@@ -334,6 +338,7 @@ impl TerminalManager {
                     command: launch_command,
                     shell: Some(shell),
                     pid: Some(child.id()),
+                    process_group: None,
                     cwd: Some(root.to_path_buf()),
                     scope: Some(request.scope.unwrap_or_else(|| "global".to_string())),
                     scope_kind: Some(request.scope_kind.unwrap_or_else(|| "global".to_string())),
@@ -433,10 +438,13 @@ impl TerminalManager {
     }
 
     pub fn diagnostics(&self, id: &str) -> TerminalWriteDiagnostics {
-        let replay_seq = self.sessions.get(id).map(|process| process.replay().seq);
+        let process = self.sessions.get(id);
+        let replay_seq = process.map(|process| process.replay().seq);
         TerminalWriteDiagnostics {
             live: replay_seq.is_some(),
             replay_seq,
+            pid: process.and_then(TerminalProcess::pid),
+            process_group: process.and_then(TerminalProcess::process_group),
         }
     }
 
@@ -524,6 +532,20 @@ impl TerminalProcess {
                 let _ = child.kill();
                 let _ = child.wait();
             }
+        }
+    }
+
+    fn pid(&self) -> Option<u32> {
+        match self {
+            TerminalProcess::Pty { child, .. } => child.process_id(),
+            TerminalProcess::Pipe { child, .. } => Some(child.id()),
+        }
+    }
+
+    fn process_group(&self) -> Option<i32> {
+        match self {
+            TerminalProcess::Pty { master, .. } => master.process_group_leader(),
+            TerminalProcess::Pipe { .. } => None,
         }
     }
 }

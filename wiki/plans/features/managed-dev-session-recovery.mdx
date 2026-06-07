@@ -1,0 +1,44 @@
+---
+title: "Managed Dev Session Recovery"
+description: "Recover Hyperwiki-started dev processes left running across app restarts."
+wikiKind: "plan"
+---
+
+<h1>Managed Dev Session Recovery</h1>
+
+<section>
+  <h2>Summary</h2>
+  <dl>
+    <dt>Status</dt><dd>complete</dd>
+    <dt>Shape</dt><dd>runtime lifecycle fix</dd>
+    <dt>Current unit</dt><dd>complete</dd>
+    <dt>Next action</dt><dd>Manual dogfood on the next interrupted dev-server session.</dd>
+    <dt>Blockers</dt><dd>none</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>When Hyperwiki restarts while a project dev server it launched is still running, the next Run Dev action should not start a duplicate command that fails with an already-running server error. Hyperwiki should detect the managed process, show that dev is running, and offer stop or restart controls.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Add managed dev preview metadata for running source, stop and restart capability, and persisted dev session process identity.</li>
+    <li>Start dev through a dedicated lifecycle API with a deterministic project checkout dev session id.</li>
+    <li>Keep external Portless routes observable but not stoppable unless they match a Hyperwiki-managed dev session.</li>
+    <li>Render detached managed dev processes as lifecycle panes instead of attempting terminal replay after app restart.</li>
+    <li>Stop managed dev processes through the recorded PTY process group when available, falling back to the recorded PID.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml preview_reports_alive_managed_dev_session_as_detached</code> passed.</li>
+    <li>Manual dogfood remains useful on the next interrupted dev-server session.</li>
+  </ul>
+</section>
