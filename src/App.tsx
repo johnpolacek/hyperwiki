@@ -242,6 +242,8 @@ interface ProjectEnvEditorState {
   reason?: string;
 }
 
+type ProjectEnvStatusTone = "neutral" | "success" | "error";
+
 interface AppPreviewResponse {
   url?: string;
   canStart?: boolean;
@@ -4634,6 +4636,7 @@ function ProjectEnvEditor({
   const [rows, setRows] = useState<Array<{ id: string; name: string; present: boolean; source: string; value: string }>>([]);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState("");
+  const [statusTone, setStatusTone] = useState<ProjectEnvStatusTone>("neutral");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedSignatureRef = useRef("");
@@ -4643,6 +4646,7 @@ function ProjectEnvEditor({
     let cancelled = false;
     setIsLoading(true);
     setStatus("Loading project env...");
+    setStatusTone("neutral");
     hyperwikiApi
       .json<ProjectEnvResponse>(withProjectQuery("/api/project-env", activeProject))
       .then((response) => {
@@ -4651,11 +4655,13 @@ function ProjectEnvEditor({
         setRows(projectEnvRows(response, initialKey));
         setRevealed({});
         setStatus("");
+        setStatusTone("neutral");
         lastSavedSignatureRef.current = "";
       })
       .catch((error) => {
         if (cancelled) return;
         setStatus(error instanceof Error ? error.message : "Could not load project env.");
+        setStatusTone("error");
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -4698,6 +4704,7 @@ function ProjectEnvEditor({
     setStatus(mode === "auto"
       ? summary?.gitIgnored ? "Autosaving .env.local..." : "Adding .env.local to .gitignore and autosaving..."
       : summary?.gitIgnored ? "Saving .env.local..." : "Updating .gitignore and saving .env.local...");
+    setStatusTone("neutral");
     try {
       const saved = await hyperwikiApi.json<ProjectEnvResponse>(withProjectQuery("/api/project-env", activeProject), {
         method: "PUT",
@@ -4711,16 +4718,16 @@ function ProjectEnvEditor({
       setRows((current) => current.map((row) => savedNames.has(row.name.trim()) ? { ...row, present: true, source: ".env.local" } : row));
       lastSavedSignatureRef.current = dirtySignature;
       setStatus(mode === "auto"
-        ? reason === "terminal-detected"
-          ? "Autosaved. Rerun the blocked command or restart the affected terminal."
-          : "Autosaved. Restart any running process that needs the new value."
+        ? "Saved"
         : reason === "terminal-detected"
         ? "Saved. Rerun the blocked command or restart the affected terminal."
         : "Saved. Restart any running process that needs the new value.");
+      setStatusTone("success");
       onSaved(dirtyRows.map((row) => row.name));
     } catch (error) {
       lastSavedSignatureRef.current = "";
       setStatus(error instanceof Error ? error.message : "Could not save project env.");
+      setStatusTone("error");
     } finally {
       setIsSaving(false);
     }
@@ -4810,11 +4817,14 @@ function ProjectEnvEditor({
         )}
       </div>
       <footer className="flex shrink-0 flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (dirtyRows.length ? "Autosaves after a short pause." : summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
+        <p className={cn("m-0 flex min-w-0 items-center gap-2 text-sm text-muted-foreground", statusTone === "success" && "text-emerald-700", statusTone === "error" && "text-destructive")} role="status">
+          {statusTone === "success" ? <Check aria-hidden="true" data-icon="inline-start" /> : null}
+          <span className="min-w-0 truncate">{status || (dirtyRows.length ? "Autosaves after a short pause." : summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</span>
+        </p>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button variant="outline" type="button" onClick={onClose}>Close</Button>
           <Button disabled={!canSave} type="button" onClick={() => save(!summary?.gitIgnored)}>
-            {isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check data-icon="inline-start" />}
+            {isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
             {saveLabel}
           </Button>
         </div>

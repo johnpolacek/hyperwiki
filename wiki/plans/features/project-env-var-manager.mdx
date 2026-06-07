@@ -49,6 +49,10 @@ On 2026-06-07, the drawer's env rows changed to a stacked key/value layout. Long
 On 2026-06-07, the drawer gained debounced autosave. Entered values write to <code>.env.local</code> after a short pause while the manual save button remains available as an immediate fallback.
 </PlanSection>
 
+<PlanSection title="Follow-up - Autosave status">
+On 2026-06-07, autosave feedback changed to a concise <code>Saved</code> message with a green checkmark in the status area, while the manual save button no longer shows an idle checkmark.
+</PlanSection>
+
 <PlanSection title="Verification">
 - <code>pnpm run check:all</code> passed.
 - <code>pnpm run test:tauri</code> passed with 134 Rust tests, including project-env parsing, masking, and Git-ignore safety cases.
@@ -56,5 +60,6 @@ On 2026-06-07, the drawer gained debounced autosave. Entered values write to <co
 - 2026-06-07 drawer follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - 2026-06-07 field-layout follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - 2026-06-07 autosave follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
+- 2026-06-07 autosave-status follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - Manual acceptance remains available for a real Clerk/Convex key: add it through Hyperwiki, confirm <code>.env.local</code> is updated locally, and rerun the previously blocked command.
 </PlanSection>

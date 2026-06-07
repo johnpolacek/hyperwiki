@@ -17,10 +17,19 @@ for (const needle of [
   "PROJECT_ENV_AUTOSAVE_DELAY_MS",
   "Autosaves after a short pause.",
   "Autosaving .env.local",
+  "type ProjectEnvStatusTone",
+  "setStatus(mode === \"auto\"",
+  "? \"Saved\"",
+  "statusTone === \"success\" ? <Check",
+  "isSaving ? <Loader2",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Project env UI is missing ${needle}`);
   }
+}
+
+if (appSource.includes('isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check')) {
+  throw new Error("Project env manual save button should not show an idle check icon.");
 }
 
 if (appSource.includes("fixed inset-0 z-50 grid place-items-center bg-black/45") || appSource.includes('aria-modal="true"')) {
