@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-06 feature | project env var manager</h2>
+  <ul>
+    <li>Added a terminal-friendly Project Env editor so users can add keys such as Clerk or Convex values without opening a code editor.</li>
+    <li>Chose the active checkout's <code>.env.local</code> as the default storage path because Next.js, Clerk, Convex, and normal package scripts already read it.</li>
+    <li>Kept secrets out of terminal input, session replay, logs, agent prompts, and API responses by only returning masked key presence and collecting values through a separate Hyperwiki sheet.</li>
+    <li>Added Git safety: saving is blocked unless <code>.env.local</code> is ignored, with an explicit flow to add it to <code>.gitignore</code> before writing values.</li>
+    <li>Verification: <code>pnpm run check:all</code> passed, including 134 Rust tests and the static env-manager smoke.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 fix | manual unit gate clarity</h2>
   <ul>
     <li>Updated Execute and worktree-execute agent prompts so any manual gate must appear as a clearly titled <code>Manual step required</code> section before the general summary.</li>

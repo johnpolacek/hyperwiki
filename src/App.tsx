@@ -11,6 +11,9 @@ import {
   FolderOpen,
   FolderGit2,
   GitBranch,
+  Eye,
+  EyeOff,
+  KeyRound,
   LayoutDashboard,
   Loader2,
   Maximize2,
@@ -211,6 +214,31 @@ interface ProjectCreateResponse {
 interface ProjectRemoveResponse {
   project: ProjectRecord;
   deletedFiles?: boolean;
+}
+
+interface ProjectEnvKey {
+  name: string;
+  present: boolean;
+  source: string;
+  maskedValue?: string;
+}
+
+interface ProjectEnvResponse {
+  projectRoot: string;
+  envFile: string;
+  exampleFile?: string | null;
+  gitignoreFile: string;
+  envFileExists: boolean;
+  exampleFileExists: boolean;
+  gitIgnored: boolean;
+  keys: ProjectEnvKey[];
+  suggestedKeys: ProjectEnvKey[];
+}
+
+interface ProjectEnvEditorState {
+  open: boolean;
+  initialKey?: string;
+  reason?: string;
 }
 
 interface AppPreviewResponse {
@@ -654,6 +682,8 @@ function App() {
   const [wikiExportStatus, setWikiExportStatus] = useState("");
   const [isSessionsLoading, setIsSessionsLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
+  const [projectEnvEditor, setProjectEnvEditor] = useState<ProjectEnvEditorState>({ open: false });
+  const [terminalEnvHint, setTerminalEnvHint] = useState<{ key: string; sessionId: string } | null>(null);
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
@@ -1619,8 +1649,22 @@ function App() {
     setActivePlanningQuestion(null);
   }
 
+  const openProjectEnvEditor = useCallback((initialKey?: string, reason?: string) => {
+    setProjectEnvEditor({
+      open: true,
+      initialKey: initialKey?.trim() || undefined,
+      reason: reason?.trim() || undefined,
+    });
+  }, []);
+
   const handleTerminalText = useCallback((sessionId: string, text: string) => {
     if (!text) return;
+    const detectedEnvKey = detectEnvKeyFromTerminalText(text);
+    if (detectedEnvKey) {
+      setTerminalEnvHint((current) => current?.key === detectedEnvKey && current?.sessionId === sessionId
+        ? current
+        : { key: detectedEnvKey, sessionId });
+    }
     const current = planningQuestionBuffers.current.get(sessionId) || "";
     const next = trimPlanningQuestionBuffer(current + text);
     planningQuestionBuffers.current.set(sessionId, next);
@@ -2797,6 +2841,7 @@ function App() {
             reviewWorkflows={reviewWorkflows}
             route={route}
             settings={settings}
+            onOpenProjectEnv={openProjectEnvEditor}
             wikiError={wikiError}
             wikiHtml={wikiHtml}
             wikiSource={wikiSource}
@@ -2816,6 +2861,7 @@ function App() {
                 onRenameSession={renameSession}
                 onRestartSession={restartSession}
                 onRunDev={startDevTerminal}
+                onOpenProjectEnv={openProjectEnvEditor}
                 onSelectSession={setActiveSessionId}
                 onStart={startTerminal}
                 onTerminalText={handleTerminalText}
@@ -2827,10 +2873,22 @@ function App() {
                 currentWorkTitle={activePlanState.currentTitle}
                 workspace={workspace}
                 sessions={sessions}
+                terminalEnvHint={terminalEnvHint}
               />
             </div>
           )}
         </section>
+        <ProjectEnvEditor
+          activeProject={activeProject}
+          initialKey={projectEnvEditor.initialKey}
+          onClose={() => setProjectEnvEditor({ open: false })}
+          onSaved={() => {
+            setTerminalEnvHint(null);
+            setStatus("Project env saved");
+          }}
+          open={projectEnvEditor.open}
+          reason={projectEnvEditor.reason}
+        />
       </BeamSurface>
       </GridBeamRuntimeContext.Provider>
     </main>
@@ -3268,6 +3326,7 @@ function WorkspacePane(props: {
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onDeletePlan: (path: string) => Promise<void>;
+  onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
@@ -3297,7 +3356,7 @@ function WorkspacePane(props: {
     return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
   }
   if (props.route.kind === "settings") {
-    return <SettingsView activeProject={props.activeProject} settings={props.settings} />;
+    return <SettingsView activeProject={props.activeProject} onOpenProjectEnv={props.onOpenProjectEnv} settings={props.settings} />;
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
@@ -4201,7 +4260,7 @@ function sourceDocumentTypeForFile(name: string) {
   return "markdown";
 }
 
-function SettingsView({ activeProject, settings }: { activeProject: ProjectRecord | null; settings: SettingsResponse | null }) {
+function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activeProject: ProjectRecord | null; onOpenProjectEnv: (initialKey?: string, reason?: string) => void; settings: SettingsResponse | null }) {
   const [draft, setDraft] = useState<SettingsResponse | null>(settings);
   const [mode, setMode] = useState<"overview" | "theme" | "agent">("overview");
   const [themeDraft, setThemeDraft] = useState<SettingsResponse["theme"] | null>(settings?.theme || null);
@@ -4503,17 +4562,34 @@ function SettingsView({ activeProject, settings }: { activeProject: ProjectRecor
             <ThemeSurfaceSummary label="Terminal" description="Pane chrome and session frames" tokens={theme.tokens.terminal} fontKeys={[["Font", "font"]]} />
           </div>
         </BeamSurface>
-        <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
-            <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
-          </div>
-          <div className="grid gap-3">
-            <AgentSummaryCard title="Soul" meta={`${soul.principles?.length || 0} principles`} lines={(soul.principles || []).slice(0, 3)} />
-            <AgentSummaryCard title="Agent" meta="Guidance" lines={[soul.agent || "No agent guidance recorded."]} />
-            <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
-          </div>
-        </BeamSurface>
+        <div className="grid gap-5">
+          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
+              <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
+            </div>
+            <div className="grid gap-3">
+              <AgentSummaryCard title="Soul" meta={`${soul.principles?.length || 0} principles`} lines={(soul.principles || []).slice(0, 3)} />
+              <AgentSummaryCard title="Agent" meta="Guidance" lines={[soul.agent || "No agent guidance recorded."]} />
+              <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
+            </div>
+          </BeamSurface>
+          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={2} strength={0.16}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="m-0 text-sm font-bold uppercase">Project Env</h2>
+                <p className="m-0 mt-2 text-sm leading-6 text-muted-foreground">
+                  Store local keys in the active checkout's <code>.env.local</code> without putting values into terminal history.
+                </p>
+                {activeProject ? <p className="m-0 mt-2 truncate text-xs text-muted-foreground">{activeProject.root}</p> : null}
+              </div>
+              <Button disabled={!activeProject} variant="outline" onClick={() => onOpenProjectEnv(undefined, "settings")}>
+                <KeyRound data-icon="inline-start" />
+                Env
+              </Button>
+            </div>
+          </BeamSurface>
+        </div>
       </div>
       <SettingsStatus status={status} />
       </BeamSurface>
@@ -4536,6 +4612,194 @@ function SettingsPageHeader({ actions, description, title }: { actions?: ReactNo
 function SettingsStatus({ status }: { status: string }) {
   if (!status) return null;
   return <p className="px-8 pb-6 text-sm text-muted-foreground" role="status">{status}</p>;
+}
+
+function ProjectEnvEditor({
+  activeProject,
+  initialKey,
+  onClose,
+  onSaved,
+  open,
+  reason,
+}: {
+  activeProject: ProjectRecord | null;
+  initialKey?: string;
+  onClose: () => void;
+  onSaved: (keys: string[]) => void;
+  open: boolean;
+  reason?: string;
+}) {
+  const [summary, setSummary] = useState<ProjectEnvResponse | null>(null);
+  const [rows, setRows] = useState<Array<{ id: string; name: string; present: boolean; source: string; value: string }>>([]);
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open || !activeProject) return;
+    let cancelled = false;
+    setIsLoading(true);
+    setStatus("Loading project env...");
+    hyperwikiApi
+      .json<ProjectEnvResponse>(withProjectQuery("/api/project-env", activeProject))
+      .then((response) => {
+        if (cancelled) return;
+        setSummary(response);
+        setRows(projectEnvRows(response, initialKey));
+        setRevealed({});
+        setStatus("");
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setStatus(error instanceof Error ? error.message : "Could not load project env.");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProject?.id, initialKey, open]);
+
+  if (!open) return null;
+
+  const activePath = summary?.envFile || (activeProject ? `${activeProject.root}/.env.local` : ".env.local");
+  const dirtyRows = rows
+    .map((row) => ({ name: row.name.trim(), value: row.value }))
+    .filter((row) => row.name && row.value.length > 0);
+  const hasInvalidKey = rows.some((row) => row.name.trim() && !isValidEnvKeyName(row.name.trim()));
+  const canSave = Boolean(activeProject) && dirtyRows.length > 0 && !hasInvalidKey && !isSaving && !isLoading;
+  const saveLabel = summary?.gitIgnored ? "Save .env.local" : "Add .env.local to .gitignore and save";
+
+  function updateRow(id: string, patch: Partial<{ name: string; value: string }>) {
+    setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
+  }
+
+  function addRow(name = "") {
+    setRows((current) => [...current, { id: crypto.randomUUID(), name, present: false, source: "custom", value: "" }]);
+  }
+
+  async function save(addGitignore: boolean) {
+    if (!activeProject || !canSave) return;
+    setIsSaving(true);
+    setStatus(summary?.gitIgnored ? "Saving .env.local..." : "Updating .gitignore and saving .env.local...");
+    try {
+      const saved = await hyperwikiApi.json<ProjectEnvResponse>(withProjectQuery("/api/project-env", activeProject), {
+        method: "PUT",
+        body: {
+          addGitignore,
+          entries: dirtyRows,
+        },
+      });
+      setSummary(saved);
+      setRows(projectEnvRows(saved, initialKey));
+      setRevealed({});
+      setStatus(reason === "terminal-detected"
+        ? "Saved. Rerun the blocked command or restart the affected terminal."
+        : "Saved. Restart any running process that needs the new value.");
+      onSaved(dirtyRows.map((row) => row.name));
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not save project env.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="presentation">
+      <section aria-labelledby="project-env-title" aria-modal="true" className="flex max-h-[min(760px,calc(100vh-32px))] w-[min(760px,calc(100vw-32px))] flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-2xl" role="dialog">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b p-5">
+          <div className="min-w-0">
+            <h2 className="m-0 flex items-center gap-2 text-xl font-semibold" id="project-env-title">
+              <KeyRound data-icon="inline-start" />
+              Project Env
+            </h2>
+            <p className="m-0 mt-2 truncate text-sm text-muted-foreground">{activePath}</p>
+          </div>
+          <Button size="icon" variant="ghost" type="button" onClick={onClose} aria-label="Close project env editor">
+            <X aria-hidden="true" data-icon="inline-start" />
+          </Button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-auto p-5">
+          {!activeProject ? (
+            <p className="m-0 text-sm text-muted-foreground">Open a project before editing env vars.</p>
+          ) : (
+            <div className="grid gap-4">
+              {summary && !summary.gitIgnored ? (
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
+                  <strong className="block">Git ignore required</strong>
+                  <span className="mt-1 block text-muted-foreground">Hyperwiki will add <code>.env.local</code> to <code>.gitignore</code> before saving these local secrets.</span>
+                </div>
+              ) : null}
+              {initialKey ? (
+                <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                  <span className="text-muted-foreground">Detected key</span>
+                  <code className="ml-2">{initialKey}</code>
+                </div>
+              ) : null}
+              <div className="grid gap-3">
+                {rows.map((row) => {
+                  const invalid = Boolean(row.name.trim()) && !isValidEnvKeyName(row.name.trim());
+                  return (
+                    <div className="grid grid-cols-[minmax(170px,0.52fr)_minmax(220px,1fr)_auto] items-start gap-2 rounded-md border bg-background p-3 max-md:grid-cols-1" key={row.id}>
+                      <label className="grid gap-1">
+                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Key</span>
+                        <input
+                          {...DISABLE_TEXT_CORRECTION_PROPS}
+                          aria-invalid={invalid}
+                          className={cn("h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
+                          onChange={(event) => updateRow(row.id, { name: event.target.value })}
+                          value={row.name}
+                        />
+                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "present" : row.source}</span>
+                      </label>
+                      <label className="grid gap-1">
+                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
+                        <input
+                          {...DISABLE_TEXT_CORRECTION_PROPS}
+                          className="h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
+                          onChange={(event) => updateRow(row.id, { value: event.target.value })}
+                          placeholder={row.present ? "Set a new value" : "Paste value"}
+                          type={revealed[row.id] ? "text" : "password"}
+                          value={row.value}
+                        />
+                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
+                      </label>
+                      <Button className="mt-5 max-md:mt-0" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
+                        {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" type="button" onClick={() => addRow()}>
+                  <Plus data-icon="inline-start" />
+                  Add key
+                </Button>
+                {summary?.suggestedKeys.filter((key) => !rows.some((row) => row.name === key.name)).slice(0, 6).map((key) => (
+                  <Button key={key.name} size="sm" variant="ghost" type="button" onClick={() => addRow(key.name)}>
+                    {key.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <footer className="flex shrink-0 items-center justify-between gap-4 border-t p-5">
+          <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" type="button" onClick={onClose}>Close</Button>
+            <Button disabled={!canSave} type="button" onClick={() => save(!summary?.gitIgnored)}>
+              {isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check data-icon="inline-start" />}
+              {saveLabel}
+            </Button>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
 }
 
 function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { description: string; fontKeys: Array<[string, string]>; label: string; tokens?: Record<string, string> }) {
@@ -4957,6 +5221,7 @@ function TerminalPane(props: {
   onCloseSession: (sessionId: string) => void;
   onCreateWorktree: (branch: string) => Promise<void>;
   onInitializeGit: () => Promise<void>;
+  onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRenameSession: (sessionId: string, name: string) => void;
   onRestartSession: (session: SessionRecord) => void;
   onRunDev: () => void;
@@ -4967,6 +5232,7 @@ function TerminalPane(props: {
   preview: AppPreviewResponse | null;
   repoContext: RepoContextResponse | null;
   scope: { scope: string; scopeKind: string; planPath: string | null };
+  terminalEnvHint: { key: string; sessionId: string } | null;
   thinkingEffort: ThinkingEffort;
   currentWorkTitle: string;
   workspace: WorkspaceResponse | null;
@@ -5041,6 +5307,9 @@ function TerminalPane(props: {
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev} size="sm" title={runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
             run dev
           </Button>
+          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!props.activeProject} size="sm" title="Edit project .env.local" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(undefined, "terminal")}>
+            env
+          </Button>
           {isWorktreeOpen ? (
             <form className="absolute left-0 top-[calc(100%+8px)] z-50 grid w-[min(420px,calc(100vw-32px))] gap-3 rounded-lg border border-[#465063] bg-[#111513] p-3.5 text-[#eef2ec] shadow-[0_18px_52px_rgba(0,0,0,0.42)]" onSubmit={submitWorktree}>
               <header className="flex items-center justify-between gap-3">
@@ -5085,6 +5354,17 @@ function TerminalPane(props: {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {props.terminalEnvHint ? (
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#182018] px-3 py-2 text-xs text-[#d8ded9]">
+            <p className="m-0 min-w-0 truncate">
+              Missing env key detected: <code>{props.terminalEnvHint.key}</code>
+            </p>
+            <Button className="h-7 shrink-0 border-[#9fd1ff] bg-[#9fd1ff]/12 px-3 text-xs font-bold text-[#eef2ec] hover:bg-[#9fd1ff]/22" size="sm" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(props.terminalEnvHint?.key, "terminal-detected")}>
+              <KeyRound data-icon="inline-start" />
+              Add env var
+            </Button>
+          </div>
+        ) : null}
         {liveSessions.length ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {liveSessions.map((session, index) => (
@@ -5537,6 +5817,46 @@ function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
   const joiner = path.includes("?") ? "&" : "?";
   return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
+}
+
+function projectEnvRows(response: ProjectEnvResponse, initialKey?: string) {
+  const byName = new Map<string, { name: string; present: boolean; source: string; value: string }>();
+  for (const key of [...(response.suggestedKeys || []), ...(response.keys || [])]) {
+    if (!key.name || byName.has(key.name)) continue;
+    byName.set(key.name, {
+      name: key.name,
+      present: key.present,
+      source: key.source || "suggested",
+      value: "",
+    });
+  }
+  const trimmedInitial = initialKey?.trim();
+  if (trimmedInitial && !byName.has(trimmedInitial)) {
+    byName.set(trimmedInitial, {
+      name: trimmedInitial,
+      present: false,
+      source: "detected",
+      value: "",
+    });
+  }
+  const rows = Array.from(byName.values())
+    .sort((left, right) => Number(right.name === trimmedInitial) - Number(left.name === trimmedInitial) || left.name.localeCompare(right.name))
+    .map((row) => ({ ...row, id: crypto.randomUUID() }));
+  return rows.length ? rows : [{ id: crypto.randomUUID(), name: trimmedInitial || "", present: false, source: trimmedInitial ? "detected" : "custom", value: "" }];
+}
+
+function isValidEnvKeyName(name: string) {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+function detectEnvKeyFromTerminalText(text: string) {
+  const candidates = terminalTextForParsing(text).match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || [];
+  return candidates.find((candidate) =>
+    candidate.startsWith("CLERK_")
+    || candidate.startsWith("CONVEX_")
+    || candidate.startsWith("NEXT_PUBLIC_")
+    || /_(KEY|SECRET|TOKEN|URL|DOMAIN|ISSUER|DEPLOYMENT)$/.test(candidate)
+  ) || "";
 }
 
 function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {

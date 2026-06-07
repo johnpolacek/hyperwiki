@@ -407,7 +407,7 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         layout: workspace.layout,
         wiki: ContractWiki {
             index_path: "/wiki/index.mdx".to_string(),
-            pages: crate::domain::wiki::list_wiki_pages(root, None).pages,
+            pages: contract_wiki_pages(root),
         },
         agent,
         canonical_truth,
@@ -432,6 +432,39 @@ fn redact_external_urls(markdown: &str) -> String {
     }
     output.push_str(&redact_external_url_token(&token));
     output
+}
+
+fn contract_wiki_pages(root: &Path) -> Vec<crate::domain::wiki::WikiPage> {
+    let mut pages = crate::domain::wiki::list_wiki_pages(root, None).pages;
+    for page in &mut pages {
+        for link in &mut page.links {
+            link.href = redact_external_url_href(&link.href);
+            if let Some(target_path) = link.target_path.as_mut() {
+                *target_path = redact_external_url_href(target_path);
+            }
+        }
+        for value in page.frontmatter.values_mut() {
+            *value = redact_external_urls(value);
+        }
+        for item in &mut page.summary {
+            *item = redact_external_urls(item);
+        }
+    }
+    pages
+}
+
+fn redact_external_url_href(href: &str) -> String {
+    if !href.starts_with("http://") && !href.starts_with("https://") {
+        return href.to_string();
+    }
+    let Some(host) = url_host(href) else {
+        return "[external-url]".to_string();
+    };
+    if host == "localhost" || host == "127.0.0.1" || host.ends_with(".localhost") {
+        href.to_string()
+    } else {
+        "[external-url]".to_string()
+    }
 }
 
 fn redact_external_url_token(token: &str) -> String {
@@ -1328,6 +1361,23 @@ mod tests {
             redacted,
             "See [external-url]\nUse http://127.0.0.1:3000 and https://branch.hyperwiki.localhost/path."
         );
+    }
+
+    #[test]
+    fn project_contract_redacts_external_wiki_index_links() {
+        let root = temp_root("contract-wiki-links");
+        make_project(&root);
+        fs::write(
+            root.join("wiki").join("index.mdx"),
+            r#"<h1>Home</h1><p><a href="https://github.com/openai/codex">Codex</a> <a href="https://demo.hyperwiki.localhost">Local</a></p>"#,
+        )
+        .unwrap();
+
+        let contract_text = serde_json::to_string(&project_contract(&root)).unwrap();
+
+        assert!(!contract_text.contains("github.com/openai/codex"));
+        assert!(contract_text.contains("[external-url]"));
+        assert!(contract_text.contains("https://demo.hyperwiki.localhost"));
     }
 
     #[test]

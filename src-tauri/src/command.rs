@@ -987,6 +987,37 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err((status, error)) => error_response(status, error),
         };
     }
+    if request.path.starts_with("/api/project-env") {
+        let Some(project) = resolve_request_project(&request.path).or_else(current_project_record)
+        else {
+            return error_response(404, "Project not found for env settings.");
+        };
+        if request.method == "GET" {
+            return json_response(
+                200,
+                &crate::domain::project_env::project_env_summary(&project.root),
+            );
+        }
+        if request.method == "PUT" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| {
+                    serde_json::from_str::<crate::domain::project_env::ProjectEnvUpdateRequest>(
+                        body,
+                    )
+                    .ok()
+                })
+                .unwrap_or(crate::domain::project_env::ProjectEnvUpdateRequest {
+                    entries: Vec::new(),
+                    add_gitignore: false,
+                });
+            return match crate::domain::project_env::update_project_env(&project.root, body) {
+                Ok(response) => json_response(200, &response),
+                Err((status, error)) => error_response(status, error),
+            };
+        }
+    }
     if request.method == "GET" && request.path == "/api/health" {
         return json_response(
             200,
