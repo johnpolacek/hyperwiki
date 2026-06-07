@@ -41,10 +41,15 @@ Implemented the backend API, UI sheet, missing-key affordance, settings fallback
 On 2026-06-07, the Project Env editor changed from a centered modal with a full-screen backdrop to a bottom-left non-modal drawer. This keeps terminal instructions visible while users paste Clerk, Convex, or other manual-gate values into the env editor.
 </PlanSection>
 
+<PlanSection title="Follow-up - Stable field layout">
+On 2026-06-07, the drawer's env rows changed to a stacked key/value layout. Long keys no longer compete with the value input in a narrow horizontal grid, and the reveal button stays in a fixed column beside the value field.
+</PlanSection>
+
 <PlanSection title="Verification">
 - <code>pnpm run check:all</code> passed.
 - <code>pnpm run test:tauri</code> passed with 134 Rust tests, including project-env parsing, masking, and Git-ignore safety cases.
 - Static smoke coverage now protects the terminal <code>env</code> action, settings fallback, backend route, and no-secret terminal flow.
 - 2026-06-07 drawer follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
+- 2026-06-07 field-layout follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - Manual acceptance remains available for a real Clerk/Convex key: add it through Hyperwiki, confirm <code>.env.local</code> is updated locally, and rerun the previously blocked command.
 </PlanSection>

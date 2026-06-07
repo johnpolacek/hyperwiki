@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 fix | project env field layout</h2>
+  <ul>
+    <li>Changed Project Env key/value rows to avoid horizontal grid squeeze when long env names such as <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> are present.</li>
+    <li>Used a stacked key row plus a value row with <code>minmax(0,1fr)</code>, <code>min-w-0</code>, and a fixed reveal button column so fields do not overlap in the drawer.</li>
+    <li>Extended static coverage for the no-overlap layout contract.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 polish | project env drawer</h2>
   <ul>
     <li>Changed Project Env from a centered modal with a full-screen backdrop into a bottom-left non-modal drawer.</li>

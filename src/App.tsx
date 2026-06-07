@@ -4741,33 +4741,36 @@ function ProjectEnvEditor({
               {rows.map((row) => {
                 const invalid = Boolean(row.name.trim()) && !isValidEnvKeyName(row.name.trim());
                 return (
-                  <div className="grid grid-cols-[minmax(170px,0.52fr)_minmax(220px,1fr)_auto] items-start gap-2 rounded-md border bg-background p-3 max-md:grid-cols-1" key={row.id}>
-                    <label className="grid gap-1">
+                  <div className="grid min-w-0 gap-3 rounded-md border bg-background p-3" key={row.id}>
+                    <label className="grid min-w-0 gap-1">
                       <span className="text-[11px] font-bold uppercase text-muted-foreground">Key</span>
                       <input
                         {...DISABLE_TEXT_CORRECTION_PROPS}
                         aria-invalid={invalid}
-                        className={cn("h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
+                        className={cn("h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
                         onChange={(event) => updateRow(row.id, { name: event.target.value })}
+                        title={row.name}
                         value={row.name}
                       />
                       <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "present" : row.source}</span>
                     </label>
-                    <label className="grid gap-1">
-                      <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
-                      <input
-                        {...DISABLE_TEXT_CORRECTION_PROPS}
-                        className="h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
-                        onChange={(event) => updateRow(row.id, { value: event.target.value })}
-                        placeholder={row.present ? "Set a new value" : "Paste value"}
-                        type={revealed[row.id] ? "text" : "password"}
-                        value={row.value}
-                      />
-                      <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
-                    </label>
-                    <Button className="mt-5 max-md:mt-0" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
-                      {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
-                    </Button>
+                    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                      <label className="grid min-w-0 gap-1">
+                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
+                        <input
+                          {...DISABLE_TEXT_CORRECTION_PROPS}
+                          className="h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
+                          onChange={(event) => updateRow(row.id, { value: event.target.value })}
+                          placeholder={row.present ? "Set a new value" : "Paste value"}
+                          type={revealed[row.id] ? "text" : "password"}
+                          value={row.value}
+                        />
+                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
+                      </label>
+                      <Button className="mt-5" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
+                        {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

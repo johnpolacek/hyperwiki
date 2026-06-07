@@ -12,6 +12,8 @@ for (const needle of [
   "detectEnvKeyFromTerminalText",
   "Store local keys in the active checkout's",
   "fixed bottom-3 left-3 z-50",
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_auto]",
+  "h-9 min-w-0 rounded-md border bg-card",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Project env UI is missing ${needle}`);
