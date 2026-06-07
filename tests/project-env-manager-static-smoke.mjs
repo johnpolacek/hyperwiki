@@ -14,6 +14,9 @@ for (const needle of [
   "fixed bottom-3 left-3 z-50",
   "grid min-w-0 grid-cols-[minmax(0,1fr)_auto]",
   "h-9 min-w-0 rounded-md border bg-card",
+  "PROJECT_ENV_AUTOSAVE_DELAY_MS",
+  "Autosaves after a short pause.",
+  "Autosaving .env.local",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Project env UI is missing ${needle}`);

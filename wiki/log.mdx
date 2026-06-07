@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 polish | project env autosave</h2>
+  <ul>
+    <li>Added debounced autosave to Project Env so pasted values write to <code>.env.local</code> after a short pause.</li>
+    <li>Kept the manual save button as an immediate fallback and reused the existing Git-ignore guardrail for first saves.</li>
+    <li>Preserved typed values in the drawer after autosave so secret fields do not clear while users are still entering related keys.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 fix | project env field layout</h2>
   <ul>
     <li>Changed Project Env key/value rows to avoid horizontal grid squeeze when long env names such as <code>NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY</code> are present.</li>

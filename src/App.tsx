@@ -61,6 +61,7 @@ const DISABLE_TEXT_CORRECTION_PROPS = {
   autoCorrect: "off",
   spellCheck: false,
 } as const;
+const PROJECT_ENV_AUTOSAVE_DELAY_MS = 900;
 const THEME_AUTOSAVE_DELAY_MS = 350;
 const GridBeamRuntimeContext = createContext<{ prefersReducedMotion: boolean; theme: GridBeamColorScheme }>({
   prefersReducedMotion: false,
@@ -4635,6 +4636,7 @@ function ProjectEnvEditor({
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const lastSavedSignatureRef = useRef("");
 
   useEffect(() => {
     if (!open || !activeProject) return;
@@ -4649,6 +4651,7 @@ function ProjectEnvEditor({
         setRows(projectEnvRows(response, initialKey));
         setRevealed({});
         setStatus("");
+        lastSavedSignatureRef.current = "";
       })
       .catch((error) => {
         if (cancelled) return;
@@ -4662,15 +4665,24 @@ function ProjectEnvEditor({
     };
   }, [activeProject?.id, initialKey, open]);
 
-  if (!open) return null;
-
   const activePath = summary?.envFile || (activeProject ? `${activeProject.root}/.env.local` : ".env.local");
   const dirtyRows = rows
     .map((row) => ({ name: row.name.trim(), value: row.value }))
     .filter((row) => row.name && row.value.length > 0);
   const hasInvalidKey = rows.some((row) => row.name.trim() && !isValidEnvKeyName(row.name.trim()));
   const canSave = Boolean(activeProject) && dirtyRows.length > 0 && !hasInvalidKey && !isSaving && !isLoading;
-  const saveLabel = summary?.gitIgnored ? "Save .env.local" : "Add .env.local to .gitignore and save";
+  const saveLabel = summary?.gitIgnored ? "Save now" : "Add .env.local to .gitignore and save";
+  const dirtySignature = dirtyRows.map((row) => `${row.name}\0${row.value}`).join("\0\0");
+
+  useEffect(() => {
+    if (!open || !canSave || !dirtySignature || dirtySignature === lastSavedSignatureRef.current) return;
+    const timeout = window.setTimeout(() => {
+      void save(!summary?.gitIgnored, "auto");
+    }, PROJECT_ENV_AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [canSave, dirtySignature, open, summary?.gitIgnored]);
+
+  if (!open) return null;
 
   function updateRow(id: string, patch: Partial<{ name: string; value: string }>) {
     setRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
@@ -4680,10 +4692,12 @@ function ProjectEnvEditor({
     setRows((current) => [...current, { id: crypto.randomUUID(), name, present: false, source: "custom", value: "" }]);
   }
 
-  async function save(addGitignore: boolean) {
+  async function save(addGitignore: boolean, mode: "auto" | "manual" = "manual") {
     if (!activeProject || !canSave) return;
     setIsSaving(true);
-    setStatus(summary?.gitIgnored ? "Saving .env.local..." : "Updating .gitignore and saving .env.local...");
+    setStatus(mode === "auto"
+      ? summary?.gitIgnored ? "Autosaving .env.local..." : "Adding .env.local to .gitignore and autosaving..."
+      : summary?.gitIgnored ? "Saving .env.local..." : "Updating .gitignore and saving .env.local...");
     try {
       const saved = await hyperwikiApi.json<ProjectEnvResponse>(withProjectQuery("/api/project-env", activeProject), {
         method: "PUT",
@@ -4692,14 +4706,20 @@ function ProjectEnvEditor({
           entries: dirtyRows,
         },
       });
+      const savedNames = new Set(dirtyRows.map((row) => row.name));
       setSummary(saved);
-      setRows(projectEnvRows(saved, initialKey));
-      setRevealed({});
-      setStatus(reason === "terminal-detected"
+      setRows((current) => current.map((row) => savedNames.has(row.name.trim()) ? { ...row, present: true, source: ".env.local" } : row));
+      lastSavedSignatureRef.current = dirtySignature;
+      setStatus(mode === "auto"
+        ? reason === "terminal-detected"
+          ? "Autosaved. Rerun the blocked command or restart the affected terminal."
+          : "Autosaved. Restart any running process that needs the new value."
+        : reason === "terminal-detected"
         ? "Saved. Rerun the blocked command or restart the affected terminal."
         : "Saved. Restart any running process that needs the new value.");
       onSaved(dirtyRows.map((row) => row.name));
     } catch (error) {
+      lastSavedSignatureRef.current = "";
       setStatus(error instanceof Error ? error.message : "Could not save project env.");
     } finally {
       setIsSaving(false);
@@ -4790,7 +4810,7 @@ function ProjectEnvEditor({
         )}
       </div>
       <footer className="flex shrink-0 flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
+        <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (dirtyRows.length ? "Autosaves after a short pause." : summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button variant="outline" type="button" onClick={onClose}>Close</Button>
           <Button disabled={!canSave} type="button" onClick={() => save(!summary?.gitIgnored)}>

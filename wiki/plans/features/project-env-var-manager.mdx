@@ -45,11 +45,16 @@ On 2026-06-07, the Project Env editor changed from a centered modal with a full-
 On 2026-06-07, the drawer's env rows changed to a stacked key/value layout. Long keys no longer compete with the value input in a narrow horizontal grid, and the reveal button stays in a fixed column beside the value field.
 </PlanSection>
 
+<PlanSection title="Follow-up - Autosave values">
+On 2026-06-07, the drawer gained debounced autosave. Entered values write to <code>.env.local</code> after a short pause while the manual save button remains available as an immediate fallback.
+</PlanSection>
+
 <PlanSection title="Verification">
 - <code>pnpm run check:all</code> passed.
 - <code>pnpm run test:tauri</code> passed with 134 Rust tests, including project-env parsing, masking, and Git-ignore safety cases.
 - Static smoke coverage now protects the terminal <code>env</code> action, settings fallback, backend route, and no-secret terminal flow.
 - 2026-06-07 drawer follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - 2026-06-07 field-layout follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
+- 2026-06-07 autosave follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - Manual acceptance remains available for a real Clerk/Convex key: add it through Hyperwiki, confirm <code>.env.local</code> is updated locally, and rerun the previously blocked command.
 </PlanSection>
