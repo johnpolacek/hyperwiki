@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 polish | project env drawer</h2>
+  <ul>
+    <li>Changed Project Env from a centered modal with a full-screen backdrop into a bottom-left non-modal drawer.</li>
+    <li>Kept terminal instructions readable while entering manual-gate values such as Clerk and Convex env vars.</li>
+    <li>Added static coverage so the env editor does not regress to a terminal-covering modal.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-06 feature | project env var manager</h2>
   <ul>
     <li>Added a terminal-friendly Project Env editor so users can add keys such as Clerk or Convex values without opening a code editor.</li>

@@ -37,9 +37,14 @@ Users should be able to satisfy manual gates such as Clerk or Convex key setup f
 Implemented the backend API, UI sheet, missing-key affordance, settings fallback, and tests in one pass. The UI shows the active checkout path, masks values by default, offers reveal per field, creates or updates <code>.env.local</code>, and provides rerun guidance after save.
 </PlanSection>
 
+<PlanSection title="Follow-up - Non-modal drawer">
+On 2026-06-07, the Project Env editor changed from a centered modal with a full-screen backdrop to a bottom-left non-modal drawer. This keeps terminal instructions visible while users paste Clerk, Convex, or other manual-gate values into the env editor.
+</PlanSection>
+
 <PlanSection title="Verification">
 - <code>pnpm run check:all</code> passed.
 - <code>pnpm run test:tauri</code> passed with 134 Rust tests, including project-env parsing, masking, and Git-ignore safety cases.
 - Static smoke coverage now protects the terminal <code>env</code> action, settings fallback, backend route, and no-secret terminal flow.
+- 2026-06-07 drawer follow-up: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.
 - Manual acceptance remains available for a real Clerk/Convex key: add it through Hyperwiki, confirm <code>.env.local</code> is updated locally, and rerun the previously blocked command.
 </PlanSection>

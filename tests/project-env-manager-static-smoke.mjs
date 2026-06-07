@@ -11,10 +11,15 @@ for (const needle of [
   "Missing env key detected",
   "detectEnvKeyFromTerminalText",
   "Store local keys in the active checkout's",
+  "fixed bottom-3 left-3 z-50",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Project env UI is missing ${needle}`);
   }
+}
+
+if (appSource.includes("fixed inset-0 z-50 grid place-items-center bg-black/45") || appSource.includes('aria-modal="true"')) {
+  throw new Error("Project env editor must stay a non-modal bottom-left drawer so terminal instructions remain visible.");
 }
 
 if (!appSource.includes("env") || !appSource.includes("Add env var")) {

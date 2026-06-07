@@ -4707,98 +4707,96 @@ function ProjectEnvEditor({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4" role="presentation">
-      <section aria-labelledby="project-env-title" aria-modal="true" className="flex max-h-[min(760px,calc(100vh-32px))] w-[min(760px,calc(100vw-32px))] flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-2xl" role="dialog">
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b p-5">
-          <div className="min-w-0">
-            <h2 className="m-0 flex items-center gap-2 text-xl font-semibold" id="project-env-title">
-              <KeyRound data-icon="inline-start" />
-              Project Env
-            </h2>
-            <p className="m-0 mt-2 truncate text-sm text-muted-foreground">{activePath}</p>
-          </div>
-          <Button size="icon" variant="ghost" type="button" onClick={onClose} aria-label="Close project env editor">
-            <X aria-hidden="true" data-icon="inline-start" />
-          </Button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-auto p-5">
-          {!activeProject ? (
-            <p className="m-0 text-sm text-muted-foreground">Open a project before editing env vars.</p>
-          ) : (
-            <div className="grid gap-4">
-              {summary && !summary.gitIgnored ? (
-                <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
-                  <strong className="block">Git ignore required</strong>
-                  <span className="mt-1 block text-muted-foreground">Hyperwiki will add <code>.env.local</code> to <code>.gitignore</code> before saving these local secrets.</span>
-                </div>
-              ) : null}
-              {initialKey ? (
-                <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                  <span className="text-muted-foreground">Detected key</span>
-                  <code className="ml-2">{initialKey}</code>
-                </div>
-              ) : null}
-              <div className="grid gap-3">
-                {rows.map((row) => {
-                  const invalid = Boolean(row.name.trim()) && !isValidEnvKeyName(row.name.trim());
-                  return (
-                    <div className="grid grid-cols-[minmax(170px,0.52fr)_minmax(220px,1fr)_auto] items-start gap-2 rounded-md border bg-background p-3 max-md:grid-cols-1" key={row.id}>
-                      <label className="grid gap-1">
-                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Key</span>
-                        <input
-                          {...DISABLE_TEXT_CORRECTION_PROPS}
-                          aria-invalid={invalid}
-                          className={cn("h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
-                          onChange={(event) => updateRow(row.id, { name: event.target.value })}
-                          value={row.name}
-                        />
-                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "present" : row.source}</span>
-                      </label>
-                      <label className="grid gap-1">
-                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
-                        <input
-                          {...DISABLE_TEXT_CORRECTION_PROPS}
-                          className="h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
-                          onChange={(event) => updateRow(row.id, { value: event.target.value })}
-                          placeholder={row.present ? "Set a new value" : "Paste value"}
-                          type={revealed[row.id] ? "text" : "password"}
-                          value={row.value}
-                        />
-                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
-                      </label>
-                      <Button className="mt-5 max-md:mt-0" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
-                        {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" type="button" onClick={() => addRow()}>
-                  <Plus data-icon="inline-start" />
-                  Add key
-                </Button>
-                {summary?.suggestedKeys.filter((key) => !rows.some((row) => row.name === key.name)).slice(0, 6).map((key) => (
-                  <Button key={key.name} size="sm" variant="ghost" type="button" onClick={() => addRow(key.name)}>
-                    {key.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+    <section aria-labelledby="project-env-title" className="fixed bottom-3 left-3 z-50 flex max-h-[min(720px,calc(100vh-24px))] w-[min(560px,calc(100vw-24px))] origin-bottom-left flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-2xl md:bottom-4 md:left-4 md:max-h-[min(720px,calc(100vh-32px))] md:w-[min(560px,calc(100vw-32px))]" role="dialog">
+      <header className="flex shrink-0 items-start justify-between gap-4 border-b p-4">
+        <div className="min-w-0">
+          <h2 className="m-0 flex items-center gap-2 text-xl font-semibold" id="project-env-title">
+            <KeyRound data-icon="inline-start" />
+            Project Env
+          </h2>
+          <p className="m-0 mt-2 truncate text-sm text-muted-foreground">{activePath}</p>
         </div>
-        <footer className="flex shrink-0 items-center justify-between gap-4 border-t p-5">
-          <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="outline" type="button" onClick={onClose}>Close</Button>
-            <Button disabled={!canSave} type="button" onClick={() => save(!summary?.gitIgnored)}>
-              {isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check data-icon="inline-start" />}
-              {saveLabel}
-            </Button>
+        <Button size="icon" variant="ghost" type="button" onClick={onClose} aria-label="Close project env editor">
+          <X aria-hidden="true" data-icon="inline-start" />
+        </Button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        {!activeProject ? (
+          <p className="m-0 text-sm text-muted-foreground">Open a project before editing env vars.</p>
+        ) : (
+          <div className="grid gap-4">
+            {summary && !summary.gitIgnored ? (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground">
+                <strong className="block">Git ignore required</strong>
+                <span className="mt-1 block text-muted-foreground">Hyperwiki will add <code>.env.local</code> to <code>.gitignore</code> before saving these local secrets.</span>
+              </div>
+            ) : null}
+            {initialKey ? (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                <span className="text-muted-foreground">Detected key</span>
+                <code className="ml-2">{initialKey}</code>
+              </div>
+            ) : null}
+            <div className="grid gap-3">
+              {rows.map((row) => {
+                const invalid = Boolean(row.name.trim()) && !isValidEnvKeyName(row.name.trim());
+                return (
+                  <div className="grid grid-cols-[minmax(170px,0.52fr)_minmax(220px,1fr)_auto] items-start gap-2 rounded-md border bg-background p-3 max-md:grid-cols-1" key={row.id}>
+                    <label className="grid gap-1">
+                      <span className="text-[11px] font-bold uppercase text-muted-foreground">Key</span>
+                      <input
+                        {...DISABLE_TEXT_CORRECTION_PROPS}
+                        aria-invalid={invalid}
+                        className={cn("h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
+                        onChange={(event) => updateRow(row.id, { name: event.target.value })}
+                        value={row.name}
+                      />
+                      <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "present" : row.source}</span>
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
+                      <input
+                        {...DISABLE_TEXT_CORRECTION_PROPS}
+                        className="h-9 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
+                        onChange={(event) => updateRow(row.id, { value: event.target.value })}
+                        placeholder={row.present ? "Set a new value" : "Paste value"}
+                        type={revealed[row.id] ? "text" : "password"}
+                        value={row.value}
+                      />
+                      <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
+                    </label>
+                    <Button className="mt-5 max-md:mt-0" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
+                      {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" type="button" onClick={() => addRow()}>
+                <Plus data-icon="inline-start" />
+                Add key
+              </Button>
+              {summary?.suggestedKeys.filter((key) => !rows.some((row) => row.name === key.name)).slice(0, 6).map((key) => (
+                <Button key={key.name} size="sm" variant="ghost" type="button" onClick={() => addRow(key.name)}>
+                  {key.name}
+                </Button>
+              ))}
+            </div>
           </div>
-        </footer>
-      </section>
-    </div>
+        )}
+      </div>
+      <footer className="flex shrink-0 flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="m-0 min-w-0 text-sm text-muted-foreground" role="status">{status || (summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</p>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" type="button" onClick={onClose}>Close</Button>
+          <Button disabled={!canSave} type="button" onClick={() => save(!summary?.gitIgnored)}>
+            {isSaving ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Check data-icon="inline-start" />}
+            {saveLabel}
+          </Button>
+        </div>
+      </footer>
+    </section>
   );
 }
 
