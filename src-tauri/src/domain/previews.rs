@@ -98,8 +98,18 @@ pub struct ManagedDevSession {
     pub status: String,
     pub pid: Option<u32>,
     pub process_group: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conflict_pid: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conflict_process_group: Option<i32>,
     pub stoppable: bool,
     pub attachable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DevProcessIdentity {
+    pub pid: Option<u32>,
+    pub process_group: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -407,6 +417,31 @@ pub fn stop_process(pid: Option<u32>, process_group: Option<i32>) -> bool {
     !process_is_alive(pid)
 }
 
+pub fn next_dev_conflict_for_root(root: &Path) -> Option<DevProcessIdentity> {
+    let root_text = root.to_string_lossy();
+    let output = Command::new("ps")
+        .args(["-axo", "pid=,ppid=,pgid=,command="])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.lines().find_map(|line| {
+        let parsed = parse_ps_process_line(line)?;
+        let command = parsed.command;
+        if !command.contains(root_text.as_ref()) {
+            return None;
+        }
+        let looks_like_next_dev = command.contains("next/dist/bin/next")
+            && command.split_whitespace().any(|part| part == "dev");
+        if !looks_like_next_dev {
+            return None;
+        }
+        Some(DevProcessIdentity {
+            pid: Some(parsed.pid),
+            process_group: Some(parsed.process_group),
+        })
+    })
+}
+
 pub fn parse_portless_routes(output: &str) -> Vec<PortlessRoute> {
     output
         .lines()
@@ -611,6 +646,7 @@ fn preview_state(
 
 fn managed_dev_session(root: &Path) -> Option<ManagedDevSession> {
     let registry = crate::domain::sessions::SessionRegistry::new(root);
+    let next_conflict = next_dev_conflict_for_root(root);
     registry
         .list(None, false)
         .sessions
@@ -618,7 +654,7 @@ fn managed_dev_session(root: &Path) -> Option<ManagedDevSession> {
         .filter(|session| session.role == "dev" && session.status != "closed")
         .filter_map(|session| {
             let alive = session.pid.map(process_is_alive).unwrap_or(false);
-            if !alive {
+            if !alive && next_conflict.is_none() {
                 return None;
             }
             Some(ManagedDevSession {
@@ -630,11 +666,59 @@ fn managed_dev_session(root: &Path) -> Option<ManagedDevSession> {
                 },
                 pid: session.pid,
                 process_group: session.process_group,
+                conflict_pid: next_conflict.as_ref().and_then(|conflict| conflict.pid),
+                conflict_process_group: next_conflict
+                    .as_ref()
+                    .and_then(|conflict| conflict.process_group),
                 stoppable: true,
                 attachable: false,
             })
         })
         .next()
+        .or_else(|| {
+            next_conflict.map(|conflict| ManagedDevSession {
+                id: "next-dev-conflict".to_string(),
+                status: "detached".to_string(),
+                pid: conflict.pid,
+                process_group: conflict.process_group,
+                conflict_pid: conflict.pid,
+                conflict_process_group: conflict.process_group,
+                stoppable: true,
+                attachable: false,
+            })
+        })
+}
+
+struct PsProcessLine<'a> {
+    pid: u32,
+    process_group: i32,
+    command: &'a str,
+}
+
+fn parse_ps_process_line(line: &str) -> Option<PsProcessLine<'_>> {
+    let (pid_text, rest) = take_ps_token(line)?;
+    let (_parent_text, rest) = take_ps_token(rest)?;
+    let (process_group_text, command) = take_ps_token(rest)?;
+    let pid = pid_text.parse::<u32>().ok()?;
+    let process_group = process_group_text.parse::<i32>().ok()?;
+    let command = command.trim();
+    Some(PsProcessLine {
+        pid,
+        process_group,
+        command,
+    })
+}
+
+fn take_ps_token(value: &str) -> Option<(&str, &str)> {
+    let trimmed = value.trim_start();
+    let end = trimmed
+        .char_indices()
+        .find_map(|(index, character)| character.is_whitespace().then_some(index))
+        .unwrap_or(trimmed.len());
+    if end == 0 {
+        return None;
+    }
+    Some((&trimmed[..end], &trimmed[end..]))
 }
 
 fn safe_id(value: &str) -> String {
@@ -651,6 +735,14 @@ fn safe_id(value: &str) -> String {
 }
 
 fn portless_routes(cwd: &Path) -> PortlessRoutes {
+    #[cfg(test)]
+    if let Ok(routes) = fs::read_to_string(cwd.join(".hyperwiki").join("test-portless-routes.txt")) {
+        return PortlessRoutes {
+            available: true,
+            routes: parse_portless_routes(&routes),
+            error: None,
+        };
+    }
     match Command::new("portless")
         .arg("list")
         .current_dir(cwd)
@@ -852,10 +944,10 @@ mod tests {
             "feature-a",
             false,
         );
-        let fake_portless = fake_portless(
+        write_test_portless_routes(
+            &worktree,
             "  https://feature-a.preview-smoke.localhost:1355  ->  localhost:4011  (pid 222)\n",
         );
-        let _path_guard = PathGuard::prepend(fake_portless);
 
         let main_preview = app_preview_for_project(&main_record);
         let feature_preview = app_preview_for_project(&feature_record);
@@ -903,8 +995,7 @@ mod tests {
                 },
             )
             .unwrap();
-        let fake_portless = fake_portless("");
-        let _path_guard = PathGuard::prepend(fake_portless);
+        write_test_portless_routes(&root, "");
         let preview = app_preview_for_project(&record(
             "main",
             &root,
@@ -920,6 +1011,21 @@ mod tests {
         assert_eq!(
             preview.managed_session.as_ref().map(|session| session.id.as_str()),
             Some("legacy-dev-session")
+        );
+    }
+
+    #[test]
+    fn parses_ps_process_line_with_aligned_columns() {
+        let parsed = parse_ps_process_line(
+            "59938 59907 59907 node /repo/node_modules/.bin/../next/dist/bin/next dev",
+        )
+        .unwrap();
+
+        assert_eq!(parsed.pid, 59938);
+        assert_eq!(parsed.process_group, 59907);
+        assert_eq!(
+            parsed.command,
+            "node /repo/node_modules/.bin/../next/dist/bin/next dev"
         );
     }
 
@@ -954,22 +1060,9 @@ mod tests {
         .unwrap();
     }
 
-    fn fake_portless(routes: &str) -> PathBuf {
-        let bin = temp_root("portless-bin");
-        let script = format!(
-            "#!/usr/bin/env sh\nif [ \"$1\" = \"list\" ]; then\n  cat <<'EOF'\n{}\nEOF\n  exit 0\nfi\nexit 1\n",
-            routes
-        );
-        let path = bin.join("portless");
-        fs::write(&path, script).unwrap();
-        let mut permissions = fs::metadata(&path).unwrap().permissions();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            permissions.set_mode(0o755);
-        }
-        fs::set_permissions(&path, permissions).unwrap();
-        bin
+    fn write_test_portless_routes(root: &Path, routes: &str) {
+        fs::create_dir_all(root.join(".hyperwiki")).unwrap();
+        fs::write(root.join(".hyperwiki").join("test-portless-routes.txt"), routes).unwrap();
     }
 
     fn temp_root(label: &str) -> PathBuf {
@@ -982,28 +1075,4 @@ mod tests {
         root
     }
 
-    struct PathGuard {
-        previous: Option<std::ffi::OsString>,
-    }
-
-    impl PathGuard {
-        fn prepend(path: PathBuf) -> Self {
-            let previous = std::env::var_os("PATH");
-            let mut paths = vec![path];
-            if let Some(previous) = previous.clone() {
-                paths.extend(std::env::split_paths(&previous));
-            }
-            std::env::set_var("PATH", std::env::join_paths(paths).unwrap());
-            Self { previous }
-        }
-    }
-
-    impl Drop for PathGuard {
-        fn drop(&mut self) {
-            match self.previous.take() {
-                Some(value) => std::env::set_var("PATH", value),
-                None => std::env::remove_var("PATH"),
-            }
-        }
-    }
 }

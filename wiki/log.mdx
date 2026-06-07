@@ -12,6 +12,7 @@ wikiKind: "page"
     <li>Added a dedicated managed dev lifecycle so Run Dev uses a deterministic project checkout session instead of starting duplicate terminals after app restart.</li>
     <li>Changed preview state to distinguish managed, managed-detached, external Portless, stopped, and unknown dev running sources.</li>
     <li>Added Stop and Restart controls for Hyperwiki-managed dev processes, including detached processes from previous app sessions.</li>
+    <li>Follow-up: detects same-root Next dev process groups launched by Portless <code>dev:direct</code> so Stop/Restart can clear the process group even when the original Hyperwiki PTY shell PID is no longer the owner.</li>
     <li>Verification: <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml</code>, and <code>cargo test --manifest-path src-tauri/Cargo.toml preview_reports_alive_managed_dev_session_as_detached</code> passed.</li>
   </ul>
 </article>

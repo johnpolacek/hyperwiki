@@ -30,6 +30,7 @@ wikiKind: "plan"
     <li>Keep external Portless routes observable but not stoppable unless they match a Hyperwiki-managed dev session.</li>
     <li>Render detached managed dev processes as lifecycle panes instead of attempting terminal replay after app restart.</li>
     <li>Stop managed dev processes through the recorded PTY process group when available, falling back to the recorded PID.</li>
+    <li>Detect same-root Next dev process groups when Portless launches <code>dev:direct</code> outside the original Hyperwiki PTY process group.</li>
   </ul>
 </section>
 
@@ -39,6 +40,7 @@ wikiKind: "plan"
     <li><code>pnpm run check</code> passed.</li>
     <li><code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
     <li><code>cargo test --manifest-path src-tauri/Cargo.toml preview_reports_alive_managed_dev_session_as_detached</code> passed.</li>
+    <li>Dogfood incident: confirmed a stale wikibop Next process group rooted at <code>pnpm run dev:direct</code> can outlive the recorded Hyperwiki shell PID.</li>
     <li>Manual dogfood remains useful on the next interrupted dev-server session.</li>
   </ul>
 </section>

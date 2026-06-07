@@ -214,6 +214,8 @@ impl SessionRegistry {
             updated_at: now.clone(),
             closed_at: if status == "closed" {
                 Some(now)
+            } else if status == "active" || status == "detached" {
+                None
             } else {
                 existing
                     .as_ref()

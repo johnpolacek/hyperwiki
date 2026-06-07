@@ -1298,6 +1298,7 @@ fn stop_managed_dev_session(project_root: &std::path::Path, session_id: &str) ->
         .sessions
         .into_iter()
         .find(|session| session.id == session_id && session.role == "dev");
+    let next_conflict = crate::domain::previews::next_dev_conflict_for_root(project_root);
     let live_closed = {
         let mut manager = terminal_manager()
             .lock()
@@ -1308,8 +1309,14 @@ fn stop_managed_dev_session(project_root: &std::path::Path, session_id: &str) ->
         .as_ref()
         .map(|session| crate::domain::previews::stop_process(session.pid, session.process_group))
         .unwrap_or(true);
+    let conflict_stopped = next_conflict
+        .as_ref()
+        .map(|conflict| {
+            crate::domain::previews::stop_process(conflict.pid, conflict.process_group)
+        })
+        .unwrap_or(true);
     let _ = registry.close(session_id);
-    live_closed || process_stopped
+    (live_closed || process_stopped) && conflict_stopped
 }
 
 fn send_agent_prompt(
