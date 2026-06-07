@@ -8,6 +8,8 @@ Prefer the `agent-browser` CLI for browser automation and visual checks when ins
 
 Use Portless for user project previews and prefer named `.localhost` URLs over fixed ports when working across worktrees. hyperwiki's own `pnpm dev` command starts the Tauri desktop app.
 
+For hyperwiki-managed projects, `pnpm dev` is always the local run command. If a project needs frontend, backend, workers, or other long-running services, keep `pnpm dev` as the single entrypoint and orchestrate those services inside the package `dev` script, commonly with `concurrently`.
+
 Use the `parallel-dev-worktrees` skill for worktree execution. Feature worktree previews should use `https://<branch-slug>.hyperwiki.localhost`.
 
 Use repo-local worktree commands when operating parallel feature work:

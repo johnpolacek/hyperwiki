@@ -100,7 +100,7 @@ After creation, report:
 
 ## Run And Test
 
-- Start the app through the repo's Portless script, usually `pnpm dev`, `pnpm next:dev`, or equivalent.
+- Start the app with `pnpm dev`. For hyperwiki projects, frontend, backend, worker, and preview orchestration belongs inside the package `dev` script.
 - For Portless installation, setup, and troubleshooting, defer to the official Portless skill: https://github.com/vercel-labs/portless/blob/main/skills/portless/SKILL.md.
 - If Portless is unavailable, strongly recommend setting it up before running multiple worktrees. Use numeric ports only as a temporary fallback for local-only tasks, document the exact port in the handoff, and avoid numeric-port fallbacks for OAuth, webhooks, browser automation handoffs, or anything requiring stable callback URLs.
 - Share the Portless URL with the user and browser tools.

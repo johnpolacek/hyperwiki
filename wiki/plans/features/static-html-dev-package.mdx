@@ -25,7 +25,7 @@ wikiKind: "plan"
   <ul>
     <li>For new initialized projects with root <code>index.html</code>, no <code>package.json</code>, and no explicit dev command, write a private pnpm package with a <code>dev</code> script.</li>
     <li>The script should use global Portless and Python's built-in static server: <code>portless run -- sh -c 'python3 -m http.server "$PORT" --bind "${HOST:-127.0.0.1}"'</code>.</li>
-    <li>Set the generated project config dev command to <code>pnpm run dev</code> so existing layout and preview APIs expose a dev panel and <code>canStart: true</code>.</li>
+    <li>Set the generated project config dev command to <code>pnpm dev</code> so existing layout and preview APIs expose a dev panel and <code>canStart: true</code>.</li>
     <li>Never overwrite an existing <code>package.json</code>; existing static projects are not auto-repaired.</li>
   </ul>
 </section>

@@ -49,6 +49,8 @@ pnpm dev
 
 `pnpm dev` runs `tauri dev`. Portless remains useful for previewing user projects from inside hyperwiki, but hyperwiki itself no longer has a browser-server development runtime.
 
+For user projects managed by hyperwiki, `pnpm dev` is also the canonical local preview command. If a project needs frontend, backend, workers, or other long-running processes, keep `pnpm dev` as the single entrypoint and orchestrate those commands inside the package `dev` script, commonly with `concurrently`.
+
 ## Commands
 
 ```bash

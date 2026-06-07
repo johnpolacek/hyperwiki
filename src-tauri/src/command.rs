@@ -1633,7 +1633,7 @@ mod tests {
             None => std::env::remove_var("HYPERWIKI_HOME"),
         }
         assert!(layout.ok);
-        assert!(layout.text.contains("\"command\":\"pnpm run dev\""));
+        assert!(layout.text.contains("\"command\":\"pnpm dev\""));
         assert!(preview.ok);
         assert!(preview.text.contains("\"projectId\":\"preview-id\""));
         assert!(preview.text.contains("\"status\":\""));

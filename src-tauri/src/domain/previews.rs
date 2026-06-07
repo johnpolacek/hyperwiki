@@ -475,39 +475,7 @@ fn package_dev_command(root: &Path) -> String {
     {
         return String::new();
     }
-    let manager = package_json
-        .get("packageManager")
-        .and_then(|value| value.as_str())
-        .and_then(|value| value.split('@').next())
-        .unwrap_or_default();
-    if manager == "pnpm" {
-        return "pnpm run dev".to_string();
-    }
-    if manager == "yarn" {
-        return "yarn dev".to_string();
-    }
-    if manager == "bun" {
-        return "bun run dev".to_string();
-    }
-    if root.join("pnpm-lock.yaml").exists() || command_available("pnpm", root) {
-        return "pnpm run dev".to_string();
-    }
-    if root.join("yarn.lock").exists() {
-        return "yarn dev".to_string();
-    }
-    if root.join("bun.lock").exists() || root.join("bun.lockb").exists() {
-        return "bun run dev".to_string();
-    }
-    "npm run dev".to_string()
-}
-
-fn command_available(command: &str, cwd: &Path) -> bool {
-    Command::new(command)
-        .arg("--version")
-        .current_dir(cwd)
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false)
+    "pnpm dev".to_string()
 }
 
 fn fallback_panels(config: &HyperwikiConfig, dev_command: &str) -> Vec<LayoutPanel> {
@@ -891,10 +859,10 @@ mod tests {
 
         let layout = layout_config_for_root(&root);
 
-        assert_eq!(layout.dev.command, "pnpm run dev");
+        assert_eq!(layout.dev.command, "pnpm dev");
         assert_eq!(layout.dev.preview_url, "https://preview-smoke.localhost");
         assert_eq!(layout.panels[1].role, "dev");
-        assert_eq!(layout.panels[1].command.as_deref(), Some("pnpm run dev"));
+        assert_eq!(layout.panels[1].command.as_deref(), Some("pnpm dev"));
     }
 
     #[test]
@@ -906,7 +874,7 @@ mod tests {
             serde_json::json!({
                 "projectName": "Preview Smoke",
                 "dev": {
-                    "command": "pnpm run dev",
+                    "command": "pnpm dev",
                     "previewUrl": "https://preview-smoke.localhost"
                 },
                 "worktrees": {
@@ -919,7 +887,7 @@ mod tests {
             serde_json::json!({
                 "projectName": "Preview Smoke",
                 "dev": {
-                    "command": "pnpm run dev",
+                    "command": "pnpm dev",
                     "previewUrl": "https://preview-smoke.localhost"
                 },
                 "worktrees": {
@@ -975,7 +943,7 @@ mod tests {
             serde_json::json!({
                 "projectName": "Preview Managed Dev",
                 "dev": {
-                    "command": "pnpm run dev",
+                    "command": "pnpm dev",
                     "previewUrl": "https://preview-managed-dev.localhost"
                 }
             }),
@@ -987,7 +955,7 @@ mod tests {
                 crate::domain::sessions::SessionUpdates {
                     name: Some("dev".to_string()),
                     role: Some("dev".to_string()),
-                    command: Some("pnpm run dev".to_string()),
+                    command: Some("pnpm dev".to_string()),
                     status: Some("active".to_string()),
                     pid: Some(std::process::id()),
                     cwd: Some(root.clone()),

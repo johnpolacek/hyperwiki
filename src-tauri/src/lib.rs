@@ -49,7 +49,7 @@ fn run_init_cli(args: &[String]) {
         .scripts
         .iter()
         .find(|script| script.as_str() == "dev")
-        .map(|_| format!("{} run dev", package.manager));
+        .map(|_| "pnpm dev".to_string());
     let result = domain::projects::init_hyperwiki_project(
         &root,
         domain::projects::InitProjectOptions {
@@ -68,7 +68,13 @@ fn run_init_cli(args: &[String]) {
             package_scripts: package
                 .scripts
                 .iter()
-                .map(|script| format!("{} run {script}", package.manager))
+                .map(|script| {
+                    if script == "dev" {
+                        "pnpm dev".to_string()
+                    } else {
+                        format!("{} run {script}", package.manager)
+                    }
+                })
                 .collect(),
             install_agent_skills: !options.flag("no_skills"),
             overwrite: options.flag("overwrite"),

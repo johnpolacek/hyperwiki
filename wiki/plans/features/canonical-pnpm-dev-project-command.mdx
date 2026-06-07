@@ -1,0 +1,41 @@
+---
+title: "Canonical pnpm dev Project Command"
+description: "Make pnpm dev the canonical local command for hyperwiki projects."
+wikiKind: "plan"
+---
+
+<h1>Canonical pnpm dev Project Command</h1>
+
+<section>
+  <h2>Summary</h2>
+  <dl>
+    <dt>Status</dt><dd>complete</dd>
+    <dt>Shape</dt><dd>compact scaffold convention update</dd>
+    <dt>Current unit</dt><dd>complete</dd>
+    <dt>Next action</dt><dd>none; implementation and verification are complete.</dd>
+    <dt>Blockers</dt><dd>none</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>For hyperwiki projects, <code>pnpm dev</code> is the single local entrypoint for frontend, backend, worker, and preview runtime. If a project needs multiple processes, its package <code>dev</code> script should orchestrate them, for example with <code>concurrently</code>, while Hyperwiki and agents continue to run only <code>pnpm dev</code>.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Make project initialization and static scaffold config write <code>pnpm dev</code> as the preview command.</li>
+    <li>Make preview command inference return <code>pnpm dev</code> whenever a package has a <code>dev</code> script.</li>
+    <li>Update generated project AGENTS and Development pages to state that <code>pnpm dev</code> is the local command and orchestration belongs inside the package script.</li>
+    <li>Update durable scaffold docs and source index with the command convention.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
+  </ul>
+</section>

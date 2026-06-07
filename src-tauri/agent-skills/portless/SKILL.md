@@ -60,7 +60,7 @@ Bare `portless` works out of the box. It runs the `"dev"` script from `package.j
 
 ```bash
 portless        # -> runs "dev" script, https://<project>.localhost
-pnpm dev        # -> works without portless, plain "next dev"
+pnpm dev        # -> canonical hyperwiki project entrypoint; the script may call portless
 ```
 
 Use an optional `portless.json` to override defaults (name, script, port):

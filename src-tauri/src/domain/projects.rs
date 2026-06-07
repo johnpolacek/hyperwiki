@@ -593,7 +593,7 @@ pub fn init_hyperwiki_project(
     let slug = slugify(&options.project_name);
     let should_write_static_package = should_generate_static_package(root, &options);
     if should_write_static_package {
-        options.dev_command = "pnpm run dev".to_string();
+        options.dev_command = "pnpm dev".to_string();
     }
     let layout_panels = layout_panels(&options)?;
     fs::create_dir_all(root.join(".hyperwiki").join("state")).map_err(|error| error.to_string())?;
@@ -1928,7 +1928,7 @@ fn dev_page(options: &InitProjectOptions) -> String {
         options,
         "Development Workflow",
         &format!(
-            "<h1>Development Workflow</h1><p>Use local commands, Git, Portless previews, and hyperwiki plans for implementation work.</p><h2>Commands</h2><ul>{}</ul>",
+            "<h1>Development Workflow</h1><p>Use local commands, Git, Portless previews, and hyperwiki plans for implementation work.</p><p><code>pnpm dev</code> is the canonical local command for this hyperwiki project. If the app needs frontend, backend, worker, or other long-running processes, orchestrate them inside the package <code>dev</code> script, commonly with <code>concurrently</code>, so Hyperwiki and agents still run one command.</p><h2>Commands</h2><ul>{}</ul>",
             items.join("")
         ),
     )
@@ -1960,7 +1960,7 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer package-manager-backed `dev` scripts over fixed localhost ports.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nRun the project locally with `pnpm dev`. If the project needs frontend, backend, workers, or other long-running services, keep `pnpm dev` as the single entrypoint and orchestrate those processes inside the package `dev` script, commonly with `concurrently`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer the project-level `pnpm dev` entrypoint over fixed localhost ports or alternate package-manager commands.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
@@ -2520,14 +2520,14 @@ mod tests {
             &fs::read_to_string(root.join(".hyperwiki").join("config.json")).unwrap(),
         )
         .unwrap();
-        assert_eq!(config["dev"]["command"], "pnpm run dev");
+        assert_eq!(config["dev"]["command"], "pnpm dev");
 
         let layout = crate::domain::previews::layout_config_for_root(&root);
-        assert_eq!(layout.dev.command, "pnpm run dev");
+        assert_eq!(layout.dev.command, "pnpm dev");
         assert!(layout
             .panels
             .iter()
-            .any(|panel| panel.role == "dev" && panel.command.as_deref() == Some("pnpm run dev")));
+            .any(|panel| panel.role == "dev" && panel.command.as_deref() == Some("pnpm dev")));
 
         let preview = crate::domain::previews::app_preview_for_project(&ProjectRecord {
             id: "static".to_string(),
@@ -2541,7 +2541,13 @@ mod tests {
             import_planning: None,
         });
         assert!(preview.can_start);
-        assert_eq!(preview.start_command, "pnpm run dev");
+        assert_eq!(preview.start_command, "pnpm dev");
+
+        let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+        assert!(agents.contains("Run the project locally with `pnpm dev`"));
+        assert!(agents.contains("commonly with `concurrently`"));
+        let dev_page = fs::read_to_string(root.join("wiki").join("dev.mdx")).unwrap();
+        assert!(dev_page.contains("<code>pnpm dev</code> is the canonical local command"));
     }
 
     #[test]

@@ -12,7 +12,7 @@ pnpm run check:all
 pnpm run tauri:build
 pnpm wt:doctor
 pnpm run smoke:tauri-static-assets
-pnpm run dev
+pnpm dev
 src-tauri/target/release/hyperwiki init --yes
 src-tauri/target/release/hyperwiki reset --dry-run
 src-tauri/target/release/hyperwiki</code></pre>
@@ -26,6 +26,7 @@ src-tauri/target/release/hyperwiki</code></pre>
 <h2>Project Previews</h2>
 <ul>
   <li>Portless remains the preferred preview mechanism for user projects opened inside hyperwiki.</li>
+  <li>For every hyperwiki project, <code>pnpm dev</code> is the canonical local command. If a project has frontend, backend, workers, or other long-running processes, the package <code>dev</code> script should orchestrate them, commonly with <code>concurrently</code>, while Hyperwiki still runs only <code>pnpm dev</code>.</li>
   <li>Feature worktree preview URLs should continue to use <code>https://&lt;branch-slug&gt;.hyperwiki.localhost</code> when a project provides a Portless-backed preview.</li>
   <li>hyperwiki's own development runtime is the Tauri desktop app, not a Portless browser route.</li>
 </ul>

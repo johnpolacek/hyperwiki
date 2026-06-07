@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 convention | canonical pnpm dev project command</h2>
+  <ul>
+    <li>Made <code>pnpm dev</code> the canonical local command for generated and imported hyperwiki projects.</li>
+    <li>Updated project init, preview command inference, generated AGENTS/dev pages, root setup docs, scaffold contract, source briefs, and bundled agent-skill guidance.</li>
+    <li>Recorded that frontend, backend, worker, and preview orchestration belongs inside the package <code>dev</code> script, commonly with <code>concurrently</code>.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 fix | managed dev session recovery</h2>
   <ul>
     <li>Added a dedicated managed dev lifecycle so Run Dev uses a deterministic project checkout session instead of starting duplicate terminals after app restart.</li>
