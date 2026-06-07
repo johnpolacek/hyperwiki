@@ -4779,20 +4779,25 @@ function ProjectEnvEditor({
                         title={row.name}
                         value={row.name}
                       />
-                      <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "present" : row.source}</span>
+                      <span className={cn("min-h-4 text-[11px]", row.present ? "font-semibold text-emerald-700" : "text-muted-foreground")}>
+                        {row.present ? "value set in .env.local" : row.source}
+                      </span>
                     </label>
                     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                       <label className="grid min-w-0 gap-1">
-                        <span className="text-[11px] font-bold uppercase text-muted-foreground">Value</span>
+                        <span className="flex items-center gap-2 text-[11px] font-bold uppercase text-muted-foreground">
+                          Value
+                          {row.present ? <strong className="rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800">set</strong> : null}
+                        </span>
                         <input
                           {...DISABLE_TEXT_CORRECTION_PROPS}
                           className="h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
                           onChange={(event) => updateRow(row.id, { value: event.target.value })}
-                          placeholder={row.present ? "Set a new value" : "Paste value"}
+                          placeholder={row.present ? "Stored value is set - paste to replace" : "Paste value"}
                           type={revealed[row.id] ? "text" : "password"}
                           value={row.value}
                         />
-                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "existing value is masked and not loaded" : ""}</span>
+                        <span className="min-h-4 text-[11px] text-muted-foreground">{row.present ? "Secret is saved locally. Paste a new value only if you want to replace it." : ""}</span>
                       </label>
                       <Button className="mt-5" size="icon" variant="outline" type="button" onClick={() => setRevealed((current) => ({ ...current, [row.id]: !current[row.id] }))} aria-label={revealed[row.id] ? "Hide value" : "Reveal value"}>
                         {revealed[row.id] ? <EyeOff aria-hidden="true" data-icon="inline-start" /> : <Eye aria-hidden="true" data-icon="inline-start" />}

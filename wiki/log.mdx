@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-07 fix | project env saved-value clarity</h2>
+  <ul>
+    <li>Changed Project Env rows for existing keys to explicitly show <code>value set in .env.local</code> and a <code>set</code> badge.</li>
+    <li>Changed the replacement field placeholder and helper copy so an empty input no longer implies the saved secret is empty.</li>
+    <li>Kept secret values masked and unloaded from the UI.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 polish | project env autosave status</h2>
   <ul>
     <li>Removed the idle checkmark from the Project Env manual save button so the button reads as an explicit action.</li>

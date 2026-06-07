@@ -22,6 +22,9 @@ for (const needle of [
   "? \"Saved\"",
   "statusTone === \"success\" ? <Check",
   "isSaving ? <Loader2",
+  "value set in .env.local",
+  "Stored value is set - paste to replace",
+  "Secret is saved locally. Paste a new value only if you want to replace it.",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Project env UI is missing ${needle}`);
