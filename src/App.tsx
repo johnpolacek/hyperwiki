@@ -4470,7 +4470,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
   if (!draft) {
     return (
       <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={5} contentClassName="min-h-full" duration={7} rows={4} strength={0.18}>
+        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={5} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={4} strength={0.08}>
         <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
         <div className="m-8 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
         </BeamSurface>
@@ -4488,7 +4488,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
     const presets = editableTheme.presets || {};
     return (
       <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
+        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={revertTheme}>Revert</Button><Button onClick={completeThemeEditor}>Done</Button></>}
           description="Theme changes apply immediately and save automatically."
@@ -4498,7 +4498,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
           <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
           <ThemePresetStrip activePreset={editableTheme.activePreset || ""} onSelect={(key) => setThemeDraft(selectThemePreset(editableTheme, key))} presets={presets} />
           <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
-            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
+            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
               <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
                 Mode
                 <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={editTheme.mode} onChange={(event) => setThemeDraft(updateThemeMode(editableTheme, event.target.value))}>
@@ -4522,7 +4522,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
                 <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
               </details>
             </BeamSurface>
-            <BeamSurface className="grid rounded-md border bg-card/92 p-6 shadow-sm" colorVariant="ocean" cols={4} rows={3} strength={0.24}>
+            <BeamSurface className="grid rounded-md border bg-card p-6 shadow-sm" colorVariant="ocean" cols={4} dividerStroke="transparent" rows={3} strength={0.14}>
               <div className="grid grid-cols-[190px_1fr] gap-8">
                 <div className="border-r pr-6 font-ui">
                   <p className="text-xs font-bold uppercase text-muted-foreground">Plans</p>
@@ -4548,7 +4548,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
     const editableAgent = agentDraft || { soul: draft.soul || {}, memory: draft.memory || { entries: [] } };
     return (
       <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
+        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
           description="Saving updates global instructions and syncs the current project AGENTS.md."
@@ -4556,12 +4556,12 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
         />
         <div className="grid gap-4 p-8">
           <div className="grid grid-cols-[minmax(360px,0.78fr)_minmax(320px,1fr)] gap-4 max-lg:grid-cols-1">
-            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
+            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
               <TextareaField label="Principles" value={(editableAgent.soul?.principles || []).join("\n")} rows={8} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), principles: value.split("\n").map((line) => line.trim()).filter(Boolean) } })} />
               <TextareaField label="Interface Guidance" value={editableAgent.soul?.interface || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), interface: value } })} />
               <TextareaField label="Agent Guidance" value={editableAgent.soul?.agent || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), agent: value } })} />
             </BeamSurface>
-            <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
+            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-sm font-bold uppercase">Memory</h2>
                 <Button variant="outline" onClick={() => setAgentDraft({ ...editableAgent, memory: { entries: [...(editableAgent.memory?.entries || []), { title: "", content: "", enabled: true }] } })}>+ Memory</Button>
@@ -4577,7 +4577,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
               </div>
             </BeamSurface>
           </div>
-          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={5} rows={3} strength={0.16}>
+          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={5} dividerStroke="transparent" rows={3} strength={0.1}>
             <div className="mb-3 flex items-center justify-between gap-4">
               <h2 className="text-sm font-bold uppercase">AGENTS.md</h2>
               <span className="truncate text-xs text-muted-foreground">{agentsFile.path || "AGENTS.md"}</span>
@@ -4593,10 +4593,10 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
 
   return (
     <section className="min-h-0 overflow-auto bg-background/80">
-      <BeamSurface className="min-h-full bg-background/86" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={5} strength={0.18}>
+      <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
       <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
       <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
-        <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="ocean" cols={4} rows={4} strength={0.22}>
+        <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="ocean" cols={4} dividerStroke="transparent" rows={4} strength={0.12}>
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-sm font-bold uppercase">Theme</h2>
             <Button variant="outline" onClick={openThemeEditor}>Edit</Button>
@@ -4612,7 +4612,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
           </div>
         </BeamSurface>
         <div className="grid gap-5">
-          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={4} strength={0.18}>
+          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.1}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
               <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
@@ -4623,7 +4623,7 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
               <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
             </div>
           </BeamSurface>
-          <BeamSurface className="rounded-md border bg-card/92 p-4 shadow-sm" colorVariant="mono" cols={3} rows={2} strength={0.16}>
+          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={2} strength={0.1}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="m-0 text-sm font-bold uppercase">Project Env</h2>
@@ -4892,7 +4892,7 @@ function ProjectEnvEditor({
 
 function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { description: string; fontKeys: Array<[string, string]>; label: string; tokens?: Record<string, string> }) {
   return (
-    <BeamSurface className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background/88 p-4" colorVariant="mono" cols={4} rows={2} strength={0.16}>
+    <BeamSurface className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background p-4" colorVariant="mono" cols={4} dividerStroke="transparent" rows={2} strength={0.08}>
       <header>
         <strong className="block text-sm">{label}</strong>
         <span className="text-xs text-muted-foreground">{description}</span>
@@ -4933,7 +4933,7 @@ function ThemeSwatches({ colors, tall = false }: { colors: Array<string | undefi
 function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: string; title: string }) {
   const values = lines.filter(Boolean);
   return (
-    <BeamSurface className="rounded-md border bg-background/88 p-3" colorVariant="mono" cols={3} rows={2} strength={0.14}>
+    <BeamSurface className="rounded-md border bg-background p-3" colorVariant="mono" cols={3} dividerStroke="transparent" rows={2} strength={0.08}>
       <header className="mb-2 flex items-center justify-between gap-3">
         <strong>{title}</strong>
         <span className="text-xs text-muted-foreground">{meta}</span>
@@ -4949,7 +4949,7 @@ function ThemePresetStrip({ activePreset, onSelect, presets }: { activePreset: s
   const entries = Object.entries(presets);
   if (!entries.length) return null;
   return (
-    <BeamSurface className="min-w-0 overflow-hidden rounded-md border bg-card/92 p-3 shadow-sm" colorVariant="mono" cols={5} rows={2} strength={0.16}>
+    <BeamSurface className="min-w-0 overflow-hidden rounded-md border bg-card p-3 shadow-sm" colorVariant="mono" cols={5} dividerStroke="transparent" rows={2} strength={0.08}>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
         <span className="truncate text-xs text-muted-foreground">Choosing a preset applies and autosaves.</span>
