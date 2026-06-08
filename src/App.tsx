@@ -64,6 +64,7 @@ const DISABLE_TEXT_CORRECTION_PROPS = {
 } as const;
 const PROJECT_ENV_AUTOSAVE_DELAY_MS = 900;
 const THEME_AUTOSAVE_DELAY_MS = 350;
+const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
 const GridBeamRuntimeContext = createContext<{ prefersReducedMotion: boolean; theme: GridBeamColorScheme }>({
   prefersReducedMotion: false,
   theme: "light",
@@ -1731,6 +1732,12 @@ function App() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (terminalEnvHint && isRuntimeEnvKeyHintIgnored(terminalEnvHint.key)) {
+      setTerminalEnvHint(null);
+    }
+  }, [terminalEnvHint]);
 
   async function answerPlanningQuestion(answers: PlanningQuestionAnswer[]) {
     const trimmedAnswers = answers
@@ -6090,11 +6097,18 @@ function isValidEnvKeyName(name: string) {
 function detectEnvKeyFromTerminalText(text: string) {
   const candidates = terminalTextForParsing(text).match(/\b[A-Z][A-Z0-9_]{2,}\b/g) || [];
   return candidates.find((candidate) =>
-    candidate.startsWith("CLERK_")
-    || candidate.startsWith("CONVEX_")
-    || candidate.startsWith("NEXT_PUBLIC_")
-    || /_(KEY|SECRET|TOKEN|URL|DOMAIN|ISSUER|DEPLOYMENT)$/.test(candidate)
+    !isRuntimeEnvKeyHintIgnored(candidate)
+    && (
+      candidate.startsWith("CLERK_")
+      || candidate.startsWith("CONVEX_")
+      || candidate.startsWith("NEXT_PUBLIC_")
+      || /_(KEY|SECRET|TOKEN|URL|DOMAIN|ISSUER|DEPLOYMENT)$/.test(candidate)
+    )
   ) || "";
+}
+
+function isRuntimeEnvKeyHintIgnored(key: string) {
+  return RUNTIME_ENV_KEY_HINT_DENYLIST.has(key.trim());
 }
 
 function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {

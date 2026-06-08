@@ -10,6 +10,9 @@ for (const needle of [
   "onOpenProjectEnv",
   "Missing env key detected",
   "detectEnvKeyFromTerminalText",
+  "RUNTIME_ENV_KEY_HINT_DENYLIST",
+  "\"PORTLESS_URL\"",
+  "!isRuntimeEnvKeyHintIgnored(candidate)",
   "Store local keys in the active checkout's",
   "fixed bottom-3 left-3 z-50",
   "grid min-w-0 grid-cols-[minmax(0,1fr)_auto]",
@@ -68,4 +71,8 @@ for (const needle of [
 
 if (appSource.includes("sendInput(session.id, initialKey") || appSource.includes("sendInput(session.id, row.value")) {
   throw new Error("Project env values must not be sent through terminal input.");
+}
+
+if (!appSource.includes("if (terminalEnvHint && isRuntimeEnvKeyHintIgnored(terminalEnvHint.key))")) {
+  throw new Error("Ignored runtime env hints should be cleared if already visible.");
 }

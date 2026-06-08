@@ -2411,6 +2411,13 @@ wikiKind: "page"
   </ul>
 </article>
 <article>
+  <h2>2026-06-08 implementation | Portless runtime env hint suppression</h2>
+  <ul>
+    <li>Stopped terminal missing-env detection from prompting for <code>PORTLESS_URL</code>, because Portless injects it at dev-server runtime rather than requiring project <code>.env.local</code> configuration.</li>
+    <li>Added stale-hint cleanup so ignored runtime env keys disappear if already displayed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-08 implementation | dev terminal reveal and collapse</h2>
   <ul>
     <li>Consolidated dev into one terminal row that shows running state, start or stop, PID when known, and collapse or expand.</li>
