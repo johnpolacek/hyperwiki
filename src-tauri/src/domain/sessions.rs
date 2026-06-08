@@ -246,6 +246,9 @@ impl SessionRegistry {
         name: Option<String>,
         visibility: Option<String>,
         purpose: Option<String>,
+        scope: Option<String>,
+        scope_kind: Option<String>,
+        plan_path: Option<String>,
     ) -> Result<SessionRecord, String> {
         if self.read_one(id).is_none() {
             return Err("Session not found.".to_string());
@@ -256,12 +259,24 @@ impl SessionRegistry {
         let trimmed_purpose = purpose
             .map(|value| value.trim().to_string())
             .filter(|value| !value.is_empty());
+        let trimmed_scope = scope
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let trimmed_scope_kind = scope_kind
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let trimmed_plan_path = plan_path
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
         self.upsert(
             id,
             SessionUpdates {
                 name: name.map(|value| value.trim().to_string()).filter(|value| !value.is_empty()),
                 visibility: trimmed_visibility,
                 purpose: trimmed_purpose,
+                scope: trimmed_scope,
+                scope_kind: trimmed_scope_kind,
+                plan_path: trimmed_plan_path,
                 ..SessionUpdates::default()
             },
         )
@@ -421,22 +436,36 @@ mod tests {
                 None,
                 Some("standby".to_string()),
                 Some("modify".to_string()),
+                None,
+                None,
+                None,
             )
             .unwrap();
         assert_eq!(standby.visibility, "standby");
         assert_eq!(standby.purpose.as_deref(), Some("modify"));
 
         let promoted = registry
-            .update_runtime_metadata("agent/one", None, Some("visible".to_string()), None)
+            .update_runtime_metadata(
+                "agent/one",
+                None,
+                Some("visible".to_string()),
+                Some("general".to_string()),
+                Some("plan:/wiki/plans/mvp".to_string()),
+                Some("plan".to_string()),
+                Some("/wiki/plans/mvp/index.mdx".to_string()),
+            )
             .unwrap();
         assert_eq!(promoted.visibility, "visible");
-        assert_eq!(promoted.purpose.as_deref(), Some("modify"));
+        assert_eq!(promoted.purpose.as_deref(), Some("general"));
+        assert_eq!(promoted.scope, "plan:/wiki/plans/mvp");
+        assert_eq!(promoted.scope_kind, "plan");
+        assert_eq!(promoted.plan_path.as_deref(), Some("/wiki/plans/mvp/index.mdx"));
 
         let exported = registry.export("agent/one").unwrap();
         assert_eq!(exported.boundary, "runtime-only");
         assert_eq!(exported.session.exported_at, Some(exported.exported_at));
 
-        let scoped = registry.list(Some("plan:/wiki/plans/index.mdx"), true);
+        let scoped = registry.list(Some("plan:/wiki/plans/mvp"), true);
         assert_eq!(scoped.sessions.len(), 1);
 
         let closed = registry.close("agent/one").unwrap();

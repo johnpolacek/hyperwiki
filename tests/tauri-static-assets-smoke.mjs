@@ -87,8 +87,17 @@ if (!appSource.includes("planningPromptContext") || !appSource.includes("display
 if (appSource.includes("activePlanState.isComplete || activePlanState.isStale")) {
   throw new Error("Execute must not be disabled only because the visible plan page is stale.");
 }
-if (!appSource.includes('const executionPage = action === "execute-main" ? activePlanState.currentPath || normalizedCurrentPage : normalizedCurrentPage') || !appSource.includes('const executionScope = action === "execute-main" ? scopeForRoute({ kind: "wiki", path: executionPage }) : terminalScope')) {
+if (!appSource.includes("const executionPage = activePlanState.currentPath || normalizedCurrentPage") || !appSource.includes('const executionScope = scopeForRoute({ kind: "wiki", path: executionPage })')) {
   throw new Error("Execute must target the resolved current unit path and scope, not the stale visible page.");
+}
+if (!appSource.includes("type PendingExecuteAgentConfirmation") || !appSource.includes("selectExecuteAgentReuseCandidate(sessions, activeSessionId)") || !appSource.includes("Run in current agent") || !appSource.includes("New agent") || !appSource.includes("confirmExecuteInCurrentAgent")) {
+  throw new Error("Execute must confirm whether to reuse a visible agent terminal, start a new agent, or cancel.");
+}
+if (!appSource.includes("targetSessionId?: string") || !appSource.includes("retargetAgentSession(promptProject, options.targetSessionId, scope, agentPurpose)") || !appSource.includes("sessionId: session.id") || !appSource.includes("forceNewSession: true")) {
+  throw new Error("Confirmed Execute reuse must route to the selected session while New agent starts a fresh session.");
+}
+if (!appSource.includes("scopeKind: normalizedScope.scopeKind") || !appSource.includes("planPath: normalizedScope.planPath") || !appSource.includes('reason: "retarget-agent"')) {
+  throw new Error("Confirmed Execute reuse must retarget visible agent session metadata to the Execute unit scope.");
 }
 if (!appSource.includes("currentUnitLabel") || !appSource.includes("compactUnitLabel(currentPage)") || !appSource.includes("activePlanState.currentUnitLabel ? `execute ${activePlanState.currentUnitLabel.toLowerCase()}` : \"execute\"")) {
   throw new Error("Execute button label must show only the compact current unit label, not the full unit title.");

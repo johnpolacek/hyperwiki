@@ -36,6 +36,7 @@
     "wt:prune": "cargo run --manifest-path src-tauri/Cargo.toml -- wt prune"
   },
   "dependencies": {
+    "@radix-ui/react-alert-dialog": "^1.1.16",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

@@ -34,7 +34,17 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
-import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
 import { hyperwikiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -50,6 +60,13 @@ type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" |
 type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
 type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 type ThinkingEffort = "low" | "medium" | "high" | "xhigh";
+
+type PendingExecuteAgentConfirmation = {
+  candidateSession: SessionRecord;
+  currentPage: string;
+  prompt: string;
+  scope: TerminalScope;
+};
 
 interface SourceDocumentInput {
   name: string;
@@ -713,6 +730,7 @@ function App() {
   const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
+  const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const prewarmingGeneralSessions = useRef<Set<string>>(new Set());
   const generalPrewarmRefillTimers = useRef<Map<string, number>>(new Map());
@@ -1580,6 +1598,24 @@ function App() {
     return promoted;
   }
 
+  async function retargetAgentSession(project: ProjectRecord, sessionId: string, scope: TerminalScope, purpose = "general") {
+    const normalizedScope = normalizeTerminalScope(scope);
+    const response = await hyperwikiApi.json<SessionResponse>(withProjectQuery(`/api/sessions/${encodeURIComponent(sessionId)}`, project), {
+      method: "PATCH",
+      body: {
+        visibility: "visible",
+        purpose,
+        scope: normalizedScope.scope,
+        scopeKind: normalizedScope.scopeKind,
+        planPath: normalizedScope.planPath,
+      },
+    });
+    const retargeted = response.session;
+    appendImportLog(`Agent session retargeted project=${project.id} session=${retargeted.id} scope=${normalizedScope.scope} purpose=${retargeted.purpose || "none"}`);
+    upsertTerminalSession(project.id, retargeted, { reason: "retarget-agent", select: true });
+    return retargeted;
+  }
+
   async function sendAgentPrompt(prompt: string) {
     await sendAgentPromptToProject(activeProject, prompt, currentWikiPath, terminalScope, layout, sessions);
   }
@@ -1846,15 +1882,25 @@ function App() {
     projectLayout = layout,
     knownSessions = sessions,
     existingRunId?: string,
-    options: { forceNewSession?: boolean; project?: ProjectRecord | null } = {},
+    options: { forceNewSession?: boolean; project?: ProjectRecord | null; targetSessionId?: string } = {},
   ) {
     const runId = existingRunId || startAgentRun(kind, label);
     const promptProject = options.project || activeProject;
     const handoffStartedAt = Date.now();
-    appendImportLog(`Agent handoff start kind=${kind} label=${label} project=${promptProject?.id || "none"} scope=${scope.scope} forceNew=${options.forceNewSession ? "yes" : "no"}`);
+    appendImportLog(`Agent handoff start kind=${kind} label=${label} project=${promptProject?.id || "none"} scope=${scope.scope} forceNew=${options.forceNewSession ? "yes" : "no"} targetSession=${options.targetSessionId || "none"}`);
     try {
       const agentPurpose = kind === "modify" ? "modify" : "general";
-      const session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: agentPurpose, promote: kind === "modify" || (!options.forceNewSession && agentPurpose === "general") });
+      let session: SessionRecord;
+      if (options.targetSessionId) {
+        if (!promptProject) throw new Error("Project not found for agent planning.");
+        const target = [...knownSessions, ...sessions].find((candidate) => candidate.id === options.targetSessionId);
+        if (!target || !isReusableVisibleExecuteAgentSession(target)) {
+          throw new Error("Selected agent terminal is no longer available.");
+        }
+        session = await retargetAgentSession(promptProject, options.targetSessionId, scope, agentPurpose);
+      } else {
+        session = await ensureAgentSessionForProject(promptProject, projectLayout, scope, knownSessions, { forceNew: options.forceNewSession, purpose: agentPurpose, promote: kind === "modify" || (!options.forceNewSession && agentPurpose === "general") });
+      }
       appendImportLog(`Agent handoff session ready kind=${kind} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
       updateAgentRun(runId, {
         sessionId: session.id,
@@ -2475,17 +2521,88 @@ function App() {
     window.history.pushState(null, "", urlForRoute(route, project));
   }
 
+  async function submitExecuteUnitPrompt(
+    prompt: string,
+    executionPage: string,
+    executionScope: TerminalScope,
+    options: { targetSessionId?: string; forceNewSession?: boolean } = {},
+  ) {
+    await sendTrackedAgentPrompt(
+      "execute",
+      "Execute Unit",
+      prompt,
+      executionPage,
+      executionScope,
+      layout,
+      sessions,
+      undefined,
+      { targetSessionId: options.targetSessionId, forceNewSession: options.forceNewSession },
+    );
+    setStatus("Execute prompt sent");
+  }
+
+  async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
+    const normalizedCurrentPage = displayWikiPath(currentWikiPath);
+    const executionPage = activePlanState.currentPath || normalizedCurrentPage;
+    const executionScope = scopeForRoute({ kind: "wiki", path: executionPage });
+    const prompt = workflowPrompt("execute-main", workspace, wikiPages, executionPage, payload?.prompt || "");
+    const candidateSession = selectExecuteAgentReuseCandidate(sessions, activeSessionId);
+    if (candidateSession) {
+      setPendingExecuteAgentConfirmation({
+        candidateSession,
+        currentPage: executionPage,
+        prompt,
+        scope: executionScope,
+      });
+      setStatus("Choose Execute agent terminal");
+      return true;
+    }
+    await submitExecuteUnitPrompt(prompt, executionPage, executionScope);
+    return true;
+  }
+
+  async function confirmExecuteInCurrentAgent() {
+    const pending = pendingExecuteAgentConfirmation;
+    if (!pending) return;
+    setPendingExecuteAgentConfirmation(null);
+    try {
+      await submitExecuteUnitPrompt(pending.prompt, pending.currentPage, pending.scope, { targetSessionId: pending.candidateSession.id });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Execute prompt failed");
+    }
+  }
+
+  async function confirmExecuteInNewAgent() {
+    const pending = pendingExecuteAgentConfirmation;
+    if (!pending) return;
+    setPendingExecuteAgentConfirmation(null);
+    try {
+      await submitExecuteUnitPrompt(pending.prompt, pending.currentPage, pending.scope, { forceNewSession: true });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Execute prompt failed");
+    }
+  }
+
+  function cancelExecuteAgentConfirmation() {
+    setPendingExecuteAgentConfirmation(null);
+    setStatus("Execute canceled");
+  }
+
   async function runCommandAction(action: CommandAction, payload?: Record<string, string>) {
     setStatus(`Running ${action}`);
     try {
-      if (action === "execute-main" || action === "modify") {
+      if (action === "execute-main") {
+        await stageExecuteUnitPrompt(payload);
+        return;
+      }
+      if (action === "modify") {
         const normalizedCurrentPage = displayWikiPath(currentWikiPath);
-        const executionPage = action === "execute-main" ? activePlanState.currentPath || normalizedCurrentPage : normalizedCurrentPage;
-        const executionScope = action === "execute-main" ? scopeForRoute({ kind: "wiki", path: executionPage }) : terminalScope;
+        const executionPage = normalizedCurrentPage;
+        const executionScope = terminalScope;
         const prompt = workflowPrompt(action, workspace, wikiPages, executionPage, payload?.prompt || "");
         await sendTrackedAgentPrompt(
-          action === "modify" ? "modify" : "execute",
-          action === "modify" ? "Modify Plan" : "Execute Unit",
+          "modify",
+          "Modify Plan",
           prompt,
           executionPage,
           executionScope,
@@ -2494,7 +2611,7 @@ function App() {
           undefined,
           {},
         );
-        setStatus(action === "modify" ? "Modify prompt sent" : "Execute prompt sent");
+        setStatus("Modify prompt sent");
       }
       if (action === "execute-worktree") {
         const runId = startAgentRun("worktree", "Run Dev Worktree");
@@ -2950,6 +3067,27 @@ function App() {
             </div>
           )}
         </section>
+        <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Run Execute Unit in this agent?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {pendingExecuteAgentConfirmation
+                  ? `Use ${terminalPaneLabel(pendingExecuteAgentConfirmation.candidateSession, 0).replace(/\s+--$/, "")} for ${titleForPath(pendingExecuteAgentConfirmation.currentPage, wikiPages)}, start a new agent, or cancel.`
+                  : "Choose how to run Execute Unit."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={cancelExecuteAgentConfirmation}>Cancel</AlertDialogCancel>
+              <AlertDialogAction className={buttonVariants({ variant: "outline" })} onClick={() => void confirmExecuteInNewAgent()}>
+                New agent
+              </AlertDialogAction>
+              <AlertDialogAction onClick={() => void confirmExecuteInCurrentAgent()}>
+                Run in current agent
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <ProjectEnvEditor
           activeProject={activeProject}
           initialKey={projectEnvEditor.initialKey}
@@ -6468,6 +6606,22 @@ function titleForPath(path: string, pages: WikiPage[]) {
 
 function isAgentSession(session: SessionRecord) {
   return session.role === "agent" || session.name?.toLowerCase().startsWith("agent");
+}
+
+function isReusableVisibleExecuteAgentSession(session: SessionRecord) {
+  return isAgentSession(session)
+    && isVisibleLiveTerminalSession(session)
+    && Boolean(session.command?.trim());
+}
+
+function selectExecuteAgentReuseCandidate(sessions: SessionRecord[], activeSessionId: string | null) {
+  const visibleAgents = sessions.filter(isReusableVisibleExecuteAgentSession);
+  if (!visibleAgents.length) return null;
+  if (activeSessionId) {
+    const selected = visibleAgents.find((session) => session.id === activeSessionId);
+    if (selected) return selected;
+  }
+  return visibleAgents[0] || null;
 }
 
 function isModifySession(session: SessionRecord) {

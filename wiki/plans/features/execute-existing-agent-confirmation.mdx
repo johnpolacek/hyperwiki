@@ -1,0 +1,37 @@
+---
+title: "Execute Existing Agent Confirmation"
+description: "Offer to run Execute Unit in an already visible agent terminal before starting another agent."
+wikiKind: "plan"
+---
+
+<h1>Execute Existing Agent Confirmation</h1>
+<section>
+  <h2>Status</h2>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused terminal handoff UX fix</li>
+    <li>Current unit: complete.</li>
+    <li>Next action: dogfood Execute with a selected visible agent and with the New agent choice.</li>
+  </ul>
+</section>
+<section>
+  <h2>Intent</h2>
+  <p>When Execute Unit is clicked while a visible agent terminal is already open, hyperwiki should ask whether to reuse that terminal, start a new agent, or cancel. The selected visible terminal is preferred; if none is selected, the first visible agent terminal is offered.</p>
+</section>
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Detect visible live command-backed agent sessions before Execute submits the unit prompt.</li>
+    <li>Show a confirmation with <code>Run in current agent</code>, <code>New agent</code>, and <code>Cancel</code>.</li>
+    <li>When reusing, retarget the session metadata to the resolved Execute unit scope and submit the prompt to that exact <code>sessionId</code>.</li>
+    <li>When starting new, preserve the existing hidden general standby promotion and refill behavior.</li>
+  </ul>
+</section>
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
+    <li><code>pnpm run smoke:tauri-static-assets</code> passed after removing ignored local <code>.DS_Store</code> artifacts from source asset directories.</li>
+  </ul>
+</section>

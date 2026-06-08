@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-08 feature | execute existing agent confirmation</h2>
+  <ul>
+    <li>Changed Execute Unit to ask whether to reuse the selected visible agent terminal, start a new agent, or cancel when a visible live agent is already open.</li>
+    <li>Retargeted confirmed reuse sessions to the resolved Execute unit scope before routing the prompt to the exact <code>sessionId</code>.</li>
+    <li>Added shadcn AlertDialog UI, session metadata PATCH support for scope fields, and smoke coverage for the Execute reuse/new-agent paths.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml</code>, and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-07 convention | canonical pnpm dev project command</h2>
   <ul>
     <li>Made <code>pnpm dev</code> the canonical local command for generated and imported hyperwiki projects.</li>

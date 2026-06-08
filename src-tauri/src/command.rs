@@ -856,12 +856,20 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 .as_deref()
                 .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
                 .unwrap_or(serde_json::Value::Null);
-            let result = if body.get("visibility").is_some() || body.get("purpose").is_some() {
+            let result = if body.get("visibility").is_some()
+                || body.get("purpose").is_some()
+                || body.get("scope").is_some()
+                || body.get("scopeKind").is_some()
+                || body.get("planPath").is_some()
+            {
                 registry.update_runtime_metadata(
                     id,
                     body["name"].as_str().map(str::to_string),
                     body["visibility"].as_str().map(str::to_string),
                     body["purpose"].as_str().map(str::to_string),
+                    body["scope"].as_str().map(str::to_string),
+                    body["scopeKind"].as_str().map(str::to_string),
+                    body["planPath"].as_str().map(str::to_string),
                 )
             } else {
                 registry.rename(id, body["name"].as_str().unwrap_or_default())
