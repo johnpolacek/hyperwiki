@@ -3,6 +3,7 @@ import {
   BookOpen,
   Check,
   ChevronDown,
+  ChevronRight,
   Circle,
   Command,
   Download,
@@ -2663,6 +2664,18 @@ function App() {
     }
   }
 
+  async function showDevTerminal() {
+    const visibleDevSession = selectDevTerminalSession(sessions, preview);
+    if (visibleDevSession) {
+      setActiveSessionId(visibleDevSession.id);
+      setStatus(isDetachedDevSession(visibleDevSession) ? "Dev process is running without replayable terminal output" : "Dev terminal selected");
+      return;
+    }
+    const managedId = preview?.managedSession?.id || null;
+    setStatus(managedId ? "Loading dev terminal" : "Loading sessions");
+    await loadSessions({ selectSessionId: managedId });
+  }
+
   async function initializeGitFromTerminal() {
     if (!activeProject) return;
     setStatus("Initializing Git");
@@ -2909,6 +2922,7 @@ function App() {
                 onRestartSession={restartSession}
                 onRestartDev={restartDevTerminal}
                 onRunDev={startDevTerminal}
+                onShowDev={showDevTerminal}
                 onStopDev={stopDevTerminal}
                 onOpenProjectEnv={openProjectEnvEditor}
                 onSelectSession={setActiveSessionId}
@@ -5314,6 +5328,7 @@ function TerminalPane(props: {
   onRestartDev: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onRunDev: () => void;
+  onShowDev: () => void;
   onStopDev: () => void;
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
@@ -5328,11 +5343,13 @@ function TerminalPane(props: {
   workspace: WorkspaceResponse | null;
   sessions: SessionRecord[];
 }) {
-  const liveSessions = props.sessions.filter(isVisibleTerminalPaneSession);
+  const liveSessions = useMemo(() => props.sessions.filter(isVisibleTerminalPaneSession), [props.sessions]);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
   const [isCreatingWorktree, setIsCreatingWorktree] = useState(false);
+  const [collapsedSessionIds, setCollapsedSessionIds] = useState<Set<string>>(() => new Set());
+  const sessionSectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
   const terminalContextLabel = props.currentWorkTitle || titleForPath(props.scope.planPath || "", []) || branchLabel;
   const hasGit = Boolean(props.repoContext?.git?.root);
@@ -5340,7 +5357,13 @@ function TerminalPane(props: {
   const canRunDev = props.preview?.canStart === true;
   const canStopDev = props.preview?.canStop === true;
   const canRestartDev = props.preview?.canRestart === true;
-  const devButtonLabel = canStopDev ? "stop dev" : props.preview?.running ? "dev running" : "run dev";
+  const devPaneSession = selectDevTerminalSession(liveSessions, props.preview);
+  const canShowDevTerminal = Boolean(devPaneSession || props.preview?.managedSession?.id || props.preview?.running);
+  const devTerminalTitle = devPaneSession
+    ? "Show the running dev terminal"
+    : props.preview?.managedSession?.attachable === false
+      ? "Show managed dev process details"
+      : "Load dev session details";
   const runDevTitle = canRunDev
     ? props.preview?.startCommand || "Run dev"
     : props.preview?.reason || "No package.json dev script is available.";
@@ -5352,6 +5375,27 @@ function TerminalPane(props: {
   useEffect(() => {
     appendImportLog(`Terminal pane render project=${props.activeProject?.id || "none"} scope=${props.scope.scope} sessions=${props.sessions.length} active=${props.activeSessionId || "none"} ids=${props.sessions.map((session) => `${session.id}:${session.role || ""}:${session.scope || ""}`).join(",") || "none"}`);
   }, [props.activeProject?.id, props.activeSessionId, props.scope.scope, props.sessions]);
+
+  useEffect(() => {
+    setCollapsedSessionIds((current) => {
+      const visibleIds = new Set(liveSessions.map((session) => session.id));
+      const next = new Set([...current].filter((id) => visibleIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [liveSessions]);
+
+  useEffect(() => {
+    if (!props.activeSessionId) return;
+    setCollapsedSessionIds((current) => {
+      if (!current.has(props.activeSessionId || "")) return current;
+      const next = new Set(current);
+      next.delete(props.activeSessionId || "");
+      return next;
+    });
+    requestAnimationFrame(() => {
+      sessionSectionRefs.current[props.activeSessionId || ""]?.scrollIntoView({ block: "nearest" });
+    });
+  }, [props.activeSessionId]);
 
   function openWorktreePopover() {
     if (!hasGit) {
@@ -5386,6 +5430,39 @@ function TerminalPane(props: {
     }
   }
 
+  function setSessionSectionRef(sessionId: string, element: HTMLElement | null) {
+    sessionSectionRefs.current[sessionId] = element;
+  }
+
+  function toggleSessionCollapsed(sessionId: string) {
+    setCollapsedSessionIds((current) => {
+      const next = new Set(current);
+      if (next.has(sessionId)) {
+        next.delete(sessionId);
+      } else {
+        next.add(sessionId);
+      }
+      return next;
+    });
+  }
+
+  function showDevTerminal() {
+    if (devPaneSession) {
+      setCollapsedSessionIds((current) => {
+        if (!current.has(devPaneSession.id)) return current;
+        const next = new Set(current);
+        next.delete(devPaneSession.id);
+        return next;
+      });
+      props.onSelectSession(devPaneSession.id);
+      requestAnimationFrame(() => {
+        sessionSectionRefs.current[devPaneSession.id]?.scrollIntoView({ block: "nearest" });
+      });
+      return;
+    }
+    props.onShowDev();
+  }
+
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
@@ -5397,9 +5474,20 @@ function TerminalPane(props: {
               {hasGit ? "+ worktree" : "init git"}
             </Button>
           ) : null}
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev && !canStopDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={canStopDev ? props.onStopDev : props.onRunDev}>
-            {devButtonLabel}
-          </Button>
+          {props.preview?.running ? (
+            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canShowDevTerminal} size="sm" title={props.preview?.reason || devTerminalTitle} variant="outline" type="button" onClick={showDevTerminal}>
+              dev terminal
+            </Button>
+          ) : (
+            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
+              run dev
+            </Button>
+          )}
+          {canStopDev ? (
+            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8]" size="sm" title="Stop managed dev process" variant="outline" type="button" onClick={props.onStopDev}>
+              stop dev
+            </Button>
+          ) : null}
           {canRestartDev ? (
             <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" title="Restart managed dev process" variant="outline" type="button" onClick={props.onRestartDev}>
               restart
@@ -5465,27 +5553,52 @@ function TerminalPane(props: {
         ) : null}
         {liveSessions.length ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {liveSessions.map((session, index) => (
-              <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t" key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
-                <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-2 text-xs">
-                  <div className="min-w-0">
-                    <p className="m-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</p>
-                  </div>
-                  <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={() => props.onCloseSession(session.id)} title="Close terminal" aria-label="Close terminal">
-                    <X aria-hidden="true" data-icon="inline-start" />
-                  </Button>
-                </header>
-                <div className="min-h-0 flex-1">
-                  {isDetachedDevSession(session) ? (
-                    <DetachedDevSession session={session} onRestart={props.onRestartDev} onStop={props.onStopDev} />
-                  ) : isPendingTerminalSession(session) ? (
-                    <PendingTerminalSession session={session} />
+            {liveSessions.map((session, index) => {
+              const isCollapsed = collapsedSessionIds.has(session.id);
+              const paneStatus = terminalPaneStatusLabel(session);
+              return (
+                <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
+                  <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-2 text-xs">
+                    <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left" type="button" onClick={(event) => { event.stopPropagation(); toggleSessionCollapsed(session.id); }} aria-expanded={!isCollapsed} title={isCollapsed ? "Expand terminal" : "Collapse terminal"}>
+                      {isCollapsed ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
+                      <span className="min-w-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</span>
+                      <span className="shrink-0 text-[11px] text-[#8c958e]">{paneStatus}</span>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {isDetachedDevSession(session) ? (
+                        <>
+                          <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8]" size="sm" variant="outline" type="button" onClick={(event) => { event.stopPropagation(); props.onStopDev(); }}>
+                            stop
+                          </Button>
+                          <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={(event) => { event.stopPropagation(); props.onRestartDev(); }}>
+                            restart
+                          </Button>
+                        </>
+                      ) : null}
+                      <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={(event) => { event.stopPropagation(); props.onCloseSession(session.id); }} title="Close terminal" aria-label="Close terminal">
+                        <X aria-hidden="true" data-icon="inline-start" />
+                      </Button>
+                    </div>
+                  </header>
+                  {isCollapsed ? (
+                    <div className="flex min-h-8 items-center justify-between gap-3 bg-[#171a18] px-3 py-2 text-[11px] text-[#8c958e]">
+                      <span className="min-w-0 truncate">{terminalCollapsedSummary(session)}</span>
+                      {session.pid ? <span className="shrink-0">pid {session.pid}</span> : null}
+                    </div>
                   ) : (
-                    <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
+                    <div className="min-h-0 flex-1">
+                      {isDetachedDevSession(session) ? (
+                        <DetachedDevSession session={session} onRestart={props.onRestartDev} onStop={props.onStopDev} />
+                      ) : isPendingTerminalSession(session) ? (
+                        <PendingTerminalSession session={session} />
+                      ) : (
+                        <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
+                      )}
+                    </div>
                   )}
-                </div>
-              </section>
-            ))}
+                </section>
+              );
+            })}
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
@@ -6354,6 +6467,19 @@ function terminalPaneLabel(session: SessionRecord, index: number) {
   return `${label} --`;
 }
 
+function terminalPaneStatusLabel(session: SessionRecord) {
+  if (isDetachedDevSession(session)) return "detached";
+  if (isPendingTerminalSession(session)) return session.status === "failed" ? "failed" : "starting";
+  if (isLiveTerminalSession(session)) return "running";
+  return session.status || "unknown";
+}
+
+function terminalCollapsedSummary(session: SessionRecord) {
+  if (isDetachedDevSession(session)) return "Dev process is still running. Terminal output cannot be replayed after restart.";
+  if (isPendingTerminalSession(session)) return session.command || session.shell || "Terminal is starting.";
+  return session.command || session.cwd || session.shell || session.id;
+}
+
 function terminalStartupNotice(session: SessionRecord) {
   if (isStandbySession(session)) return "";
   if (session.role === "agent") return "Starting agent terminal";
@@ -6376,6 +6502,16 @@ function isVisibleLiveTerminalSession(session: SessionRecord) {
 
 function isVisibleTerminalPaneSession(session: SessionRecord) {
   return (isLiveTerminalSession(session) || isPendingTerminalSession(session) || isDetachedDevSession(session)) && !isStandbySession(session);
+}
+
+function selectDevTerminalSession(sessions: SessionRecord[], preview?: AppPreviewResponse | null) {
+  const visible = sessions.filter(isVisibleTerminalPaneSession);
+  const managedId = preview?.managedSession?.id || "";
+  if (managedId) {
+    const managed = visible.find((session) => session.id === managedId);
+    if (managed) return managed;
+  }
+  return newestSession(visible.filter((session) => session.role === "dev"));
 }
 
 function upsertSessionRecord(sessions: SessionRecord[], nextSession: SessionRecord) {
