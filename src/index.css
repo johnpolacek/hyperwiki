@@ -717,7 +717,7 @@
     z-index: -1;
     background-image: radial-gradient(color-mix(in srgb, var(--muted-foreground) 30%, transparent) 1px, transparent 1px);
     background-position: 0 0;
-    background-size: 16px 16px;
+    background-size: 8px 8px;
     mask-image: linear-gradient(90deg, black 0%, black 72%, transparent 100%);
     opacity: 0.72;
   }
