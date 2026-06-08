@@ -18,8 +18,8 @@ assert.ok(
   "The dev bar should show running/not running status.",
 );
 assert.ok(
-  terminalPane.includes("pid {devPid}"),
-  "The dev bar should show the managed dev PID when available.",
+  terminalPane.includes("devPreviewUrl") && terminalPane.includes("openTerminalWebLink(devPreviewUrl)") && !terminalPane.includes("pid {devPid}"),
+  "The dev bar should show and open the preview URL instead of PID or command text.",
 );
 assert.ok(
   terminalPane.includes("devIsRunning ? (") && />\s*stop\s*<\/Button>/.test(terminalPane) && />\s*start\s*<\/Button>/.test(terminalPane),

@@ -5371,7 +5371,7 @@ function TerminalPane(props: {
   const devPaneIsDetached = Boolean(devPaneSession && isDetachedDevSession(devPaneSession));
   const expandedDevPaneSession = devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? devPaneSession : null;
   const devPaneNeedsTerminalSpace = Boolean(expandedDevPaneSession && !isDetachedDevSession(expandedDevPaneSession));
-  const devPid = devPaneSession?.pid || props.preview?.managedSession?.pid || null;
+  const devPreviewUrl = props.preview?.url || "";
   const runDevTitle = canRunDev
     ? props.preview?.startCommand || "Run dev"
     : props.preview?.reason || "No package.json dev script is available.";
@@ -5544,9 +5544,14 @@ function TerminalPane(props: {
               {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
               <strong className="shrink-0 font-mono text-[11px] font-medium lowercase text-[#eef2ec]">dev</strong>
               <span className={cn("shrink-0", devIsRunning ? "text-[#b8f4c7]" : "text-[#8c958e]")}>{devIsRunning ? "running" : "not running"}</span>
-              {devPid ? <span className="shrink-0 text-[#8c958e]">pid {devPid}</span> : null}
-              <span className="min-w-0 truncate text-[#68716a]">{devPaneSession ? terminalCollapsedSummary(devPaneSession) : props.preview?.reason || runDevTitle}</span>
             </button>
+            {devPreviewUrl ? (
+              <button className="min-w-0 truncate font-mono text-[11px] text-[#9fd1ff] hover:text-[#c8e6ff]" type="button" title={`Open ${devPreviewUrl}`} onClick={() => void openTerminalWebLink(devPreviewUrl)}>
+                {devPreviewUrl}
+              </button>
+            ) : (
+              <span className="min-w-0 truncate text-[#68716a]">{props.preview?.reason || runDevTitle}</span>
+            )}
             {devPaneIsDetached ? (
               <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-2.5 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={props.onRestartDev}>
                 restart
@@ -5590,7 +5595,7 @@ function TerminalPane(props: {
               const isCollapsed = collapsedSessionIds.has(session.id);
               const paneStatus = terminalPaneStatusLabel(session);
               return (
-                <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-[#2c302d] bg-[#20231f] first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
+                <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-[#3a403b] bg-[#20231f] first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
                   <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-2 text-xs">
                     <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left" type="button" onClick={(event) => { event.stopPropagation(); toggleSessionCollapsed(session.id); }} aria-expanded={!isCollapsed} title={isCollapsed ? "Expand terminal" : "Collapse terminal"}>
                       {isCollapsed ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
