@@ -2974,7 +2974,7 @@ function TopBar(props: {
   }, [props.isProjectsOpen, props.setIsProjectsOpen]);
 
   return (
-    <header className="hyperwiki-header flex min-h-12 shrink-0 items-center justify-between gap-4 overflow-hidden border-b bg-card/95 px-3 text-sm backdrop-blur">
+    <header className="hyperwiki-header flex min-h-12 shrink-0 items-center justify-between gap-4 overflow-hidden border-y bg-card/95 px-3 text-sm backdrop-blur">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
         <BrandMark />
         <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
