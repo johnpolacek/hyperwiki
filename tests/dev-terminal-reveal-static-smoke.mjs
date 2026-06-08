@@ -35,6 +35,10 @@ assert.ok(
   "TerminalPane should track collapsed terminal panes.",
 );
 assert.ok(
+  terminalPane.includes("devPaneNeedsTerminalSpace") && terminalPane.includes('devPaneNeedsTerminalSpace && "min-h-0 flex-1"'),
+  "Detached dev panes should not reserve the whole terminal area when expanded.",
+);
+assert.ok(
   terminalPane.includes("aria-expanded={!isCollapsed}"),
   "Collapsed terminal headers should expose expanded state.",
 );

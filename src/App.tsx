@@ -5368,6 +5368,8 @@ function TerminalPane(props: {
   const canRunDev = props.preview?.canStart === true;
   const canStopDev = props.preview?.canStop === true;
   const devIsRunning = props.preview?.running === true;
+  const expandedDevPaneSession = devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? devPaneSession : null;
+  const devPaneNeedsTerminalSpace = Boolean(expandedDevPaneSession && !isDetachedDevSession(expandedDevPaneSession));
   const devPid = devPaneSession?.pid || props.preview?.managedSession?.pid || null;
   const runDevTitle = canRunDev
     ? props.preview?.startCommand || "Run dev"
@@ -5535,7 +5537,7 @@ function TerminalPane(props: {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-[#2c302d] bg-[#171a18]", devPaneSession && !collapsedSessionIds.has(devPaneSession.id) && "min-h-0 flex-1")}>
+        <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-[#2c302d] bg-[#171a18]", devPaneNeedsTerminalSpace && "min-h-0 flex-1")}>
           <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 px-3 text-xs">
             <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={devPaneSession ? toggleDevCollapsed : revealDevTerminal} aria-expanded={Boolean(devPaneSession && !collapsedSessionIds.has(devPaneSession.id))} title={devPaneSession && collapsedSessionIds.has(devPaneSession.id) ? "Expand dev terminal" : devPaneSession ? "Collapse dev terminal" : "Load dev session details"}>
               {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
@@ -5554,14 +5556,14 @@ function TerminalPane(props: {
               </Button>
             )}
           </header>
-          {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? (
-            <div className="min-h-0 flex-1">
-              {isDetachedDevSession(devPaneSession) ? (
-                <DetachedDevSession session={devPaneSession} onRestart={props.onRestartDev} />
-              ) : isPendingTerminalSession(devPaneSession) ? (
-                <PendingTerminalSession session={devPaneSession} />
+          {expandedDevPaneSession ? (
+            <div className={cn("min-h-0", devPaneNeedsTerminalSpace && "flex-1")}>
+              {isDetachedDevSession(expandedDevPaneSession) ? (
+                <DetachedDevSession session={expandedDevPaneSession} onRestart={props.onRestartDev} />
+              ) : isPendingTerminalSession(expandedDevPaneSession) ? (
+                <PendingTerminalSession session={expandedDevPaneSession} />
               ) : (
-                <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === devPaneSession.id} onTerminalText={props.onTerminalText} session={devPaneSession} />
+                <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === expandedDevPaneSession.id} onTerminalText={props.onTerminalText} session={expandedDevPaneSession} />
               )}
             </div>
           ) : null}
