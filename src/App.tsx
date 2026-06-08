@@ -2929,6 +2929,7 @@ function App() {
                 onInitializeGit={initializeGitFromTerminal}
                 onRenameSession={renameSession}
                 onRestartSession={restartSession}
+                onRestartDev={restartDevTerminal}
                 onRunDev={startDevTerminal}
                 onShowDev={showDevTerminal}
                 onStopDev={stopDevTerminal}
@@ -5333,6 +5334,7 @@ function TerminalPane(props: {
   onInitializeGit: () => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRenameSession: (sessionId: string, name: string) => void;
+  onRestartDev: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onRunDev: () => void;
   onShowDev: () => void;
@@ -5555,7 +5557,7 @@ function TerminalPane(props: {
           {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? (
             <div className="min-h-0 flex-1">
               {isDetachedDevSession(devPaneSession) ? (
-                <DetachedDevSession session={devPaneSession} onStop={props.onStopDev} />
+                <DetachedDevSession session={devPaneSession} onRestart={props.onRestartDev} />
               ) : isPendingTerminalSession(devPaneSession) ? (
                 <PendingTerminalSession session={devPaneSession} />
               ) : (
@@ -5687,17 +5689,17 @@ function PendingTerminalSession({ session }: { session: SessionRecord }) {
   );
 }
 
-function DetachedDevSession({ session, onStop }: { session: SessionRecord; onStop: () => void }) {
+function DetachedDevSession({ session, onRestart }: { session: SessionRecord; onRestart: () => void }) {
   return (
     <div className="grid min-h-[180px] place-items-center bg-[#0c0f0d] p-6 text-center">
       <div className="grid max-w-[360px] gap-3">
         <strong className="text-sm text-[#eef2ec]">Dev process still running</strong>
         <p className="m-0 text-xs leading-relaxed text-[#aeb8b0]">
-          Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can stop it.
+          Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can restart it.
         </p>
         <div className="flex justify-center gap-2">
-          <Button className="h-8 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={onStop}>
-            stop
+          <Button className="h-8 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={onRestart}>
+            restart
           </Button>
         </div>
         <span className="text-[11px] text-[#68716a]">pid {session.pid || "unknown"}</span>

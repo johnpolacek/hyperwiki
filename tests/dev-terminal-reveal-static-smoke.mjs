@@ -26,9 +26,9 @@ assert.ok(
   "The dev bar should consolidate start/stop into the same row.",
 );
 assert.equal(
-  />\s*dev terminal\s*<\/Button>/.test(terminalPane) || />\s*stop dev\s*<\/Button>/.test(terminalPane) || terminalPane.includes("No terminals running") || terminalPane.includes("onRestartDev"),
+  />\s*dev terminal\s*<\/Button>/.test(terminalPane) || />\s*stop dev\s*<\/Button>/.test(terminalPane) || terminalPane.includes("No terminals running"),
   false,
-  "TerminalPane should not keep separate dev terminal, stop dev, empty-state, or dev restart UI.",
+  "TerminalPane should not keep separate dev terminal, stop dev, or empty-state UI.",
 );
 assert.ok(
   terminalPane.includes("collapsedSessionIds"),
@@ -65,7 +65,6 @@ assert.ok(
   source.includes("function previewDetachedDevSession") && source.includes("managed.conflictPid"),
   "Preview-managed dev metadata should provide a fallback detached pane and PID.",
 );
-
 const detachedStart = source.indexOf("function DetachedDevSession");
 const detachedEnd = source.indexOf("function XtermSession", detachedStart);
 assert.notEqual(detachedStart, -1, "DetachedDevSession should exist.");
@@ -74,6 +73,10 @@ const detachedDev = source.slice(detachedStart, detachedEnd);
 assert.ok(
   detachedDev.includes("Terminal output cannot be replayed"),
   "Detached dev sessions should clearly say terminal output cannot be replayed.",
+);
+assert.ok(
+  detachedDev.includes("Hyperwiki can restart it") && />\s*restart\s*<\/Button>/.test(detachedDev) && !/>\s*stop\s*<\/Button>/.test(detachedDev),
+  "Detached dev sessions should offer restart instead of stop.",
 );
 
 console.log("dev terminal reveal static smoke passed");
