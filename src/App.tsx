@@ -2920,7 +2920,6 @@ function App() {
                 onInitializeGit={initializeGitFromTerminal}
                 onRenameSession={renameSession}
                 onRestartSession={restartSession}
-                onRestartDev={restartDevTerminal}
                 onRunDev={startDevTerminal}
                 onShowDev={showDevTerminal}
                 onStopDev={stopDevTerminal}
@@ -5325,7 +5324,6 @@ function TerminalPane(props: {
   onInitializeGit: () => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRenameSession: (sessionId: string, name: string) => void;
-  onRestartDev: () => void;
   onRestartSession: (session: SessionRecord) => void;
   onRunDev: () => void;
   onShowDev: () => void;
@@ -5344,6 +5342,8 @@ function TerminalPane(props: {
   sessions: SessionRecord[];
 }) {
   const liveSessions = useMemo(() => props.sessions.filter(isVisibleTerminalPaneSession), [props.sessions]);
+  const devPaneSession = selectDevTerminalSession(liveSessions, props.preview);
+  const terminalSessions = useMemo(() => liveSessions.filter((session) => session.role !== "dev"), [liveSessions]);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
   const [worktreeStatus, setWorktreeStatus] = useState("");
@@ -5356,14 +5356,8 @@ function TerminalPane(props: {
   const canCreateWorktree = hasGit && ["main", "master"].includes(String(branchLabel || "").trim().toLowerCase());
   const canRunDev = props.preview?.canStart === true;
   const canStopDev = props.preview?.canStop === true;
-  const canRestartDev = props.preview?.canRestart === true;
-  const devPaneSession = selectDevTerminalSession(liveSessions, props.preview);
-  const canShowDevTerminal = Boolean(devPaneSession || props.preview?.managedSession?.id || props.preview?.running);
-  const devTerminalTitle = devPaneSession
-    ? "Show the running dev terminal"
-    : props.preview?.managedSession?.attachable === false
-      ? "Show managed dev process details"
-      : "Load dev session details";
+  const devIsRunning = props.preview?.running === true;
+  const devPid = devPaneSession?.pid || props.preview?.managedSession?.pid || null;
   const runDevTitle = canRunDev
     ? props.preview?.startCommand || "Run dev"
     : props.preview?.reason || "No package.json dev script is available.";
@@ -5378,11 +5372,12 @@ function TerminalPane(props: {
 
   useEffect(() => {
     setCollapsedSessionIds((current) => {
-      const visibleIds = new Set(liveSessions.map((session) => session.id));
+      const visibleIds = new Set(terminalSessions.map((session) => session.id));
+      if (devPaneSession) visibleIds.add(devPaneSession.id);
       const next = new Set([...current].filter((id) => visibleIds.has(id)));
       return next.size === current.size ? current : next;
     });
-  }, [liveSessions]);
+  }, [devPaneSession, terminalSessions]);
 
   useEffect(() => {
     if (!props.activeSessionId) return;
@@ -5446,7 +5441,7 @@ function TerminalPane(props: {
     });
   }
 
-  function showDevTerminal() {
+  function revealDevTerminal() {
     if (devPaneSession) {
       setCollapsedSessionIds((current) => {
         if (!current.has(devPaneSession.id)) return current;
@@ -5463,6 +5458,14 @@ function TerminalPane(props: {
     props.onShowDev();
   }
 
+  function toggleDevCollapsed() {
+    if (devPaneSession) {
+      toggleSessionCollapsed(devPaneSession.id);
+      return;
+    }
+    props.onShowDev();
+  }
+
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
@@ -5472,25 +5475,6 @@ function TerminalPane(props: {
           {canCreateWorktree || !hasGit ? (
             <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={openWorktreePopover}>
               {hasGit ? "+ worktree" : "init git"}
-            </Button>
-          ) : null}
-          {props.preview?.running ? (
-            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canShowDevTerminal} size="sm" title={props.preview?.reason || devTerminalTitle} variant="outline" type="button" onClick={showDevTerminal}>
-              dev terminal
-            </Button>
-          ) : (
-            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a] disabled:hover:border-[#2c302d] disabled:hover:text-[#68716a]" disabled={!canRunDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
-              run dev
-            </Button>
-          )}
-          {canStopDev ? (
-            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8]" size="sm" title="Stop managed dev process" variant="outline" type="button" onClick={props.onStopDev}>
-              stop dev
-            </Button>
-          ) : null}
-          {canRestartDev ? (
-            <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" title="Restart managed dev process" variant="outline" type="button" onClick={props.onRestartDev}>
-              restart
             </Button>
           ) : null}
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!props.activeProject} size="sm" title="Edit project .env.local" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(undefined, "terminal")}>
@@ -5540,6 +5524,37 @@ function TerminalPane(props: {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-[#2c302d] bg-[#171a18]", devPaneSession && !collapsedSessionIds.has(devPaneSession.id) && "min-h-0 flex-1")}>
+          <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 px-3 text-xs">
+            <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={devPaneSession ? toggleDevCollapsed : revealDevTerminal} aria-expanded={Boolean(devPaneSession && !collapsedSessionIds.has(devPaneSession.id))} title={devPaneSession && collapsedSessionIds.has(devPaneSession.id) ? "Expand dev terminal" : devPaneSession ? "Collapse dev terminal" : "Load dev session details"}>
+              {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
+              <strong className="shrink-0 font-mono text-[11px] font-medium lowercase text-[#eef2ec]">dev</strong>
+              <span className={cn("shrink-0", devIsRunning ? "text-[#b8f4c7]" : "text-[#8c958e]")}>{devIsRunning ? "running" : "not running"}</span>
+              {devPid ? <span className="shrink-0 text-[#8c958e]">pid {devPid}</span> : null}
+              <span className="min-w-0 truncate text-[#68716a]">{devPaneSession ? terminalCollapsedSummary(devPaneSession) : props.preview?.reason || runDevTitle}</span>
+            </button>
+            {devIsRunning ? (
+              <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!canStopDev} size="sm" variant="outline" type="button" onClick={props.onStopDev}>
+                stop
+              </Button>
+            ) : (
+              <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!canRunDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
+                start
+              </Button>
+            )}
+          </header>
+          {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? (
+            <div className="min-h-0 flex-1">
+              {isDetachedDevSession(devPaneSession) ? (
+                <DetachedDevSession session={devPaneSession} onStop={props.onStopDev} />
+              ) : isPendingTerminalSession(devPaneSession) ? (
+                <PendingTerminalSession session={devPaneSession} />
+              ) : (
+                <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === devPaneSession.id} onTerminalText={props.onTerminalText} session={devPaneSession} />
+              )}
+            </div>
+          ) : null}
+        </section>
         {props.terminalEnvHint ? (
           <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#182018] px-3 py-2 text-xs text-[#d8ded9]">
             <p className="m-0 min-w-0 truncate">
@@ -5551,9 +5566,9 @@ function TerminalPane(props: {
             </Button>
           </div>
         ) : null}
-        {liveSessions.length ? (
+        {terminalSessions.length ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {liveSessions.map((session, index) => {
+            {terminalSessions.map((session, index) => {
               const isCollapsed = collapsedSessionIds.has(session.id);
               const paneStatus = terminalPaneStatusLabel(session);
               return (
@@ -5565,16 +5580,6 @@ function TerminalPane(props: {
                       <span className="shrink-0 text-[11px] text-[#8c958e]">{paneStatus}</span>
                     </button>
                     <div className="flex shrink-0 items-center gap-1">
-                      {isDetachedDevSession(session) ? (
-                        <>
-                          <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8]" size="sm" variant="outline" type="button" onClick={(event) => { event.stopPropagation(); props.onStopDev(); }}>
-                            stop
-                          </Button>
-                          <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={(event) => { event.stopPropagation(); props.onRestartDev(); }}>
-                            restart
-                          </Button>
-                        </>
-                      ) : null}
                       <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={(event) => { event.stopPropagation(); props.onCloseSession(session.id); }} title="Close terminal" aria-label="Close terminal">
                         <X aria-hidden="true" data-icon="inline-start" />
                       </Button>
@@ -5587,9 +5592,7 @@ function TerminalPane(props: {
                     </div>
                   ) : (
                     <div className="min-h-0 flex-1">
-                      {isDetachedDevSession(session) ? (
-                        <DetachedDevSession session={session} onRestart={props.onRestartDev} onStop={props.onStopDev} />
-                      ) : isPendingTerminalSession(session) ? (
+                      {isPendingTerminalSession(session) ? (
                         <PendingTerminalSession session={session} />
                       ) : (
                         <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === session.id} onTerminalText={props.onTerminalText} session={session} />
@@ -5601,9 +5604,7 @@ function TerminalPane(props: {
             })}
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-auto px-5 py-4 text-xs text-[#abb5ad]">
-            No terminals running
-          </div>
+          <div className="min-h-0 flex-1" />
         )}
       </div>
     </aside>
@@ -5677,20 +5678,17 @@ function PendingTerminalSession({ session }: { session: SessionRecord }) {
   );
 }
 
-function DetachedDevSession({ session, onRestart, onStop }: { session: SessionRecord; onRestart: () => void; onStop: () => void }) {
+function DetachedDevSession({ session, onStop }: { session: SessionRecord; onStop: () => void }) {
   return (
     <div className="grid min-h-[180px] place-items-center bg-[#0c0f0d] p-6 text-center">
       <div className="grid max-w-[360px] gap-3">
         <strong className="text-sm text-[#eef2ec]">Dev process still running</strong>
         <p className="m-0 text-xs leading-relaxed text-[#aeb8b0]">
-          Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can stop or restart it.
+          Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can stop it.
         </p>
         <div className="flex justify-center gap-2">
           <Button className="h-8 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" type="button" onClick={onStop}>
             stop
-          </Button>
-          <Button className="h-8 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={onRestart}>
-            restart
           </Button>
         </div>
         <span className="text-[11px] text-[#68716a]">pid {session.pid || "unknown"}</span>

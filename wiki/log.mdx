@@ -2413,8 +2413,8 @@ wikiKind: "page"
 <article>
   <h2>2026-06-08 implementation | dev terminal reveal and collapse</h2>
   <ul>
-    <li>Split the running dev controls so <code>dev terminal</code> reveals the pane while <code>stop dev</code> remains a separate lifecycle action.</li>
-    <li>Added expandable and collapsible terminal pane headers with compact status summaries.</li>
+    <li>Consolidated dev into one terminal row that shows running state, start or stop, PID when known, and collapse or expand.</li>
+    <li>Removed separate <code>dev terminal</code>, <code>stop dev</code>, dev restart, dev close, and empty terminal copy from the dev surface.</li>
     <li>Kept detached managed dev sessions explicit that terminal output cannot be replayed after restart.</li>
     <li>Added static smoke coverage and verified with <code>pnpm run check</code>.</li>
   </ul>

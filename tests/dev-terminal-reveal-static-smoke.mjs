@@ -10,17 +10,25 @@ assert.notEqual(terminalPaneEnd, -1, "TerminalSessionTab should follow TerminalP
 const terminalPane = source.slice(terminalPaneStart, terminalPaneEnd);
 
 assert.ok(
-  terminalPane.includes("dev terminal"),
-  "Running dev state should expose a dedicated dev terminal reveal control.",
+  terminalPane.includes("<strong className=\"shrink-0 font-mono text-[11px] font-medium lowercase text-[#eef2ec]\">dev</strong>"),
+  "TerminalPane should render a consolidated dev status bar.",
 );
 assert.ok(
-  terminalPane.includes("stop dev"),
-  "Running managed dev state should keep a separate stop dev control.",
+  terminalPane.includes("devIsRunning ? \"running\" : \"not running\""),
+  "The dev bar should show running/not running status.",
+);
+assert.ok(
+  terminalPane.includes("pid {devPid}"),
+  "The dev bar should show the managed dev PID when available.",
+);
+assert.ok(
+  terminalPane.includes("devIsRunning ? (") && />\s*stop\s*<\/Button>/.test(terminalPane) && />\s*start\s*<\/Button>/.test(terminalPane),
+  "The dev bar should consolidate start/stop into the same row.",
 );
 assert.equal(
-  terminalPane.includes("onClick={canStopDev ? props.onStopDev : props.onRunDev}"),
+  />\s*dev terminal\s*<\/Button>/.test(terminalPane) || />\s*stop dev\s*<\/Button>/.test(terminalPane) || terminalPane.includes("No terminals running") || terminalPane.includes("onRestartDev"),
   false,
-  "The primary dev button should not toggle between reveal/run and destructive stop behavior.",
+  "TerminalPane should not keep separate dev terminal, stop dev, empty-state, or dev restart UI.",
 );
 assert.ok(
   terminalPane.includes("collapsedSessionIds"),

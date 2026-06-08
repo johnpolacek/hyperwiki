@@ -19,15 +19,15 @@ wikiKind: "plan"
 
 <section>
   <h2>Intent</h2>
-  <p>When a project dev server is already running, Hyperwiki should make the running terminal easy to reveal without making the same control also stop the process. Stop and Restart remain lifecycle actions; terminal reveal is a separate navigation action.</p>
+  <p>Hyperwiki should present project dev state as one compact row: dev, running state, start or stop, PID when known, and collapse or expand. Dev should not add separate toolbar buttons, restart controls, close controls, or a competing empty terminal message.</p>
 </section>
 
 <section>
   <h2>Implementation</h2>
   <ul>
-    <li>Add a dedicated <code>dev terminal</code> control when preview reports a running dev server.</li>
-    <li>Keep <code>stop dev</code> as a separate managed-process action.</li>
-    <li>Add per-session collapsed terminal pane state with expandable headers and compact status summaries.</li>
+    <li>Render a single dev bar that shows <code>running</code> or <code>not running</code>, the managed PID when available, and one <code>start</code> or <code>stop</code> action.</li>
+    <li>Remove separate <code>dev terminal</code>, <code>stop dev</code>, dev restart, dev close, and <code>No terminals running</code> UI.</li>
+    <li>Keep per-session collapsed terminal pane state with expandable headers and compact status summaries.</li>
     <li>Reveal, expand, select, and scroll to the dev pane when a live Hyperwiki-owned dev session exists.</li>
     <li>Keep detached managed dev sessions honest by showing that terminal output cannot be replayed after an app restart.</li>
   </ul>
@@ -37,6 +37,6 @@ wikiKind: "plan"
   <h2>Verification</h2>
   <ul>
     <li><code>pnpm run check</code> passed.</li>
-    <li>Added static smoke coverage for separate dev reveal and stop controls, collapse state, scroll reveal, and detached dev copy.</li>
+    <li>Added static smoke coverage for the consolidated dev bar, start/stop action, collapse state, scroll reveal, and detached dev copy.</li>
   </ul>
 </section>
