@@ -27,6 +27,7 @@ pub fn surface() -> DomainSurface {
 
 const OUTPUT_BUFFER_LIMIT: usize = 64 * 1024;
 pub const TERMINAL_OUTPUT_EVENT: &str = "terminal://output";
+pub const TERMINAL_COMPLETION_EVENT: &str = "terminal://completion";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,6 +77,19 @@ pub struct TerminalOutputEvent {
     pub session_id: String,
     pub seq: u64,
     pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalCompletionEvent {
+    pub session_id: String,
+    pub role: Option<String>,
+    pub name: Option<String>,
+    pub scope: Option<String>,
+    pub plan_path: Option<String>,
+    pub reason: String,
+    pub exit_code: Option<i32>,
+    pub completed_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -437,7 +451,8 @@ impl TerminalManager {
         })
     }
 
-    pub fn diagnostics(&self, id: &str) -> TerminalWriteDiagnostics {
+    pub fn diagnostics(&mut self, id: &str) -> TerminalWriteDiagnostics {
+        self.reap_completed_sessions(None);
         let process = self.sessions.get(id);
         let replay_seq = process.map(|process| process.replay().seq);
         TerminalWriteDiagnostics {
@@ -446,6 +461,40 @@ impl TerminalManager {
             pid: process.and_then(TerminalProcess::pid),
             process_group: process.and_then(TerminalProcess::process_group),
         }
+    }
+
+    pub fn reap_completed_sessions(&mut self, app: Option<&tauri::AppHandle>) -> Vec<TerminalCompletionEvent> {
+        let mut completed = Vec::new();
+        let ids = self.sessions.keys().cloned().collect::<Vec<_>>();
+        for id in ids {
+            let Some(status) = self
+                .sessions
+                .get_mut(&id)
+                .and_then(TerminalProcess::try_wait)
+            else {
+                continue;
+            };
+            let Some(process) = self.sessions.remove(&id) else {
+                continue;
+            };
+            if let Ok(session) = process.registry().close(&id) {
+                let event = TerminalCompletionEvent {
+                    session_id: id,
+                    role: Some(session.role),
+                    name: Some(session.name),
+                    scope: Some(session.scope),
+                    plan_path: session.plan_path,
+                    reason: "process-exit".to_string(),
+                    exit_code: status.exit_code,
+                    completed_at: timestamp(),
+                };
+                if let Some(app) = app {
+                    let _ = app.emit(TERMINAL_COMPLETION_EVENT, event.clone());
+                }
+                completed.push(event);
+            }
+        }
+        completed
     }
 
     pub fn close(&mut self, id: &str) -> Result<SessionRecord, String> {
@@ -535,6 +584,29 @@ impl TerminalProcess {
         }
     }
 
+    fn try_wait(&mut self) -> Option<TerminalProcessExit> {
+        match self {
+            TerminalProcess::Pty { child, .. } => {
+                child
+                    .try_wait()
+                    .ok()
+                    .flatten()
+                    .map(|status| TerminalProcessExit {
+                        exit_code: i32::try_from(status.exit_code()).ok(),
+                    })
+            }
+            TerminalProcess::Pipe { child, .. } => {
+                child
+                    .try_wait()
+                    .ok()
+                    .flatten()
+                    .map(|status| TerminalProcessExit {
+                        exit_code: status.code(),
+                    })
+            }
+        }
+    }
+
     fn pid(&self) -> Option<u32> {
         match self {
             TerminalProcess::Pty { child, .. } => child.process_id(),
@@ -560,6 +632,10 @@ struct TerminalOutputBuffers {
 struct TerminalReplaySnapshot {
     seq: u64,
     bytes: Vec<u8>,
+}
+
+struct TerminalProcessExit {
+    exit_code: Option<i32>,
 }
 
 fn capture_output(
@@ -806,6 +882,37 @@ mod tests {
         assert_eq!(request.purpose.as_deref(), Some("modify"));
     }
 
+    #[test]
+    fn reaps_naturally_exited_sessions_as_completion_events() {
+        let root = temp_root("terminal-completion");
+        let mut manager = TerminalManager::new();
+        manager
+            .start_pipe_session(
+                &root,
+                TerminalStartRequest {
+                    id: Some("completion-one".to_string()),
+                    name: Some("cli".to_string()),
+                    role: Some("cli".to_string()),
+                    command: Some("exit 7".to_string()),
+                    scope: Some("plan:/wiki/plans/index.mdx".to_string()),
+                    scope_kind: Some("plan".to_string()),
+                    plan_path: Some("/wiki/plans/index.mdx".to_string()),
+                    visibility: None,
+                    purpose: None,
+                },
+            )
+            .unwrap();
+
+        let events = wait_for_completion_events(&mut manager);
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].session_id, "completion-one");
+        assert_eq!(events[0].role.as_deref(), Some("cli"));
+        assert_eq!(events[0].reason, "process-exit");
+        assert_eq!(events[0].exit_code, Some(7));
+        assert!(!manager.diagnostics("completion-one").live);
+    }
+
     fn wait_for_output(manager: &TerminalManager, id: &str, needle: &str) -> String {
         for _ in 0..30 {
             let output = manager.output(id).unwrap().output;
@@ -815,6 +922,17 @@ mod tests {
             sleep(Duration::from_millis(50));
         }
         manager.output(id).unwrap().output
+    }
+
+    fn wait_for_completion_events(manager: &mut TerminalManager) -> Vec<TerminalCompletionEvent> {
+        for _ in 0..30 {
+            let events = manager.reap_completed_sessions(None);
+            if !events.is_empty() {
+                return events;
+            }
+            sleep(Duration::from_millis(50));
+        }
+        manager.reap_completed_sessions(None)
     }
 
     fn temp_root(label: &str) -> PathBuf {

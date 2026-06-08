@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   BookOpen,
+  Bell,
   Check,
   ChevronDown,
   ChevronRight,
@@ -33,6 +34,7 @@ import {
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
+import { isPermissionGranted, requestPermission, sendNotification } from "@tauri-apps/plugin-notification";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import {
   AlertDialog,
@@ -301,6 +303,9 @@ interface SettingsResponse {
   memory?: {
     entries?: MemoryEntry[];
   };
+  notifications?: {
+    terminalCompletion?: TerminalCompletionNotificationSettings;
+  };
   agentCommand?: string;
   codexCommand?: string;
   claudeCommand?: string;
@@ -308,6 +313,12 @@ interface SettingsResponse {
   mcpEnabled?: boolean;
   [key: string]: unknown;
 }
+
+type TerminalCompletionNotificationSettings = {
+  enabled?: boolean;
+  onlyWhenUnfocused?: boolean;
+  sound?: boolean;
+};
 
 interface ThemePreset {
   label?: string;
@@ -403,6 +414,19 @@ interface SessionsResponse {
 
 interface SessionResponse {
   session: SessionRecord;
+}
+
+type TerminalCompletionReason = "process-exit" | "agent-ready";
+
+interface TerminalCompletionEventPayload {
+  sessionId: string;
+  role?: string | null;
+  name?: string | null;
+  scope?: string | null;
+  planPath?: string | null;
+  reason: TerminalCompletionReason;
+  exitCode?: number | null;
+  completedAt?: string;
 }
 
 interface TerminalStartResponse {
@@ -748,6 +772,12 @@ function App() {
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
   const loggedPlanningQuestionIds = useRef(new Set<string>());
+  const armedAgentCompletions = useRef(new Map<string, { minPromptIndex: number; label: string; planPath: string | null }>());
+  const notifiedTerminalCompletions = useRef(new Set<string>());
+  const latestNotificationSettings = useRef<SettingsResponse["notifications"] | null>(null);
+  const latestSessionsRef = useRef<SessionRecord[]>([]);
+  const latestActiveProjectRef = useRef<ProjectRecord | null>(null);
+  const latestWikiPagesRef = useRef<WikiPage[]>([]);
   const wikiFingerprintRef = useRef("");
   const wikiRefreshInFlight = useRef(false);
   const latestTerminalContext = useRef<{ projectId: string; scope: string }>({ projectId: "", scope: "" });
@@ -782,6 +812,43 @@ function App() {
     && !hasGeneratedPlanPages(wikiPages);
   const activePlanState = useMemo(() => planPageActionState(currentWikiPath, wikiPages), [currentWikiPath, wikiPages]);
   const activePlanScopeComplete = useMemo(() => planScopeIsComplete(terminalScope, wikiPages), [terminalScope.scope, terminalScope.scopeKind, terminalScope.planPath, wikiPages]);
+
+  useEffect(() => {
+    latestNotificationSettings.current = settings?.notifications || null;
+  }, [settings?.notifications]);
+
+  useEffect(() => {
+    latestSessionsRef.current = sessions;
+  }, [sessions]);
+
+  useEffect(() => {
+    latestActiveProjectRef.current = activeProject;
+  }, [activeProject]);
+
+  useEffect(() => {
+    latestWikiPagesRef.current = wikiPages;
+  }, [wikiPages]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+    listenTerminalCompletion((payload) => {
+      void notifyTerminalCompletion(payload);
+      void loadSessions();
+    })
+      .then((nextUnlisten) => {
+        if (disposed) {
+          nextUnlisten();
+          return;
+        }
+        unlisten = nextUnlisten;
+      })
+      .catch((error) => appendImportLog("Terminal completion listener unavailable", error));
+    return () => {
+      disposed = true;
+      if (unlisten) unlisten();
+    };
+  }, []);
 
   useEffect(() => {
     applyAppTheme(settings?.theme);
@@ -1061,6 +1128,15 @@ function App() {
     }
     void loadSessions();
   }, [activeProject?.id, hasLoadedProjects]);
+
+  useEffect(() => {
+    if (!activeProject) return;
+    if (!sessions.some((session) => isLiveTerminalSession(session))) return;
+    const timer = window.setInterval(() => {
+      void loadSessions();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [activeProject?.id, sessions]);
 
   useEffect(() => {
     if (!activeProject || terminalScope.scopeKind !== "plan" || activePlanScopeComplete || isImportedPlanningActive) return;
@@ -1719,6 +1795,53 @@ function App() {
     });
   }, []);
 
+  function armAgentCompletion(session: SessionRecord, label: string) {
+    const bufferedText = planningQuestionBuffers.current.get(session.id) || "";
+    const readiness = agentPromptReadinessSnapshot(bufferedText);
+    const pageTitle = session.planPath ? titleForPath(session.planPath, wikiPages) : "";
+    armedAgentCompletions.current.set(session.id, {
+      minPromptIndex: readiness.promptIndex,
+      label,
+      planPath: session.planPath || null,
+    });
+    appendImportLog(`Agent completion armed session=${session.id} label=${label} promptIndex=${readiness.promptIndex} plan=${pageTitle || session.planPath || "none"}`);
+  }
+
+  async function notifyTerminalCompletion(payload: TerminalCompletionEventPayload) {
+    const completionKey = `${payload.reason}:${payload.sessionId}:${payload.completedAt || ""}`;
+    if (notifiedTerminalCompletions.current.has(completionKey)) return;
+    notifiedTerminalCompletions.current.add(completionKey);
+    const settings = terminalCompletionNotificationSettings(latestNotificationSettings.current);
+    if (!settings.enabled) return;
+    if (settings.onlyWhenUnfocused && document.hasFocus()) return;
+    const session = latestSessionsRef.current.find((candidate) => candidate.id === payload.sessionId);
+    const project = latestActiveProjectRef.current;
+    const role = payload.role || session?.role || session?.name || "terminal";
+    const name = payload.name || session?.name || role;
+    const planPath = payload.planPath || session?.planPath || "";
+    const label = role === "agent" && payload.reason === "agent-ready"
+      ? `${name} finished work`
+      : payload.exitCode && payload.exitCode !== 0
+        ? `${name} exited with status ${payload.exitCode}`
+        : `${name} finished`;
+    const scopeLabel = titleForPath(planPath, latestWikiPagesRef.current) || project?.name || project?.projectSlug || "project terminal";
+    try {
+      let granted = await isPermissionGranted();
+      if (!granted) {
+        granted = await requestPermission() === "granted";
+      }
+      if (!granted) return;
+      sendNotification({
+        title: "hyperwiki terminal complete",
+        body: `${label} in ${scopeLabel}.`,
+        group: "terminal-completion",
+        sound: settings.sound ? terminalCompletionSound() : undefined,
+      });
+    } catch (error) {
+      appendImportLog(`Terminal completion notification failed session=${payload.sessionId}`, error);
+    }
+  }
+
   const handleTerminalText = useCallback((sessionId: string, text: string) => {
     if (!text) return;
     const detectedEnvKey = detectEnvKeyFromTerminalText(text);
@@ -1730,6 +1853,21 @@ function App() {
     const current = planningQuestionBuffers.current.get(sessionId) || "";
     const next = trimPlanningQuestionBuffer(current + text);
     planningQuestionBuffers.current.set(sessionId, next);
+    const armedCompletion = armedAgentCompletions.current.get(sessionId);
+    if (armedCompletion) {
+      const readiness = agentPromptReadinessSnapshot(next);
+      if (readiness.ready && readiness.promptIndex > armedCompletion.minPromptIndex) {
+        armedAgentCompletions.current.delete(sessionId);
+        void notifyTerminalCompletion({
+          sessionId,
+          role: "agent",
+          name: armedCompletion.label,
+          planPath: armedCompletion.planPath,
+          reason: "agent-ready",
+          completedAt: new Date().toISOString(),
+        });
+      }
+    }
     const activity = latestPlanningActivity(next);
     if (activity) setPlanningActivity((currentActivity) => currentActivity === activity ? currentActivity : activity);
     const workstream = planningWorkstreamLines(next);
@@ -1936,6 +2074,7 @@ function App() {
             },
           });
           appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
+          armAgentCompletion(session, label);
           if (kind === "execute" && promptProject) {
             scheduleGeneralAgentPrewarmRefill(promptProject, projectLayout, scope, "execute-submit");
           }
@@ -2643,6 +2782,7 @@ function App() {
             scope: terminalScope.scope,
           },
         });
+        armAgentCompletion(session, "Review Workflow");
         setStatus("Review prompt sent");
       }
       if (action === "new-plan") {
@@ -4628,6 +4768,19 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
     setMode("overview");
   }
 
+  async function updateTerminalCompletionNotifications(next: Partial<TerminalCompletionNotificationSettings>) {
+    if (!draft) return;
+    const current = terminalCompletionNotificationSettings(draft.notifications);
+    const notifications = {
+      ...(draft.notifications || {}),
+      terminalCompletion: {
+        ...current,
+        ...next,
+      },
+    };
+    await save({ ...draft, notifications }, { saving: "Saving notifications...", saved: "Notification settings saved." });
+  }
+
   if (!draft) {
     return (
       <section className="min-h-0 overflow-auto bg-background/80">
@@ -4773,6 +4926,29 @@ function SettingsView({ activeProject, onOpenProjectEnv, settings }: { activePro
           </div>
         </BeamSurface>
         <div className="grid gap-5">
+          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={3} strength={0.1}>
+            <div className="mb-4 flex items-start gap-3">
+              <Bell aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />
+              <div>
+                <h2 className="m-0 text-sm font-bold uppercase">Notifications</h2>
+                <p className="m-0 mt-2 text-sm leading-6 text-muted-foreground">Notify when a project terminal finishes while hyperwiki is not focused.</p>
+              </div>
+            </div>
+            <div className="grid gap-3 text-sm">
+              <label className="flex items-center gap-3">
+                <input className="size-4 accent-primary" checked={terminalCompletionNotificationSettings(draft.notifications).enabled} type="checkbox" onChange={(event) => void updateTerminalCompletionNotifications({ enabled: event.target.checked })} />
+                <span>Terminal completion notifications</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input className="size-4 accent-primary" checked={terminalCompletionNotificationSettings(draft.notifications).sound} disabled={!terminalCompletionNotificationSettings(draft.notifications).enabled} type="checkbox" onChange={(event) => void updateTerminalCompletionNotifications({ sound: event.target.checked })} />
+                <span>Play system chime</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input className="size-4 accent-primary" checked={terminalCompletionNotificationSettings(draft.notifications).onlyWhenUnfocused} disabled={!terminalCompletionNotificationSettings(draft.notifications).enabled} type="checkbox" onChange={(event) => void updateTerminalCompletionNotifications({ onlyWhenUnfocused: event.target.checked })} />
+                <span>Only when hyperwiki is unfocused</span>
+              </label>
+            </div>
+          </BeamSurface>
           <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.1}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
@@ -8096,6 +8272,43 @@ async function listenTerminalOutput(handler: (payload: TerminalOutputEventPayloa
       bytes: payload.bytes.filter((value): value is number => Number.isInteger(value) && value >= 0 && value <= 255),
     });
   });
+}
+
+async function listenTerminalCompletion(handler: (payload: TerminalCompletionEventPayload) => void) {
+  const listen = (globalThis as TauriEventGlobal).__TAURI__?.event?.listen;
+  if (typeof listen !== "function") {
+    throw new Error("Tauri event transport is unavailable for terminal completion.");
+  }
+  return listen("terminal://completion", (event) => {
+    const payload = event.payload as Partial<TerminalCompletionEventPayload> | null;
+    if (!payload || typeof payload.sessionId !== "string" || (payload.reason !== "process-exit" && payload.reason !== "agent-ready")) return;
+    handler({
+      sessionId: payload.sessionId,
+      role: typeof payload.role === "string" ? payload.role : null,
+      name: typeof payload.name === "string" ? payload.name : null,
+      scope: typeof payload.scope === "string" ? payload.scope : null,
+      planPath: typeof payload.planPath === "string" ? payload.planPath : null,
+      reason: payload.reason,
+      exitCode: typeof payload.exitCode === "number" ? payload.exitCode : null,
+      completedAt: typeof payload.completedAt === "string" ? payload.completedAt : new Date().toISOString(),
+    });
+  });
+}
+
+function terminalCompletionNotificationSettings(settings?: SettingsResponse["notifications"] | null): Required<TerminalCompletionNotificationSettings> {
+  const terminalCompletion = settings?.terminalCompletion || {};
+  return {
+    enabled: terminalCompletion.enabled !== false,
+    onlyWhenUnfocused: terminalCompletion.onlyWhenUnfocused !== false,
+    sound: terminalCompletion.sound !== false,
+  };
+}
+
+function terminalCompletionSound() {
+  const platform = navigator.platform.toLowerCase();
+  if (platform.includes("mac")) return "Ping";
+  if (platform.includes("linux")) return "message-new-instant";
+  return undefined;
 }
 
 function terminalBytesToText(bytes: Uint8Array) {

@@ -359,6 +359,7 @@ fn run_reset_cli(args: &[String]) {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             command::set_app_handle(app.handle().clone());
             domain::codex_app_server::spawn_codex_provider_prewarm();

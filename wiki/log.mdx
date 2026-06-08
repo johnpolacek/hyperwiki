@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-08 feature | terminal completion notifications</h2>
+  <ul>
+    <li>Added app-level terminal completion notifications using the Tauri notification plugin, defaulting to notifications, sound, and only-when-unfocused delivery.</li>
+    <li>Emits completion events when terminal processes naturally exit and detects Codex agent completion when a submitted agent returns to a ready prompt.</li>
+    <li>Added Settings controls for terminal completion notifications, system chime, and focus gating.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-08 feature | execute existing agent confirmation</h2>
   <ul>
     <li>Changed Execute Unit to ask whether to reuse the selected visible agent terminal, start a new agent, or cancel when a visible live agent is already open.</li>

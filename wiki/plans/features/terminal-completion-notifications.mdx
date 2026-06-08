@@ -1,0 +1,35 @@
+---
+title: "Terminal Completion Notifications"
+description: "Notify and chime when project terminals finish work."
+wikiKind: "plan"
+status: "complete"
+---
+
+<Plan>
+  <PlanHeader>
+    <PlanKicker>Feature</PlanKicker>
+    <PlanTitle>Terminal Completion Notifications</PlanTitle>
+    <PlanSummary>
+      hyperwiki should show an OS notification and play the system notification sound when a project terminal completes meaningful work while the app is not focused.
+    </PlanSummary>
+  </PlanHeader>
+  <PlanBody>
+    <PlanSection>
+      <PlanSectionTitle>Implementation</PlanSectionTitle>
+      <ul>
+        <li>Add Tauri notification plugin support and notification capability permissions.</li>
+        <li>Emit terminal completion events from the Rust terminal manager for natural process exits.</li>
+        <li>Detect Codex agent readiness after submitted work in React and synthesize completion notifications.</li>
+        <li>Add persisted notification settings with enabled, only-when-unfocused, and sound defaults.</li>
+      </ul>
+    </PlanSection>
+    <PlanSection>
+      <PlanSectionTitle>Verification</PlanSectionTitle>
+      <ul>
+        <li><code>pnpm run check</code></li>
+        <li><code>pnpm run check:tauri</code></li>
+        <li><code>pnpm run test:tauri</code></li>
+      </ul>
+    </PlanSection>
+  </PlanBody>
+</Plan>

@@ -16,6 +16,7 @@ pub fn surface() -> DomainSurface {
             "theme token generation",
             "Soul and Memory controls",
             "managed AGENTS.md sync",
+            "notification preferences",
         ],
         parity_gate: "settings manual pass plus managed block replacement tests",
     }
@@ -326,7 +327,14 @@ fn default_settings() -> Value {
             "interface": "Use quiet, utilitarian UI that supports repeated planning, reading, and agent handoff work.",
             "agent": "Agents should preserve repo-local truth, name uncertainty, update durable wiki context, and run relevant checks before finishing."
         },
-        "memory": { "entries": [] }
+        "memory": { "entries": [] },
+        "notifications": {
+            "terminalCompletion": {
+                "enabled": true,
+                "onlyWhenUnfocused": true,
+                "sound": true
+            }
+        }
     })
 }
 

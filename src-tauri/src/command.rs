@@ -672,9 +672,10 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         let scope = query_param(&request.path, "scope");
         let registry = crate::domain::sessions::SessionRegistry::new(&project_root);
         let mut sessions = registry.list(scope.as_deref(), true);
-        let manager = terminal_manager()
+        let mut manager = terminal_manager()
             .lock()
             .unwrap_or_else(|error| error.into_inner());
+        manager.reap_completed_sessions(app.as_ref());
         for session in sessions.sessions.iter_mut() {
             let is_live = manager.diagnostics(&session.id).live;
             if is_live {
