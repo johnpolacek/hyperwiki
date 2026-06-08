@@ -22,6 +22,10 @@ assert.ok(
   "The dev bar should show and open the preview URL instead of PID or command text.",
 );
 assert.ok(
+  terminalPane.includes("border-b border-[#2c302d] px-3 text-xs") && terminalPane.includes("items-center gap-2 text-left"),
+  "Agent and CLI pane chevrons should align with the dev row chevron.",
+);
+assert.ok(
   terminalPane.includes("devIsRunning ? (") && />\s*stop\s*<\/Button>/.test(terminalPane) && />\s*start\s*<\/Button>/.test(terminalPane),
   "The dev bar should consolidate start/stop into the same row.",
 );

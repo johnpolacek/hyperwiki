@@ -5596,8 +5596,8 @@ function TerminalPane(props: {
               const paneStatus = terminalPaneStatusLabel(session);
               return (
                 <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-[#3a403b] bg-[#20231f] first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
-                  <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] pl-2 text-xs">
-                    <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left" type="button" onClick={(event) => { event.stopPropagation(); toggleSessionCollapsed(session.id); }} aria-expanded={!isCollapsed} title={isCollapsed ? "Expand terminal" : "Collapse terminal"}>
+                  <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] px-3 text-xs">
+                    <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={(event) => { event.stopPropagation(); toggleSessionCollapsed(session.id); }} aria-expanded={!isCollapsed} title={isCollapsed ? "Expand terminal" : "Collapse terminal"}>
                       {isCollapsed ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
                       <span className="min-w-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</span>
                       <span className="shrink-0 text-[11px] text-[#8c958e]">{paneStatus}</span>
