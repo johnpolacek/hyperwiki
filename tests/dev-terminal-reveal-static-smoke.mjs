@@ -57,6 +57,15 @@ assert.ok(
   "App-level dev reveal should reload sessions and prefer the managed dev session id when needed.",
 );
 
+assert.ok(
+  source.includes("previewDetachedDevSession(props.preview, props.activeProject)"),
+  "TerminalPane should synthesize a detached dev pane from preview metadata after app restart.",
+);
+assert.ok(
+  source.includes("function previewDetachedDevSession") && source.includes("managed.conflictPid"),
+  "Preview-managed dev metadata should provide a fallback detached pane and PID.",
+);
+
 const detachedStart = source.indexOf("function DetachedDevSession");
 const detachedEnd = source.indexOf("function XtermSession", detachedStart);
 assert.notEqual(detachedStart, -1, "DetachedDevSession should exist.");

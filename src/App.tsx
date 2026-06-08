@@ -261,6 +261,8 @@ interface AppPreviewResponse {
     status?: string;
     pid?: number | null;
     processGroup?: number | null;
+    conflictPid?: number | null;
+    conflictProcessGroup?: number | null;
     stoppable?: boolean;
     attachable?: boolean;
   } | null;
@@ -5349,7 +5351,7 @@ function TerminalPane(props: {
   sessions: SessionRecord[];
 }) {
   const liveSessions = useMemo(() => props.sessions.filter(isVisibleTerminalPaneSession), [props.sessions]);
-  const devPaneSession = selectDevTerminalSession(liveSessions, props.preview);
+  const devPaneSession = selectDevTerminalSession(liveSessions, props.preview) || previewDetachedDevSession(props.preview, props.activeProject);
   const terminalSessions = useMemo(() => liveSessions.filter((session) => session.role !== "dev"), [liveSessions]);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [worktreeBranch, setWorktreeBranch] = useState("");
@@ -6524,6 +6526,30 @@ function selectDevTerminalSession(sessions: SessionRecord[], preview?: AppPrevie
     if (managed) return managed;
   }
   return newestSession(visible.filter((session) => session.role === "dev"));
+}
+
+function previewDetachedDevSession(preview?: AppPreviewResponse | null, activeProject?: ProjectRecord | null): SessionRecord | null {
+  const managed = preview?.managedSession;
+  if (!preview?.running || !managed?.id) return null;
+  return {
+    id: managed.id,
+    name: "dev",
+    kind: "pty",
+    status: managed.status || "detached",
+    mode: "terminal",
+    role: "dev",
+    command: preview.startCommand || null,
+    shell: null,
+    pid: managed.pid || managed.conflictPid || null,
+    cwd: activeProject?.root || null,
+    scope: "global",
+    scopeKind: "global",
+    planPath: null,
+    visibility: "visible",
+    connectedClients: 0,
+    retained: true,
+    reconnectable: false,
+  };
 }
 
 function upsertSessionRecord(sessions: SessionRecord[], nextSession: SessionRecord) {
