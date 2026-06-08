@@ -25,6 +25,10 @@ assert.ok(
   terminalPane.includes("devIsRunning ? (") && />\s*stop\s*<\/Button>/.test(terminalPane) && />\s*start\s*<\/Button>/.test(terminalPane),
   "The dev bar should consolidate start/stop into the same row.",
 );
+assert.ok(
+  terminalPane.includes("devPaneIsDetached ? (") && terminalPane.includes("onClick={props.onRestartDev}"),
+  "Detached dev rows should show restart as the row action.",
+);
 assert.equal(
   />\s*dev terminal\s*<\/Button>/.test(terminalPane) || />\s*stop dev\s*<\/Button>/.test(terminalPane) || terminalPane.includes("No terminals running"),
   false,

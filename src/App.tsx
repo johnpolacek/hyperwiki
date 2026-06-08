@@ -5368,6 +5368,7 @@ function TerminalPane(props: {
   const canRunDev = props.preview?.canStart === true;
   const canStopDev = props.preview?.canStop === true;
   const devIsRunning = props.preview?.running === true;
+  const devPaneIsDetached = Boolean(devPaneSession && isDetachedDevSession(devPaneSession));
   const expandedDevPaneSession = devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? devPaneSession : null;
   const devPaneNeedsTerminalSpace = Boolean(expandedDevPaneSession && !isDetachedDevSession(expandedDevPaneSession));
   const devPid = devPaneSession?.pid || props.preview?.managedSession?.pid || null;
@@ -5546,7 +5547,11 @@ function TerminalPane(props: {
               {devPid ? <span className="shrink-0 text-[#8c958e]">pid {devPid}</span> : null}
               <span className="min-w-0 truncate text-[#68716a]">{devPaneSession ? terminalCollapsedSummary(devPaneSession) : props.preview?.reason || runDevTitle}</span>
             </button>
-            {devIsRunning ? (
+            {devPaneIsDetached ? (
+              <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-2.5 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={props.onRestartDev}>
+                restart
+              </Button>
+            ) : devIsRunning ? (
               <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!canStopDev} size="sm" variant="outline" type="button" onClick={props.onStopDev}>
                 stop
               </Button>
