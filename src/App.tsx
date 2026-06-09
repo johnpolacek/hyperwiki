@@ -416,6 +416,10 @@ interface SessionResponse {
   session: SessionRecord;
 }
 
+interface DroppedFilesResponse {
+  files?: Array<{ name?: string; path?: string }>;
+}
+
 type TerminalCompletionReason = "process-exit" | "agent-ready";
 
 interface TerminalCompletionEventPayload {
@@ -6250,6 +6254,37 @@ function XtermSession({
       if (!isCurrentEffect()) return;
       queueTerminalInput(data);
     });
+    const pasteListenerOptions: AddEventListenerOptions = { capture: true };
+    const handlePaste = (event: ClipboardEvent) => {
+      if (!isCurrentEffect()) return;
+      const imageFiles = terminalClipboardImageFiles(event.clipboardData);
+      if (!imageFiles.length) return;
+      const pastedText = event.clipboardData?.getData("text/plain") || "";
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      appendImportLog(`Terminal image paste start session=${session.id} files=${imageFiles.length} textChars=${pastedText.length}`);
+      void (async () => {
+        try {
+          const savedPaths = await saveTerminalDroppedFiles(activeProject, imageFiles);
+          if (!isCurrentEffect()) return;
+          for (const path of savedPaths) {
+            queueTerminalInput(terminalBracketedPaste(path));
+          }
+          if (pastedText) {
+            queueTerminalInput(terminalBracketedPaste(pastedText));
+          }
+          terminalRef.current?.focus();
+          appendImportLog(`Terminal image paste complete session=${session.id} files=${savedPaths.length} textChars=${pastedText.length}`);
+        } catch (error) {
+          if (!isCurrentEffect()) return;
+          const message = error instanceof Error ? error.message : String(error);
+          appendImportLog(`Terminal image paste failed session=${session.id}`, error);
+          terminal.write(`\r\n\x1b[31m[hyperwiki] image paste failed: ${message}\x1b[0m\r\n`);
+        }
+      })();
+    };
+    container.addEventListener("paste", handlePaste, pasteListenerOptions);
     const resizeDisposable = terminal.onResize(({ cols, rows }) => {
       if (!isCurrentEffect()) return;
       void sendResize(session.id, cols, rows);
@@ -6326,6 +6361,7 @@ function XtermSession({
       renderCheckTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(fitTimer);
       observer.disconnect();
+      container.removeEventListener("paste", handlePaste, pasteListenerOptions);
       dataDisposable.dispose();
       resizeDisposable.dispose();
       terminal.dispose();
@@ -6392,6 +6428,57 @@ function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
   const joiner = path.includes("?") ? "&" : "?";
   return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
+}
+
+function terminalClipboardImageFiles(data: DataTransfer | null) {
+  if (!data) return [];
+  const itemFiles = Array.from(data.items || [])
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file));
+  if (itemFiles.length) return itemFiles;
+  return Array.from(data.files || []).filter((file) => file.type.startsWith("image/"));
+}
+
+async function saveTerminalDroppedFiles(activeProject: ProjectRecord | null, files: File[]) {
+  const response = await hyperwikiApi.json<DroppedFilesResponse>(withProjectQuery("/api/terminal/drop", activeProject), {
+    method: "POST",
+    body: {
+      files: await Promise.all(files.map(async (file, index) => ({
+        name: terminalPasteImageFileName(file, index),
+        content: await fileToBase64(file),
+      }))),
+    },
+  });
+  return (response.files || [])
+    .map((file) => String(file.path || "").trim())
+    .filter(Boolean);
+}
+
+function terminalPasteImageFileName(file: File, index: number) {
+  if (file.name.trim()) return file.name;
+  const extension = file.type === "image/jpeg"
+    ? "jpg"
+    : file.type === "image/webp"
+      ? "webp"
+      : file.type === "image/gif"
+        ? "gif"
+        : "png";
+  return `pasted-image-${index + 1}.${extension}`;
+}
+
+async function fileToBase64(file: File) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function terminalBracketedPaste(text: string) {
+  return `\x1b[200~${text}\x1b[201~`;
 }
 
 function projectEnvRows(response: ProjectEnvResponse, initialKey?: string) {

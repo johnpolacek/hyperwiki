@@ -1,0 +1,36 @@
+---
+title: "Terminal Image Paste"
+description: "Make pasted clipboard images attach to Codex terminals in Hyperwiki."
+wikiKind: "plan"
+status: "completed"
+currentUnit: "Completed on 2026-06-09."
+---
+
+<PlanHero title="Terminal Image Paste" subtitle="Pasted clipboard images should reach Codex terminals as local image attachments instead of disappearing in the Tauri webview." status="completed" />
+
+<PlanSummary>
+  <ul>
+    <li>Status: completed</li>
+    <li>Current unit: Completed on 2026-06-09.</li>
+    <li>Scope: React xterm paste handling plus existing ignored runtime drop storage.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Intercept image clipboard files at the xterm container while leaving text-only paste owned by xterm.</li>
+    <li>Save pasted image bytes through <code>/api/terminal/drop</code> under ignored <code>.hyperwiki/state/drops</code>.</li>
+    <li>Bracket-paste the saved local image path into the active terminal so Codex TUI converts it into an image attachment.</li>
+    <li>If clipboard text is present with image files, send image paths first and then bracket-paste the text.</li>
+  </ul>
+</section>
+
+<Verification>
+  <ul>
+    <li><code>node tests/terminal-image-paste-static-smoke.mjs</code> passed.</li>
+    <li><code>pnpm exec tsc -b</code> passed.</li>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>pnpm run test:tauri -- app_shell</code> passed.</li>
+  </ul>
+</Verification>

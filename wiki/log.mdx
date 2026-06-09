@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-09 fix | terminal image paste</h2>
+  <ul>
+    <li>Added an xterm paste bridge that intercepts clipboard image files, saves them under ignored <code>.hyperwiki/state/drops</code>, and bracket-pastes the saved local file paths into the live terminal.</li>
+    <li>Kept text-only paste owned by xterm and sends clipboard text manually only when it is part of an image paste event.</li>
+    <li>Verification: <code>node tests/terminal-image-paste-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, and <code>pnpm run test:tauri -- app_shell</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-08 feature | terminal completion notifications</h2>
   <ul>
     <li>Added app-level terminal completion notifications using the Tauri notification plugin, defaulting to notifications, sound, and only-when-unfocused delivery.</li>
