@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-09 fix | dev preview Portless runtime URL</h2>
+  <ul>
+    <li>Changed dev terminal output handling to detect the exact Portless runtime URL printed by the running dev process, including fallback proxy ports such as <code>:1355</code>.</li>
+    <li>Updates the dev topbar link in memory only when the detected URL hostname matches the configured project or worktree preview hostname.</li>
+    <li>Verification: <code>node tests/dev-terminal-reveal-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, and <code>pnpm run check</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-09 fix | terminal image paste</h2>
   <ul>
     <li>Added an xterm paste bridge that intercepts clipboard image files, saves them under ignored <code>.hyperwiki/state/drops</code>, and bracket-pastes the saved local file paths into the live terminal.</li>

@@ -1,0 +1,34 @@
+---
+title: "Dev Preview Portless Runtime URL"
+description: "Show the exact Portless runtime URL printed by managed dev terminals."
+wikiKind: "plan"
+status: "completed"
+currentUnit: "Completed on 2026-06-09."
+---
+
+<PlanHero title="Dev Preview Portless Runtime URL" subtitle="The dev topbar link should match the Portless URL that actually works, including fallback proxy ports such as 1355." status="completed" />
+
+<PlanSummary>
+  <ul>
+    <li>Status: completed</li>
+    <li>Current unit: Completed on 2026-06-09.</li>
+    <li>Scope: React terminal-output parsing and dev preview link state.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Implementation Notes</h2>
+  <ul>
+    <li>Detect URLs printed by the live dev terminal, including <code>PORTLESS_URL=...</code> and Portless arrow output.</li>
+    <li>Only accept URLs whose hostname matches the configured preview hostname or the active project/worktree Portless hostname.</li>
+    <li>Update the in-memory preview URL so the existing dev topbar link opens the runtime URL.</li>
+  </ul>
+</section>
+
+<Verification>
+  <ul>
+    <li><code>node tests/dev-terminal-reveal-static-smoke.mjs</code> passed.</li>
+    <li><code>pnpm exec tsc -b</code> passed.</li>
+    <li><code>pnpm run check</code> passed.</li>
+  </ul>
+</Verification>

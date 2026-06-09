@@ -267,6 +267,7 @@ type ProjectEnvStatusTone = "neutral" | "success" | "error";
 
 interface AppPreviewResponse {
   url?: string;
+  expectedUrl?: string;
   canStart?: boolean;
   running?: boolean;
   canStop?: boolean;
@@ -781,6 +782,7 @@ function App() {
   const latestNotificationSettings = useRef<SettingsResponse["notifications"] | null>(null);
   const latestSessionsRef = useRef<SessionRecord[]>([]);
   const latestActiveProjectRef = useRef<ProjectRecord | null>(null);
+  const latestPreviewRef = useRef<AppPreviewResponse | null>(null);
   const latestWikiPagesRef = useRef<WikiPage[]>([]);
   const wikiFingerprintRef = useRef("");
   const wikiRefreshInFlight = useRef(false);
@@ -828,6 +830,10 @@ function App() {
   useEffect(() => {
     latestActiveProjectRef.current = activeProject;
   }, [activeProject]);
+
+  useEffect(() => {
+    latestPreviewRef.current = preview;
+  }, [preview]);
 
   useEffect(() => {
     latestWikiPagesRef.current = wikiPages;
@@ -1853,6 +1859,23 @@ function App() {
       setTerminalEnvHint((current) => current?.key === detectedEnvKey && current?.sessionId === sessionId
         ? current
         : { key: detectedEnvKey, sessionId });
+    }
+    const session = latestSessionsRef.current.find((candidate) => candidate.id === sessionId);
+    if (session?.role === "dev") {
+      const runtimeUrl = terminalPreviewUrlFromText(text, latestPreviewRef.current, latestActiveProjectRef.current);
+      if (runtimeUrl) {
+        setPreview((current) => {
+          if (!current || current.url === runtimeUrl) return current;
+          appendImportLog(`Dev preview runtime URL detected session=${sessionId} url=${runtimeUrl}`);
+          return {
+            ...current,
+            url: runtimeUrl,
+            running: true,
+            status: current.status === "not-configured" ? current.status : "running",
+            reason: `Dev server reported ${runtimeUrl}.`,
+          };
+        });
+      }
     }
     const current = planningQuestionBuffers.current.get(sessionId) || "";
     const next = trimPlanningQuestionBuffer(current + text);
@@ -6526,6 +6549,39 @@ function detectEnvKeyFromTerminalText(text: string) {
 
 function isRuntimeEnvKeyHintIgnored(key: string) {
   return RUNTIME_ENV_KEY_HINT_DENYLIST.has(key.trim());
+}
+
+function terminalPreviewUrlFromText(text: string, preview: AppPreviewResponse | null, activeProject: ProjectRecord | null) {
+  const urls = terminalTextForParsing(text).match(/\bhttps?:\/\/[^\s"'<>`]+/g) || [];
+  return urls
+    .map(cleanTerminalPreviewUrl)
+    .find((url) => isExpectedPreviewRuntimeUrl(url, preview, activeProject)) || "";
+}
+
+function cleanTerminalPreviewUrl(url: string) {
+  return url.replace(/[),.;\]]+$/g, "");
+}
+
+function isExpectedPreviewRuntimeUrl(url: string, preview: AppPreviewResponse | null, activeProject: ProjectRecord | null) {
+  const hostname = hostnameFromUrl(url);
+  if (!hostname) return false;
+  const expectedHosts = new Set(
+    [preview?.url, preview?.expectedUrl, activeProject?.projectSlug ? `https://${activeProject.projectSlug}.localhost` : ""]
+      .map((candidate) => hostnameFromUrl(candidate || ""))
+      .filter(Boolean)
+  );
+  if (activeProject?.projectSlug && activeProject.worktreeSlug && activeProject.worktreeSlug !== "main") {
+    expectedHosts.add(`${activeProject.worktreeSlug}.${activeProject.projectSlug}.localhost`);
+  }
+  return expectedHosts.has(hostname);
+}
+
+function hostnameFromUrl(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
 }
 
 function wikiRequestPath(path: string, activeProject: ProjectRecord | null) {

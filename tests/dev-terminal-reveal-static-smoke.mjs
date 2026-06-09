@@ -22,6 +22,14 @@ assert.ok(
   "The dev bar should show and open the preview URL instead of PID or command text.",
 );
 assert.ok(
+  source.includes("terminalPreviewUrlFromText(text, latestPreviewRef.current, latestActiveProjectRef.current)")
+    && source.includes("Dev preview runtime URL detected session=")
+    && source.includes("function isExpectedPreviewRuntimeUrl")
+    && source.includes("preview?.expectedUrl")
+    && source.includes("activeProject.worktreeSlug !== \"main\""),
+  "Dev terminal output should update the preview link to the exact Portless runtime URL.",
+);
+assert.ok(
   terminalPane.includes("border-b border-[#2c302d] px-3 text-xs") && terminalPane.includes("items-center gap-2 text-left"),
   "Agent and CLI pane chevrons should align with the dev row chevron.",
 );
