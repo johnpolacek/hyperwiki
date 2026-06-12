@@ -268,11 +268,11 @@ fn default_settings() -> Value {
                     "mode": "light",
                     "tokens": {
                         "ui": {
-                            "bg": "#f7f7f4",
+                            "bg": "#f8f8f5",
                             "panel": "#ffffff",
-                            "border": "#d8d8d0",
-                            "text": "#20231f",
-                            "muted": "#62675f",
+                            "border": "#e2e2da",
+                            "text": "#1f221e",
+                            "muted": "#6b7066",
                             "accent": "#276ef1",
                             "sidebarFont": "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
                         },

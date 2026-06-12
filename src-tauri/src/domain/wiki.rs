@@ -2252,6 +2252,7 @@ fn render_mdx_page(mdx: &str) -> String {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{}</title>
   <link rel="stylesheet" href="/assets/wiki.css">
+  <link rel="stylesheet" href="/assets/theme.css">
 </head>
 <body>
   <main class="wiki-page wiki-mdx">
