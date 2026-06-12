@@ -476,3 +476,17 @@ export function splitTrailingTerminalControlSequence(data: string) {
 export function colorDistance(red: number, green: number, blue: number, targetRed: number, targetGreen: number, targetBlue: number) {
   return Math.abs(red - targetRed) + Math.abs(green - targetGreen) + Math.abs(blue - targetBlue);
 }
+
+export function xtermThemeFromCss() {
+  const styles = getComputedStyle(document.documentElement);
+  const read = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+  const text = read("--terminal-text", "#eef2ec");
+  const accent = read("--terminal-accent", "#9fd1ff");
+  return {
+    background: read("--terminal-bg", "#272822"),
+    foreground: text,
+    cursor: text,
+    // 28% accent; xterm's color parser does not understand color-mix().
+    selectionBackground: /^#[0-9a-fA-F]{6}$/.test(accent) ? `${accent}47` : "#3b4138",
+  };
+}

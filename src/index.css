@@ -30,6 +30,9 @@
   --color-terminal-text: var(--terminal-text);
   --color-terminal-muted: var(--terminal-muted);
   --color-terminal-accent: var(--terminal-accent);
+  --color-terminal-success: var(--terminal-success);
+  --color-terminal-warning: var(--terminal-warning);
+  --color-terminal-danger: var(--terminal-danger);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -73,6 +76,11 @@
   --terminal-muted: #abb5ad;
   --terminal-accent: #9fd1ff;
   --terminal-selection: color-mix(in srgb, var(--terminal-accent) 28%, transparent);
+  /* Status colors lean toward the terminal text color so they stay readable
+     on both dark and light terminal presets. */
+  --terminal-success: color-mix(in srgb, #30a46c 55%, var(--terminal-text));
+  --terminal-warning: color-mix(in srgb, #d5a021 60%, var(--terminal-text));
+  --terminal-danger: color-mix(in srgb, #e5484d 55%, var(--terminal-text));
   --ui-sans-font: "Rethink Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --docs-serif-font: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --docs-mono-font: "Sometype Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

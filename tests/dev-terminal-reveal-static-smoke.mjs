@@ -10,7 +10,7 @@ assert.notEqual(terminalPaneEnd, -1, "TerminalSessionTab should follow TerminalP
 const terminalPane = source.slice(terminalPaneStart, terminalPaneEnd);
 
 assert.ok(
-  terminalPane.includes("<strong className=\"shrink-0 font-mono text-[11px] font-medium lowercase text-[#eef2ec]\">dev</strong>"),
+  terminalPane.includes("<strong className=\"shrink-0 font-mono text-[11px] font-medium lowercase text-terminal-text\">dev</strong>"),
   "TerminalPane should render a consolidated dev status bar.",
 );
 assert.ok(
@@ -30,7 +30,7 @@ assert.ok(
   "Dev terminal output should update the preview link to the exact Portless runtime URL.",
 );
 assert.ok(
-  terminalPane.includes("border-b border-[#2c302d] px-3 text-xs") && terminalPane.includes("items-center gap-2 text-left"),
+  terminalPane.includes("border-b border-terminal-border px-3 text-xs") && terminalPane.includes("items-center gap-2 text-left"),
   "Agent and CLI pane chevrons should align with the dev row chevron.",
 );
 assert.ok(

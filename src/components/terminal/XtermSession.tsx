@@ -4,7 +4,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Terminal } from "@xterm/xterm";
 import { hyperwikiApi } from "@/lib/api";
 import { appendImportLog } from "@/lib/import-log";
-import { terminalStartupNotice, appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isPendingTerminalSession, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, saveTerminalDroppedFiles, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
+import { terminalStartupNotice, appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isPendingTerminalSession, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, saveTerminalDroppedFiles, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, xtermRenderSnapshot, xtermThemeFromCss, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { cn } from "@/lib/utils";
 import type { ProjectRecord, SessionRecord, TerminalOutputEventPayload, TerminalReplayResponse } from "@/lib/types";
 export function XtermSession({
@@ -100,12 +100,7 @@ export function XtermSession({
       fontSize: 13,
       lineHeight: 1.3,
       scrollback: terminalXtermScrollback,
-      theme: {
-        background: "#20231f",
-        foreground: "#f7f7f4",
-        cursor: "#f7f7f4",
-        selectionBackground: "#3b4138",
-      },
+      theme: xtermThemeFromCss(),
     });
     const fitAddon = new FitAddon();
     terminalRef.current = terminal;
@@ -118,6 +113,12 @@ export function XtermSession({
       void openTerminalWebLink(uri);
     }));
     terminal.open(container);
+    // Live preset switches update the root CSS vars; re-derive the xterm
+    // theme so open terminals do not keep stale colors until remount.
+    const themeObserver = new MutationObserver(() => {
+      terminal.options.theme = xtermThemeFromCss();
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
     const isCurrentEffect = () => !disposed && xtermEffectRunRef.current === effectRun && !closedRef.current;
     appendImportLog(`Terminal xterm opened session=${session.id} effect=${effectRun} container=${container.clientWidth}x${container.clientHeight} cols=${terminal.cols} rows=${terminal.rows} active=${isActive} elapsedMs=${Date.now() - mountedAt}`);
     if (isActive) {
@@ -330,6 +331,7 @@ export function XtermSession({
       renderCheckTimers.forEach((timer) => window.clearTimeout(timer));
       window.clearTimeout(fitTimer);
       observer.disconnect();
+      themeObserver.disconnect();
       container.removeEventListener("paste", handlePaste, pasteListenerOptions);
       dataDisposable.dispose();
       resizeDisposable.dispose();
@@ -348,7 +350,7 @@ export function XtermSession({
   return (
     <div className="relative h-full min-h-0">
       {startupNoticeVisible && startupNotice ? (
-        <div className="pointer-events-none absolute left-3 top-2 z-10 font-mono text-[13px] text-[#8c958e]">
+        <div className="pointer-events-none absolute left-3 top-2 z-10 font-mono text-[13px] text-terminal-muted">
           {startupNotice}
         </div>
       ) : null}

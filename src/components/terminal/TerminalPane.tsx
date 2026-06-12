@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChevronDown, ChevronRight, GitBranch, KeyRound, Loader2, Play, RotateCcw, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendImportLog } from "@/lib/import-log";
 import { openTerminalWebLink, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, previewDetachedDevSession, selectDevTerminalSession, terminalCollapsedSummary, terminalPaneLabel, terminalPaneStatusLabel, terminalStartupNotice, worktreePreviewForSlug } from "@/lib/terminal";
@@ -167,58 +168,59 @@ export function TerminalPane(props: {
   }
 
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-[#2c302d] bg-[#111312] text-[#eef2ec] max-xl:hidden">
-      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#171a18] px-3 text-xs">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-l border-terminal-border bg-terminal-pane text-terminal-text max-xl:hidden">
+      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-terminal-border bg-terminal-toolbar px-3 text-xs">
         <div className="relative flex min-w-0 flex-1 items-center gap-2">
-          <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />
-          <strong className="min-w-0 max-w-[260px] truncate font-medium text-[#eef2ec]" title={`Current work: ${terminalContextLabel}. Checkout: ${branchLabel}`}>{terminalContextLabel}</strong>
+          <GitBranch aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" />
+          <strong className="min-w-0 max-w-[260px] truncate font-medium text-terminal-text" title={`Current work: ${terminalContextLabel}. Checkout: ${branchLabel}`}>{terminalContextLabel}</strong>
           {canCreateWorktree || !hasGit ? (
-            <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={openWorktreePopover}>
-              {hasGit ? "+ worktree" : "init git"}
-            </Button>
+            <Popover open={isWorktreeOpen} onOpenChange={(open) => (open ? openWorktreePopover() : setIsWorktreeOpen(false))}>
+              <PopoverTrigger asChild>
+                <Button className="h-7 border-terminal-accent bg-terminal-accent/15 px-3 text-xs font-bold text-terminal-text hover:bg-terminal-accent/25" size="sm" variant="outline" type="button">
+                  {hasGit ? "+ worktree" : "init git"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[min(420px,calc(100vw-32px))] border-terminal-border bg-terminal-header text-terminal-text">
+                <form className="grid gap-3 p-1" onSubmit={submitWorktree}>
+                  <strong className="text-sm">New worktree</strong>
+                  <label className="grid gap-1.5">
+                    <span className="text-[11px] font-bold uppercase text-terminal-muted">Branch</span>
+                    <input {...DISABLE_TEXT_CORRECTION_PROPS} className="w-full rounded-md border border-terminal-border bg-terminal-bg px-2.5 py-2 text-xs text-terminal-text outline-none focus:border-terminal-accent" disabled={!hasGit} value={worktreeBranch} onChange={(event) => setWorktreeBranch(event.target.value)} />
+                  </label>
+                  <dl className="grid gap-1.5 rounded-md border border-terminal-border bg-terminal-bg p-2.5">
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-terminal-muted">Slug</dt><dd className="truncate text-right">{worktreeSlug}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-terminal-muted">Path</dt><dd className="truncate text-right">{worktreePreview}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-terminal-muted">Preview</dt><dd className="truncate text-right">{previewUrl}</dd></div>
+                  </dl>
+                  {worktreeStatus ? <p className="m-0 text-[11px] leading-snug text-terminal-warning">{worktreeStatus}</p> : null}
+                  <footer className="flex items-center justify-end gap-3">
+                    <Button className="h-8 border-terminal-text bg-terminal-text px-3 text-xs font-extrabold text-terminal-bg hover:bg-terminal-text/90" disabled={isCreatingWorktree} type="submit">
+                      {hasGit ? "Create Worktree" : "init git"}
+                    </Button>
+                  </footer>
+                </form>
+              </PopoverContent>
+            </Popover>
           ) : null}
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!props.activeProject} size="sm" title="Edit project .env.local" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(undefined, "terminal")}>
+          <Button className="h-7 border-terminal-border bg-transparent px-3 text-xs font-bold text-terminal-text hover:border-terminal-accent hover:bg-transparent hover:text-terminal-accent disabled:cursor-not-allowed disabled:border-terminal-border disabled:text-terminal-muted/70" disabled={!props.activeProject} size="sm" title="Edit project .env.local" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(undefined, "terminal")}>
             env
           </Button>
-          {isWorktreeOpen ? (
-            <form className="absolute left-0 top-[calc(100%+8px)] z-50 grid w-[min(420px,calc(100vw-32px))] gap-3 rounded-lg border border-[#465063] bg-[#111513] p-3.5 text-[#eef2ec] shadow-[0_18px_52px_rgba(0,0,0,0.42)]" onSubmit={submitWorktree}>
-              <header className="flex items-center justify-between gap-3">
-                <strong className="text-sm">New worktree</strong>
-                <button className="grid size-7 place-items-center text-xl leading-none text-[#aeb8b0] hover:text-[#eef2ec]" type="button" onClick={() => setIsWorktreeOpen(false)} aria-label="Close worktree creator">&times;</button>
-              </header>
-              <label className="grid gap-1.5">
-                <span className="text-[11px] font-bold uppercase text-[#9da79f]">Branch</span>
-                <input {...DISABLE_TEXT_CORRECTION_PROPS} className="w-full rounded-md border border-[#3a403b] bg-[#0c0f0d] px-2.5 py-2 text-xs text-[#eef2ec] outline-none focus:border-[#8ea0ff]" disabled={!hasGit} value={worktreeBranch} onChange={(event) => setWorktreeBranch(event.target.value)} />
-              </label>
-              <dl className="grid gap-1.5 rounded-md border border-[#2c302d] bg-[#151917] p-2.5">
-                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Slug</dt><dd className="truncate text-right">{worktreeSlug}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Path</dt><dd className="truncate text-right">{worktreePreview}</dd></div>
-                <div className="flex items-center justify-between gap-3"><dt className="text-[11px] font-bold uppercase text-[#9da79f]">Preview</dt><dd className="truncate text-right">{previewUrl}</dd></div>
-              </dl>
-              {worktreeStatus ? <p className="m-0 text-[11px] leading-snug text-[#f4d88c]">{worktreeStatus}</p> : null}
-              <footer className="flex items-center justify-end gap-3">
-                <Button className="h-8 border-[#eef2ec] bg-[#eef2ec] px-3 text-xs font-extrabold text-[#111513] hover:bg-white" disabled={isCreatingWorktree} type="submit">
-                  {hasGit ? "Create Worktree" : "init git"}
-                </Button>
-              </footer>
-            </form>
-          ) : null}
-          {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-[#9da79f]" /> : null}
+          {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-terminal-muted" /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {props.agentProviders.codexAvailable && props.agentProviders.claudeAvailable ? (
-            <label className="flex items-center gap-1.5 text-[#9da79f]">
+            <label className="flex items-center gap-1.5 text-terminal-muted">
               <span>agent</span>
-              <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.agentProvider} onChange={(event) => props.onAgentProviderChange(event.target.value === "claude" ? "claude" : "codex")} aria-label="Coding agent provider for new agent terminals">
+              <select className="h-7 rounded border border-terminal-border bg-terminal-pane px-2 pr-7 text-terminal-text outline-none" value={props.agentProvider} onChange={(event) => props.onAgentProviderChange(event.target.value === "claude" ? "claude" : "codex")} aria-label="Coding agent provider for new agent terminals">
                 <option value="codex">codex</option>
                 <option value="claude">claude</option>
               </select>
             </label>
           ) : null}
           {props.agentProvider === "claude" ? null : (
-            <label className="flex items-center gap-1.5 text-[#9da79f]">
+            <label className="flex items-center gap-1.5 text-terminal-muted">
               <span>think</span>
-              <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.thinkingEffort} onChange={(event) => props.onThinkingEffortChange(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
+              <select className="h-7 rounded border border-terminal-border bg-terminal-pane px-2 pr-7 text-terminal-text outline-none" value={props.thinkingEffort} onChange={(event) => props.onThinkingEffortChange(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
                 <option value="low">low</option>
                 <option value="medium">med</option>
                 <option value="high">high</option>
@@ -226,39 +228,39 @@ export function TerminalPane(props: {
               </select>
             </label>
           )}
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("agent")}>
+          <Button className="h-7 border-terminal-border bg-transparent px-3 text-xs font-bold text-terminal-text hover:border-terminal-accent hover:bg-transparent hover:text-terminal-accent" size="sm" variant="outline" onClick={() => props.onStart("agent")}>
             + agent
           </Button>
-          <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
+          <Button className="h-7 border-terminal-border bg-transparent px-3 text-xs font-bold text-terminal-text hover:border-terminal-accent hover:bg-transparent hover:text-terminal-accent" size="sm" variant="outline" onClick={() => props.onStart("cli")}>
             + cli
           </Button>
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-[#2c302d] bg-[#171a18]", devPaneNeedsTerminalSpace && "min-h-0 flex-1")}>
+        <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-terminal-border bg-terminal-toolbar", devPaneNeedsTerminalSpace && "min-h-0 flex-1")}>
           <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 px-3 text-xs">
             <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={devPaneSession ? toggleDevCollapsed : revealDevTerminal} aria-expanded={Boolean(devPaneSession && !collapsedSessionIds.has(devPaneSession.id))} title={devPaneSession && collapsedSessionIds.has(devPaneSession.id) ? "Expand dev terminal" : devPaneSession ? "Collapse dev terminal" : "Load dev session details"}>
-              {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
-              <strong className="shrink-0 font-mono text-[11px] font-medium lowercase text-[#eef2ec]">dev</strong>
-              <span className={cn("shrink-0", devIsRunning ? "text-[#b8f4c7]" : "text-[#8c958e]")}>{devIsRunning ? "running" : "not running"}</span>
+              {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" />}
+              <strong className="shrink-0 font-mono text-[11px] font-medium lowercase text-terminal-text">dev</strong>
+              <span className={cn("shrink-0", devIsRunning ? "text-terminal-success" : "text-terminal-muted")}>{devIsRunning ? "running" : "not running"}</span>
             </button>
             {devPreviewUrl ? (
-              <button className="min-w-0 truncate font-mono text-[11px] text-[#9fd1ff] hover:text-[#c8e6ff]" type="button" title={`Open ${devPreviewUrl}`} onClick={() => void openTerminalWebLink(devPreviewUrl)}>
+              <button className="min-w-0 truncate font-mono text-[11px] text-terminal-accent hover:text-terminal-accent/80" type="button" title={`Open ${devPreviewUrl}`} onClick={() => void openTerminalWebLink(devPreviewUrl)}>
                 {devPreviewUrl}
               </button>
             ) : (
-              <span className="min-w-0 truncate text-[#68716a]">{props.preview?.reason || runDevTitle}</span>
+              <span className="min-w-0 truncate text-terminal-muted/70">{props.preview?.reason || runDevTitle}</span>
             )}
             {devPaneIsDetached ? (
-              <Button className="h-7 border-[#8ea0ff] bg-[#8ea0ff]/15 px-2.5 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={props.onRestartDev}>
+              <Button className="h-7 border-terminal-accent bg-terminal-accent/15 px-2.5 text-xs font-bold text-terminal-text hover:bg-terminal-accent/25" size="sm" variant="outline" type="button" onClick={props.onRestartDev}>
                 restart
               </Button>
             ) : devIsRunning ? (
-              <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#f4b8b8] hover:bg-transparent hover:text-[#f4b8b8] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!canStopDev} size="sm" variant="outline" type="button" onClick={props.onStopDev}>
+              <Button className="h-7 border-terminal-border bg-transparent px-2.5 text-xs font-bold text-terminal-text hover:border-terminal-danger hover:bg-transparent hover:text-terminal-danger disabled:cursor-not-allowed disabled:border-terminal-border disabled:text-terminal-muted/70" disabled={!canStopDev} size="sm" variant="outline" type="button" onClick={props.onStopDev}>
                 stop
               </Button>
             ) : (
-              <Button className="h-7 border-[#3a403b] bg-transparent px-2.5 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff] disabled:cursor-not-allowed disabled:border-[#2c302d] disabled:text-[#68716a]" disabled={!canRunDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
+              <Button className="h-7 border-terminal-border bg-transparent px-2.5 text-xs font-bold text-terminal-text hover:border-terminal-accent hover:bg-transparent hover:text-terminal-accent disabled:cursor-not-allowed disabled:border-terminal-border disabled:text-terminal-muted/70" disabled={!canRunDev} size="sm" title={props.preview?.reason || runDevTitle} variant="outline" type="button" onClick={props.onRunDev}>
                 start
               </Button>
             )}
@@ -276,11 +278,11 @@ export function TerminalPane(props: {
           ) : null}
         </section>
         {props.terminalEnvHint ? (
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] bg-[#182018] px-3 py-2 text-xs text-[#d8ded9]">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-terminal-border bg-terminal-header px-3 py-2 text-xs text-terminal-text">
             <p className="m-0 min-w-0 truncate">
               Missing env key detected: <code>{props.terminalEnvHint.key}</code>
             </p>
-            <Button className="h-7 shrink-0 border-[#9fd1ff] bg-[#9fd1ff]/12 px-3 text-xs font-bold text-[#eef2ec] hover:bg-[#9fd1ff]/22" size="sm" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(props.terminalEnvHint?.key, "terminal-detected")}>
+            <Button className="h-7 shrink-0 border-terminal-accent bg-terminal-accent/10 px-3 text-xs font-bold text-terminal-text hover:bg-terminal-accent/20" size="sm" variant="outline" type="button" onClick={() => props.onOpenProjectEnv(props.terminalEnvHint?.key, "terminal-detected")}>
               <KeyRound data-icon="inline-start" />
               Add env var
             </Button>
@@ -292,21 +294,21 @@ export function TerminalPane(props: {
               const isCollapsed = collapsedSessionIds.has(session.id);
               const paneStatus = terminalPaneStatusLabel(session);
               return (
-                <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-[#3a403b] bg-[#20231f] first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
-                  <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-[#2c302d] px-3 text-xs">
+                <section ref={(element) => setSessionSectionRef(session.id, element)} className={cn("flex min-h-0 flex-col overflow-hidden border-terminal-border bg-terminal-bg first:border-t-0 not-first:border-t", isCollapsed ? "shrink-0" : "flex-1")} key={session.id} onFocusCapture={() => props.onSelectSession(session.id)} onMouseDown={() => props.onSelectSession(session.id)}>
+                  <header className="flex min-h-8 shrink-0 items-center justify-between gap-3 border-b border-terminal-border px-3 text-xs">
                     <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={(event) => { event.stopPropagation(); toggleSessionCollapsed(session.id); }} aria-expanded={!isCollapsed} title={isCollapsed ? "Expand terminal" : "Collapse terminal"}>
-                      {isCollapsed ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-[#9da79f]" />}
-                      <span className="min-w-0 truncate font-mono text-[11px] font-medium lowercase text-[#eef2ec]">{terminalPaneLabel(session, index)}</span>
-                      <span className="shrink-0 text-[11px] text-[#8c958e]">{paneStatus}</span>
+                      {isCollapsed ? <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" /> : <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" />}
+                      <span className="min-w-0 truncate font-mono text-[11px] font-medium lowercase text-terminal-text">{terminalPaneLabel(session, index)}</span>
+                      <span className="shrink-0 text-[11px] text-terminal-muted">{paneStatus}</span>
                     </button>
                     <div className="flex shrink-0 items-center gap-1">
-                      <Button className="size-7 shrink-0 text-[#aeb8b0] hover:bg-transparent hover:text-[#aeb8b0]" size="icon" variant="ghost" type="button" onClick={(event) => { event.stopPropagation(); props.onCloseSession(session.id); }} title="Close terminal" aria-label="Close terminal">
+                      <Button className="size-7 shrink-0 text-terminal-muted hover:bg-transparent hover:text-terminal-muted" size="icon" variant="ghost" type="button" onClick={(event) => { event.stopPropagation(); props.onCloseSession(session.id); }} title="Close terminal" aria-label="Close terminal">
                         <X aria-hidden="true" data-icon="inline-start" />
                       </Button>
                     </div>
                   </header>
                   {isCollapsed ? (
-                    <div className="flex min-h-8 items-center justify-between gap-3 bg-[#171a18] px-3 py-2 text-[11px] text-[#8c958e]">
+                    <div className="flex min-h-8 items-center justify-between gap-3 bg-terminal-toolbar px-3 py-2 text-[11px] text-terminal-muted">
                       <span className="min-w-0 truncate">{terminalCollapsedSummary(session)}</span>
                       {session.pid ? <span className="shrink-0">pid {session.pid}</span> : null}
                     </div>
@@ -384,34 +386,34 @@ export function TerminalSessionTab(props: {
 export function PendingTerminalSession({ session }: { session: SessionRecord }) {
   const failed = session.status === "failed";
   return (
-    <div className="flex h-full min-h-0 flex-col justify-between bg-[#20231f] p-3 font-mono text-[13px] text-[#d8ded9]">
+    <div className="flex h-full min-h-0 flex-col justify-between bg-terminal-bg p-3 font-mono text-[13px] text-terminal-text">
       <div className="grid gap-2">
-        <div className="flex items-center gap-2 text-[#8c958e]">
+        <div className="flex items-center gap-2 text-terminal-muted">
           {failed ? null : <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />}
           <span>{failed ? "Agent terminal failed to start" : "Starting Codex"}</span>
         </div>
-        {failed && session.shell ? <p className="m-0 max-w-full whitespace-pre-wrap text-[#f4b8b8]">{session.shell}</p> : null}
-        {!failed ? <p className="m-0 text-[#8c958e]">Preparing the terminal session...</p> : null}
+        {failed && session.shell ? <p className="m-0 max-w-full whitespace-pre-wrap text-terminal-danger">{session.shell}</p> : null}
+        {!failed ? <p className="m-0 text-terminal-muted">Preparing the terminal session...</p> : null}
       </div>
-      <p className="m-0 truncate text-[11px] text-[#69736c]">{session.command || session.id}</p>
+      <p className="m-0 truncate text-[11px] text-terminal-muted/70">{session.command || session.id}</p>
     </div>
   );
 }
 
 export function DetachedDevSession({ session, onRestart }: { session: SessionRecord; onRestart: () => void }) {
   return (
-    <div className="grid min-h-[180px] place-items-center bg-[#0c0f0d] p-6 text-center">
+    <div className="grid min-h-[180px] place-items-center bg-terminal-bg p-6 text-center">
       <div className="grid max-w-[360px] gap-3">
-        <strong className="text-sm text-[#eef2ec]">Dev process still running</strong>
-        <p className="m-0 text-xs leading-relaxed text-[#aeb8b0]">
+        <strong className="text-sm text-terminal-text">Dev process still running</strong>
+        <p className="m-0 text-xs leading-relaxed text-terminal-muted">
           Hyperwiki started this dev process before the app restarted. Terminal output cannot be replayed, but Hyperwiki can restart it.
         </p>
         <div className="flex justify-center gap-2">
-          <Button className="h-8 border-[#8ea0ff] bg-[#8ea0ff]/15 px-3 text-xs font-bold text-white hover:bg-[#8ea0ff]/25" size="sm" variant="outline" type="button" onClick={onRestart}>
+          <Button className="h-8 border-terminal-accent bg-terminal-accent/15 px-3 text-xs font-bold text-terminal-text hover:bg-terminal-accent/25" size="sm" variant="outline" type="button" onClick={onRestart}>
             restart
           </Button>
         </div>
-        <span className="text-[11px] text-[#68716a]">pid {session.pid || "unknown"}</span>
+        <span className="text-[11px] text-terminal-muted/70">pid {session.pid || "unknown"}</span>
       </div>
     </div>
   );
