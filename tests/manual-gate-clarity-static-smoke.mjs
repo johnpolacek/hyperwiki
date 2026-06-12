@@ -14,7 +14,7 @@ const worktreeSource = appSource.slice(worktreeStart, appSource.indexOf("functio
 const planCreationStart = appSource.indexOf("function planCreationPrompt");
 const planCreationSource = appSource.slice(planCreationStart, workflowStart);
 const importPlanningStart = appSource.indexOf("function terminalImportPlanningPrompt");
-const importPlanningSource = appSource.slice(importPlanningStart, appSource.indexOf("function agentLaunchCommand", importPlanningStart));
+const importPlanningSource = appSource.slice(importPlanningStart, appSource.indexOf("function importedProjectQuestionScriptPrompt", importPlanningStart));
 
 assert.notEqual(workflowStart, -1, "workflowPrompt should exist");
 assert.notEqual(worktreeStart, -1, "existingWorktreePrompt should exist");

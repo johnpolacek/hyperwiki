@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile("src/App.tsx", "utf8");
+const source = [await readFile("src/App.tsx", "utf8"), await readFile("src/lib/agent.ts", "utf8")].join("\n");
 const mdxRenderer = await readFile("src/components/MdxPlanRenderer.tsx", "utf8");
 const css = await readFile("src/index.css", "utf8");
 const hyperwikiSkill = await readFile("src-tauri/agent-skills/hyperwiki/SKILL.md", "utf8");

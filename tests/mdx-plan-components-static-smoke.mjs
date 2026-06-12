@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const renderer = await readFile(path.resolve("src/components/MdxPlanRenderer.tsx"), "utf8");
-const app = await readFile(path.resolve("src/App.tsx"), "utf8");
+const app = [await readFile(path.resolve("src/App.tsx"), "utf8"), await readFile(path.resolve("src/lib/theme.ts"), "utf8")].join("\n");
 
 const requiredImports = [
   "@/components/ui/accordion",
