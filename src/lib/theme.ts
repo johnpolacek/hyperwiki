@@ -22,11 +22,11 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const docs = theme.tokens.docs || {};
   const terminal = theme.tokens.terminal || {};
   const root = document.documentElement;
-  const background = normalizeColor(docs.bg || ui.bg || "#f7f7f4", "#f7f7f4");
+  const background = normalizeColor(docs.bg || ui.bg || "#f8f8f5", "#f8f8f5");
   const panel = normalizeColor(ui.panel || docs.panel || "#ffffff", "#ffffff");
-  const foreground = normalizeColor(ui.text || docs.text || "#20231f", "#20231f");
-  const mutedForeground = normalizeColor(ui.muted || docs.muted || "#62675f", "#62675f");
-  const border = normalizeColor(ui.border || docs.border || "#d8d8d0", "#d8d8d0");
+  const foreground = normalizeColor(ui.text || docs.text || "#1f221e", "#1f221e");
+  const mutedForeground = normalizeColor(ui.muted || docs.muted || "#6b7066", "#6b7066");
+  const border = normalizeColor(ui.border || docs.border || "#e2e2da", "#e2e2da");
   const accent = normalizeColor(ui.accent || docs.link || "#276ef1", "#276ef1");
   const secondary = mixHex(accent, theme.mode === "dark" ? "#ffffff" : panel, theme.mode === "dark" ? 0.18 : 0.9);
   const muted = mixHex(mutedForeground, background, theme.mode === "dark" ? 0.68 : 0.84);
