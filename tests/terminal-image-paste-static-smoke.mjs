@@ -1,13 +1,11 @@
 import { readFileSync } from "node:fs";
 
-const appSource = readFileSync("src/App.tsx", "utf8");
+const appSource = [readFileSync("src/App.tsx", "utf8"), readFileSync("src/components/terminal/TerminalPane.tsx", "utf8"), readFileSync("src/components/terminal/XtermSession.tsx", "utf8"), readFileSync("src/lib/terminal.ts", "utf8")].join("\n");
 
-const xtermStart = appSource.indexOf("function XtermSession");
-const xtermEnd = appSource.indexOf("function routeFromLocation", xtermStart);
-if (xtermStart === -1 || xtermEnd === -1) {
-  throw new Error("XtermSession should exist before route helpers.");
+const xtermSession = readFileSync("src/components/terminal/XtermSession.tsx", "utf8");
+if (!xtermSession.includes("function XtermSession")) {
+  throw new Error("XtermSession should exist.");
 }
-const xtermSession = appSource.slice(xtermStart, xtermEnd);
 
 for (const needle of [
   "const pasteListenerOptions: AddEventListenerOptions = { capture: true };",

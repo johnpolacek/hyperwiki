@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-const appSource = [readFileSync("src/App.tsx", "utf8"), readFileSync("src/lib/types.ts", "utf8"), readFileSync("src/components/settings/ProjectEnvEditor.tsx", "utf8"), readFileSync("src/components/views/SettingsView.tsx", "utf8")].join("\n");
+const appSource = [readFileSync("src/App.tsx", "utf8"), readFileSync("src/lib/types.ts", "utf8"), readFileSync("src/components/settings/ProjectEnvEditor.tsx", "utf8"), readFileSync("src/components/views/SettingsView.tsx", "utf8"), readFileSync("src/components/terminal/TerminalPane.tsx", "utf8"), readFileSync("src/lib/terminal.ts", "utf8")].join("\n");
 const commandSource = readFileSync("src-tauri/src/command.rs", "utf8");
 const envSource = readFileSync("src-tauri/src/domain/project_env.rs", "utf8");
 

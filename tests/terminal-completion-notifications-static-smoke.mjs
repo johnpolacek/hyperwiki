@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const source = [await readFile("src/App.tsx", "utf8"), await readFile("src/components/views/SettingsView.tsx", "utf8"), await readFile("src/lib/terminal-notifications.ts", "utf8")].join("\n");
+const source = [await readFile("src/App.tsx", "utf8"), await readFile("src/components/views/SettingsView.tsx", "utf8"), await readFile("src/lib/terminal-notifications.ts", "utf8"), await readFile("src/components/terminal/TerminalPane.tsx", "utf8"), await readFile("src/components/terminal/XtermSession.tsx", "utf8"), await readFile("src/lib/terminal.ts", "utf8")].join("\n");
 const settings = await readFile("src-tauri/src/domain/settings.rs", "utf8");
 const cargo = await readFile("src-tauri/Cargo.toml", "utf8");
 const capability = await readFile("src-tauri/capabilities/main.json", "utf8");

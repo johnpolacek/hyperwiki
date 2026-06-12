@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile("src/App.tsx", "utf8");
+const source = [await readFile("src/App.tsx", "utf8"), await readFile("src/components/terminal/TerminalPane.tsx", "utf8"), await readFile("src/components/terminal/XtermSession.tsx", "utf8"), await readFile("src/lib/terminal.ts", "utf8")].join("\n");
 
 const terminalPaneStart = source.indexOf("function TerminalPane");
 const terminalPaneEnd = source.indexOf("function TerminalSessionTab", terminalPaneStart);

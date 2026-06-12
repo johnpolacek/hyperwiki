@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readSources } from "./lib/read-sources.mjs";
 
-const source = await readSources("src/lib/agent.ts", "src/App.tsx");
+const source = await readSources("src/lib/agent.ts", "src/App.tsx", "src/components/terminal/TerminalPane.tsx");
 
 // Claude launch commands must pass through unchanged — Claude Code has no
 // Codex-style reasoning-effort flags.

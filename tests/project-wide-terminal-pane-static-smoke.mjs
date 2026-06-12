@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile("src/App.tsx", "utf8");
+const source = [await readFile("src/App.tsx", "utf8"), await readFile("src/components/terminal/TerminalPane.tsx", "utf8"), await readFile("src/components/terminal/XtermSession.tsx", "utf8"), await readFile("src/lib/terminal.ts", "utf8")].join("\n");
 
 const loadSessionsStart = source.indexOf("async function loadSessions(");
 const loadSessionsEnd = source.indexOf("function navigate", loadSessionsStart);
@@ -73,11 +73,8 @@ assert.ok(
   "Prompt routing should still reuse only scope-matching agent sessions.",
 );
 
-const xtermStart = source.indexOf("function XtermSession");
-const xtermEnd = source.indexOf("function routeFromLocation", xtermStart);
-assert.notEqual(xtermStart, -1, "XtermSession should exist");
-assert.notEqual(xtermEnd, -1, "routeFromLocation should follow XtermSession");
-const xtermSession = source.slice(xtermStart, xtermEnd);
+const xtermSession = await readFile("src/components/terminal/XtermSession.tsx", "utf8");
+assert.ok(xtermSession.includes("function XtermSession"), "XtermSession should exist");
 assert.equal(
   xtermSession.includes("scope.scope") || xtermSession.includes("scope.planPath") || xtermSession.includes("scope.scopeKind"),
   false,
