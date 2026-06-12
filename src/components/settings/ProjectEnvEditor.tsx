@@ -127,10 +127,10 @@ export function ProjectEnvEditor({
   }
 
   return (
-    <section aria-labelledby="project-env-title" className="fixed bottom-3 left-3 z-50 flex max-h-[min(720px,calc(100vh-24px))] w-[min(560px,calc(100vw-24px))] origin-bottom-left flex-col overflow-hidden rounded-md border bg-card text-card-foreground shadow-2xl md:bottom-4 md:left-4 md:max-h-[min(720px,calc(100vh-32px))] md:w-[min(560px,calc(100vw-32px))]" role="dialog">
+    <section aria-labelledby="project-env-title" className="fixed bottom-3 left-3 z-50 flex max-h-[min(720px,calc(100vh-24px))] w-[min(560px,calc(100vw-24px))] origin-bottom-left flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-pop md:bottom-4 md:left-4 md:max-h-[min(720px,calc(100vh-32px))] md:w-[min(560px,calc(100vw-32px))]" role="dialog">
       <header className="flex shrink-0 items-start justify-between gap-4 border-b p-4">
         <div className="min-w-0">
-          <h2 className="m-0 flex items-center gap-2 text-xl font-semibold" id="project-env-title">
+          <h2 className="m-0 flex items-center gap-2 text-base font-semibold tracking-tight" id="project-env-title">
             <KeyRound data-icon="inline-start" />
             Project Env
           </h2>
@@ -164,28 +164,28 @@ export function ProjectEnvEditor({
                 return (
                   <div className="grid min-w-0 gap-3 rounded-md border bg-background p-3" key={row.id}>
                     <label className="grid min-w-0 gap-1">
-                      <span className="text-[11px] font-bold uppercase text-muted-foreground">Key</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Key</span>
                       <input
                         {...DISABLE_TEXT_CORRECTION_PROPS}
                         aria-invalid={invalid}
-                        className={cn("h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary", invalid && "border-destructive")}
+                        className={cn("h-9 min-w-0 rounded-md border border-input bg-background px-2 font-mono text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50", invalid && "border-destructive")}
                         onChange={(event) => updateRow(row.id, { name: event.target.value })}
                         title={row.name}
                         value={row.name}
                       />
-                      <span className={cn("min-h-4 text-[11px]", row.present ? "font-semibold text-emerald-700" : "text-muted-foreground")}>
+                      <span className={cn("min-h-4 text-[11px]", row.present ? "font-medium text-emerald-700 dark:text-emerald-400" : "text-muted-foreground")}>
                         {row.present ? "value set in .env.local" : row.source}
                       </span>
                     </label>
                     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                       <label className="grid min-w-0 gap-1">
-                        <span className="flex items-center gap-2 text-[11px] font-bold uppercase text-muted-foreground">
+                        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                           Value
-                          {row.present ? <strong className="rounded-sm bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-800">set</strong> : null}
+                          {row.present ? <strong className="rounded-sm bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:text-emerald-400">set</strong> : null}
                         </span>
                         <input
                           {...DISABLE_TEXT_CORRECTION_PROPS}
-                          className="h-9 min-w-0 rounded-md border bg-card px-2 font-mono text-xs outline-none focus:border-primary"
+                          className="h-9 min-w-0 rounded-md border border-input bg-background px-2 font-mono text-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
                           onChange={(event) => updateRow(row.id, { value: event.target.value })}
                           onBlur={() => setFocusedValueRows((current) => ({ ...current, [row.id]: false }))}
                           onFocus={() => setFocusedValueRows((current) => ({ ...current, [row.id]: true }))}
@@ -218,7 +218,7 @@ export function ProjectEnvEditor({
         )}
       </div>
       <footer className="flex shrink-0 flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className={cn("m-0 flex min-w-0 items-center gap-2 text-sm text-muted-foreground", statusTone === "success" && "text-emerald-700", statusTone === "error" && "text-destructive")} role="status">
+        <p className={cn("m-0 flex min-w-0 items-center gap-2 text-sm text-muted-foreground", statusTone === "success" && "text-emerald-700 dark:text-emerald-400", statusTone === "error" && "text-destructive")} role="status">
           {statusTone === "success" ? <Check aria-hidden="true" data-icon="inline-start" /> : null}
           <span className="min-w-0 truncate">{status || (dirtyRows.length ? "Autosaves after a short pause." : summary?.envFileExists ? ".env.local exists" : ".env.local will be created")}</span>
         </p>

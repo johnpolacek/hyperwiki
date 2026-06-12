@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Bell, Check, ChevronRight, KeyRound, Loader2, RotateCcw } from "lucide-react";
-import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { hyperwikiApi, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
@@ -183,11 +185,11 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
 
   if (!draft) {
     return (
-      <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={5} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={4} strength={0.08}>
+      <section className="min-h-0 overflow-auto bg-background">
+        <div className="min-h-full">
         <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
         <div className="m-8 border bg-card p-4 text-sm text-muted-foreground">Settings are unavailable.</div>
-        </BeamSurface>
+        </div>
       </section>
     );
   }
@@ -201,8 +203,8 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
     const editTheme = effectiveTheme(editableTheme);
     const presets = editableTheme.presets || {};
     return (
-      <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
+      <section className="min-h-0 overflow-auto bg-background">
+        <div className="min-h-full">
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={revertTheme}>Revert</Button><Button onClick={completeThemeEditor}>Done</Button></>}
           description="Theme changes apply immediately and save automatically."
@@ -212,13 +214,13 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
           <ThemePresetCard large presetKey={editableTheme.activePreset || "custom"} theme={editTheme} />
           <ThemePresetStrip activePreset={editableTheme.activePreset || ""} onSelect={(key) => setThemeDraft(selectThemePreset(editableTheme, key))} presets={presets} />
           <div className="grid grid-cols-[minmax(360px,0.55fr)_minmax(420px,1fr)] gap-4 max-lg:grid-cols-1">
-            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
-              <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+            <div className="rounded-lg border bg-card p-5 shadow-xs">
+              <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Mode
-                <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={editTheme.mode} onChange={(event) => setThemeDraft(updateThemeMode(editableTheme, event.target.value))}>
+                <Select className="font-normal normal-case tracking-normal" value={editTheme.mode} onChange={(event) => setThemeDraft(updateThemeMode(editableTheme, event.target.value))}>
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
-                </select>
+                </Select>
               </label>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <ColorField label="Primary" value={editTheme.tokens.ui?.accent || "#4361ee"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "accent", value))} />
@@ -232,14 +234,14 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
               </div>
               <ThemeFontSummary theme={editTheme} />
               <details className="mt-4">
-                <summary className="cursor-pointer text-xs font-bold uppercase text-muted-foreground">Advanced JSON</summary>
-                <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 w-full rounded-md border bg-background p-3 font-mono text-xs" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
+                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">Advanced JSON</summary>
+                <Textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="mt-2 min-h-40 font-mono text-xs font-normal normal-case tracking-normal" value={JSON.stringify(themeDraft, null, 2)} onChange={(event) => { try { setThemeDraft(JSON.parse(event.target.value)); setStatus(""); } catch { setStatus("Theme JSON is not valid."); } }} />
               </details>
-            </BeamSurface>
-            <BeamSurface className="grid rounded-md border bg-card p-6 shadow-sm" colorVariant="ocean" cols={4} dividerStroke="transparent" rows={3} strength={0.14}>
+            </div>
+            <div className="grid rounded-lg border bg-card p-6 shadow-xs">
               <div className="grid grid-cols-[190px_1fr] gap-8">
                 <div className="border-r pr-6 font-ui">
-                  <p className="text-xs font-bold uppercase text-muted-foreground">Plans</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plans</p>
                   <p className="mt-3 text-sm">Stage 08 Settings</p>
                   <p className="mt-3 text-sm">Unit 02 - Theme System</p>
                 </div>
@@ -249,11 +251,11 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
                   <code className="mt-5 inline-block bg-muted px-2 py-1 font-mono text-sm">wiki/plans/mvp/stage-08-settings-soul-memory.mdx</code>
                 </div>
               </div>
-            </BeamSurface>
+            </div>
           </div>
         </div>
         <SettingsStatus status={status} />
-        </BeamSurface>
+        </div>
       </section>
     );
   }
@@ -261,8 +263,8 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
   if (mode === "agent") {
     const editableAgent = agentDraft || { soul: draft.soul || {}, memory: draft.memory || { entries: [] } };
     return (
-      <section className="min-h-0 overflow-auto bg-background/80">
-        <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
+      <section className="min-h-0 overflow-auto bg-background">
+        <div className="min-h-full">
         <SettingsPageHeader
           actions={<><Button variant="outline" onClick={() => { setAgentDraft(null); setMode("overview"); }}>Cancel</Button><Button onClick={saveAgentInstructions}>Save Agent Instructions</Button></>}
           description="Saving updates global instructions and syncs the current project AGENTS.md."
@@ -270,14 +272,14 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
         />
         <div className="grid gap-4 p-8">
           <div className="grid grid-cols-[minmax(360px,0.78fr)_minmax(320px,1fr)] gap-4 max-lg:grid-cols-1">
-            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
+            <div className="rounded-lg border bg-card p-5 shadow-xs">
               <TextareaField label="Principles" value={(editableAgent.soul?.principles || []).join("\n")} rows={8} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), principles: value.split("\n").map((line) => line.trim()).filter(Boolean) } })} />
               <TextareaField label="Interface Guidance" value={editableAgent.soul?.interface || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), interface: value } })} />
               <TextareaField label="Agent Guidance" value={editableAgent.soul?.agent || ""} rows={5} onChange={(value) => setAgentDraft({ ...editableAgent, soul: { ...(editableAgent.soul || {}), agent: value } })} />
-            </BeamSurface>
-            <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.12}>
+            </div>
+            <div className="rounded-lg border bg-card p-5 shadow-xs">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase">Memory</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Memory</h2>
                 <Button variant="outline" onClick={() => setAgentDraft({ ...editableAgent, memory: { entries: [...(editableAgent.memory?.entries || []), { title: "", content: "", enabled: true }] } })}>+ Memory</Button>
               </div>
               <div className="grid gap-3">
@@ -289,34 +291,34 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
                   }} onRemove={() => setAgentDraft({ ...editableAgent, memory: { entries: (editableAgent.memory?.entries || []).filter((_, itemIndex) => itemIndex !== index) } })} />
                 )) : <p className="text-sm text-muted-foreground">No memory entries added yet.</p>}
               </div>
-            </BeamSurface>
+            </div>
           </div>
-          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={5} dividerStroke="transparent" rows={3} strength={0.1}>
+          <div className="rounded-lg border bg-card p-5 shadow-xs">
             <div className="mb-3 flex items-center justify-between gap-4">
-              <h2 className="text-sm font-bold uppercase">AGENTS.md</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">AGENTS.md</h2>
               <span className="truncate text-xs text-muted-foreground">{agentsFile.path || "AGENTS.md"}</span>
             </div>
-            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[360px] w-full rounded-md border bg-background p-4 font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
-          </BeamSurface>
+            <Textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[360px] font-mono text-xs leading-relaxed" value={agentsFile.content} onChange={(event) => setAgentsFile({ ...agentsFile, content: event.target.value })} />
+          </div>
         </div>
         <SettingsStatus status={status} />
-        </BeamSurface>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="min-h-0 overflow-auto bg-background/80">
-      <BeamSurface className="min-h-full bg-background" colorVariant="mono" cols={6} contentClassName="min-h-full" dividerStroke="transparent" duration={7} rows={5} strength={0.08}>
+    <section className="min-h-0 overflow-auto bg-background">
+      <div className="min-h-full">
       <SettingsPageHeader title="Settings" description="Control global theme and agent instructions." />
       <div className="grid grid-cols-[minmax(480px,1.18fr)_minmax(340px,0.82fr)] gap-5 p-8 max-lg:grid-cols-1">
-        <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="ocean" cols={4} dividerStroke="transparent" rows={4} strength={0.12}>
+        <div className="rounded-lg border bg-card p-5 shadow-xs">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold uppercase">Theme</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theme</h2>
             <Button variant="outline" onClick={openThemeEditor}>Edit</Button>
           </div>
           <div className="grid min-h-48 grid-cols-[minmax(0,1fr)_auto] items-end gap-5 rounded-md border bg-background p-7">
-            <h3 className="m-0 text-7xl font-bold leading-none">{theme.label}</h3>
+            <h3 className="font-docs m-0 text-4xl leading-none">{theme.label}</h3>
             <ThemeSwatches colors={[theme.tokens.ui?.bg, theme.tokens.ui?.panel, theme.tokens.ui?.accent, theme.tokens.docs?.bg, theme.tokens.docs?.link, theme.tokens.terminal?.bg, theme.tokens.terminal?.accent]} tall />
           </div>
           <div className="mt-4 grid gap-3">
@@ -324,13 +326,13 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
             <ThemeSurfaceSummary label="Docs" description="Planning and wiki pages" tokens={theme.tokens.docs} fontKeys={[["Primary Font", "serifFont"], ["Mono Font", "monoFont"]]} />
             <ThemeSurfaceSummary label="Terminal" description="Pane chrome and session frames" tokens={theme.tokens.terminal} fontKeys={[["Font", "font"]]} />
           </div>
-        </BeamSurface>
+        </div>
         <div className="grid gap-5">
-          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={3} strength={0.1}>
+          <div className="rounded-lg border bg-card p-5 shadow-xs">
             <div className="mb-4 flex items-start gap-3">
               <Bell aria-hidden="true" className="mt-0.5 size-4 text-muted-foreground" />
               <div>
-                <h2 className="m-0 text-sm font-bold uppercase">Notifications</h2>
+                <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notifications</h2>
                 <p className="m-0 mt-2 text-sm leading-6 text-muted-foreground">Notify when a project terminal finishes while hyperwiki is not focused.</p>
               </div>
             </div>
@@ -348,10 +350,10 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
                 <span>Only when hyperwiki is unfocused</span>
               </label>
             </div>
-          </BeamSurface>
-          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={4} strength={0.1}>
+          </div>
+          <div className="rounded-lg border bg-card p-5 shadow-xs">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-bold uppercase">Agent Instructions</h2>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Agent Instructions</h2>
               <Button variant="outline" onClick={openAgentEditor}>Edit</Button>
             </div>
             <div className="grid gap-3">
@@ -359,11 +361,11 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
               <AgentSummaryCard title="Agent" meta="Guidance" lines={[soul.agent || "No agent guidance recorded."]} />
               <AgentSummaryCard title="Memory" meta={`${overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).length} enabled`} lines={overviewMemory.filter((entry) => entry.enabled !== false && (entry.title || entry.content)).slice(0, 3).map((entry) => entry.title || entry.content || "")} />
             </div>
-          </BeamSurface>
-          <BeamSurface className="rounded-md border bg-card p-4 shadow-sm" colorVariant="mono" cols={3} dividerStroke="transparent" rows={2} strength={0.1}>
+          </div>
+          <div className="rounded-lg border bg-card p-5 shadow-xs">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="m-0 text-sm font-bold uppercase">Project Env</h2>
+                <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Project Env</h2>
                 <p className="m-0 mt-2 text-sm leading-6 text-muted-foreground">
                   Store local keys in the active checkout's <code>.env.local</code> without putting values into terminal history.
                 </p>
@@ -374,23 +376,23 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
                 Env
               </Button>
             </div>
-          </BeamSurface>
+          </div>
         </div>
       </div>
       <SettingsStatus status={status} />
-      </BeamSurface>
+      </div>
     </section>
   );
 }
 
 export function SettingsPageHeader({ actions, description, title }: { actions?: ReactNode; description: string; title: string }) {
   return (
-    <header className="flex min-h-36 items-start justify-between gap-6 bg-muted/20 px-8 py-10">
+    <header className="flex items-start justify-between gap-6 border-b px-8 py-8">
       <div>
-        <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight md:text-5xl">{title}</h1>
-        <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
+        <h1 className="font-ui m-0 text-2xl font-semibold leading-tight tracking-tight">{title}</h1>
+        <p className="m-0 mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2 pt-10">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 items-center gap-2 pt-1">{actions}</div> : null}
     </header>
   );
 }
@@ -402,7 +404,7 @@ export function SettingsStatus({ status }: { status: string }) {
 
 export function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { description: string; fontKeys: Array<[string, string]>; label: string; tokens?: Record<string, string> }) {
   return (
-    <BeamSurface className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background p-4" colorVariant="mono" cols={4} dividerStroke="transparent" rows={2} strength={0.08}>
+    <div className="grid grid-cols-[150px_minmax(0,1fr)] gap-4 rounded-md border bg-background p-4">
       <header>
         <strong className="block text-sm">{label}</strong>
         <span className="text-xs text-muted-foreground">{description}</span>
@@ -412,7 +414,7 @@ export function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { 
         <dl className="mt-3 grid gap-2">
           {fontKeys.map(([name, key]) => (
             <div className="grid grid-cols-[160px_minmax(0,1fr)] items-baseline gap-3" key={key}>
-              <dt className="text-xs font-bold uppercase text-muted-foreground">{name}</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{name}</dt>
               <dd className="min-w-0">
                 <span className="block text-xs font-bold text-muted-foreground">{fontLabel(tokens?.[key])}</span>
                 <span className="block truncate text-2xl" style={{ fontFamily: tokens?.[key] }}>AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz</span>
@@ -421,7 +423,7 @@ export function ThemeSurfaceSummary({ description, fontKeys, label, tokens }: { 
           ))}
         </dl>
       </div>
-    </BeamSurface>
+    </div>
   );
 }
 
@@ -443,7 +445,7 @@ export function ThemeSwatches({ colors, tall = false }: { colors: Array<string |
 export function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta: string; title: string }) {
   const values = lines.filter(Boolean);
   return (
-    <BeamSurface className="rounded-md border bg-background p-3" colorVariant="mono" cols={3} dividerStroke="transparent" rows={2} strength={0.08}>
+    <div className="rounded-md border bg-background p-3">
       <header className="mb-2 flex items-center justify-between gap-3">
         <strong>{title}</strong>
         <span className="text-xs text-muted-foreground">{meta}</span>
@@ -451,7 +453,7 @@ export function AgentSummaryCard({ lines, meta, title }: { lines: string[]; meta
       <ul className="m-0 grid gap-1 pl-5 text-sm text-muted-foreground">
         {(values.length ? values : ["No entries added yet."]).map((line, index) => <li key={index}>{line}</li>)}
       </ul>
-    </BeamSurface>
+    </div>
   );
 }
 
@@ -459,9 +461,9 @@ export function ThemePresetStrip({ activePreset, onSelect, presets }: { activePr
   const entries = Object.entries(presets);
   if (!entries.length) return null;
   return (
-    <BeamSurface className="min-w-0 overflow-hidden rounded-md border bg-card p-3 shadow-sm" colorVariant="mono" cols={5} dividerStroke="transparent" rows={2} strength={0.08}>
+    <div className="min-w-0 overflow-hidden rounded-lg border bg-card p-4 shadow-xs">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="m-0 text-xs font-bold uppercase text-muted-foreground">Presets</h2>
+        <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Presets</h2>
         <span className="truncate text-xs text-muted-foreground">Choosing a preset applies and autosaves.</span>
       </div>
       <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1">
@@ -498,7 +500,7 @@ export function ThemePresetStrip({ activePreset, onSelect, presets }: { activePr
           );
         })}
       </div>
-    </BeamSurface>
+    </div>
   );
 }
 
@@ -516,12 +518,12 @@ export function ThemePresetCard({ large = false, presetKey, theme }: { large?: b
         {large ? (
           <span className="mt-6 grid grid-cols-2 gap-8 border-t pt-5">
             <span>
-              <small className="block text-xs font-bold uppercase text-muted-foreground">Text</small>
+              <small className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Text</small>
               <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.serifFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
               <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog.</em>
             </span>
             <span>
-              <small className="block text-xs font-bold uppercase text-muted-foreground">Mono</small>
+              <small className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mono</small>
               <b className="block truncate text-3xl" style={{ fontFamily: theme.tokens.docs?.monoFont }}>AaBbCcDdEeFfGgHhIiJjKkLlMm</b>
               <em className="block truncate text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog.</em>
             </span>
@@ -539,7 +541,7 @@ export function ThemePresetCard({ large = false, presetKey, theme }: { large?: b
 
 export function ColorField({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
   return (
-    <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+    <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
       <input className="h-10 w-full rounded-md border bg-background px-1" type="color" value={normalizeColor(value)} onChange={(event) => onChange(event.target.value)} />
     </label>
@@ -548,11 +550,11 @@ export function ColorField({ label, onChange, value }: { label: string; onChange
 
 export function SelectField({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: Array<[string, string]>; value: string }) {
   return (
-    <label className="grid gap-1 text-xs font-bold uppercase text-muted-foreground">
+    <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
-      <select className="rounded-md border bg-background px-2 py-2 text-sm font-normal text-foreground" value={value} onChange={(event) => onChange(event.target.value)}>
+      <Select className="font-normal normal-case tracking-normal" value={value} onChange={(event) => onChange(event.target.value)}>
         {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
-      </select>
+      </Select>
     </label>
   );
 }
@@ -568,7 +570,7 @@ export function ThemeFontSummary({ theme }: { theme: NormalizedTheme }) {
     <dl className="mt-4 grid gap-2 rounded-md border bg-background p-3 text-xs">
       {fonts.map(([label, value]) => (
         <div className="grid grid-cols-[76px_minmax(0,1fr)] gap-3" key={label}>
-          <dt className="font-bold uppercase text-muted-foreground">{label}</dt>
+          <dt className="font-semibold uppercase tracking-wide text-muted-foreground">{label}</dt>
           <dd className="min-w-0 truncate font-normal text-foreground" style={{ fontFamily: value }}>{fontLabel(value)}</dd>
         </div>
       ))}
@@ -578,9 +580,9 @@ export function ThemeFontSummary({ theme }: { theme: NormalizedTheme }) {
 
 export function TextareaField({ label, onChange, rows, value }: { label: string; onChange: (value: string) => void; rows: number; value: string }) {
   return (
-    <label className="mb-4 grid gap-2 text-xs font-bold uppercase text-muted-foreground">
+    <label className="mb-4 grid gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
-      <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="w-full rounded-md border bg-background p-3 font-mono text-sm font-normal normal-case text-foreground" rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
+      <Textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="font-mono font-normal normal-case tracking-normal" rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   );
 }
@@ -588,10 +590,10 @@ export function TextareaField({ label, onChange, rows, value }: { label: string;
 export function MemoryEditor({ entry, index, onChange, onRemove }: { entry: MemoryEntry; index: number; onChange: (entry: MemoryEntry) => void; onRemove: () => void }) {
   return (
     <article className="grid gap-2 rounded-md border bg-background p-3">
-      <input {...DISABLE_TEXT_CORRECTION_PROPS} className="rounded-md border bg-card px-3 py-2 text-sm" placeholder={`Memory ${index + 1}`} value={entry.title || ""} onChange={(event) => onChange({ ...entry, title: event.target.value })} />
-      <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-20 rounded-md border bg-card px-3 py-2 text-sm" placeholder="Memory" value={entry.content || ""} onChange={(event) => onChange({ ...entry, content: event.target.value })} />
+      <Input {...DISABLE_TEXT_CORRECTION_PROPS} placeholder={`Memory ${index + 1}`} value={entry.title || ""} onChange={(event) => onChange({ ...entry, title: event.target.value })} />
+      <Textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-20" placeholder="Memory" value={entry.content || ""} onChange={(event) => onChange({ ...entry, content: event.target.value })} />
       <div className="flex items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+        <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <input className="size-4 accent-primary" checked={entry.enabled !== false} type="checkbox" onChange={(event) => onChange({ ...entry, enabled: event.target.checked })} />
           Enabled
         </label>
