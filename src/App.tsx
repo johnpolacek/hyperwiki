@@ -56,6 +56,7 @@ import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
+import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { WikiSidebar } from "@/components/layout/WikiSidebar";
 import { isMissingFileError, WorkspacePane } from "@/components/views/WorkspacePane";
@@ -2674,6 +2675,7 @@ function App() {
           open={projectEnvEditor.open}
           reason={projectEnvEditor.reason}
         />
+        <Toaster />
       </BeamSurface>
       </GridBeamRuntimeContext.Provider>
     </main>
