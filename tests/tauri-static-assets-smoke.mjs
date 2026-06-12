@@ -45,7 +45,7 @@ for (const asset of forbiddenAssets) {
 }
 
 const index = await readFile(path.resolve("dist/index.html"), "utf8");
-const appSource = await readFile(path.resolve("src/App.tsx"), "utf8");
+const appSource = [await readFile(path.resolve("src/App.tsx"), "utf8"), await readFile(path.resolve("src/components/layout/WikiSidebar.tsx"), "utf8")].join("\n");
 const distAssets = await readdir(path.resolve("dist/assets"));
 if (!distAssets.some((asset) => /^index-.*\.js$/.test(asset)) || !distAssets.some((asset) => /^index-.*\.css$/.test(asset))) {
   throw new Error("Vite build must emit hashed app JS and CSS assets for the Tauri bundle.");

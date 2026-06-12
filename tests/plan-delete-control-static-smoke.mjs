@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const renderer = await readFile("src/components/MdxPlanRenderer.tsx", "utf8");
-const app = await readFile("src/App.tsx", "utf8");
+const app = [await readFile("src/App.tsx", "utf8"), await readFile("src/lib/wiki-pages.ts", "utf8")].join("\n");
 const command = await readFile("src-tauri/src/command.rs", "utf8");
 const wiki = await readFile("src-tauri/src/domain/wiki.rs", "utf8");
 
