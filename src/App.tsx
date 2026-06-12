@@ -130,7 +130,6 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [projectEnvEditor, setProjectEnvEditor] = useState<ProjectEnvEditorState>({ open: false });
   const [terminalEnvHint, setTerminalEnvHint] = useState<{ key: string; sessionId: string } | null>(null);
-  const [isUpNextOpen, setIsUpNextOpen] = useState(false);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
@@ -2537,14 +2536,12 @@ function App() {
           activeProject={activeProject}
           homePath={planLandingPath(wikiPages)}
           isProjectsOpen={isProjectsOpen}
-          isUpNextOpen={isUpNextOpen}
           onRefresh={loadBaseData}
           onNavigate={navigate}
           onSwitchProject={switchProject}
           preview={preview}
           projectGroups={projectGroups}
           setIsProjectsOpen={setIsProjectsOpen}
-          setIsUpNextOpen={setIsUpNextOpen}
           status={status}
           workspace={workspace}
         />
