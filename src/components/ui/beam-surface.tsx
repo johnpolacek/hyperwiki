@@ -75,12 +75,13 @@ export function useDocumentGridBeamTheme(): GridBeamColorScheme {
     const update = () => setScheme(documentGridBeamTheme());
     update();
     const observer = new MutationObserver(update);
-    observer.observe(root, { attributeFilter: ["style"], attributes: true });
+    observer.observe(root, { attributeFilter: ["style", "class"], attributes: true });
     return () => observer.disconnect();
   }, []);
   return scheme;
 }
 
 export function documentGridBeamTheme(): GridBeamColorScheme {
-  return document.documentElement.style.colorScheme === "dark" ? "dark" : "light";
+  const root = document.documentElement;
+  return root.classList.contains("dark") || root.style.colorScheme === "dark" ? "dark" : "light";
 }

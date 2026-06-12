@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>hyperwiki</title>
+    <script>
+      // Apply the saved theme mode before first paint to avoid a flash of the
+      // wrong scheme; applyAppTheme() takes over once settings load.
+      try {
+        if (window.localStorage.getItem("hyperwikiThemeMode") === "dark") {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        }
+      } catch (_) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

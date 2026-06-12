@@ -34,8 +34,17 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const primaryFont = cssFontValue(docs.serifFont, "\"Instrument Serif\", ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif");
   const monoFont = cssFontValue(docs.monoFont, "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace");
   const terminalFont = cssFontValue(terminal.font, monoFont);
+  const isDark = theme.mode === "dark";
+  // Quiet hover tone for ghost/outline controls; the saturated preset accent stays on --primary.
+  const hover = mixHex(mutedForeground, panel, isDark ? 0.82 : 0.88);
 
-  root.style.colorScheme = theme.mode === "dark" ? "dark" : "light";
+  root.style.colorScheme = isDark ? "dark" : "light";
+  root.classList.toggle("dark", isDark);
+  try {
+    window.localStorage.setItem("hyperwikiThemeMode", isDark ? "dark" : "light");
+  } catch {
+    // Pre-paint mode hint is best-effort.
+  }
   setCssVars(root, {
     "--background": background,
     "--foreground": foreground,
@@ -49,8 +58,8 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--secondary-foreground": readableTextOn(secondary),
     "--muted": muted,
     "--muted-foreground": mutedForeground,
-    "--accent": accent,
-    "--accent-foreground": readableTextOn(accent),
+    "--accent": hover,
+    "--accent-foreground": foreground,
     "--border": border,
     "--input": border,
     "--ring": accent,
@@ -59,6 +68,17 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--docs-mono-font": monoFont,
     "--terminal-font": terminalFont,
     "--sidebar-font": cssFontValue(ui.sidebarFont, uiFont),
+    // Terminal surface tokens. Fallbacks mirror theme_css() in
+    // src-tauri/src/domain/settings.rs so the app chrome and the
+    // backend-served wiki/iframe CSS never diverge.
+    "--terminal-bg": normalizeColor(terminal.bg, "#272822"),
+    "--terminal-pane": normalizeColor(terminal.pane, "#111312"),
+    "--terminal-toolbar": normalizeColor(terminal.toolbar, "#171a18"),
+    "--terminal-header": normalizeColor(terminal.header, "#1b1f1b"),
+    "--terminal-border": normalizeColor(terminal.border, "#2c302d"),
+    "--terminal-text": normalizeColor(terminal.text, "#eef2ec"),
+    "--terminal-muted": normalizeColor(terminal.muted, "#abb5ad"),
+    "--terminal-accent": normalizeColor(terminal.accent, "#9fd1ff"),
   });
 }
 
