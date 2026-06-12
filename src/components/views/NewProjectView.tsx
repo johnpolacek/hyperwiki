@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { FolderPlus, Loader2, Upload } from "lucide-react";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { pendingImportedProject, writePendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
@@ -135,22 +137,22 @@ export function NewProjectView({
   const canSubmitBrief = Boolean(title.trim() && document.trim());
 
   return (
-    <section className="min-h-0 overflow-auto bg-background/80">
-      <BeamSurface className="min-h-full bg-background/86 px-5 py-10 md:px-10 md:py-14" colorVariant="mono" cols={5} duration={7} rows={4} strength={0.18}>
-        <div className="mx-auto grid w-full max-w-[60rem] gap-9">
+    <section className="min-h-0 overflow-auto bg-background">
+      <div className="min-h-full px-5 py-10 md:px-10 md:py-14">
+        <div className="mx-auto grid w-full max-w-xl gap-8">
           <header className="px-1">
-            <h1 className="font-ui m-0 text-4xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-5xl">{heading}</h1>
-            <p className="m-0 mt-3 max-w-2xl text-base leading-7 text-muted-foreground text-pretty md:text-lg">
+            <h1 className="font-ui m-0 text-3xl font-semibold leading-tight tracking-tight text-balance text-foreground md:text-4xl">{heading}</h1>
+            <p className="m-0 mt-2 max-w-2xl text-base leading-7 text-muted-foreground text-pretty">
               {subhead}
             </p>
           </header>
 
-          <BeamSurface className="rounded-lg border bg-card/92 shadow-sm" colorVariant="ocean" cols={4} rows={5} strength={0.24}>
-          <form className="grid gap-6 p-5 md:p-8" data-testid="new-project-form" onSubmit={handleSubmit}>
-          <label className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary/45 bg-background px-6 text-center text-muted-foreground transition-colors hover:border-primary hover:bg-secondary/40 hover:text-foreground">
-            <Upload aria-hidden="true" className="mb-4 size-10 text-primary transition-transform group-hover:-translate-y-0.5" />
-            <span className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-transform group-active:scale-[0.98]">Import Project Doc</span>
-            <small className="mt-3 text-sm text-muted-foreground">Markdown, HTML, or text files</small>
+          <div className="rounded-lg border bg-card shadow-xs">
+          <form className="grid gap-6 p-6" data-testid="new-project-form" onSubmit={handleSubmit}>
+          <label className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-input bg-background px-6 text-center text-muted-foreground transition-colors duration-150 hover:border-primary hover:bg-muted/50 hover:text-foreground">
+            <Upload aria-hidden="true" className="mb-4 size-8 text-muted-foreground transition-colors duration-150 group-hover:text-primary" />
+            <span className="rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Import Project Doc</span>
+            <small className="mt-3 text-xs text-muted-foreground">Markdown, HTML, or text files</small>
             <input className="sr-only" data-testid="project-file-input" type="file" accept=".md,.markdown,.html,.htm,.txt,.text,.csv,.tsv,.json,.yaml,.yml,text/*,application/json,application/x-yaml" multiple onChange={(event) => void handleFiles(event.target.files)} />
           </label>
 
@@ -161,21 +163,21 @@ export function NewProjectView({
           </div>
 
           <label className="grid gap-2">
-            <span className="text-sm font-semibold text-card-foreground">Project Name</span>
-            <input {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-12 rounded-md border bg-background px-3 text-base outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" autoComplete="off" placeholder="Enter project name" required value={title} onChange={(event) => setTitle(event.target.value)} />
+            <span className="text-sm font-medium text-card-foreground">Project Name</span>
+            <Input {...DISABLE_TEXT_CORRECTION_PROPS} autoComplete="off" placeholder="Enter project name" required value={title} onChange={(event) => setTitle(event.target.value)} />
           </label>
 
           <label className="grid gap-2">
-            <span className="text-sm font-semibold text-card-foreground">Brief</span>
-            <textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[9rem] resize-y rounded-md border bg-background p-3 text-base leading-7 outline-none transition-shadow placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring" placeholder="Paste the project brief" required value={document} onChange={(event) => setDocument(event.target.value)} />
+            <span className="text-sm font-medium text-card-foreground">Brief</span>
+            <Textarea {...DISABLE_TEXT_CORRECTION_PROPS} className="min-h-[9rem] resize-y" placeholder="Paste the project brief" required value={document} onChange={(event) => setDocument(event.target.value)} />
           </label>
 
           <label className="flex min-h-10 items-center gap-3 text-sm font-medium text-card-foreground">
-            <input className="size-5 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
+            <input className="size-4 accent-primary" checked={initializeGit} type="checkbox" onChange={(event) => setInitializeGit(event.target.checked)} />
             <span>Initialize Git and create an initial commit</span>
           </label>
 
-          <Button className="min-h-12 w-full text-sm font-semibold transition-transform active:scale-[0.98] disabled:border-border disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100" disabled={isSubmitting || !canSubmitBrief} type="submit">
+          <Button className="min-h-11 w-full text-sm font-semibold disabled:border-border disabled:bg-secondary disabled:text-muted-foreground disabled:opacity-100" disabled={isSubmitting || !canSubmitBrief} type="submit">
             {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <FolderPlus aria-hidden="true" data-icon="inline-start" />}
             {isSubmitting ? "Starting Agent Planning" : "Start Agent Planning"}
           </Button>
@@ -183,9 +185,9 @@ export function NewProjectView({
           {status ? <p className="m-0 rounded-md border bg-background px-4 py-3 text-sm text-muted-foreground" role="status">{status}</p> : null}
           <ImportLog lines={importLog} />
           </form>
-          </BeamSurface>
+          </div>
         </div>
-      </BeamSurface>
+      </div>
     </section>
   );
 }
@@ -194,14 +196,14 @@ export function NewProjectView({
 export function ImportLog({ lines }: { lines: string[] }) {
   if (!lines.length) return null;
   return (
-    <BeamSurface className="mt-4 rounded-md border bg-background/88 p-3" colorVariant="mono" cols={4} rows={2} strength={0.14}>
-      <h3 className="m-0 text-xs font-bold uppercase text-muted-foreground">Import Log</h3>
+    <div className="mt-4 rounded-md border bg-background p-3">
+      <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Import Log</h3>
       <ol className="m-0 mt-2 grid gap-1 p-0 text-xs text-muted-foreground">
         {lines.map((line, index) => (
           <li className="list-none break-words" key={`${index}-${line}`}>{line}</li>
         ))}
       </ol>
-    </BeamSurface>
+    </div>
   );
 }
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 import type { ProjectGroup, ProjectRecord } from "@/lib/types";
 
@@ -17,11 +18,11 @@ export function ProjectsView({
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
 }) {
   return (
-    <section className="min-h-0 overflow-auto bg-background/80">
+    <section className="min-h-0 overflow-auto bg-background">
       <BeamSurface className="min-h-full bg-background/85" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={4} strength={0.18}>
         <header className="flex min-h-40 items-center justify-between px-10">
           <div>
-            <h1 className="m-0 text-4xl font-bold leading-none">Projects</h1>
+            <h1 className="m-0 text-3xl font-semibold leading-none tracking-tight">Projects</h1>
             <p className="m-0 mt-3 text-sm text-muted-foreground">Switch between registered local hyperwiki projects.</p>
           </div>
           <Button className="min-h-11 px-5" variant="outline" onClick={onNewProject}>
@@ -29,12 +30,12 @@ export function ProjectsView({
             New Project
           </Button>
         </header>
-        <div className="grid max-w-[84rem] grid-cols-2 gap-3 p-8 max-2xl:grid-cols-1">
+        <div className="grid max-w-[84rem] grid-cols-2 gap-4 p-8 max-2xl:grid-cols-1">
           {groups.length ? (
             groups.map((group) => <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />)
           ) : (
             <BeamSurface className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card/92 p-8 shadow-sm" colorVariant="ocean" cols={4} rows={3} strength={0.26}>
-              <h2 className="m-0 text-3xl font-bold">No projects yet</h2>
+              <h2 className="m-0 text-2xl font-semibold tracking-tight">No projects yet</h2>
               <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh hyperwiki project from a brief to start the workspace.</p>
               <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
                 <Plus aria-hidden="true" data-icon="inline-start" />
@@ -84,25 +85,24 @@ export function ProjectCard({
   }
 
   return (
-    <BeamSurface className={cn("min-h-[23rem] rounded-md border bg-card/92 shadow-sm", isActive && "border-primary/45 ring-1 ring-primary/25")} colorVariant={isActive ? "ocean" : "mono"} cols={4} rows={4} strength={isActive ? 0.32 : 0.2}>
-    <article className="flex min-h-[23rem] flex-col p-5">
+    <article className={cn("flex min-h-[23rem] flex-col rounded-lg border bg-card p-5 shadow-xs transition-colors duration-150 hover:border-input", isActive && "ring-1 ring-primary/40")}>
       <div className="mb-7 flex items-start justify-between gap-4">
-        <h2 className="m-0 min-w-0 truncate text-lg font-bold">{group.name || selected?.name || group.projectSlug}</h2>
-        <span className={cn("rounded-full border px-2 py-1 text-xs font-bold uppercase", isActive ? "bg-primary/10 text-secondary-foreground" : "bg-secondary text-muted-foreground")}>
+        <h2 className="m-0 min-w-0 truncate text-lg font-semibold tracking-tight">{group.name || selected?.name || group.projectSlug}</h2>
+        <StatusBadge tone={importIncomplete ? "warn" : isActive ? "running" : available ? "idle" : "error"}>
           {importIncomplete ? "Import incomplete" : isActive ? "Active" : available ? "Available" : "Missing"}
-        </span>
+        </StatusBadge>
       </div>
       {group.checkouts.length > 1 ? (
         <div className="mb-4 flex flex-wrap gap-2">
           {group.checkouts.map((checkout) => (
-            <span className={cn("rounded-full border px-3 py-1 text-xs font-bold", checkout.active && "border-primary bg-primary/10")} key={checkout.id}>
+            <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground", checkout.active && "border-primary/40 bg-primary/10 text-foreground")} key={checkout.id}>
               {checkout.worktreeSlug || "main"} <span className="ml-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase text-muted-foreground">stopped</span>
             </span>
           ))}
         </div>
       ) : null}
-      <p className="mb-5 truncate text-sm font-bold text-muted-foreground">{selected?.root || ""}</p>
-      <div className="grid gap-2">
+      <p className="mb-5 truncate font-mono text-xs text-muted-foreground">{selected?.root || ""}</p>
+      <div className="rounded-md border px-3">
         <ProjectDetail label="Checkout" value={selected?.worktreeSlug || "main"} />
         {importIncomplete ? <ProjectDetail label="Import" value={importPlanning?.nextAction || "Resume planning Q&A"} /> : null}
         <ProjectDetail label="App" value={appUrl} />
@@ -113,7 +113,7 @@ export function ProjectCard({
           <ExternalLink aria-hidden="true" data-icon="inline-start" />
           Open Project
         </Button>
-        <button className="rounded p-1 text-muted-foreground hover:text-foreground" type="button" aria-label={`Remove ${group.name}`} onClick={() => setIsConfirmingRemoval(true)}>
+        <button className="rounded-md p-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-destructive" type="button" aria-label={`Remove ${group.name}`} onClick={() => setIsConfirmingRemoval(true)}>
           <Trash2 aria-hidden="true" className="size-4" />
         </button>
       </div>
@@ -141,15 +141,14 @@ export function ProjectCard({
         </div>
       ) : null}
     </article>
-    </BeamSurface>
   );
 }
 
 export function ProjectDetail({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border bg-background/86 px-3 py-3">
-      <div className="text-[10px] font-bold uppercase text-muted-foreground">{label}</div>
-      <div className="truncate text-sm font-bold">{value}</div>
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/60 py-2 last:border-b-0">
+      <div className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="min-w-0 truncate text-sm">{value}</div>
     </div>
   );
 }
