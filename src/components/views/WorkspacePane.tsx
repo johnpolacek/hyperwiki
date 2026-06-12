@@ -83,9 +83,9 @@ export function WorkspacePane(props: {
   }
   if (displayWikiPath(props.wikiPath) === defaultWikiPath) {
     return (
-      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background/80">
-        <BeamSurface className="flex h-full min-h-0 flex-col bg-background/88" colorVariant="mono" cols={5} contentClassName="flex h-full min-h-0 flex-col" duration={6} rows={4} strength={0.2}>
-          <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card/95 px-3 backdrop-blur">
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-background px-3">
             <div className="flex min-w-0 items-center gap-2 text-sm">
               <Button
                 aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
@@ -97,21 +97,21 @@ export function WorkspacePane(props: {
               >
                 {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
               </Button>
-              <span className="truncate text-xs font-bold uppercase">Plans</span>
+              <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plans</span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
             </div>
           </div>
           <PlansIndexEmptyState onCreatePlan={() => props.onRunCommand("new-plan")} />
-        </BeamSurface>
+        </div>
       </section>
     );
   }
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background/80">
-      <BeamSurface className="flex h-full min-h-0 flex-col bg-background/88" colorVariant="mono" cols={6} contentClassName="flex h-full min-h-0 flex-col" duration={6.5} rows={5} strength={0.18}>
-        <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-card/95 px-3 backdrop-blur">
+    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-background px-3">
           <div className="flex min-w-0 items-center gap-2 text-sm">
             <Button
               aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
@@ -123,7 +123,7 @@ export function WorkspacePane(props: {
             >
               {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
             </Button>
-            <span className="truncate text-xs font-bold uppercase">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
+            <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
@@ -131,7 +131,7 @@ export function WorkspacePane(props: {
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">
           {props.isLoading ? (
-            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-card/95 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
+            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-3 py-2 text-xs text-muted-foreground backdrop-blur">
               <Loader2 aria-hidden="true" className="size-4 animate-spin" />
               Loading wiki page
             </div>
@@ -150,10 +150,10 @@ export function WorkspacePane(props: {
               validationWarnings={props.wikiSource.validationWarnings}
             />
           ) : (
-            <iframe className="size-full border-0 bg-white" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
+            <iframe className="size-full border-0 bg-background" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" srcDoc={embeddedWikiHtml(props.wikiHtml)} title="Wiki page" />
           )}
         </div>
-      </BeamSurface>
+      </div>
     </section>
   );
 }
@@ -361,8 +361,8 @@ export function ImportedPlanningQAView({
   const description = "Answer questions and make important decisions to create your project.";
 
   return (
-    <main className="min-h-0 overflow-auto bg-background/80 antialiased">
-      <BeamSurface className="grid min-h-full place-items-start bg-background/86 px-5 pt-8 md:px-8 md:pt-12" colorVariant="mono" cols={5} duration={7} rows={5} strength={0.18}>
+    <main className="min-h-0 overflow-auto bg-background antialiased">
+      <div className="grid min-h-full place-items-start px-5 pt-8 md:px-8 md:pt-12">
       <section className="mt-2 grid w-full max-w-3xl gap-5 rounded-lg border bg-card/92 p-5 shadow-sm md:p-6">
         <div className="grid gap-3">
           <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Creating project</p>
@@ -527,7 +527,7 @@ export function ImportedPlanningQAView({
           </Button>
         </div>
       </section>
-      </BeamSurface>
+      </div>
     </main>
   );
 }

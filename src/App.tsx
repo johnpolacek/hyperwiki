@@ -2522,16 +2522,7 @@ function App() {
   return (
     <main className="hyperwiki-shell flex h-svh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <GridBeamRuntimeContext.Provider value={gridBeamRuntime}>
-      <BeamSurface
-        borderRadius={0}
-        className="flex h-full min-h-0 flex-col bg-background"
-        colorVariant="mono"
-        cols={8}
-        contentClassName="flex h-full min-h-0 flex-col"
-        duration={7}
-        rows={5}
-        strength={0.18}
-      >
+      <div className="flex h-full min-h-0 flex-col bg-background">
         <TopBar
           activeProject={activeProject}
           homePath={planLandingPath(wikiPages)}
@@ -2673,7 +2664,7 @@ function App() {
           reason={projectEnvEditor.reason}
         />
         <Toaster />
-      </BeamSurface>
+      </div>
       </GridBeamRuntimeContext.Provider>
     </main>
   );

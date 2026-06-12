@@ -114,7 +114,7 @@ if (app.includes("Download project skill")) {
 
 for (const contrastContract of [
   '"--secondary-foreground": readableTextOn(secondary)',
-  'isSelected ? "bg-secondary text-secondary-foreground"',
+  '? "bg-muted text-foreground',
 ]) {
   if (!app.includes(contrastContract)) {
     throw new Error(`App must keep secondary surfaces readable across theme presets: ${contrastContract}`);

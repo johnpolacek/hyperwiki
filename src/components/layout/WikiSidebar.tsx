@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Download, Loader2, Plus } from "lucide-react";
-import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
 import { childPlanPages, cleanPageTitle, currentPlanWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isPlansIndexPage, isTopLevelPlanPage, pathContainsSelectedPage, planSortKey, type SidebarModel } from "@/lib/wiki-pages";
 import { cn } from "@/lib/utils";
@@ -18,12 +17,11 @@ export function WikiSidebar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-card">
-      <BeamSurface className="h-full bg-card" colorVariant="mono" cols={3} contentClassName="h-full" dividerStroke="transparent" duration={6} rows={5} strength={0.12}>
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-background">
       <nav className="flex h-full min-h-0 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
-            <h2 className="text-xs font-bold uppercase text-muted-foreground">Plans</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plans</h2>
             <div className="flex items-center gap-1">
               <Button
                 aria-label="Download wiki Markdown zip"
@@ -46,8 +44,8 @@ export function WikiSidebar(props: {
           {props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
           <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} />
         </section>
-        <details className="shrink-0 border-t bg-card p-3">
-          <summary className="cursor-pointer list-none text-xs font-bold uppercase text-muted-foreground">Project</summary>
+        <details className="shrink-0 border-t bg-background p-3">
+          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">Project</summary>
           <div className="mt-2 grid gap-1">
             {props.model.projectPages.map((page) => (
               <SidebarPageButton currentPath={props.currentPath} depth={0} key={page.path} onNavigate={props.onNavigate} page={page} />
@@ -55,7 +53,6 @@ export function WikiSidebar(props: {
           </div>
         </details>
       </nav>
-      </BeamSurface>
     </aside>
   );
 }
@@ -144,16 +141,18 @@ export function SidebarPageButton({
   return (
     <div
       className={cn(
-        "grid min-h-10 min-w-0 grid-cols-[1rem_0.625rem_minmax(0,1fr)] items-center gap-1.5 rounded-md py-1.5 pe-2 text-[13px] transition-colors",
-        isSelected ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground",
+        "relative grid min-h-8 min-w-0 grid-cols-[1rem_0.625rem_minmax(0,1fr)] items-center gap-1.5 rounded-md py-1 pe-2 pl-[calc(8px+var(--depth)*12px)] text-[13px] transition-colors duration-150",
+        isSelected
+          ? "bg-muted text-foreground before:absolute before:left-0 before:top-1/2 before:h-4 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary before:content-['']"
+          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
       )}
-      style={{ paddingLeft: `${8 + depth * 12}px` }}
+      style={{ "--depth": depth } as CSSProperties}
     >
       {hasChildren ? (
         <button
           aria-expanded={isOpen}
           aria-label={`${isOpen ? "Collapse" : "Expand"} ${cleanPageTitle(page)}`}
-          className="grid size-4 place-items-center rounded-md text-muted-foreground hover:bg-background/70 hover:text-foreground"
+          className="grid size-4 place-items-center rounded text-muted-foreground transition-colors duration-150 hover:text-foreground"
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -168,7 +167,7 @@ export function SidebarPageButton({
       )}
       <span className="mx-auto grid size-3 shrink-0 place-items-center">
         {current ? (
-          <span aria-label="Current work" className="size-[6px] rounded-full bg-[#25a244] opacity-70 shadow-[0_0_0_3px_rgba(37,162,68,0.14)]" />
+          <span aria-label="Current work" className="size-[6px] rounded-full bg-emerald-500 opacity-80 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]" />
         ) : isComplete ? (
           <Check aria-label="Complete" className="size-3 text-muted-foreground/60" />
         ) : null}
