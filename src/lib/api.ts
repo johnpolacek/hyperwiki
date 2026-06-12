@@ -93,3 +93,11 @@ function parseJson<T>(text: string) {
     return null;
   }
 }
+
+import type { ProjectRecord } from "@/lib/types";
+
+export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
+  if (!activeProject) return path;
+  const joiner = path.includes("?") ? "&" : "?";
+  return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
+}
