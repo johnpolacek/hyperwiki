@@ -228,3 +228,6 @@ export function titleForPath(path: string, pages: WikiPage[]) {
   return page ? cleanPageTitle(page) : normalizePlanDisplayTitle(path.split("/").pop() || "Wiki");
 }
 
+export function isReactRenderedMdxPath(path: string) {
+  return displayWikiPath(path).startsWith("/wiki/") && path.endsWith(".mdx");
+}

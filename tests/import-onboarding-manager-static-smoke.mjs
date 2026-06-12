@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 const codex = await readFile("src-tauri/src/domain/codex_app_server.rs", "utf8");
 const runtime = await readFile("src-tauri/src/domain/import_onboarding_runtime.rs", "utf8");
 const command = await readFile("src-tauri/src/command.rs", "utf8");
-const app = [await readFile("src/App.tsx", "utf8"), await readFile("src/lib/types.ts", "utf8")].join("\n");
+const app = [await readFile("src/App.tsx", "utf8"), await readFile("src/lib/types.ts", "utf8"), await readFile("src/components/views/WorkspacePane.tsx", "utf8")].join("\n");
 const importPlanning = await readFile("src-tauri/src/domain/import_planning.rs", "utf8");
 
 for (const symbol of [
