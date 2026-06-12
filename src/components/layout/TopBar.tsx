@@ -18,13 +18,13 @@ export function TopBar(props: {
   workspace: WorkspaceResponse | null;
 }) {
   return (
-    <header className="hyperwiki-header flex min-h-12 shrink-0 items-center justify-between gap-4 overflow-hidden border-b border-t border-t-border/55 bg-card/95 px-3 text-sm backdrop-blur">
-      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono font-bold hover:bg-secondary/70" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-4 overflow-hidden border-b bg-background px-3 text-sm">
+      <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono transition-colors duration-150 hover:bg-muted" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
         <BrandMark />
-        <span className="truncate text-xs font-bold uppercase text-muted-foreground">hyperwiki</span>
+        <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">hyperwiki</span>
         {props.activeProject?.name ? (
           <>
-            <span className="text-xs font-bold text-muted-foreground/60">|</span>
+            <span className="text-xs text-muted-foreground/50">/</span>
             <span className="truncate text-sm font-normal text-foreground">{props.activeProject.name}</span>
           </>
         ) : null}
@@ -32,7 +32,7 @@ export function TopBar(props: {
       <div className="flex items-center gap-2">
         <Popover open={props.isProjectsOpen} onOpenChange={props.setIsProjectsOpen}>
           <PopoverTrigger asChild>
-            <Button size="sm" variant="outline">
+            <Button className="h-8" size="sm" variant="ghost">
               <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
               Projects
             </Button>
@@ -41,7 +41,7 @@ export function TopBar(props: {
             <ProjectsMenu groups={props.projectGroups} onClose={() => props.setIsProjectsOpen(false)} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} />
           </PopoverContent>
         </Popover>
-        <Button size="sm" variant="outline" onClick={() => props.onNavigate({ kind: "settings" })}>
+        <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "settings" })}>
           <Settings aria-hidden="true" data-icon="inline-start" />
           Settings
         </Button>
@@ -81,7 +81,7 @@ export function ProjectsMenu({
     <div>
       <div className="mb-4 flex flex-col gap-2">
         <button
-          className="flex min-h-11 items-center justify-center gap-2 rounded-md border bg-foreground px-3 text-sm font-bold text-background shadow-sm"
+          className="flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary/90"
           onClick={() => {
             onClose();
             onNavigate({ kind: "new-project" });
@@ -92,7 +92,7 @@ export function ProjectsMenu({
           New Project
         </button>
         <button
-          className="flex min-h-10 items-center justify-center gap-2 rounded-md border bg-background px-3 text-sm font-bold"
+          className="flex min-h-9 items-center justify-center gap-2 rounded-md border bg-background px-3 text-sm font-medium transition-colors duration-150 hover:bg-muted"
           onClick={() => {
             onClose();
             onNavigate({ kind: "projects" });
@@ -108,8 +108,8 @@ export function ProjectsMenu({
           {projects.map(({ group, project }) => (
             <button
               className={cn(
-                "grid w-full gap-0.5 rounded-md border border-transparent px-3 py-2.5 text-left hover:bg-secondary",
-                group.checkouts.some((checkout) => checkout.active) && "border-primary bg-primary/12",
+                "grid w-full gap-0.5 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors duration-150 hover:bg-muted",
+                group.checkouts.some((checkout) => checkout.active) && "border-primary/40 bg-primary/10",
               )}
               key={group.projectSlug}
               onClick={() => {
@@ -118,8 +118,8 @@ export function ProjectsMenu({
               }}
               type="button"
             >
-              <span className="truncate text-base font-bold">{group.name || project.name}</span>
-              <span className="truncate text-xs font-bold text-muted-foreground">{project.root}</span>
+              <span className="truncate text-sm font-semibold">{group.name || project.name}</span>
+              <span className="truncate font-mono text-xs text-muted-foreground">{project.root}</span>
             </button>
           ))}
         </div>
