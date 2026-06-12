@@ -743,6 +743,7 @@ function App() {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>(defaultThinkingEffort);
+  const [agentProviders, setAgentProviders] = useState<AgentProviderAvailability>({ codexAvailable: false, claudeAvailable: false });
   const [activePlanningQuestion, setActivePlanningQuestion] = useState<PlanningQuestion | null>(null);
   const [activePlanningQuestions, setActivePlanningQuestions] = useState<PlanningQuestion[]>([]);
   const [planningInterviewStatus, setPlanningInterviewStatus] = useState<PlanningInterviewStatus>("idle");
@@ -838,6 +839,19 @@ function App() {
   useEffect(() => {
     latestWikiPagesRef.current = wikiPages;
   }, [wikiPages]);
+
+  useEffect(() => {
+    let disposed = false;
+    hyperwikiApi
+      .json<AgentProviderAvailability>("/api/agent-providers")
+      .then((providers) => {
+        if (!disposed) setAgentProviders(providers);
+      })
+      .catch(() => {});
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   useEffect(() => {
     let disposed = false;
@@ -1372,6 +1386,20 @@ function App() {
     };
   }
 
+  async function changeAgentProvider(provider: AgentProviderId) {
+    if (!activeProject) return;
+    try {
+      const nextLayout = await hyperwikiApi.json<LayoutResponse>(withProjectQuery("/api/agent-provider", activeProject), {
+        method: "POST",
+        body: { provider },
+      });
+      setLayout(nextLayout);
+      scheduleGeneralAgentPrewarmRefill(activeProject, nextLayout, terminalScope, "provider-switch");
+    } catch (error) {
+      appendImportLog(`Agent provider switch failed: ${String(error)}`);
+    }
+  }
+
   async function startTerminal(role: "agent" | "cli") {
     const name = role;
     const startedAt = Date.now();
@@ -1384,7 +1412,7 @@ function App() {
         const existing = selectReusableAgentSession(sessions.filter((session) =>
           isGeneralSession(session)
           && sessionMatchesScope(session, normalizedScope)
-        ), { purpose: "general", promote: true });
+        ), { purpose: "general", promote: true, provider: layoutAgentProvider(layout) });
         if (existing?.command && isLiveTerminalSession(existing) && isStandbySession(existing)) {
           appendImportLog(`Manual agent promoting prewarmed general session project=${activeProject.id} session=${existing.id} scope=${normalizedScope.scope}`);
           const promoted = await promoteSession(activeProject, existing.id, "general");
@@ -1514,7 +1542,10 @@ function App() {
       && (!options.purpose || session.purpose === options.purpose)
       && sessionMatchesScope(session, normalizedScope)
     );
-    const existing = selectReusableAgentSession(matchingSessions, options);
+    const desiredProvider: AgentProviderId = options.commandOverride
+      ? agentProviderFromCommand(options.commandOverride)
+      : layoutAgentProvider(projectLayout);
+    const existing = selectReusableAgentSession(matchingSessions, { ...options, provider: desiredProvider });
     if (existing?.command && isLiveTerminalSession(existing) && !options.forceNew) {
       appendImportLog(`ensureAgentSession reused known session project=${project.id} session=${existing.id} known=${knownSessions.length} scope=${normalizedScope.scope} purpose=${existing.purpose || "none"} visibility=${existing.visibility || "visible"} createdAt=${existing.createdAt || "unknown"}`);
       if (options.promote && isStandbySession(existing)) {
@@ -1622,10 +1653,11 @@ function App() {
     const normalizedScope = normalizeTerminalScope(scope);
     const key = `${project.id}:${normalizedScope.scope}`;
     if (prewarmingModifySessions.current.has(key)) return;
-    const existingModifyCount = knownSessions.filter((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session)).length;
-    if (existingModifyCount >= modifyAgentPrewarmTarget) return;
     const command = agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) return;
+    const desiredProvider = agentProviderFromCommand(command);
+    const existingModifyCount = knownSessions.filter((session) => isModifySession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session) && agentProviderFromCommand(session.command) === desiredProvider).length;
+    if (existingModifyCount >= modifyAgentPrewarmTarget) return;
     prewarmingModifySessions.current.add(key);
     try {
       appendImportLog(`Prewarming modify agent project=${project.id} scope=${normalizedScope.scope}`);
@@ -1648,7 +1680,8 @@ function App() {
     if (prewarmingGeneralSessions.current.has(key)) return;
     const command = agentLaunchCommand(projectLayout, thinkingEffort);
     if (!command) return;
-    const existingPool = knownSessions.filter((session) => isGeneralPrewarmSession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session));
+    const desiredProvider = agentProviderFromCommand(command);
+    const existingPool = knownSessions.filter((session) => isGeneralPrewarmSession(session) && sessionMatchesScope(session, normalizedScope) && isLiveTerminalSession(session) && agentProviderFromCommand(session.command) === desiredProvider);
     const missing = Math.max(0, generalAgentPrewarmTarget - existingPool.length);
     if (missing <= 0) return;
     prewarmingGeneralSessions.current.add(key);
@@ -3007,7 +3040,7 @@ function App() {
           documentType: input.documentType,
           sourceDocuments: input.sourceDocuments,
           initializeGit: input.initializeGit,
-          agentLaunchCommand: agentLaunchCommand(layout, thinkingEffort),
+          agentLaunchCommand: agentLaunchCommand(layout, thinkingEffort, agentProviders),
         },
       })
       .then((result) => result.project);
@@ -3226,6 +3259,9 @@ function App() {
                 scope={terminalScope}
                 thinkingEffort={thinkingEffort}
                 onThinkingEffortChange={setThinkingEffort}
+                agentProvider={layoutAgentProvider(layout)}
+                agentProviders={agentProviders}
+                onAgentProviderChange={changeAgentProvider}
                 currentWorkTitle={activePlanState.currentTitle}
                 workspace={workspace}
                 sessions={sessions}
@@ -5683,6 +5719,9 @@ function TerminalPane(props: {
   onStart: (role: "agent" | "cli") => void;
   onSelectSession: (sessionId: string) => void;
   onThinkingEffortChange: (effort: ThinkingEffort) => void;
+  agentProvider: AgentProviderId;
+  agentProviders: AgentProviderAvailability;
+  onAgentProviderChange: (provider: AgentProviderId) => void;
   onTerminalText: (sessionId: string, text: string) => void;
   preview: AppPreviewResponse | null;
   repoContext: RepoContextResponse | null;
@@ -5861,15 +5900,26 @@ function TerminalPane(props: {
           {props.isLoading ? <Loader2 aria-hidden="true" className="size-4 animate-spin text-[#9da79f]" /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <label className="flex items-center gap-1.5 text-[#9da79f]">
-            <span>think</span>
-            <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.thinkingEffort} onChange={(event) => props.onThinkingEffortChange(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
-              <option value="low">low</option>
-              <option value="medium">med</option>
-              <option value="high">high</option>
-              <option value="xhigh">xhigh</option>
-            </select>
-          </label>
+          {props.agentProviders.codexAvailable && props.agentProviders.claudeAvailable ? (
+            <label className="flex items-center gap-1.5 text-[#9da79f]">
+              <span>agent</span>
+              <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.agentProvider} onChange={(event) => props.onAgentProviderChange(event.target.value === "claude" ? "claude" : "codex")} aria-label="Coding agent provider for new agent terminals">
+                <option value="codex">codex</option>
+                <option value="claude">claude</option>
+              </select>
+            </label>
+          ) : null}
+          {props.agentProvider === "claude" ? null : (
+            <label className="flex items-center gap-1.5 text-[#9da79f]">
+              <span>think</span>
+              <select className="h-7 rounded border border-[#3a403b] bg-[#111312] px-2 pr-7 text-[#eef2ec] outline-none" value={props.thinkingEffort} onChange={(event) => props.onThinkingEffortChange(normalizedThinkingEffort(event.target.value))} aria-label="Default thinking effort for new agent terminals">
+                <option value="low">low</option>
+                <option value="medium">med</option>
+                <option value="high">high</option>
+                <option value="xhigh">xhigh</option>
+              </select>
+            </label>
+          )}
           <Button className="h-7 border-[#3a403b] bg-transparent px-3 text-xs font-bold text-[#eef2ec] hover:border-[#9fd1ff] hover:bg-transparent hover:text-[#9fd1ff]" size="sm" variant="outline" onClick={() => props.onStart("agent")}>
             + agent
           </Button>
@@ -7059,8 +7109,12 @@ function selectActiveSessionId(sessions: SessionRecord[], preferredId?: string |
   return newestSession(visible)?.id || null;
 }
 
-function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean }) {
-  const liveWithCommand = sessions.filter((session) => session.command && isLiveTerminalSession(session));
+function selectReusableAgentSession(sessions: SessionRecord[], options: { purpose?: string; visibility?: "visible" | "standby"; promote?: boolean; provider?: AgentProviderId }) {
+  const liveWithCommand = sessions.filter((session) =>
+    session.command
+    && isLiveTerminalSession(session)
+    && (!options.provider || agentProviderFromCommand(session.command) === options.provider)
+  );
   if (!liveWithCommand.length) return null;
   if (options.purpose === "general" && options.promote) {
     return oldestSession(liveWithCommand.filter(isStandbySession));
@@ -7373,8 +7427,21 @@ function terminalImportPlanningPrompt(project: ProjectRecord) {
   ].join("\n");
 }
 
-function agentLaunchCommand(layout: LayoutResponse | null, effort: ThinkingEffort = defaultThinkingEffort) {
-  const command = layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || "codex --yolo";
+type AgentProviderAvailability = { codexAvailable: boolean; claudeAvailable: boolean };
+type AgentProviderId = "codex" | "claude";
+
+function defaultAgentCommand(providers?: AgentProviderAvailability) {
+  // Detection only changes the default for new/unconfigured panels. Codex stays
+  // the default when both CLIs are present (back-compat); fall back to Claude
+  // only when it is the sole installed agent.
+  if (providers && !providers.codexAvailable && providers.claudeAvailable) {
+    return "claude --dangerously-skip-permissions";
+  }
+  return "codex --yolo";
+}
+
+function agentLaunchCommand(layout: LayoutResponse | null, effort: ThinkingEffort = defaultThinkingEffort, providers?: AgentProviderAvailability) {
+  const command = layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command?.trim() || defaultAgentCommand(providers);
   return codexCommandWithThinkingEffort(command, effort);
 }
 
@@ -7402,6 +7469,24 @@ function codexCommandWithThinkingEffort(command: string, effort: ThinkingEffort)
 
 const codexModelReasoningEffortFlagPattern = /\s+-c\s+(['"]?)model_reasoning_effort=(?:"[^"]*"|'[^']*'|[^\s'"]+)\1/g;
 const codexPlanModeReasoningEffortFlagPattern = /\s+-c\s+(['"]?)plan_mode_reasoning_effort=(?:"[^"]*"|'[^']*'|[^\s'"]+)\1/g;
+
+// Claude Code has no Codex-style reasoning-effort flags, so its launch command
+// passes through unchanged. Kept as a named parallel to the Codex helper.
+function claudeCommandWithThinkingEffort(command: string, _effort: ThinkingEffort) {
+  if (!/^\s*(?:[\w./-]+\/)?claude(?:\s|$)/.test(command)) return command;
+  return command;
+}
+
+function agentProviderFromCommand(command?: string | null): AgentProviderId {
+  const token = (command || "").trim().split(/\s+/)[0] || "";
+  const base = token.split(/[\\/]/).pop() || token;
+  return base === "claude" ? "claude" : "codex";
+}
+
+function layoutAgentProvider(layout: LayoutResponse | null): AgentProviderId {
+  const command = layout?.panels?.find((panel) => panel.role === "agent" || panel.name === "agent")?.command;
+  return agentProviderFromCommand(command);
+}
 
 function importedProjectQuestionScriptPrompt(project: ProjectRecord, requestId: string, sourceContext: string) {
   return [

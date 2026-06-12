@@ -192,6 +192,38 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::previews::layout_config_for_root(project_root),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/agent-providers") {
+        return json_response(
+            200,
+            &serde_json::json!({
+                "codexAvailable": crate::domain::agent_provider::binary_on_path("codex"),
+                "claudeAvailable": crate::domain::agent_provider::binary_on_path("claude"),
+            }),
+        );
+    }
+    if request.method == "POST" && request.path.starts_with("/api/agent-provider") {
+        let project = resolve_request_project(&request.path).or_else(current_project_record);
+        let Some(project) = project else {
+            return error_response(404, "Project not found for agent provider update.");
+        };
+        let body = request
+            .body
+            .as_deref()
+            .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+            .unwrap_or(serde_json::Value::Null);
+        let command = match body["provider"].as_str().unwrap_or_default() {
+            "claude" => crate::domain::agent_provider::CLAUDE_LAUNCH_COMMAND,
+            "codex" => crate::domain::agent_provider::CODEX_LAUNCH_COMMAND,
+            _ => return error_response(400, "Unknown agent provider."),
+        };
+        return match crate::domain::agent_provider::set_agent_command(&project.root, command) {
+            Ok(()) => json_response(
+                200,
+                &crate::domain::previews::layout_config_for_root(&project.root),
+            ),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/app-previews") {
         let active_id = query_param(&request.path, "project");
         return json_response(

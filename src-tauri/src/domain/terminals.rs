@@ -4,7 +4,7 @@ use portable_pty::{native_pty_system, Child as PtyChild, CommandBuilder, MasterP
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -243,6 +243,9 @@ impl TerminalManager {
         configure_pty_shell_command(&mut command, launch_command.as_deref());
         command.cwd(root);
         command.env("TERM", "xterm-256color");
+        if let Some(path) = augmented_path() {
+            command.env("PATH", path);
+        }
         let child = pair
             .slave
             .spawn_command(command)
@@ -312,6 +315,9 @@ impl TerminalManager {
         let launch_command = request.command.clone();
         let mut command = Command::new(&shell);
         configure_std_shell_command(&mut command, launch_command.as_deref());
+        if let Some(path) = augmented_path() {
+            command.env("PATH", path);
+        }
         let mut child = command
             .current_dir(root)
             .env("TERM", "xterm-256color")
@@ -701,6 +707,55 @@ fn shell_path() -> String {
     })
 }
 
+/// Common per-user binary directories that hold CLI tools installed via
+/// curl/installer scripts (claude, codex, rustup, bun, etc.). The user's
+/// interactive shell normally prepends these, but a GUI/app-launched hyperwiki
+/// can inherit a PATH that omits them — so a freshly installed agent CLI is
+/// invisible to spawned terminals even though it resolves in a normal shell.
+fn user_bin_dirs() -> Vec<PathBuf> {
+    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return Vec::new();
+    };
+    [".local/bin", "bin", ".cargo/bin", ".bun/bin"]
+        .iter()
+        .map(|relative| home.join(relative))
+        .filter(|dir| dir.is_dir())
+        .collect()
+}
+
+/// Build a PATH that prepends the user's binary directories (when not already
+/// present) so spawned terminals resolve user-installed CLIs the same way the
+/// user's interactive shell does. Returns `None` when nothing needs adding.
+fn augmented_path() -> Option<String> {
+    let current = std::env::var("PATH").unwrap_or_default();
+    let additions: Vec<String> = user_bin_dirs()
+        .iter()
+        .map(|dir| dir.to_string_lossy().to_string())
+        .collect();
+    prepend_missing_path_dirs(&current, &additions)
+}
+
+/// Pure helper: prepend each directory in `additions` to `current` (a
+/// colon-separated PATH) unless it is already present. Returns `None` when no
+/// directory needs adding.
+fn prepend_missing_path_dirs(current: &str, additions: &[String]) -> Option<String> {
+    let existing: Vec<&str> = current.split(':').collect();
+    let mut to_add: Vec<String> = Vec::new();
+    for dir in additions {
+        if !existing.contains(&dir.as_str()) && !to_add.contains(dir) {
+            to_add.push(dir.clone());
+        }
+    }
+    if to_add.is_empty() {
+        return None;
+    }
+    Some(if current.is_empty() {
+        to_add.join(":")
+    } else {
+        format!("{}:{}", to_add.join(":"), current)
+    })
+}
+
 fn next_terminal_id() -> String {
     format!("terminal-{}", timestamp())
 }
@@ -720,6 +775,36 @@ mod tests {
     use std::path::PathBuf;
     use std::thread::sleep;
     use std::time::Duration;
+
+    #[test]
+    fn prepend_missing_path_dirs_prepends_only_absent_dirs() {
+        let current = "/usr/bin:/bin";
+        let additions = vec![
+            "/Users/x/.local/bin".to_string(),
+            "/usr/bin".to_string(), // already present, must be skipped
+            "/Users/x/.cargo/bin".to_string(),
+        ];
+        assert_eq!(
+            prepend_missing_path_dirs(current, &additions),
+            Some("/Users/x/.local/bin:/Users/x/.cargo/bin:/usr/bin:/bin".to_string()),
+        );
+    }
+
+    #[test]
+    fn prepend_missing_path_dirs_returns_none_when_all_present() {
+        let current = "/Users/x/.local/bin:/usr/bin";
+        let additions = vec!["/Users/x/.local/bin".to_string()];
+        assert_eq!(prepend_missing_path_dirs(current, &additions), None);
+    }
+
+    #[test]
+    fn prepend_missing_path_dirs_handles_empty_current() {
+        let additions = vec!["/Users/x/.local/bin".to_string()];
+        assert_eq!(
+            prepend_missing_path_dirs("", &additions),
+            Some("/Users/x/.local/bin".to_string()),
+        );
+    }
 
     #[test]
     fn starts_pipe_session_writes_replays_resizes_and_closes() {

@@ -43,7 +43,7 @@ assert.ok(mdxRenderer.includes("pb-2 pl-5"), "React MDX plan renderer should kee
 assert.ok(mdxRenderer.includes("font-normal leading-6"), "React MDX plan renderer should keep list text consistent with summary prose");
 assert.ok(mdxRenderer.includes("flex-col gap-4"), "React MDX plan renderer should avoid double-counting section rhythm after list padding");
 assert.ok(mdxRenderer.includes('tag === "section") return <section className="grid gap-3"'), "React MDX plan renderer should keep section headings close to their own content");
-assert.ok(source.includes('|| "codex --yolo"'), "Agent launch fallback should preserve codex --yolo");
+assert.ok(source.includes("|| defaultAgentCommand(providers)") && source.includes('return "codex --yolo";'), "Agent launch fallback should route through the detection-aware default and keep codex --yolo as the back-compat default");
 assert.ok(source.includes("cleanInitialTerminalDisplayText"), "Terminal display should clean startup-only shell partial-line markers");
 assert.ok(source.includes("initialDisplayBufferRef") && source.includes("initialBuffer.current = combined"), "Terminal display cleanup should handle startup marker chunks split across xterm writes");
 assert.ok((source.includes("liveSessions.map((session, index)") || source.includes("terminalSessions.map((session, index)")) && source.includes('aria-label="Close terminal"'), "Live terminal sessions should render as vertical split panes with per-pane close controls");

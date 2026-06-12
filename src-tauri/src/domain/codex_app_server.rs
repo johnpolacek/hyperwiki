@@ -224,6 +224,9 @@ fn turn_runs() -> &'static Mutex<TurnRunRegistry> {
 }
 
 pub fn spawn_codex_provider_prewarm() {
+    if !crate::domain::agent_provider::binary_on_path("codex") {
+        return;
+    }
     thread::spawn(move || {
         let start = Instant::now();
         let result = app_server()
@@ -262,6 +265,23 @@ pub fn prewarm_import_thread(
 ) -> Result<CodexPrewarmResponse, (u16, String)> {
     let start = Instant::now();
     let project_id = project.id.clone();
+    if matches!(
+        crate::domain::agent_provider::provider_for_project(&project),
+        crate::domain::agent_provider::AgentProvider::Claude
+    ) {
+        // Claude Code has no persistent app-server to prewarm; each turn is a
+        // fresh `claude -p` process. Report ready immediately so the onboarding
+        // UI proceeds without waiting on a Codex thread.
+        return Ok(CodexPrewarmResponse {
+            ok: true,
+            project_id,
+            provider_ready: true,
+            thread_ready: true,
+            thread_id: None,
+            elapsed_ms: start.elapsed().as_millis(),
+            error: None,
+        });
+    }
     let mut server_guard = app_server()
         .lock()
         .map_err(|_| (500, "Codex app-server lock is poisoned.".to_string()))?;
@@ -502,7 +522,7 @@ fn empty_snapshot(phase: &str) -> CodexTurnSnapshot {
     }
 }
 
-fn update_run_snapshot(run_id: &str, snapshot: CodexTurnSnapshot) {
+pub(crate) fn update_run_snapshot(run_id: &str, snapshot: CodexTurnSnapshot) {
     if let Ok(mut runs) = turn_runs().lock() {
         if matches!(runs.by_id.get(run_id), Some(TurnRunState::Running(_))) {
             let phase = snapshot.phase.clone();
@@ -664,7 +684,7 @@ fn update_session_from_run(registry: &mut TurnRunRegistry, run: &ImportOnboardin
     }
 }
 
-fn emit_onboarding_event(
+pub(crate) fn emit_onboarding_event(
     app: Option<&tauri::AppHandle>,
     run: &ImportOnboardingRunRecord,
     kind: &str,
@@ -699,14 +719,14 @@ fn emit_onboarding_event(
     }
 }
 
-fn run_record(run_id: &str) -> Option<ImportOnboardingRunRecord> {
+pub(crate) fn run_record(run_id: &str) -> Option<ImportOnboardingRunRecord> {
     turn_runs()
         .lock()
         .ok()
         .and_then(|registry| registry.runs_by_id.get(run_id).cloned())
 }
 
-fn is_run_cancelled(run_id: &str) -> bool {
+pub(crate) fn is_run_cancelled(run_id: &str) -> bool {
     turn_runs()
         .lock()
         .ok()
@@ -784,6 +804,18 @@ pub fn run_import_planning_turn(
     } else {
         request.request_id.clone()
     };
+    if matches!(
+        crate::domain::agent_provider::provider_for_project(project),
+        crate::domain::agent_provider::AgentProvider::Claude
+    ) {
+        return crate::domain::claude_agent::run_claude_planning_turn(
+            project,
+            run_id,
+            &request_id,
+            prompt,
+            app.as_ref(),
+        );
+    }
     let provider_was_warm = is_app_server_warm();
     let thread_was_warm = import_thread_id(&project.id).is_some();
 
@@ -1869,10 +1901,10 @@ impl AppServer {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-struct CodexAdapterTimingMarks {
-    provider_ready_ms: Option<u128>,
-    thread_ready_ms: Option<u128>,
-    turn_requested_ms: Option<u128>,
+pub(crate) struct CodexAdapterTimingMarks {
+    pub(crate) provider_ready_ms: Option<u128>,
+    pub(crate) thread_ready_ms: Option<u128>,
+    pub(crate) turn_requested_ms: Option<u128>,
 }
 
 fn normalize_turn_event(value: &Value, thread_id: &str) -> Option<CodexAdapterEvent> {
@@ -1915,7 +1947,7 @@ fn normalize_turn_event(value: &Value, thread_id: &str) -> Option<CodexAdapterEv
     }
 }
 
-fn push_event_log(event_log: &mut Vec<String>, line: String) {
+pub(crate) fn push_event_log(event_log: &mut Vec<String>, line: String) {
     if line.trim().is_empty() {
         return;
     }
@@ -2031,7 +2063,7 @@ fn compact_event_text(text: &str, max_chars: usize) -> String {
     value
 }
 
-fn turn_snapshot(
+pub(crate) fn turn_snapshot(
     phase: &str,
     text: &str,
     events: usize,
