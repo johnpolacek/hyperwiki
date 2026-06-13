@@ -6,7 +6,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { hyperwikiApi, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
-import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
+import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, naturalTerminalMode, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import type { MemoryEntry, ProjectRecord, SettingsResponse, TerminalCompletionNotificationSettings, ThemePreset } from "@/lib/types";
 
@@ -230,7 +230,7 @@ export function SettingsView({ activeProject, onOpenProjectEnv, settings }: { ac
                 <SelectField label="Body Style" value={fontStyle(editTheme.tokens.docs?.serifFont)} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "docs", "serifFont", value === "sans" ? "Work Sans, sans-serif" : "Instrument Serif, serif"))} options={[["serif", "Serif"], ["sans", "Sans Serif"]]} />
                 <SelectField label="Sidebar" value={editTheme.tokens.ui?.sidebarFont === editTheme.tokens.ui?.sansFont ? "body" : "mono"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "ui", "sidebarFont", value === "body" ? editTheme.tokens.ui?.sansFont || "Rethink Sans, sans-serif" : editTheme.tokens.docs?.monoFont || "Space Mono, monospace"))} options={[["body", "UI font"], ["mono", "Mono font"]]} />
                 <SelectField label="Mono Font" value={editTheme.tokens.docs?.monoFont || "Space Mono, monospace"} onChange={(value) => setThemeDraft(updateThemeToken(updateThemeToken(editableTheme, "docs", "monoFont", value), "terminal", "font", value))} options={[["Space Mono, monospace", "Space Mono"], ["IBM Plex Mono, monospace", "IBM Plex Mono"], ["Fira Code, monospace", "Fira Code"], ["Roboto Mono, monospace", "Roboto Mono"]]} />
-                <SelectField label="Terminal Mode" value={editTheme.tokens.terminal?.mode || "dark"} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "mode", value))} options={[["dark", "Dark"], ["light", "Light"], ["match", "Match UI"]]} />
+                <SelectField label="Terminal Mode" value={editTheme.tokens.terminal?.mode || naturalTerminalMode(editTheme.tokens.terminal)} onChange={(value) => setThemeDraft(updateThemeToken(editableTheme, "terminal", "mode", value))} options={[["dark", "Dark"], ["light", "Light"], ["match", "Match UI"]]} />
               </div>
               <ThemeFontSummary theme={editTheme} />
               <details className="mt-4">

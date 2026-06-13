@@ -10,10 +10,47 @@ export interface NormalizedTheme {
   };
 }
 
+// Standard terminal palettes used when the chosen terminal mode differs from
+// the active preset's natural terminal lightness. The dark palette mirrors the
+// historical hardcoded terminal chrome (and theme_css fallbacks); the light one
+// is a neutral counterpart so a forced-light terminal still reads cleanly.
+export const STANDARD_TERMINAL: Record<"light" | "dark", Record<string, string>> = {
+  dark: { bg: "#272822", pane: "#111312", toolbar: "#171a18", header: "#1b1f1b", border: "#2c302d", text: "#eef2ec", muted: "#abb5ad" },
+  light: { bg: "#eef0f2", pane: "#f6f7f9", toolbar: "#eceef1", header: "#f1f2f5", border: "#d7dadf", text: "#1f2329", muted: "#5c6470" },
+};
+
+// Standard UI palettes used when the chosen UI mode differs from the active
+// preset's natural lightness. Values mirror the :root / .dark blocks in
+// src/index.css so a forced mode override stays coherent. The preset accent
+// always carries through.
+export const STANDARD_UI: Record<"light" | "dark", Record<string, string>> = {
+  light: { bg: "#f8f8f5", panel: "#ffffff", text: "#1f221e", muted: "#6b7066", border: "#e2e2da" },
+  dark: { bg: "#131413", panel: "#1b1d1b", text: "#ebede9", muted: "#9ba19a", border: "#2a2d2a" },
+};
+
 export function effectiveTheme(theme?: SettingsResponse["theme"]): NormalizedTheme {
   const presets = theme?.presets || {};
   const preset = presets[theme?.activePreset || ""] || Object.values(presets)[0] || {};
-  return mergePreset(normalizePreset(preset), { label: hasThemeOverrides(theme) ? "Custom" : preset.label || "Custom", tokens: theme?.customTokens || {} });
+  // The overall UI mode override lives under customTokens.ui.mode so it stays
+  // independent of the terminal's own mode (customTokens.terminal.mode).
+  const modeOverride = theme?.customTokens?.ui?.mode;
+  return mergePreset(normalizePreset(preset), { label: hasThemeOverrides(theme) ? "Custom" : preset.label || "Custom", mode: modeOverride, tokens: theme?.customTokens || {} });
+}
+
+// The terminal's natural lightness, inferred from the preset's baked pane color.
+export function naturalTerminalMode(terminal?: Record<string, string>): "light" | "dark" {
+  const pane = normalizeColor(terminal?.pane || terminal?.bg, "#111312");
+  return relativeLuminance(hexToRgb(pane)) > 0.45 ? "light" : "dark";
+}
+
+// The terminal's effective light/dark, resolved independently of the UI mode:
+// an explicit dark/light wins, "match" follows the UI, and unset preserves the
+// preset's natural terminal lightness.
+export function resolveTerminalMode(theme: NormalizedTheme): "light" | "dark" {
+  const raw = theme.tokens.terminal?.mode;
+  if (raw === "light" || raw === "dark") return raw;
+  if (raw === "match") return theme.mode === "dark" ? "dark" : "light";
+  return naturalTerminalMode(theme.tokens.terminal);
 }
 
 export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
@@ -22,12 +59,19 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const docs = theme.tokens.docs || {};
   const terminal = theme.tokens.terminal || {};
   const root = document.documentElement;
-  const background = normalizeColor(docs.bg || ui.bg || "#f8f8f5", "#f8f8f5");
-  const panel = normalizeColor(ui.panel || docs.panel || "#ffffff", "#ffffff");
-  const foreground = normalizeColor(ui.text || docs.text || "#1f221e", "#1f221e");
-  const mutedForeground = normalizeColor(ui.muted || docs.muted || "#6b7066", "#6b7066");
-  const border = normalizeColor(ui.border || docs.border || "#e2e2da", "#e2e2da");
   const accent = normalizeColor(ui.accent || docs.link || "#276ef1", "#276ef1");
+  const presetBackground = normalizeColor(docs.bg || ui.bg || "#f8f8f5", "#f8f8f5");
+  // When the resolved UI mode contradicts the preset's natural lightness, swap
+  // the surface colors to a standard palette of that mode (the preset accent
+  // still carries through); otherwise keep the preset's curated colors.
+  const uiMode = theme.mode === "dark" ? "dark" : "light";
+  const useStandardUi = uiMode !== (relativeLuminance(hexToRgb(presetBackground)) > 0.45 ? "light" : "dark");
+  const standardUi = STANDARD_UI[uiMode];
+  const background = useStandardUi ? standardUi.bg : presetBackground;
+  const panel = useStandardUi ? standardUi.panel : normalizeColor(ui.panel || docs.panel || "#ffffff", "#ffffff");
+  const foreground = useStandardUi ? standardUi.text : normalizeColor(ui.text || docs.text || "#1f221e", "#1f221e");
+  const mutedForeground = useStandardUi ? standardUi.muted : normalizeColor(ui.muted || docs.muted || "#6b7066", "#6b7066");
+  const border = useStandardUi ? standardUi.border : normalizeColor(ui.border || docs.border || "#e2e2da", "#e2e2da");
   const secondary = mixHex(accent, theme.mode === "dark" ? "#ffffff" : panel, theme.mode === "dark" ? 0.18 : 0.9);
   const muted = mixHex(mutedForeground, background, theme.mode === "dark" ? 0.68 : 0.84);
   const uiFont = cssFontValue(ui.sansFont || ui.font || docs.sansFont, "\"Rethink Sans\", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif");
@@ -35,6 +79,13 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
   const monoFont = cssFontValue(docs.monoFont, "\"Sometype Mono\", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace");
   const terminalFont = cssFontValue(terminal.font, monoFont);
   const isDark = theme.mode === "dark";
+  // Resolve the terminal palette independently of the UI mode. When the chosen
+  // terminal mode matches the preset's natural lightness we keep the preset's
+  // curated colors; otherwise we fall back to a standard palette of the chosen
+  // lightness. The terminal accent always carries through.
+  const terminalMode = resolveTerminalMode(theme);
+  const standardTerminal = STANDARD_TERMINAL[terminalMode];
+  const terminalPalette = terminalMode === naturalTerminalMode(terminal) ? { ...standardTerminal, ...terminal } : standardTerminal;
   // Quiet hover tone for ghost/outline controls; the saturated preset accent stays on --primary.
   const hover = mixHex(mutedForeground, panel, isDark ? 0.82 : 0.88);
 
@@ -68,16 +119,17 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--docs-mono-font": monoFont,
     "--terminal-font": terminalFont,
     "--sidebar-font": cssFontValue(ui.sidebarFont, uiFont),
-    // Terminal surface tokens. Fallbacks mirror theme_css() in
+    // Terminal surface tokens, resolved per the terminal's own mode above.
+    // Standard-palette fallbacks mirror theme_css() in
     // src-tauri/src/domain/settings.rs so the app chrome and the
     // backend-served wiki/iframe CSS never diverge.
-    "--terminal-bg": normalizeColor(terminal.bg, "#272822"),
-    "--terminal-pane": normalizeColor(terminal.pane, "#111312"),
-    "--terminal-toolbar": normalizeColor(terminal.toolbar, "#171a18"),
-    "--terminal-header": normalizeColor(terminal.header, "#1b1f1b"),
-    "--terminal-border": normalizeColor(terminal.border, "#2c302d"),
-    "--terminal-text": normalizeColor(terminal.text, "#eef2ec"),
-    "--terminal-muted": normalizeColor(terminal.muted, "#abb5ad"),
+    "--terminal-bg": normalizeColor(terminalPalette.bg, standardTerminal.bg),
+    "--terminal-pane": normalizeColor(terminalPalette.pane, standardTerminal.pane),
+    "--terminal-toolbar": normalizeColor(terminalPalette.toolbar, standardTerminal.toolbar),
+    "--terminal-header": normalizeColor(terminalPalette.header, standardTerminal.header),
+    "--terminal-border": normalizeColor(terminalPalette.border, standardTerminal.border),
+    "--terminal-text": normalizeColor(terminalPalette.text, standardTerminal.text),
+    "--terminal-muted": normalizeColor(terminalPalette.muted, standardTerminal.muted),
     "--terminal-accent": normalizeColor(terminal.accent, "#9fd1ff"),
     // Diff line colors for plan CodeBlock language="diff" rendering.
     "--diff-add": isDark ? "#4ade80" : "#15803d",
@@ -137,7 +189,9 @@ export function selectThemePreset(theme: SettingsResponse["theme"], activePreset
 }
 
 export function updateThemeMode(theme: SettingsResponse["theme"], mode: string): SettingsResponse["theme"] {
-  return { ...(theme || {}), customTokens: { ...(theme?.customTokens || {}), ui: { ...(theme?.customTokens?.ui || {}) }, docs: { ...(theme?.customTokens?.docs || {}) }, terminal: { ...(theme?.customTokens?.terminal || {}), mode } } };
+  // Overall UI mode override; stored under ui.mode to stay independent of the
+  // terminal's own mode (customTokens.terminal.mode).
+  return { ...(theme || {}), customTokens: { ...(theme?.customTokens || {}), ui: { ...(theme?.customTokens?.ui || {}), mode } } };
 }
 
 export function updateThemeToken(theme: SettingsResponse["theme"], surface: "ui" | "docs" | "terminal", token: string, value: string): SettingsResponse["theme"] {
