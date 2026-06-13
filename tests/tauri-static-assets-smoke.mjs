@@ -93,6 +93,9 @@ if (!appSource.includes("const executionPage = activePlanState.currentPath || no
 if (!appSource.includes("type PendingExecuteAgentConfirmation") || !appSource.includes("selectExecuteAgentReuseCandidate(sessions, activeSessionId)") || !appSource.includes("Run in current agent") || !appSource.includes("New agent") || !appSource.includes("confirmExecuteInCurrentAgent")) {
   throw new Error("Execute must confirm whether to reuse a visible agent terminal, start a new agent, or cancel.");
 }
+if (!appSource.includes('<AlertDialogAction variant="outline"') || appSource.includes('AlertDialogAction className={buttonVariants({ variant: "outline" })}')) {
+  throw new Error("Execute confirmation New agent action must use the outline variant without merging conflicting primary action classes.");
+}
 if (!appSource.includes("targetSessionId?: string") || !appSource.includes("retargetAgentSession(promptProject, options.targetSessionId, scope, agentPurpose)") || !appSource.includes("sessionId: session.id") || !appSource.includes("forceNewSession: true")) {
   throw new Error("Confirmed Execute reuse must route to the selected session while New agent starts a fresh session.");
 }

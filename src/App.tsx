@@ -46,7 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
 import { hyperwikiApi, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
@@ -2784,7 +2784,7 @@ function App() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={cancelExecuteAgentConfirmation}>Cancel</AlertDialogCancel>
-              <AlertDialogAction className={buttonVariants({ variant: "outline" })} onClick={() => void confirmExecuteInNewAgent()}>
+              <AlertDialogAction variant="outline" onClick={() => void confirmExecuteInNewAgent()}>
                 New agent
               </AlertDialogAction>
               <AlertDialogAction onClick={() => void confirmExecuteInCurrentAgent()}>
