@@ -1529,11 +1529,20 @@ function App() {
         lines: ["Agent session started", "Waiting for the agent prompt"],
         transcript: "Agent session started\nWaiting for the agent prompt",
       });
-      const readinessOptions = kind === "modify"
-        ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" }
-        : kind === "execute"
-          ? { maxAttempts: 60, intervalMs: 250, reason: "execute-submit" }
-          : undefined;
+      // Codex exposes a parseable prompt/MCP startup state machine; Claude Code's
+      // TUI does not, so its readiness can't be sniffed the same way and the
+      // Codex heuristic would never trip — burning the whole attempt budget
+      // (~15s on execute) before falling through to send. For Claude we instead
+      // wait for the terminal output to settle (an idle terminal is ready for
+      // input), which lets the reuse path submit almost immediately.
+      const provider = agentProviderFromCommand(session.command);
+      const readinessOptions = provider === "claude"
+        ? { maxAttempts: kind === "execute" ? 24 : 12, intervalMs: 250, reason: `claude-${kind}-submit`, stabilize: true }
+        : kind === "modify"
+          ? { maxAttempts: 8, intervalMs: 250, reason: "modify-submit" }
+          : kind === "execute"
+            ? { maxAttempts: 60, intervalMs: 250, reason: "execute-submit" }
+            : undefined;
       const ready = await waitForAgentPromptReady(session.id, readinessOptions);
       appendImportLog(`Agent prompt readiness session=${session.id} ready=${ready} kind=${kind} maxAttempts=${readinessOptions?.maxAttempts || 120} elapsedMs=${Date.now() - handoffStartedAt}`);
       updateAgentRun(runId, {
@@ -4182,18 +4191,33 @@ type AgentPromptReadinessSnapshot = {
   mcpTotal: number | null;
 };
 
-async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts?: number; intervalMs?: number; reason?: string } = {}) {
+async function waitForAgentPromptReady(sessionId: string, options: { maxAttempts?: number; intervalMs?: number; reason?: string; stabilize?: boolean } = {}) {
   const startedAt = Date.now();
   let lastText = "";
   let lastSnapshot: AgentPromptReadinessSnapshot | null = null;
   let lastLogKey = "";
   const maxAttempts = options.maxAttempts || 120;
   const intervalMs = options.intervalMs || 250;
+  let previousStablePlain: string | null = null;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     try {
       const replay = await hyperwikiApi.json<TerminalReplayResponse>(`/api/terminal/${encodeURIComponent(sessionId)}/replay`);
       const bytes = Uint8Array.from(replay.bytes || []);
       const plain = terminalTextForParsing(terminalBytesToText(bytes));
+      if (options.stabilize) {
+        // Provider-agnostic readiness for agents (e.g. Claude Code) whose TUI
+        // has no parseable prompt marker: a non-empty terminal whose parsed
+        // output is unchanged across one interval is idle and accepting input.
+        const settled = plain.trim().length > 0 && previousStablePlain === plain;
+        lastText = plain.slice(-500);
+        if (settled) {
+          appendImportLog(`Agent prompt readiness settled session=${sessionId} reason=${options.reason || "default"} attempt=${attempt + 1}/${maxAttempts} chars=${plain.length} elapsedMs=${Date.now() - startedAt}`);
+          return true;
+        }
+        previousStablePlain = plain;
+        await delay(intervalMs);
+        continue;
+      }
       const snapshot = agentPromptReadinessSnapshot(plain);
       lastSnapshot = snapshot;
       lastText = snapshot.tail;
