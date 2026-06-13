@@ -160,6 +160,7 @@ function App() {
   const loggedPlanningQuestionIds = useRef(new Set<string>());
   const armedAgentCompletions = useRef(new Map<string, { minPromptIndex: number; label: string; planPath: string | null }>());
   const notifiedTerminalCompletions = useRef(new Set<string>());
+  const envHintCandidateRef = useRef("");
   const latestNotificationSettings = useRef<SettingsResponse["notifications"] | null>(null);
   const latestSessionsRef = useRef<SessionRecord[]>([]);
   const latestActiveProjectRef = useRef<ProjectRecord | null>(null);
@@ -1270,13 +1271,38 @@ function App() {
     }
   }
 
+  // Terminal output only tells us a key was *referenced*, not that it's missing.
+  // Verify against the project's actual .env.local before surfacing (or while
+  // re-validating) the hint, so a key that's already set never shows as missing.
+  const verifyTerminalEnvHint = useCallback(async (key: string, sessionId: string) => {
+    const apply = (present: boolean) => setTerminalEnvHint((current) => {
+      if (present) return current?.key === key ? null : current;
+      return current?.key === key && current?.sessionId === sessionId ? current : { key, sessionId };
+    });
+    const project = latestActiveProjectRef.current;
+    if (!project) {
+      apply(false);
+      return;
+    }
+    try {
+      const summary = await hyperwikiApi.json<ProjectEnvResponse>(withProjectQuery("/api/project-env", project));
+      const present = [...(summary.keys || []), ...(summary.suggestedKeys || [])]
+        .some((entry) => entry.name === key && entry.present);
+      apply(present);
+    } catch {
+      apply(false);
+    }
+  }, []);
+
   const handleTerminalText = useCallback((sessionId: string, text: string) => {
     if (!text) return;
     const detectedEnvKey = detectEnvKeyFromTerminalText(text);
     if (detectedEnvKey) {
-      setTerminalEnvHint((current) => current?.key === detectedEnvKey && current?.sessionId === sessionId
-        ? current
-        : { key: detectedEnvKey, sessionId });
+      const signature = `${sessionId}\0${detectedEnvKey}`;
+      if (envHintCandidateRef.current !== signature) {
+        envHintCandidateRef.current = signature;
+        void verifyTerminalEnvHint(detectedEnvKey, sessionId);
+      }
     }
     const session = latestSessionsRef.current.find((candidate) => candidate.id === sessionId);
     if (session?.role === "dev") {
@@ -1359,6 +1385,17 @@ function App() {
       setTerminalEnvHint(null);
     }
   }, [terminalEnvHint]);
+
+  // Re-check the hint against the real .env.local whenever the window regains
+  // focus or the active project changes, so editing the file directly (outside
+  // the Project Env editor) clears a now-satisfied "missing env key" banner.
+  useEffect(() => {
+    if (!terminalEnvHint) return;
+    const revalidate = () => void verifyTerminalEnvHint(terminalEnvHint.key, terminalEnvHint.sessionId);
+    revalidate();
+    window.addEventListener("focus", revalidate);
+    return () => window.removeEventListener("focus", revalidate);
+  }, [terminalEnvHint, activeProject?.id, verifyTerminalEnvHint]);
 
   async function answerPlanningQuestion(answers: PlanningQuestionAnswer[]) {
     const trimmedAnswers = answers
