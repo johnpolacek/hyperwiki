@@ -1487,18 +1487,42 @@ fn send_agent_prompt(
         "",
     ]
     .join("\n");
-    let paste = codex_paste_input(&message);
+    let provider =
+        crate::domain::agent_provider::provider_from_command(agent_session.command.as_deref());
+    let claude = matches!(provider, crate::domain::agent_provider::AgentProvider::Claude);
+    // Codex clears its starter prompt with ESC + Ctrl-U before the bracketed
+    // paste; Claude Code has no starter prompt and treats a leading ESC as
+    // cancel, so it gets a clean bracketed paste instead.
+    let paste = if claude {
+        claude_paste_input(&message)
+    } else {
+        codex_paste_input(&message)
+    };
+    let clear_prefix_bytes = if claude { 0 } else { 2 };
     manager
         .write(&agent_session.id, &paste)
         .map_err(|error| (409, error))?;
+    if claude {
+        // Claude Code buffers a bracketed paste and swallows a carriage return
+        // that lands in the same read as the paste's closing marker, leaving the
+        // prompt staged but unsent until the user presses Enter. Release the
+        // terminal lock and pause briefly so the paste settles, then the Enter
+        // we send registers as a submit instead of a literal newline.
+        drop(manager);
+        std::thread::sleep(std::time::Duration::from_millis(120));
+        manager = terminal_manager()
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+    }
     manager
         .write(&agent_session.id, "\r")
         .map_err(|error| (409, error))?;
     let after = manager.diagnostics(&agent_session.id);
     eprintln!(
-        "[hyperwiki] agent prompt routed request_id={} project_id={} requested_session={} selected_session={} scope={} prompt_chars={} paste_bytes={} before_seq={:?} after_seq={:?} live={}",
+        "[hyperwiki] agent prompt routed request_id={} project_id={} provider={:?} requested_session={} selected_session={} scope={} prompt_chars={} paste_bytes={} before_seq={:?} after_seq={:?} live={}",
         request_id,
         project.id,
+        provider,
         requested_session_id,
         agent_session.id,
         scope,
@@ -1514,7 +1538,7 @@ fn send_agent_prompt(
         "requestedSessionId": requested_session_id,
         "scope": scope,
         "promptChars": prompt.chars().count(),
-        "clearPrefixBytes": 2,
+        "clearPrefixBytes": clear_prefix_bytes,
         "pasteBytes": paste.len() + 1,
         "beforeReplaySeq": before.replay_seq,
         "afterReplaySeq": after.replay_seq,
@@ -1528,6 +1552,10 @@ fn send_agent_prompt(
 
 fn codex_paste_input(message: &str) -> String {
     format!("\x1b\x15\x1b[200~{message}\x1b[201~")
+}
+
+fn claude_paste_input(message: &str) -> String {
+    format!("\x1b[200~{message}\x1b[201~")
 }
 
 #[cfg(test)]
@@ -2557,6 +2585,18 @@ mod tests {
 
         assert!(input.starts_with("\x1b\x15\x1b[200~"));
         assert!(input.ends_with("\x1b[201~"));
+    }
+
+    #[test]
+    fn claude_paste_input_omits_codex_clear_prefix() {
+        let input = claude_paste_input("Do the thing");
+
+        // Bracketed paste only — no ESC + Ctrl-U clear prefix, which Claude Code
+        // would treat as a cancel (it has no starter prompt to clear).
+        assert!(input.starts_with("\x1b[200~"));
+        assert!(input.ends_with("\x1b[201~"));
+        assert!(!input.starts_with("\x1b\x15"));
+        assert!(!input.contains('\x15'));
     }
 
     #[test]
