@@ -40,6 +40,8 @@ pub struct ImportOnboardingSession {
     pub current_question_id: Option<String>,
     pub repair_attempts: u8,
     pub plan_repair_attempts: u8,
+    #[serde(default)]
+    pub adopt_attempts: u8,
     pub created_at_ms: u128,
     pub updated_at_ms: u128,
 }
@@ -130,6 +132,8 @@ enum RuntimeTurnKind {
     Answer,
     Repair,
     PlanRepair,
+    Adopt,
+    AdoptRepair,
 }
 
 impl RuntimeTurnKind {
@@ -139,6 +143,8 @@ impl RuntimeTurnKind {
             RuntimeTurnKind::Answer => "answer",
             RuntimeTurnKind::Repair => "repair",
             RuntimeTurnKind::PlanRepair => "plan_repair",
+            RuntimeTurnKind::Adopt => "adopt",
+            RuntimeTurnKind::AdoptRepair => "adopt_repair",
         }
     }
 
@@ -161,6 +167,15 @@ pub fn start_import_onboarding(
 ) -> Result<ImportOnboardingStatusResponse, (u16, String)> {
     let planning = import_planning_status(&project.root);
     let session = load_or_create_session(&project)?;
+    // Adopted projects are handled entirely by start_wiki_adoption (which resets
+    // the repair budget and re-spawns the Adopt turn), so check this before the
+    // generic retryable_failure path — including after a failed adoption.
+    if let Some(adoption) = crate::domain::adopt::read_adoption_state(&project.root) {
+        if adoption.status == "complete" {
+            return import_onboarding_status(&project);
+        }
+        return start_wiki_adoption(project, app);
+    }
     if session.status == "retryable_failure" {
         let kind = if session.phase.contains("plan") {
             RuntimeTurnKind::PlanRepair
@@ -205,6 +220,48 @@ pub fn start_import_onboarding(
     spawn_runtime_turn(
         project.clone(),
         RuntimeTurnKind::Initial,
+        String::new(),
+        String::new(),
+        app,
+    )?;
+    import_onboarding_status(&project)
+}
+
+/// Starts (or resumes) the agentic wiki-adoption turn for an adopted project.
+/// Unlike the questionnaire turns, the adopt turn lets the agent CLI read and
+/// write files in the repo; success is judged by `validate_adopted_wiki`.
+pub fn start_wiki_adoption(
+    project: ProjectRecord,
+    app: Option<tauri::AppHandle>,
+) -> Result<ImportOnboardingStatusResponse, (u16, String)> {
+    let Some(mut state) = crate::domain::adopt::read_adoption_state(&project.root) else {
+        return Err((
+            409,
+            "Wiki adoption was not initialized for this project.".to_string(),
+        ));
+    };
+    if state.status == "complete" {
+        return import_onboarding_status(&project);
+    }
+    // (Re)starting adoption refreshes the repair budget so a previously failed
+    // adoption can be retried, and resets the marker to "adopting".
+    if state.status != "adopting" {
+        state.status = "adopting".to_string();
+        state.updated_at_ms = unix_time_ms();
+        crate::domain::adopt::write_adoption_state(&project.root, &state)
+            .map_err(|error| (500, error))?;
+    }
+    let mut session = load_or_create_session(&project)?;
+    if session.adopt_attempts != 0 {
+        session.adopt_attempts = 0;
+        session.updated_at_ms = unix_time_ms();
+        write_session(&project.root, &session)?;
+    }
+    // The file list and any validation errors are derived inside run_adopt_turn
+    // from the adoption marker; the initial turn needs no inline context.
+    spawn_runtime_turn(
+        project.clone(),
+        RuntimeTurnKind::Adopt,
         String::new(),
         String::new(),
         app,
@@ -289,6 +346,14 @@ pub fn retry_import_onboarding(
     project: ProjectRecord,
     app: Option<tauri::AppHandle>,
 ) -> Result<ImportOnboardingStatusResponse, (u16, String)> {
+    // Adopted projects retry by re-running the adopt turn, not the Q&A repair
+    // turns; this also clears a terminal "adoptionFailed" state.
+    if let Some(adoption) = crate::domain::adopt::read_adoption_state(&project.root) {
+        if adoption.status != "complete" {
+            return start_wiki_adoption(project, app);
+        }
+        return import_onboarding_status(&project);
+    }
     let planning = import_planning_status(&project.root);
     if planning.current_question.is_some() {
         return import_onboarding_status(&project);
@@ -453,6 +518,9 @@ fn spawn_runtime_turn(
     if matches!(kind, RuntimeTurnKind::PlanRepair) {
         session.plan_repair_attempts = session.plan_repair_attempts.saturating_add(1);
     }
+    if matches!(kind, RuntimeTurnKind::AdoptRepair) {
+        session.adopt_attempts = session.adopt_attempts.saturating_add(1);
+    }
     write_session(&project.root, &session)?;
     let run = ImportOnboardingRun {
         project_id: project.id.clone(),
@@ -534,6 +602,9 @@ fn run_runtime_turn(
     let request_id = read_run(&project.root, &run_id)
         .map(|run| run.request_id)
         .unwrap_or_else(|| format!("import-turn:{}", monotonic_id()));
+    if matches!(kind, RuntimeTurnKind::Adopt | RuntimeTurnKind::AdoptRepair) {
+        return run_adopt_turn(project, run_id, kind, context, app);
+    }
     let prompt_context = read_import_source_context(&project.root);
     let prompt = match kind {
         RuntimeTurnKind::Initial => question_turn_prompt(&project, &request_id, &prompt_context),
@@ -553,6 +624,10 @@ fn run_runtime_turn(
         ),
         RuntimeTurnKind::PlanRepair => {
             plan_repair_prompt(&project, &request_id, &context, &prompt_context)
+        }
+        RuntimeTurnKind::Adopt | RuntimeTurnKind::AdoptRepair => {
+            // Adopt kinds return early above via run_adopt_turn.
+            unreachable!("adopt turns are dispatched before question-contract prompts")
         }
     };
     let response = match execute_provider_turn(&project, &run_id, &prompt, app.clone()) {
@@ -778,6 +853,162 @@ fn run_runtime_turn(
     Ok(())
 }
 
+const ADOPT_MAX_ATTEMPTS: u8 = 2;
+/// 1260 polls x 500ms = 10.5 minutes, comfortably above the 600s provider
+/// timeout the adopt turn requests.
+const ADOPT_MAX_POLLS: usize = 1260;
+const ADOPT_TURN_TIMEOUT_SECS: u64 = 600;
+
+fn run_adopt_turn(
+    project: ProjectRecord,
+    run_id: String,
+    kind: RuntimeTurnKind,
+    context: String,
+    app: Option<tauri::AppHandle>,
+) -> Result<(), (u16, String)> {
+    let state = crate::domain::adopt::read_adoption_state(&project.root).ok_or((
+        409,
+        "Wiki adoption was not initialized for this project.".to_string(),
+    ))?;
+    // AdoptRepair carries the prior validation errors in `context`. An initial
+    // Adopt turn on an already-mdx wiki (no .md files to convert) has nothing to
+    // list, so seed it with the current validation errors to make it actionable.
+    let repair_context = if !context.trim().is_empty() {
+        context.clone()
+    } else if state.md_files.is_empty() {
+        crate::domain::adopt::validate_adopted_wiki(&project.root, &state.md_files)
+            .errors
+            .join("\n")
+    } else {
+        String::new()
+    };
+    let prompt = adopt_turn_prompt(&project, kind, &state.md_files, &repair_context);
+    execute_provider_turn_with_window(
+        &project,
+        &run_id,
+        &prompt,
+        ADOPT_MAX_POLLS,
+        Some(ADOPT_TURN_TIMEOUT_SECS),
+        app.clone(),
+    )?;
+    // Adoption success is judged solely by what is on disk now.
+    let validation = crate::domain::adopt::validate_adopted_wiki(&project.root, &state.md_files);
+    crate::domain::adopt::write_adoption_validation(&project.root, &validation)
+        .map_err(|error| (500, error))?;
+    if validation.status == "valid" {
+        let mut state = state;
+        state.status = "complete".to_string();
+        state.updated_at_ms = unix_time_ms();
+        crate::domain::adopt::write_adoption_state(&project.root, &state)
+            .map_err(|error| (500, error))?;
+        return complete_runtime_run(
+            &project,
+            &run_id,
+            "complete",
+            "Adopted wiki is ready.",
+            app.as_ref(),
+        );
+    }
+    let session = load_or_create_session(&project)?;
+    if session.adopt_attempts < ADOPT_MAX_ATTEMPTS {
+        append_event_for_run(
+            &project.root,
+            app.as_ref(),
+            &run_id,
+            "contract_warning",
+            "validating_adoption",
+            "Adopted wiki needs a repair turn.",
+            Some(validation.errors.join("\n")),
+        )?;
+        complete_chained_runtime_run(
+            &project,
+            &run_id,
+            "validating_adoption",
+            "Adopted wiki needs a repair turn.",
+            app.as_ref(),
+        )?;
+        spawn_runtime_turn(
+            project,
+            RuntimeTurnKind::AdoptRepair,
+            validation.errors.join("\n"),
+            String::new(),
+            app,
+        )?;
+        return Ok(());
+    }
+    let mut state = state;
+    state.status = "failed".to_string();
+    state.updated_at_ms = unix_time_ms();
+    crate::domain::adopt::write_adoption_state(&project.root, &state)
+        .map_err(|error| (500, error))?;
+    fail_runtime_run(
+        &project,
+        &run_id,
+        format!(
+            "Wiki adoption did not pass validation after {ADOPT_MAX_ATTEMPTS} repair attempts:\n{}",
+            validation.errors.join("\n")
+        ),
+        app.as_ref(),
+    )
+}
+
+fn adopt_turn_prompt(
+    project: &ProjectRecord,
+    kind: RuntimeTurnKind,
+    md_files: &[String],
+    repair_errors: &str,
+) -> String {
+    let _ = kind;
+    let mut lines = Vec::new();
+    if !repair_errors.trim().is_empty() {
+        lines.push("This wiki does not yet pass hyperwiki adoption validation. Fix exactly these errors, then stop:".to_string());
+        lines.push(repair_errors.to_string());
+        lines.push(String::new());
+    }
+    lines.extend(
+        [
+            "You are adopting an existing project wiki into hyperwiki conventions.",
+            "Work agentically: read files, write files, rename files, and delete files with your tools.",
+            "Operate only inside the wiki/ directory. You may read AGENTS.md and package.json for context, but do not modify anything outside wiki/. Do not run git commands.",
+            "",
+            "Convert every .md file listed below to a .mdx file, then delete the original .md file.",
+            "Keep content faithful: do not summarize, rewrite, reorder, or drop sections. This is a format port, not an edit.",
+            "",
+            "Naming remaps:",
+            "- wiki/index.md -> wiki/index.mdx",
+            "- wiki/Sources.md -> wiki/sources.mdx (lowercase)",
+            "- wiki/AGENTS.md -> wiki/AGENTS.mdx",
+            "- wiki/plans/zzz-completed/ -> wiki/plans/zzz_completed/ (rename the directory; underscore)",
+            "- Other files keep their name with the .mdx extension.",
+            "",
+            "Required for every converted page:",
+            "- YAML frontmatter delimited by --- lines with title: \"...\" and description: \"...\" derived from the page's first heading and lead paragraph.",
+            "- Exactly one h1 (a line starting with # or an <h1> element).",
+            "- Pages under wiki/plans/ outside zzz_completed/ must also declare wikiKind: \"plan\" in frontmatter. Pages under wiki/sources/ should declare wikiKind: \"source\".",
+            "- If wiki/plans/ exists, ensure wiki/plans/index.mdx exists; create a minimal one linking the plan pages if it is missing.",
+            "",
+            "MDX safety: escape MDX-hostile content. Wrap stray { or < characters in prose with backticks or escape them, keep code fenced in proper code blocks, and remove raw HTML comments (<!-- -->).",
+            "Rewrite internal links: .md targets become .mdx, and zzz-completed path segments become zzz_completed. Leave links to non-markdown assets (JSON, images) unchanged and leave those asset files in place.",
+            "Optional enrichment only where it clearly improves structure (plain MDX is always acceptable): hyperwiki components PlanHero, PlanSummary, Decision, Evidence, Verification, Steps, Step, Callout, CodeBlock, CommandBlock, and Visibility.",
+            "",
+        ]
+        .into_iter()
+        .map(String::from),
+    );
+    lines.push(format!("Files to convert ({}):", md_files.len()));
+    for file in md_files {
+        lines.push(format!("- {file}"));
+    }
+    lines.push(String::new());
+    lines.push(format!("Project: {}", project.name));
+    lines.push(format!("Project root: {}", project.root.display()));
+    lines.push(
+        "When done, reply with a short summary listing the converted files. Do not output JSON."
+            .to_string(),
+    );
+    lines.join("\n")
+}
+
 fn compile_plan_from_ready_context(
     project: ProjectRecord,
     run_id: &str,
@@ -948,6 +1179,17 @@ fn execute_provider_turn(
     prompt: &str,
     app: Option<tauri::AppHandle>,
 ) -> Result<CodexTurnResponse, (u16, String)> {
+    execute_provider_turn_with_window(project, run_id, prompt, 360, None, app)
+}
+
+fn execute_provider_turn_with_window(
+    project: &ProjectRecord,
+    run_id: &str,
+    prompt: &str,
+    max_polls: usize,
+    timeout_secs: Option<u64>,
+    app: Option<tauri::AppHandle>,
+) -> Result<CodexTurnResponse, (u16, String)> {
     append_event_for_run(
         &project.root,
         app.as_ref(),
@@ -966,6 +1208,7 @@ fn execute_provider_turn(
             prompt: prompt.to_string(),
             current_page: "/wiki/plans/index.mdx".to_string(),
             request_id,
+            timeout_secs,
         },
         app.clone(),
     )?;
@@ -985,7 +1228,7 @@ fn execute_provider_turn(
     )?;
     let mut last_phase = String::new();
     let mut last_events = 0usize;
-    for _ in 0..360 {
+    for _ in 0..max_polls {
         if is_runtime_cancelled(run_id) {
             let _ = cancel_import_planning_turn(&started.run_id, app.clone());
             return Err((499, "Import onboarding run cancelled.".to_string()));
@@ -1283,6 +1526,7 @@ fn load_or_create_session(
         current_question_id: None,
         repair_attempts: 0,
         plan_repair_attempts: 0,
+        adopt_attempts: 0,
         created_at_ms: now,
         updated_at_ms: now,
     };
@@ -1359,6 +1603,8 @@ fn runtime_phase(kind: RuntimeTurnKind) -> &'static str {
         RuntimeTurnKind::Answer => "running_question_turn",
         RuntimeTurnKind::Repair => "running_repair_turn",
         RuntimeTurnKind::PlanRepair => "running_plan_repair_turn",
+        RuntimeTurnKind::Adopt => "running_adopt_turn",
+        RuntimeTurnKind::AdoptRepair => "running_adopt_repair_turn",
     }
 }
 
@@ -1831,6 +2077,15 @@ wikiKind: "plan"
   <p>Intent: persist the journal entry locally with browser <code>localStorage</code> so the accepted MVP restores the previous entry on open and saves edits automatically.</p>
 </PlanHero>
 
+<PlanSummary>
+  <ul>
+    <li>Status: planned</li>
+    <li>Artifact: root <code>index.html</code> persistence behavior</li>
+    <li>Next unit: Unit 03 - Clear Entry And Verification</li>
+    <li>Blockers: none</li>
+  </ul>
+</PlanSummary>
+
 <CardGroup>
   <Card title="Build" description="Persistence behavior">
     <p>Add load-on-open restore, debounced autosave, and user-visible save status.</p>
@@ -1899,6 +2154,15 @@ wikiKind: "plan"
   <h1>Unit 03 - Clear Entry And Verification</h1>
   <p>Intent: finish the static local-only MVP by adding clear-entry behavior and recording the manual verification path for the journal workflow.</p>
 </PlanHero>
+
+<PlanSummary>
+  <ul>
+    <li>Status: planned</li>
+    <li>Artifact: clear-entry behavior and recorded manual verification</li>
+    <li>Next unit: none; this unit closes the stage</li>
+    <li>Blockers: none</li>
+  </ul>
+</PlanSummary>
 
 <CardGroup>
   <Card title="Build" description="Clear-entry behavior">
@@ -2019,7 +2283,7 @@ fn generic_unit_artifact(
     GeneratedPlanArtifact {
         path: path.to_string(),
         content: format!(
-            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and implement only the {source_focus} behavior named by source evidence. Avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use accepted source decisions for {source_focus} as authority. Preserve source-specific constraints in code or handoff notes when implementation discovers a contradiction.</p></section><Evidence title=\"Accepted source decisions\"><p>The visible execution target is {source_focus}. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Decision title=\"Dependencies\"><p>Depends on prior units in Stage 01 and accepted import Q&amp;A decisions for {source_focus}. Blockers: none unless implementation contradicts source evidence.</p></Decision><Verification><p>Run applicable repository checks, open the implemented {source_focus} surface, exercise the source-described happy path, and confirm the observed behavior matches accepted import decisions before marking complete.</p></Verification><section><h2>Completion Gate</h2><p>Complete when the {source_focus} behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
+            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><PlanSummary><ul><li>Status: planned</li><li>Next action: implement this unit and run its verification</li></ul></PlanSummary><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and implement only the {source_focus} behavior named by source evidence. Avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use accepted source decisions for {source_focus} as authority. Preserve source-specific constraints in code or handoff notes when implementation discovers a contradiction.</p></section><Evidence title=\"Accepted source decisions\"><p>The visible execution target is {source_focus}. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Decision title=\"Dependencies\"><p>Depends on prior units in Stage 01 and accepted import Q&amp;A decisions for {source_focus}. Blockers: none unless implementation contradicts source evidence.</p></Decision><Verification><p>Run applicable repository checks, open the implemented {source_focus} surface, exercise the source-described happy path, and confirm the observed behavior matches accepted import decisions before marking complete.</p></Verification><section><h2>Completion Gate</h2><p>Complete when the {source_focus} behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
         ),
     }
 }
@@ -2522,6 +2786,51 @@ mod tests {
             "<h1>Import Q&amp;A</h1><p>Decision: Static single file.</p>",
         )
         .unwrap();
+    }
+
+    #[test]
+    fn adopt_turn_prompt_lists_discovered_files() {
+        let project = test_project(temp_root("adopt-prompt"));
+        let md_files = vec![
+            "wiki/index.md".to_string(),
+            "wiki/Sources.md".to_string(),
+            "wiki/plans/zzz-completed/old.md".to_string(),
+        ];
+        let prompt = adopt_turn_prompt(&project, RuntimeTurnKind::Adopt, &md_files, "");
+        for file in &md_files {
+            assert!(prompt.contains(file), "prompt missing {file}");
+        }
+        assert!(prompt.contains("Files to convert (3):"));
+        assert!(prompt.contains("zzz-completed/ -> wiki/plans/zzz_completed/"));
+        assert!(prompt.contains("delete the original .md file"));
+        assert!(prompt.contains("Sources.md -> wiki/sources.mdx"));
+        assert!(!prompt.contains("does not yet pass hyperwiki adoption validation"));
+    }
+
+    #[test]
+    fn adopt_repair_prompt_includes_errors() {
+        let project = test_project(temp_root("adopt-repair-prompt"));
+        let prompt = adopt_turn_prompt(
+            &project,
+            RuntimeTurnKind::AdoptRepair,
+            &["wiki/index.md".to_string()],
+            "wiki/log.md was not converted; no .md files may remain under wiki/.",
+        );
+        assert!(prompt.starts_with("This wiki does not yet pass hyperwiki adoption validation"));
+        assert!(prompt.contains("wiki/log.md was not converted"));
+    }
+
+    #[test]
+    fn adopt_turn_kinds_map_to_phases() {
+        assert_eq!(runtime_phase(RuntimeTurnKind::Adopt), "running_adopt_turn");
+        assert_eq!(
+            runtime_phase(RuntimeTurnKind::AdoptRepair),
+            "running_adopt_repair_turn"
+        );
+        assert_eq!(RuntimeTurnKind::Adopt.as_str(), "adopt");
+        assert_eq!(RuntimeTurnKind::AdoptRepair.as_str(), "adopt_repair");
+        assert!(!RuntimeTurnKind::Adopt.runs_question_contract());
+        assert!(!RuntimeTurnKind::AdoptRepair.runs_question_contract());
     }
 
     #[test]

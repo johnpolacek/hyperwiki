@@ -4,9 +4,9 @@ description: "Evaluate a minimal hyperwiki wrapper around persistent Codex app-s
 wikiKind: "plan"
 ---
 
-<h1>Import Onboarding Direct Codex Attachment</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Import Onboarding Direct Codex Attachment" status="draft" description="Evaluate a minimal hyperwiki wrapper around persistent Codex app-server or daemon sessions for imported-project Q&A." />
+
+<PlanSummary>
   <ul>
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
@@ -14,7 +14,7 @@ wikiKind: "plan"
     <li>Goal: preserve Codex as the primary session engine while eliminating per-turn CLI startup, frontend-owned orchestration, and false stalled states.</li>
     <li>Next action: compare this candidate against the backend state machine, sidecar service, and broader engine candidates before implementation selection.</li>
   </ul>
-</section>
+</PlanSummary>
 <section>
   <h2>Intent</h2>
   <p>Use Codex app-server, or a future Codex daemon interface, as the long-lived agent runtime for import onboarding. hyperwiki should attach to Codex, normalize its events, and render state, but avoid building a broad new engine unless Codex proves unable to support the required user experience.</p>

@@ -29,9 +29,11 @@ pub(crate) fn run_claude_planning_turn(
     run_id: &str,
     request_id: &str,
     prompt: &str,
+    timeout: Option<Duration>,
     app: Option<&tauri::AppHandle>,
 ) -> Result<CodexTurnResponse, (u16, String)> {
     let start = Instant::now();
+    let turn_timeout = timeout.unwrap_or(CLAUDE_TURN_TIMEOUT);
     let timing_marks = CodexAdapterTimingMarks {
         provider_ready_ms: Some(0),
         thread_ready_ms: None,
@@ -71,7 +73,11 @@ pub(crate) fn run_claude_planning_turn(
         prompt.chars().count()
     );
 
-    let mut child = Command::new("claude")
+    // HYPERWIKI_CLAUDE_BIN lets deterministic tests substitute a fake agent for
+    // the real `claude` CLI; production leaves it unset.
+    let claude_bin =
+        std::env::var("HYPERWIKI_CLAUDE_BIN").unwrap_or_else(|_| "claude".to_string());
+    let mut child = Command::new(claude_bin)
         .args([
             "-p",
             prompt,
@@ -116,7 +122,7 @@ pub(crate) fn run_claude_planning_turn(
         }
     });
 
-    let deadline = start + CLAUDE_TURN_TIMEOUT;
+    let deadline = start + turn_timeout;
     let mut thread_id = "claude-stream-json".to_string();
     let mut turn_id = "claude-stream-json".to_string();
     let mut text = String::new();

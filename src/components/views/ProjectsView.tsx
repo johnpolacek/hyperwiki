@@ -171,3 +171,50 @@ export function PendingImportView({ project }: { project: ProjectRecord }) {
     </section>
   );
 }
+
+export function AdoptingView({
+  project,
+  activity,
+  workstream,
+  onRetry,
+}: {
+  project: ProjectRecord;
+  activity: string;
+  workstream: string[];
+  onRetry: () => void;
+}) {
+  const failed = project.importPlanning?.status === "adoptionFailed";
+  return (
+    <section className="flex min-h-0 items-center justify-center overflow-auto bg-background/80 p-8">
+      <div className="grid w-full max-w-xl gap-4">
+        <BeamSurface className="grid gap-3 rounded-md border bg-card/92 p-8 shadow-sm" colorVariant="ocean" cols={3} rows={3} strength={0.28}>
+          {failed ? null : <Loader2 aria-hidden="true" className="size-5 animate-spin text-muted-foreground" />}
+          <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">
+            {failed ? `Adoption needs attention` : `Adopting ${project.name}`}
+          </h1>
+          <p className="m-0 text-sm text-muted-foreground">
+            {failed
+              ? "The agent could not port the existing wiki to MDX. Your repo is safe — revert with the pre-adoption git checkpoint, or retry."
+              : "The agent is porting the existing wiki into hyperwiki's MDX conventions. This can take a few minutes."}
+          </p>
+          <p className="m-0 text-sm font-medium text-card-foreground">{activity}</p>
+          {failed ? (
+            <div>
+              <Button onClick={onRetry} type="button">Retry adoption</Button>
+            </div>
+          ) : null}
+        </BeamSurface>
+        {workstream.length ? (
+          <div className="rounded-md border bg-background p-3">
+            <h2 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Adoption activity</h2>
+            <ol className="m-0 mt-2 grid max-h-72 gap-1 overflow-auto p-0 text-xs text-muted-foreground">
+              {workstream.slice(-40).map((line, index) => (
+                <li className="list-none break-words" key={`${index}-${line}`}>{line}</li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}

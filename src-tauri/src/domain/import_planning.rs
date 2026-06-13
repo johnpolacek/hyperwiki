@@ -135,6 +135,11 @@ pub struct ImportPlanningCreateResponse {
 
 pub fn import_planning_status(root: impl AsRef<Path>) -> ImportPlanningStatus {
     let root = root.as_ref();
+    // Adopted projects never enter the import Q&A / MVP-plan machinery; their
+    // legacy wikis would fail the generated-plan validators by design.
+    if let Some(adoption) = crate::domain::adopt::read_adoption_state(root) {
+        return adoption_import_planning_status(&adoption);
+    }
     let imported = root
         .join("wiki")
         .join("sources")
@@ -181,6 +186,34 @@ pub fn import_planning_status(root: impl AsRef<Path>) -> ImportPlanningStatus {
             .to_string(),
         qna_path: Some("wiki/sources/import-qna.mdx".to_string()),
         artifact_validation: read_artifact_validation(root),
+    }
+}
+
+fn adoption_import_planning_status(
+    adoption: &crate::domain::adopt::AdoptionState,
+) -> ImportPlanningStatus {
+    let (status, next_action) = match adoption.status.as_str() {
+        "complete" => (
+            "complete",
+            "Adopted wiki is ready. Continue from wiki/index.mdx.",
+        ),
+        "failed" => (
+            "adoptionFailed",
+            "Wiki adoption did not pass validation. Retry adoption or revert to the pre-adoption checkpoint.",
+        ),
+        _ => (
+            "adopting",
+            "The agent is porting the existing wiki to hyperwiki MDX conventions.",
+        ),
+    };
+    ImportPlanningStatus {
+        status: status.to_string(),
+        answered_count: 0,
+        current_question: None,
+        current_request_id: None,
+        next_action: next_action.to_string(),
+        qna_path: None,
+        artifact_validation: None,
     }
 }
 
@@ -505,8 +538,8 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
     if !content.contains("wikiKind: \"plan\"") && !content.contains("wikiKind: 'plan'") {
         errors.push("frontmatter must declare wikiKind plan".to_string());
     }
-    if !content.contains("<h1") {
-        errors.push("missing h1 title".to_string());
+    if !content.contains("<h1") && !content.contains("<PlanHero") {
+        errors.push("missing h1 title or PlanHero".to_string());
     }
     if lower.contains("unit 01 - confirmed mvp slice") || lower.contains("confirmed mvp slice") {
         errors.push(
@@ -537,6 +570,16 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
                 errors.push(format!("unit page must include {label}"));
             }
         }
+        if !content.contains("<PlanSummary")
+            && !lower.contains("classname=\"summary\"")
+            && !lower.contains("## summary")
+            && !lower.contains("<h2>summary</h2>")
+        {
+            errors.push(
+                "unit page must open with PlanSummary (or a Summary section) covering status and next action"
+                    .to_string(),
+            );
+        }
     }
     if is_mvp_stage_artifact_path(path) {
         for (label, alternatives) in [
@@ -565,7 +608,21 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
                 .to_string(),
         );
     }
+    if path != "wiki/plans/index.mdx" && !uses_plan_components(content) {
+        errors.push(
+            "plan page uses no hyperwiki plan components; compose with PlanHero, PlanSummary, Steps/StageTrack/Flow, and Verification per the hyperwiki skill"
+                .to_string(),
+        );
+    }
     errors
+}
+
+fn uses_plan_components(content: &str) -> bool {
+    super::wiki::MDX_SECTION_TAGS
+        .iter()
+        .copied()
+        .chain(["CodeBlock", "CommandBlock"])
+        .any(|tag| content.contains(&format!("<{tag}")))
 }
 
 fn source_specific_terms(root: &Path) -> Vec<String> {
@@ -992,7 +1049,7 @@ mod tests {
         .unwrap();
         fs::write(
             root.join("wiki").join("plans").join("mvp").join("index.mdx"),
-            "---\ntitle: \"MVP Plan\"\ndescription: \"Source-grounded MVP plan.\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><section><h2>Summary</h2><p>Status active. Shape single-stage MVP. Current unit Unit 01. Source decisions and unknowns are preserved.</p></section><section><h2>Stage Sequence</h2><p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\">Stage 01</a> contains the unit sequence.</p></section><section><h2>Deferred Work</h2><p>Unknown deployment polish is deferred.</p></section>",
+            "---\ntitle: \"MVP Plan\"\ndescription: \"Source-grounded MVP plan.\"\nwikiKind: \"plan\"\n---\n\n<h1>MVP Plan</h1><PlanSummary><ul><li>Status: active</li><li>Shape: single-stage MVP</li><li>Current unit: Unit 01</li></ul></PlanSummary><section><h2>Summary</h2><p>Status active. Shape single-stage MVP. Current unit Unit 01. Source decisions and unknowns are preserved.</p></section><section><h2>Stage Sequence</h2><StageTrack title=\"Stages\"><StageItem label=\"Stage 01\" status=\"current\" href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\" /></StageTrack><p><a href=\"/wiki/plans/mvp/stage-01-static-mvp-foundation.mdx\">Stage 01</a> contains the unit sequence.</p></section><section><h2>Deferred Work</h2><p>Unknown deployment polish is deferred.</p></section>",
         )
         .unwrap();
         fs::write(
@@ -1000,7 +1057,7 @@ mod tests {
                 .join("plans")
                 .join("mvp")
                 .join("stage-01-static-mvp-foundation.mdx"),
-            "---\ntitle: \"Stage 01 - Static MVP Foundation\"\ndescription: \"Build the source-grounded static MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Static MVP Foundation</h1><section><h2>Stage Goal</h2><p>Implement the source-decided local MVP.</p></section><section><h2>Unit Sequence</h2><ul><li>Unit 01 - Static shell</li><li>Unit 02 - Persistence and interactions</li></ul></section><section><h2>Dependencies</h2><p>Source decision: local-only MVP.</p></section><section><h2>Verification</h2><p>Manual browser check and applicable repository checks.</p></section><section><h2>Completion Gate</h2><p>All units complete with verification recorded.</p></section>",
+            "---\ntitle: \"Stage 01 - Static MVP Foundation\"\ndescription: \"Build the source-grounded static MVP.\"\nwikiKind: \"plan\"\n---\n\n<h1>Stage 01 - Static MVP Foundation</h1><section><h2>Stage Goal</h2><p>Implement the source-decided local MVP.</p></section><section><h2>Unit Sequence</h2><StageTrack title=\"Units\"><StageItem label=\"Unit 01 - Static shell\" status=\"current\" /><StageItem label=\"Unit 02 - Persistence and interactions\" status=\"planned\" /></StageTrack><ul><li>Unit 01 - Static shell</li><li>Unit 02 - Persistence and interactions</li></ul></section><section><h2>Dependencies</h2><p>Source decision: local-only MVP.</p></section><section><h2>Verification</h2><p>Manual browser check and applicable repository checks.</p></section><section><h2>Completion Gate</h2><p>All units complete with verification recorded.</p></section>",
         )
         .unwrap();
         fs::write(
@@ -1009,7 +1066,7 @@ mod tests {
                 .join("mvp")
                 .join("stage-01-static-mvp-foundation")
                 .join("unit-01-static-shell.mdx"),
-            "---\ntitle: \"Unit 01 - RouteChat Tour Shell\"\ndescription: \"Create the source-grounded route tour UI shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - RouteChat Tour Shell</h1><h2>Intent</h2><p>Build the RouteChat walking tour shell for route itineraries.</p><h2>Scope</h2><p>One source-decided surface for walking tour route entry, map pin placeholders, and itinerary review.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat tour decisions. Preserve source decisions and unknowns around shareable routes.</p><h2>Dependencies</h2><p>Depends on the accepted RouteChat walking tour decision.</p><h2>Verification</h2><p>Open the surface, enter a walking tour route, inspect map pin placeholders, and confirm the itinerary review path is visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat tour shell renders the route itinerary workflow without backend, framework, or network scope.</p>",
+            "---\ntitle: \"Unit 01 - RouteChat Tour Shell\"\ndescription: \"Create the source-grounded route tour UI shell.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 01 - RouteChat Tour Shell</h1><PlanSummary><ul><li>Status: current</li><li>Next action: build the tour shell</li></ul></PlanSummary><h2>Intent</h2><p>Build the RouteChat walking tour shell for route itineraries.</p><h2>Scope</h2><p>One source-decided surface for walking tour route entry, map pin placeholders, and itinerary review.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat tour decisions. Preserve source decisions and unknowns around shareable routes.</p><h2>Dependencies</h2><p>Depends on the accepted RouteChat walking tour decision.</p><h2>Verification</h2><p>Open the surface, enter a walking tour route, inspect map pin placeholders, and confirm the itinerary review path is visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat tour shell renders the route itinerary workflow without backend, framework, or network scope.</p>",
         )
         .unwrap();
         fs::write(
@@ -1018,7 +1075,7 @@ mod tests {
                 .join("mvp")
                 .join("stage-01-static-mvp-foundation")
                 .join("unit-02-persistence-and-interactions.mdx"),
-            "---\ntitle: \"Unit 02 - RouteChat Tour Interactions\"\ndescription: \"Add source-grounded RouteChat tour interactions.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - RouteChat Tour Interactions</h1><h2>Intent</h2><p>Implement walking tour route creation, itinerary edits, and shareable route interaction state.</p><h2>Scope</h2><p>RouteChat tour route editing, map pin interaction state, itinerary updates, and shareable route handoff copy.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat walking tour answer and preserve unknowns around map pins and shareable itineraries.</p><h2>Dependencies</h2><p>Depends on the RouteChat tour shell.</p><h2>Verification</h2><p>Create a walking tour route, update map pins, edit the itinerary, and confirm the shareable route handoff remains visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat walking tour workflow works for route creation, itinerary editing, and shareable route review.</p>",
+            "---\ntitle: \"Unit 02 - RouteChat Tour Interactions\"\ndescription: \"Add source-grounded RouteChat tour interactions.\"\nwikiKind: \"plan\"\n---\n\n<h1>Unit 02 - RouteChat Tour Interactions</h1><PlanSummary><ul><li>Status: planned</li><li>Next action: add tour interactions</li></ul></PlanSummary><h2>Intent</h2><p>Implement walking tour route creation, itinerary edits, and shareable route interaction state.</p><h2>Scope</h2><p>RouteChat tour route editing, map pin interaction state, itinerary updates, and shareable route handoff copy.</p><h2>Implementation Notes</h2><p>Use the accepted RouteChat walking tour answer and preserve unknowns around map pins and shareable itineraries.</p><h2>Dependencies</h2><p>Depends on the RouteChat tour shell.</p><h2>Verification</h2><p>Create a walking tour route, update map pins, edit the itinerary, and confirm the shareable route handoff remains visible.</p><h2>Completion Gate</h2><p>Complete when the RouteChat walking tour workflow works for route creation, itinerary editing, and shareable route review.</p>",
         )
         .unwrap();
     }
@@ -1082,9 +1139,52 @@ mod tests {
             .iter()
             .any(|error| error.contains("verification")));
         assert!(validation
+            .errors
+            .iter()
+            .any(|error| error.contains("no hyperwiki plan components")));
+        assert!(validation
             .repair_prompt
             .unwrap()
             .contains("Repair the staged hyperwiki import plan artifacts"));
+    }
+
+    #[test]
+    fn adoption_marker_short_circuits_import_planning_status() {
+        let root = temp_root("adoption-short-circuit");
+        // A legacy-shaped wiki with non-index plan pages would normally trip the
+        // MVP-plan validator into "needsRepair". The adoption marker must win.
+        make_imported_project(&root);
+        fs::create_dir_all(root.join("wiki").join("plans").join("mvp")).unwrap();
+        fs::write(
+            root.join("wiki").join("plans").join("mvp").join("unit-99-legacy.mdx"),
+            "---\ntitle: \"Legacy Unit\"\n---\n\n# Legacy Unit\nHistorical.\n",
+        )
+        .unwrap();
+        crate::domain::adopt::write_adoption_state(
+            &root,
+            &crate::domain::adopt::AdoptionState {
+                status: "adopting".to_string(),
+                md_files: vec!["wiki/index.md".to_string()],
+                checkpoint_commit: "abc123".to_string(),
+                updated_at_ms: 0,
+            },
+        )
+        .unwrap();
+        let status = import_planning_status(&root);
+        assert_eq!(status.status, "adopting");
+        assert!(status.artifact_validation.is_none());
+
+        crate::domain::adopt::write_adoption_state(
+            &root,
+            &crate::domain::adopt::AdoptionState {
+                status: "complete".to_string(),
+                md_files: vec!["wiki/index.md".to_string()],
+                checkpoint_commit: "abc123".to_string(),
+                updated_at_ms: 0,
+            },
+        )
+        .unwrap();
+        assert_eq!(import_planning_status(&root).status, "complete");
     }
 
     #[test]

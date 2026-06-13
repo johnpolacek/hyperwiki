@@ -4,9 +4,9 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Stage 05 - Multi-project Workspace</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Stage 05 - Multi-project Workspace" status="complete" description="Let hyperwiki manage multiple local projects while preserving the existing single-project feel until more than one project exists." />
+
+<PlanSummary>
   <ul>
     <li>Status: complete</li>
     <li>Current unit: none</li>
@@ -14,17 +14,20 @@ wikiKind: "plan"
     <li>Blockers: none</li>
     <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
   </ul>
-</section>
+</PlanSummary>
+
 <h2>Intent</h2>
 <p>Let hyperwiki manage multiple local projects while preserving the existing single-project feel until more than one project exists.</p>
-<section>
-  <h2>Execution Units</h2>
-  <ol>
-    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-01-registry-and-launch-foundation.mdx">Unit 01 - Registry and Launch Foundation</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-02-project-scoped-server-runtime.mdx">Unit 02 - Project-scoped Server Runtime</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-05-multi-project/unit-03-multi-project-ui.mdx">Unit 03 - Multi-project UI</a> - complete</li>
-  </ol>
-</section>
+
+<StageTrack title="Execution Units">
+  <StageItem label="Unit 01 - Registry and Launch Foundation" status="complete" href="/wiki/plans/mvp/stage-05-multi-project/unit-01-registry-and-launch-foundation.mdx" />
+  <StageItem label="Unit 02 - Project-scoped Server Runtime" status="complete" href="/wiki/plans/mvp/stage-05-multi-project/unit-02-project-scoped-server-runtime.mdx" />
+  <StageItem label="Unit 03 - Multi-project UI" status="complete" href="/wiki/plans/mvp/stage-05-multi-project/unit-03-multi-project-ui.mdx" />
+  <StageItem label="Unit 04 - Worktree-aware Pretty URLs" status="complete" detail="inline unit; details below" />
+  <StageItem label="Unit 05 - Missing Worktree Pruning" status="complete" detail="inline unit; details below" />
+  <StageItem label="Unit 06 - Faster Project Switching" status="complete" detail="inline unit; details below" />
+</StageTrack>
+
 <section>
   <h3>Unit 04 - Worktree-aware Pretty URLs</h3>
   <ul>
@@ -55,6 +58,7 @@ wikiKind: "plan"
     <li>Verification: <code>pnpm run check</code> and <code>pnpm run smoke:tauri-static-assets</code>.</li>
   </ul>
 </section>
+
 <h2>Non-goals</h2>
 <ul>
   <li>No folder scanning or arbitrary non-hyperwiki project registration in v1.</li>

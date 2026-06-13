@@ -1,0 +1,99 @@
+---
+title: "Plan Component Gallery"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Plan Component Gallery" status="reference" description="Living regression fixture and exemplar for the rich plan component palette. Keep this page rendering correctly when changing MdxPlanRenderer." />
+
+<PlanSummary>
+  - Status: reference
+  - Shape: component gallery
+  - Current unit: none
+  - Next action: none; update alongside renderer changes
+  - Validation: visual check in light and dark themes
+</PlanSummary>
+
+## Flow
+
+<Flow title="Plan generation pipeline">
+  <FlowStep label="Read sources" detail="wiki/sources/import.mdx" status="done" />
+  <FlowStep label="Q&A interview" status="current" />
+  <FlowStep label="Write MVP plan" detail="wiki/plans/mvp/" />
+  <FlowStep label="Validate artifacts" status="blocked" />
+</Flow>
+
+<Flow title="Vertical flow" direction="vertical">
+  <FlowStep label="Edit MDX" status="done" />
+  <FlowStep label="Renderer parses" detail="MdxPlanRenderer.tsx" status="current" />
+</Flow>
+
+## Stage Track
+
+<StageTrack title="Delivery">
+  <StageItem label="Stage 01 — Renderer upgrades" status="done" detail="SVG, Flow, StageTrack, diff" />
+  <StageItem label="Stage 02 — Prompts and skill" status="current" detail="2 of 3 units complete" href="../index.mdx" />
+  <StageItem label="Stage 03 — Validation nudge" status="blocked" />
+  <StageItem label="Stage 04 — Rollout" status="planned" />
+</StageTrack>
+
+## Comparison Grid
+
+<CardGroup cols="3">
+  <Card title="Websockets" status="recommended">
+    Bidirectional, one channel, needs reconnect handling.
+  </Card>
+  <Card title="SSE + POST" status="current">
+    Simpler infra; acks need a second channel.
+  </Card>
+  <Card title="Long polling" status="rejected">
+    Works everywhere; highest latency and server load.
+  </Card>
+</CardGroup>
+
+## Inline SVG Diagram
+
+<svg viewBox="0 0 560 110" role="img" aria-label="Client connects to socket server which fans out to subscribers">
+  <rect x="10" y="35" width="140" height="44" rx="8" fill="none" stroke="currentColor" />
+  <text x="80" y="62" text-anchor="middle" fill="currentColor" font-size="14">Client</text>
+  <path d="M150 57 H230" stroke="currentColor" />
+  <rect x="230" y="35" width="150" height="44" rx="8" fill="none" stroke="currentColor" />
+  <text x="305" y="62" text-anchor="middle" fill="currentColor" font-size="14">Socket server</text>
+  <path d="M380 57 H460" stroke="currentColor" />
+  <rect x="460" y="35" width="90" height="44" rx="8" fill="none" stroke="currentColor" />
+  <text x="505" y="62" text-anchor="middle" fill="currentColor" font-size="14">Subs</text>
+</svg>
+
+## Diff CodeBlock With Annotations
+
+<CodeBlock title="src/lib/socket-client.ts" language="diff">
+```diff
+ function reconnect(attempt: number) {
+-  return base * attempt
++  return Math.min(30_000, base * 2 ** attempt) + jitter()
+# Exponential backoff is capped at 30s; jitter avoids thundering herds.
+ }
+```
+</CodeBlock>
+
+## Open Decision
+
+<OpenDecision title="Gallery retention policy" detail="Whether this gallery stays as a permanent regression fixture.">
+  <DecisionOption label="Keep as living gallery" detail="Doubles as agent exemplar and visual regression fixture." recommended />
+  <DecisionOption label="Move into tests/" detail="Out of the plans tree, but agents stop seeing it as an example." />
+</OpenDecision>
+
+## Task List
+
+<TaskList title="Visual regression checklist">
+  <ul>
+    <li>[ ] Flow chips render with status colors and arrows</li>
+    <li>[ ] StageTrack dots reflect linked page status</li>
+    <li>[x] SVG diagram themes via currentColor</li>
+  </ul>
+</TaskList>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm check</CommandBlock>
+  - Manual: open this page at /wiki/plans/features/plan-component-gallery.mdx in light and dark themes and confirm the flow chips, stage rail, comparison grid edges, SVG diagram, colored diff lines with margin annotations, decision option buttons, and live task checkboxes all render.
+</Verification>

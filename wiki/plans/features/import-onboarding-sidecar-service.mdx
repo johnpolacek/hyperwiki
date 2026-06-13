@@ -4,9 +4,9 @@ description: "Evaluate a separate local sidecar service for imported-project Q&A
 wikiKind: "plan"
 ---
 
-<h1>Import Onboarding Sidecar Service</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Import Onboarding Sidecar Service" status="draft" description="Evaluate a separate local sidecar service for imported-project Q&A, run lifecycle, events, and Codex orchestration." />
+
+<PlanSummary>
   <ul>
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
@@ -14,7 +14,7 @@ wikiKind: "plan"
     <li>Goal: move import onboarding into a long-lived local engine process with stable run IDs, event streaming, recovery, and human-input endpoints.</li>
     <li>Next action: compare this candidate against the in-process backend state machine and other architecture candidates before implementation selection.</li>
   </ul>
-</section>
+</PlanSummary>
 <section>
   <h2>Intent</h2>
   <p>Introduce a dedicated local sidecar service that owns imported-project onboarding runs independently of the Tauri webview lifecycle. The Tauri app becomes a client of this service, subscribing to events and sending answers, while the sidecar owns sessions, Codex communication, run state, cancellation, retries, and durable onboarding state.</p>

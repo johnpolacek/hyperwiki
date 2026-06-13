@@ -25,9 +25,10 @@ Generated wiki pages must be `.mdx` source artifacts. Keep raw MDX useful in a t
 - Use minimal frontmatter: `title`, `description`, and `wikiKind`.
 - Start pages with CLI-readable status, reader goal, current state, next action, and blockers.
 - Prefer Markdown, tables, semantic HTML/JSX, `<details>`, and small inline SVG for ordinary docs.
-- Use hyperwiki planning components for plan pages when they improve structure: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
-- Before writing a plan, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.
-- Prefer `PlanHero` for title and intent, `PlanSummary` for status/current unit/next action/blockers/validation, `Decision` for accepted choices, `Evidence` for source-grounded facts, `Verification` for checks, `Steps`/`Step` for stage or unit sequences, `CardGroup`/`Columns` for alternatives or work tracks, `CodeBlock` for file snippets/schema/config/API examples, `CommandBlock` for exact local commands, `RequestExample`/`ResponseExample`/`ParamField`/`ResponseField` for contracts, and `Aside` for compact secondary context. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.
+- Use hyperwiki planning components for plan pages when they improve structure: `PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `OpenDecision`, `DecisionOption`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `Flow`, `FlowStep`, `StageTrack`, `StageItem`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+- Before writing a plan, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff. Then start from the matching skeleton in `references/plan-page-skeletons.md`.
+- Every plan page opens with `PlanHero` followed by `PlanSummary`. A substantial plan page with zero hyperwiki plan components fails the quality bar and hyperwiki plan validation.
+- Prefer `PlanHero` for title and intent, `PlanSummary` for status/current unit/next action/blockers/validation, `Decision` for accepted choices, `Evidence` for source-grounded facts, `Verification` for checks, `Steps`/`Step` for stage or unit sequences, `StageTrack`/`StageItem` for stage and unit progress with links, `Flow`/`FlowStep` for pipelines and user/data flows, `CardGroup`/`Columns` for alternatives or work tracks (`cols="2"`/`cols="3"` for comparison grids), `CodeBlock` for file snippets/schema/config/API examples, `CommandBlock` for exact local commands, `RequestExample`/`ResponseExample`/`ParamField`/`ResponseField` for contracts, and `Aside` for compact secondary context. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.
 - Prefer `CodeBlock` over raw fenced code blocks for visible plan examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose `Tabs`/`Tab` with one `CodeBlock` per tab instead of dumping repeated fences.
 - Use `Visibility for="agents"` for long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app. Use `Visibility for="humans"` only for app-visible explanation that should be stripped from agent Markdown.
 - Every executable plan unit must include a `Verification` section or `Verification` component.
@@ -60,9 +61,9 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
 | `intake_discovery` | `references/intake-discovery-contract.md` |
 | `bootstrap_new` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md` |
 | `import_existing` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md`, `references/validation-checklist.md` |
-| `terminal_import_planning` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
-| `plan_feature` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
-| `update_plan` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md` |
+| `terminal_import_planning` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
+| `plan_feature` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
+| `update_plan` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
 | `sync_changes` | `references/planning-contract.md`; add `references/mdx-artifact-patterns.md` when creating or materially revising MDX |
 | `record_execution` | `references/planning-contract.md` when touching plans/roadmap; otherwise inspect current wiki files |
 | `audit_or_upgrade` | `references/validation-checklist.md`, `references/upgrade-contract.md`, `references/mdx-artifact-patterns.md` |
@@ -142,6 +143,7 @@ End with a concise summary of created, updated, preserved, skipped, failed, bloc
 - `references/generated-baseline-artifacts.md`
 - `references/intake-discovery-contract.md`
 - `references/mdx-artifact-patterns.md`
+- `references/plan-page-skeletons.md`
 - `references/example-minimal-bootstrap.md`
 - `references/example-moderate-import.md`
 - `references/planning-contract.md`

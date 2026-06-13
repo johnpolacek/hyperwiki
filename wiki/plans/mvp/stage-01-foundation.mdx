@@ -4,23 +4,25 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Stage 01 - CLI and Repository Foundation</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Stage 01 - CLI and Repository Foundation" status="complete" description="Create the npm package and CLI bin." />
+
+<PlanSummary>
   <ul>
     <li>Status: complete</li>
     <li>Validation: <code>npm run check</code>, temp init smoke test, public <code>npx hyperwiki</code> smoke test, dev server smoke test, terminal transport smoke test</li>
     <li>Published: <code>hyperwiki@0.1.0</code></li>
   </ul>
-</section>
+</PlanSummary>
+
 <h2>Intent</h2>
 <p>Create the npm package and CLI bin.</p>
-<h2>Execution Units</h2>
-<ol>
-  <li><a href="/wiki/plans/mvp/stage-01-foundation/unit-01-package-and-cli-bin.mdx">Unit 01 - Package And CLI Bin</a> - complete</li>
-  <li><a href="/wiki/plans/mvp/stage-01-foundation/unit-02-init-and-dev-commands.mdx">Unit 02 - Init And Dev Commands</a> - complete</li>
-  <li><a href="/wiki/plans/mvp/stage-01-foundation/unit-03-config-runtime-state-and-scaffold.mdx">Unit 03 - Config, Runtime State, And Scaffold</a> - complete</li>
-  <li><a href="/wiki/plans/mvp/stage-01-foundation/unit-04-syntax-and-command-smoke-tests.mdx">Unit 04 - Syntax And Command Smoke Tests</a> - complete</li>
-</ol>
+
+<StageTrack title="Execution Units">
+  <StageItem label="Unit 01 - Package And CLI Bin" status="complete" href="/wiki/plans/mvp/stage-01-foundation/unit-01-package-and-cli-bin.mdx" />
+  <StageItem label="Unit 02 - Init And Dev Commands" status="complete" href="/wiki/plans/mvp/stage-01-foundation/unit-02-init-and-dev-commands.mdx" />
+  <StageItem label="Unit 03 - Config, Runtime State, And Scaffold" status="complete" href="/wiki/plans/mvp/stage-01-foundation/unit-03-config-runtime-state-and-scaffold.mdx" />
+  <StageItem label="Unit 04 - Syntax And Command Smoke Tests" status="complete" href="/wiki/plans/mvp/stage-01-foundation/unit-04-syntax-and-command-smoke-tests.mdx" />
+</StageTrack>
+
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.mdx">log.mdx</a> before marking this stage complete.</p>

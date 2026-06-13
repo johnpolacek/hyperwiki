@@ -4,25 +4,19 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<section className="hero" aria-labelledby="title">
-      <div>
-        <div className="badge-row">
-          <span className="badge">Active</span>
-          <span className="badge">Planning/exploration</span>
-          <span className="badge">Theme token drafting table</span>
-        </div>
-        <h1 id="title">Theme-Aware Generated Plans</h1>
-        <p>Make newly generated HTML wiki plans keep their rich per-plan layouts while inheriting hyperwiki's current wiki theme through shared CSS variables and app-served theme tokens.</p>
-      </div>
-      <dl className="summary" aria-labelledby="summary-title">
-        <dt id="summary-title">Status</dt><dd>active</dd>
-        <dt>Shape</dt><dd>compact feature plan with three units</dd>
-        <dt>Current unit</dt><dd>Unit 01 - Theme contract audit</dd>
-        <dt>Next action</dt><dd>Trace how settings theme tokens reach wiki iframes and generated plan HTML.</dd>
-        <dt>Blockers</dt><dd>None; one design decision remains around skill-template scope.</dd>
-        <dt>Validation</dt><dd><code>pnpm run check</code>, static asset smoke, and visual theme toggle QA.</dd>
-      </dl>
-    </section>
+<PlanHero title="Theme-Aware Generated Plans" status="active" description="Make newly generated HTML wiki plans keep their rich per-plan layouts while inheriting hyperwiki's current wiki theme through shared CSS variables and app-served theme tokens." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: active</li>
+    <li>Phase: planning/exploration; theme token drafting table</li>
+    <li>Shape: compact feature plan with three units</li>
+    <li>Current unit: Unit 01 - Theme contract audit</li>
+    <li>Next action: Trace how settings theme tokens reach wiki iframes and generated plan HTML.</li>
+    <li>Blockers: None; one design decision remains around skill-template scope.</li>
+    <li>Validation: <code>pnpm run check</code>, static asset smoke, and visual theme toggle QA.</li>
+  </ul>
+</PlanSummary>
 
     <section className="reader-goal" aria-labelledby="reader-goal">
       <h2 id="reader-goal">Reader Goal</h2>

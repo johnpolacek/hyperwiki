@@ -1,21 +1,26 @@
 import { useState, type FormEvent } from "react";
-import { FolderPlus, Loader2, Upload } from "lucide-react";
+import { FolderInput, FolderPlus, Loader2, Upload } from "lucide-react";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { pendingImportedProject, writePendingImportProject } from "@/lib/pending-import";
-import { DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
-import type { ProjectRecord, SourceDocumentInput } from "@/lib/types";
+import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
+import type { AdoptInspectResponse, AdoptProjectResponse, ProjectRecord, SourceDocumentInput } from "@/lib/types";
 
 export function NewProjectView({
   isFirstProject = false,
   onCreateProject,
+  onInspectProject,
+  onAdoptProject,
 }: {
   isFirstProject?: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onInspectProject?: (root: string) => Promise<AdoptInspectResponse>;
+  onAdoptProject?: (input: { root: string }) => Promise<AdoptProjectResponse | void>;
 }) {
+  const [mode, setMode] = useState<"new" | "import">("new");
   const [title, setTitle] = useState("");
   const [document, setDocument] = useState("");
   const [documentType, setDocumentType] = useState("markdown");
@@ -24,10 +29,74 @@ export function NewProjectView({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [handoffProject, setHandoffProject] = useState<ProjectRecord | null>(null);
   const [importLog, setImportLog] = useState<string[]>(() => readImportLog());
+  const [importPath, setImportPath] = useState("");
+  const [importStep, setImportStep] = useState<"enterPath" | "consent">("enterPath");
+  const [inspection, setInspection] = useState<AdoptInspectResponse | null>(null);
+  const [importError, setImportError] = useState("");
 
   function logImport(message: string, error?: unknown) {
     appendImportLog(message, error);
     setImportLog(readImportLog());
+  }
+
+  async function inspectImportProject() {
+    const root = importPath.trim();
+    if (!root || !onInspectProject) return;
+    setImportError("");
+    setIsSubmitting(true);
+    setStatus(`Inspecting ${root}`);
+    try {
+      const result = await onInspectProject(root);
+      setInspection(result);
+      setImportStep("consent");
+      setStatus("");
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not inspect that folder.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function confirmAdopt() {
+    if (!inspection || !onAdoptProject) return;
+    setImportError("");
+    setIsSubmitting(true);
+    setStatus("Adopting existing project");
+    clearImportLog();
+    setImportLog([]);
+    const pendingProject = pendingImportedProject(projectNameForPath(inspection.root));
+    let routed = false;
+    const routeToWorkspace = (project = pendingProject) => {
+      if (routed) return;
+      routed = true;
+      writePendingImportProject(project);
+      const target = `/workspace/${encodeURIComponent(project.projectSlug)}/${encodeURIComponent(project.worktreeSlug)}#/wiki/index.mdx`;
+      logImport(`Forcing workspace route ${target}`);
+      window.location.assign(target);
+    };
+    setHandoffProject(pendingProject);
+    // The adopt POST runs the git checkpoint (`git add -A` + commit) and the
+    // scaffold synchronously before it resolves, which can take several seconds
+    // on a large repo. Only fall back to a blind route if the request truly
+    // hangs — otherwise we await the response and route on success below.
+    const fallbackTimer = window.setTimeout(routeToWorkspace, 20000);
+    try {
+      const response = await onAdoptProject({ root: inspection.root });
+      window.clearTimeout(fallbackTimer);
+      if (response?.project) {
+        setHandoffProject(response.project);
+        routeToWorkspace(response.project);
+      } else {
+        routeToWorkspace();
+      }
+    } catch (error) {
+      window.clearTimeout(fallbackTimer);
+      setHandoffProject(null);
+      setImportError(error instanceof Error ? error.message : "Could not adopt that project.");
+      setStatus("");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleFiles(fileList: FileList | null) {
@@ -135,6 +204,7 @@ export function NewProjectView({
     ? "Create your first project by importing a brief or source file. hyperwiki will do the rest."
     : "Import a brief or source file. hyperwiki will do the rest.";
   const canSubmitBrief = Boolean(title.trim() && document.trim());
+  const canImport = Boolean(onInspectProject && onAdoptProject);
 
   return (
     <section className="min-h-0 overflow-auto bg-background">
@@ -147,6 +217,26 @@ export function NewProjectView({
             </p>
           </header>
 
+          {canImport ? (
+            <div className="grid grid-cols-2 gap-1 rounded-md border bg-muted/40 p-1" data-testid="project-mode-toggle" role="tablist">
+              <ModeTab active={mode === "new"} label="New project" onClick={() => { setMode("new"); setImportError(""); setImportStep("enterPath"); setInspection(null); }} />
+              <ModeTab active={mode === "import"} label="Import existing" onClick={() => { setMode("import"); setStatus(""); setImportStep("enterPath"); setInspection(null); }} />
+            </div>
+          ) : null}
+
+          {mode === "import" && canImport ? (
+            <ImportExistingPanel
+              importPath={importPath}
+              setImportPath={setImportPath}
+              step={importStep}
+              inspection={inspection}
+              isSubmitting={isSubmitting}
+              error={importError}
+              onInspect={inspectImportProject}
+              onConfirm={confirmAdopt}
+              onBack={() => { setImportStep("enterPath"); setInspection(null); setImportError(""); }}
+            />
+          ) : (
           <div className="rounded-lg border bg-card shadow-xs">
           <form className="grid gap-6 p-6" data-testid="new-project-form" onSubmit={handleSubmit}>
           <label className="group flex min-h-40 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-input bg-background px-6 text-center text-muted-foreground transition-colors duration-150 hover:border-primary hover:bg-muted/50 hover:text-foreground">
@@ -186,10 +276,137 @@ export function NewProjectView({
           <ImportLog lines={importLog} />
           </form>
           </div>
+          )}
         </div>
       </div>
     </section>
   );
+}
+
+function ModeTab({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "min-h-9 rounded-sm px-3 text-sm font-medium transition-colors",
+        active ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ImportExistingPanel({
+  importPath,
+  setImportPath,
+  step,
+  inspection,
+  isSubmitting,
+  error,
+  onInspect,
+  onConfirm,
+  onBack,
+}: {
+  importPath: string;
+  setImportPath: (value: string) => void;
+  step: "enterPath" | "consent";
+  inspection: AdoptInspectResponse | null;
+  isSubmitting: boolean;
+  error: string;
+  onInspect: () => void;
+  onConfirm: () => void;
+  onBack: () => void;
+}) {
+  const blockReason = inspection && !inspection.isGitRepo
+    ? "Initialize Git in this folder first — adoption needs a repo so the checkpoint commit makes it revertable."
+    : inspection && inspection.isGitRepo && !inspection.isGitRoot
+      ? "Point at the Git repository root, not a subdirectory — the checkpoint commit is scoped to the whole repo."
+      : inspection?.alreadyRegistered
+        ? "This project is already in hyperwiki."
+        : "";
+  const mdFiles = inspection?.wiki.mdFiles ?? [];
+  const otherFiles = inspection?.wiki.otherFiles ?? [];
+
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-xs" data-testid="import-existing-panel">
+      {step === "enterPath" || !inspection ? (
+        <div className="grid gap-4">
+          <label className="grid gap-2">
+            <span className="text-sm font-medium text-card-foreground">Project folder path</span>
+            <Input
+              {...DISABLE_TEXT_CORRECTION_PROPS}
+              autoComplete="off"
+              data-testid="import-path-input"
+              placeholder="/Users/you/Projects/my-app"
+              value={importPath}
+              onChange={(event) => setImportPath(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onInspect(); } }}
+            />
+            <small className="text-xs text-muted-foreground">hyperwiki ports the existing wiki into its MDX conventions using the project's agent.</small>
+          </label>
+          <Button className="min-h-11 w-full text-sm font-semibold" disabled={isSubmitting || !importPath.trim()} onClick={onInspect} type="button">
+            {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <FolderInput aria-hidden="true" data-icon="inline-start" />}
+            {isSubmitting ? "Inspecting" : "Inspect project"}
+          </Button>
+          {error ? <p className="m-0 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">{error}</p> : null}
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          <div className="grid gap-1">
+            <span className="text-sm font-medium text-card-foreground">{inspection.root}</span>
+            <span className="text-xs text-muted-foreground">
+              Wiki: {inspection.wiki.classification === "none" ? "none detected" : inspection.wiki.classification}
+              {inspection.wiki.mdxCount ? ` · ${inspection.wiki.mdxCount} existing .mdx` : ""}
+              {inspection.gitDirty ? " · uncommitted changes (a checkpoint commit will be created)" : ""}
+            </span>
+          </div>
+
+          {mdFiles.length ? (
+            <div className="rounded-md border bg-background p-3">
+              <p className="m-0 text-sm font-medium text-card-foreground">
+                {mdFiles.length} markdown {mdFiles.length === 1 ? "page" : "pages"} will be converted to MDX and the originals replaced.
+              </p>
+              <ul className="m-0 mt-2 grid max-h-48 gap-1 overflow-auto p-0 text-xs text-muted-foreground">
+                {mdFiles.map((file) => (
+                  <li className="list-none break-words font-mono" key={file}>{file}</li>
+                ))}
+              </ul>
+              <p className="m-0 mt-3 text-xs text-muted-foreground">
+                A git checkpoint commit is made first, so this is fully revertable. The conversion runs your project's coding agent with file access scoped to this repo; only the wiki changes are validated. Non-markdown assets{otherFiles.length ? ` (e.g. ${otherFiles.length} file${otherFiles.length === 1 ? "" : "s"} like JSON)` : ""} stay in place but won't render in-app.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-md border bg-background p-3 text-sm text-muted-foreground">
+              No legacy markdown wiki detected. hyperwiki will scaffold a fresh wiki for this project.
+            </div>
+          )}
+
+          {blockReason ? (
+            <p className="m-0 rounded-md border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400" role="status">{blockReason}</p>
+          ) : null}
+
+          <div className="grid grid-cols-[auto_1fr] gap-3">
+            <Button variant="outline" className="min-h-11 text-sm font-semibold" disabled={isSubmitting} onClick={onBack} type="button">Back</Button>
+            <Button className="min-h-11 text-sm font-semibold" data-testid="confirm-adopt" disabled={isSubmitting || Boolean(blockReason)} onClick={onConfirm} type="button">
+              {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <FolderInput aria-hidden="true" data-icon="inline-start" />}
+              {isSubmitting ? "Adopting" : mdFiles.length ? "Convert & replace" : "Adopt project"}
+            </Button>
+          </div>
+          {error ? <p className="m-0 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">{error}</p> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function projectNameForPath(root: string) {
+  const segments = root.replace(/[\\/]+$/, "").split(/[\\/]/);
+  const last = segments[segments.length - 1] || "Adopted Project";
+  return last.replace(/[-_]+/g, " ");
 }
 
 

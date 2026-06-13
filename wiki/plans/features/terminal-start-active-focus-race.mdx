@@ -5,29 +5,26 @@ wikiKind: "plan"
 status: "active"
 ---
 
-<Plan>
-  <PlanHeader>
-    <PlanKicker>Feature Fix</PlanKicker>
-    <PlanTitle>Terminal Start Active Focus Race</PlanTitle>
-    <PlanSummary>
-      Starting a new visible terminal should make that terminal the durable active input target even when the follow-up session reload resolves before React commits the optimistic active-session state.
-    </PlanSummary>
-  </PlanHeader>
-  <PlanBody>
-    <PlanSection>
-      <PlanSectionTitle>Scope</PlanSectionTitle>
-      <ul>
-        <li>Carry an explicit selected session id through terminal session reloads after start, restart, and dev terminal creation.</li>
-        <li>Keep existing xterm focus and visible-session behavior otherwise unchanged.</li>
-        <li>Add static smoke coverage so future terminal starts cannot regress to preserving a stale active pane.</li>
-      </ul>
-    </PlanSection>
-    <PlanSection>
-      <PlanSectionTitle>Verification</PlanSectionTitle>
-      <ul>
-        <li><code>node tests/new-project-upload-static-smoke.mjs</code></li>
-        <li><code>pnpm run check</code></li>
-      </ul>
-    </PlanSection>
-  </PlanBody>
-</Plan>
+<PlanHero title="Terminal Start Active Focus Race" status="active" description="Starting a new visible terminal should make that terminal the durable active input target even when the follow-up session reload resolves before React commits the optimistic active-session state." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: active</li>
+    <li>Shape: feature fix</li>
+  </ul>
+</PlanSummary>
+
+## Scope
+
+<ul>
+  <li>Carry an explicit selected session id through terminal session reloads after start, restart, and dev terminal creation.</li>
+  <li>Keep existing xterm focus and visible-session behavior otherwise unchanged.</li>
+  <li>Add static smoke coverage so future terminal starts cannot regress to preserving a stale active pane.</li>
+</ul>
+
+## Verification
+
+<ul>
+  <li><code>node tests/new-project-upload-static-smoke.mjs</code></li>
+  <li><code>pnpm run check</code></li>
+</ul>

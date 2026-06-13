@@ -146,6 +146,44 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             }
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/projects/adopt/inspect") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let Some(body) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::adopt::AdoptInspectRequest>(body).ok()
+        }) else {
+            return error_response(400, "Adoption inspect requires a project path.");
+        };
+        return match crate::domain::adopt::inspect_existing_project(&body.root, &registry) {
+            Ok(result) => json_response(200, &result),
+            Err((status, error)) => error_response(status, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/projects/adopt") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let Some(body) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::adopt::AdoptProjectRequest>(body).ok()
+        }) else {
+            return error_response(400, "Adoption requires a project path.");
+        };
+        eprintln!(
+            "[hyperwiki] adopt start root={} confirm_replace={}",
+            body.root.display(),
+            body.confirm_replace
+        );
+        return match crate::domain::adopt::adopt_existing_project(&registry, body, app) {
+            Ok(result) => {
+                eprintln!(
+                    "[hyperwiki] adopt ok project_id={} needs_adopt_turn={}",
+                    result.project.id, result.needs_adopt_turn
+                );
+                json_response(200, &result)
+            }
+            Err((status, error)) => {
+                eprintln!("[hyperwiki] adopt error status={status} error={error}");
+                error_response(status, error)
+            }
+        };
+    }
     if request.method == "DELETE" && request.path.starts_with("/api/projects/") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let path_without_query = request
@@ -356,6 +394,29 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
         return match crate::domain::wiki::read_wiki_source(project_root, &source_path) {
             Ok(source) => json_response(200, &source),
             Err(error) => error_response(404, error),
+        };
+    }
+    if request.method == "POST" && request.path.starts_with("/api/wiki/toggle-task") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(parsed) = request
+            .body
+            .as_deref()
+            .and_then(|body| serde_json::from_str::<crate::domain::wiki::WikiTaskToggleRequest>(body).ok())
+        else {
+            return error_response(400, "Invalid task toggle request.");
+        };
+        return match crate::domain::wiki::toggle_wiki_task(project_root, &parsed) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(400, error),
         };
     }
     if request.method == "DELETE" && request.path.starts_with("/api/wiki/plan") {
@@ -1051,6 +1112,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 prompt: String::new(),
                 current_page: String::new(),
                 request_id: String::new(),
+                timeout_secs: None,
             });
         return match crate::domain::codex_app_server::retry_import_planning_turn(project, body, app)
         {
@@ -1080,6 +1142,7 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
                 prompt: String::new(),
                 current_page: String::new(),
                 request_id: String::new(),
+                timeout_secs: None,
             });
         return match crate::domain::codex_app_server::start_import_planning_turn(project, body, app)
         {

@@ -79,6 +79,9 @@ export function applyAppTheme(themeSettings?: SettingsResponse["theme"]) {
     "--terminal-text": normalizeColor(terminal.text, "#eef2ec"),
     "--terminal-muted": normalizeColor(terminal.muted, "#abb5ad"),
     "--terminal-accent": normalizeColor(terminal.accent, "#9fd1ff"),
+    // Diff line colors for plan CodeBlock language="diff" rendering.
+    "--diff-add": isDark ? "#4ade80" : "#15803d",
+    "--diff-remove": isDark ? "#f87171" : "#b91c1c",
   });
 }
 

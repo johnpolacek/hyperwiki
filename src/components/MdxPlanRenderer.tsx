@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createElement, Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clipboard,
   Copy,
   Code2,
@@ -11,6 +12,7 @@ import {
   Info,
   Lightbulb,
   MessageSquareText,
+  Play,
   ShieldAlert,
   X,
 } from "lucide-react";
@@ -40,7 +42,24 @@ interface MdxPlanRendererProps {
   canDeletePlan?: boolean;
   onDeletePlan?: () => Promise<void>;
   path?: string;
+  pageStatuses?: Record<string, string>;
+  onSendCommand?: (command: string) => void;
+  onToggleTask?: (text: string, checked: boolean) => Promise<void> | void;
+  onProposeChange?: (prompt: string) => void;
 }
+
+interface PlanRenderContext {
+  path?: string;
+  pageStatuses?: Record<string, string>;
+  onSendCommand?: (command: string) => void;
+  onToggleTask?: (text: string, checked: boolean) => Promise<void> | void;
+  onProposeChange?: (prompt: string) => void;
+}
+
+// Render-scoped extras for deep helpers; refreshed on every MdxPlanRenderer
+// render and read by event handlers at event time, so only one renderer
+// instance may be mounted at once (true for the workspace pane).
+let planRenderContext: PlanRenderContext = {};
 
 interface MdxValidationWarning {
   kind: string;
@@ -69,6 +88,12 @@ const componentTags = [
   "Columns",
   "Column",
   "Aside",
+  "FlowStep",
+  "Flow",
+  "StageTrack",
+  "StageItem",
+  "OpenDecision",
+  "DecisionOption",
   "RequestExample",
   "ResponseExample",
   "Steps",
@@ -97,8 +122,9 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path }: MdxPlanRendererProps) {
-  const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status]);
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange }: MdxPlanRendererProps) {
+  planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
+  const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [copyStatus, setCopyStatus] = useState("");
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
@@ -410,9 +436,14 @@ function stripFrontmatter(source: string) {
 
 function normalizeComponentTags(source: string) {
   return componentTags.reduce((current, tag) => {
+    // Self-closing component tags must become explicit open+close pairs;
+    // the HTML parser treats `<section ... />` as an unclosed open tag and
+    // would swallow the rest of the document into it.
+    const selfClosing = new RegExp(`<${tag}((?:\\s[^>]*?)?)/>`, "g");
     const open = new RegExp(`<${tag}(\\s|>)`, "g");
     const close = new RegExp(`</${tag}>`, "g");
     return current
+      .replace(selfClosing, `<section data-plan-component="${tag}"$1></section>`)
       .replace(open, `<section data-plan-component="${tag}"$1`)
       .replace(close, "</section>");
   }, source);
@@ -423,6 +454,8 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (!(node instanceof Element)) return null;
 
   const tag = node.tagName.toLowerCase();
+  if (tag === "svg") return renderSvgElement(node, key, true);
+  if (svgChildTags.has(tag)) return null;
   const children = Array.from(node.childNodes).map((child, index) => renderNode(child, `${key}-${index}`, onNavigate, path, pageStatus));
   const titleChildren = normalizeTitleChildren(children);
   const className = node.getAttribute("class") || "";
@@ -477,9 +510,6 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "dl") return <dl className={cn("grid gap-2", classTokens.has("summary") && "grid-cols-[auto_minmax(0,1fr)] rounded-md border bg-secondary/50 p-4 text-sm")} key={key}>{children}</dl>;
   if (tag === "dt") return <dt className="font-bold text-muted-foreground" key={key}>{children}</dt>;
   if (tag === "dd") return <dd className="m-0 min-w-0 font-semibold" key={key}>{children}</dd>;
-  if (tag === "svg") return <div className="overflow-auto rounded-md border bg-background p-3" key={key}>{children}</div>;
-  if (tag === "path" || tag === "rect" || tag === "text" || tag === "defs" || tag === "marker") return null;
-
   const isHero = component === "PlanHero" || classTokens.has("hero") || classTokens.has("import-hero");
   const isSummary = component === "PlanSummary" || classTokens.has("summary") || classTokens.has("status-grid");
   const isStage = classTokens.has("stage");
@@ -544,10 +574,12 @@ function renderPlanComponent(
   }
 
   if (component === "Card") {
+    const cardStatus = node.getAttribute("status") || node.getAttribute("severity") || "";
     return (
-      <Card className="rounded-md py-3 shadow-none" key={key}>
-        {title || description ? (
+      <Card className={cn("rounded-md py-3 shadow-none", cardStatus && cn("border-l-2", cardStatusBorderClass(cardStatus)))} key={key}>
+        {title || description || cardStatus ? (
           <CardHeader className="px-3">
+            {cardStatus ? <Badge className="w-fit" variant={statusBadgeVariant(cardStatus)}>{cardStatus}</Badge> : null}
             {title ? <CardTitle className="text-sm leading-tight">{title}</CardTitle> : null}
             {description ? <CardDescription className="text-xs leading-5">{description}</CardDescription> : null}
           </CardHeader>
@@ -577,6 +609,30 @@ function renderPlanComponent(
         <div className="grid gap-2">{children}</div>
       </aside>
     );
+  }
+
+  if (component === "Flow") {
+    return renderFlow(node, key);
+  }
+
+  if (component === "FlowStep") {
+    return flowStepChip(node, key);
+  }
+
+  if (component === "StageTrack") {
+    return renderStageTrack(node, key, onNavigate, path);
+  }
+
+  if (component === "StageItem") {
+    return <ol className="m-0 grid list-none gap-0 border-l border-border/80 p-0 pl-4" key={key}>{renderStageItem(node, `${key}-item`, onNavigate, path)}</ol>;
+  }
+
+  if (component === "OpenDecision") {
+    return renderOpenDecision(node, key, onNavigate, path);
+  }
+
+  if (component === "DecisionOption") {
+    return renderDecisionOption(node, "", `${key}-option`);
   }
 
   if (component === "RequestExample" || component === "ResponseExample") {
@@ -669,7 +725,7 @@ function renderPlanComponent(
           </CardTitle>
           {description ? <CardDescription className="text-xs leading-5">{description}</CardDescription> : null}
         </CardHeader>
-        <CardContent className="grid gap-2 px-3">{children}</CardContent>
+        <CardContent className="grid gap-2 px-3">{renderTaskItems(node, key, onNavigate, path) || children}</CardContent>
       </Card>
     );
   }
@@ -714,7 +770,7 @@ function renderPlanComponent(
   }
 
   if (component === "CodeBlock" || component === "CommandBlock") {
-    return renderCodeBlock(node, children, key);
+    return renderCodeBlock(node, children, key, component);
   }
 
   if (component === "Tabs") {
@@ -858,10 +914,11 @@ function renderExamplePanel(node: Element, component: string, children: ReactNod
   );
 }
 
-function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
+function renderCodeBlock(node: Element, children: ReactNode[], key: string, component = "CodeBlock") {
   const code = (node.textContent || "").trim();
   const title = componentTitle(node);
   const language = node.getAttribute("language") || node.getAttribute("lang") || "";
+  const canSendToTerminal = component === "CommandBlock" && Boolean(code) && Boolean(planRenderContext.onSendCommand);
   return (
     <div className="overflow-hidden rounded-md border bg-card" key={key}>
       <div className="flex items-center justify-between gap-3 border-b bg-secondary/50 px-3 py-2">
@@ -869,27 +926,280 @@ function renderCodeBlock(node: Element, children: ReactNode[], key: string) {
           <Code2 className="size-3.5 shrink-0" />
           <span className="truncate">{title || language || "Code"}</span>
         </div>
-        {code ? (
-          <Button
-            className="h-7 px-2"
-            size="sm"
-            type="button"
-            variant="ghost"
-            onClick={() => void navigator.clipboard?.writeText(code)}
-          >
-            <Clipboard className="size-3.5" />
-            <span className="sr-only">Copy code</span>
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {canSendToTerminal ? (
+            <Button
+              className="h-7 gap-1.5 px-2 text-xs"
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => planRenderContext.onSendCommand?.(code)}
+            >
+              <Play className="size-3.5" />
+              Send to terminal
+            </Button>
+          ) : null}
+          {code ? (
+            <Button
+              className="h-7 px-2"
+              size="sm"
+              type="button"
+              variant="ghost"
+              onClick={() => void navigator.clipboard?.writeText(code)}
+            >
+              <Clipboard className="size-3.5" />
+              <span className="sr-only">Copy code</span>
+            </Button>
+          ) : null}
+        </div>
       </div>
       <ScrollArea className="max-h-[28rem]">
-        <pre className="m-0 p-3 font-mono text-xs leading-5">{children}</pre>
+        <pre className="m-0 p-3 font-mono text-xs leading-5">
+          {language.toLowerCase() === "diff" ? renderDiffLines(code) : children}
+        </pre>
       </ScrollArea>
     </div>
   );
 }
 
-function cardGroupClass(_node: Element) {
+function renderDiffLines(code: string) {
+  return code.split("\n").map((line, index) => {
+    if (line.startsWith("#")) {
+      return (
+        <div className="my-0.5 border-l-2 border-primary/60 bg-secondary/40 py-0.5 pl-2 font-sans italic text-muted-foreground" key={index}>
+          {line.replace(/^#\s?/, "")}
+        </div>
+      );
+    }
+    const style = line.startsWith("+")
+      ? { color: "var(--diff-add, #15803d)" }
+      : line.startsWith("-")
+        ? { color: "var(--diff-remove, #b91c1c)" }
+        : undefined;
+    return (
+      <div key={index} style={style}>
+        {line || " "}
+      </div>
+    );
+  });
+}
+
+function renderFlow(node: Element, key: string) {
+  const steps = directComponentChildren(node, "FlowStep");
+  const title = componentTitle(node);
+  const vertical = (node.getAttribute("direction") || "").toLowerCase() === "vertical";
+  if (!steps.length) return null;
+  return (
+    <section className="grid gap-2" key={key}>
+      {title ? <h3 className="m-0 text-sm font-bold leading-snug">{title}</h3> : null}
+      <div className={vertical ? "flex flex-col items-start gap-1" : "flex flex-wrap items-center gap-1.5"}>
+        {steps.map((step, index) => (
+          <Fragment key={`${key}-flow-${index}`}>
+            {index ? (
+              vertical
+                ? <ChevronDown aria-hidden="true" className="ml-3 size-3.5 shrink-0 text-muted-foreground/70" />
+                : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground/70" />
+            ) : null}
+            {flowStepChip(step, `${key}-flow-${index}-chip`)}
+          </Fragment>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function flowStepChip(step: Element, key: string) {
+  const label = step.getAttribute("label") || step.textContent?.trim() || "Step";
+  const detail = step.getAttribute("detail") || "";
+  const status = (step.getAttribute("status") || "").toLowerCase();
+  return (
+    <div
+      className={cn(
+        "grid gap-0.5 rounded-md border bg-card px-2.5 py-1.5",
+        status === "done" && "bg-secondary/50",
+        (status === "current" || status === "active") && "border-primary",
+        (status === "blocked" || status === "danger") && "border-destructive",
+      )}
+      key={key}
+    >
+      <div className="flex items-center gap-1.5 text-xs font-semibold leading-5 text-foreground">
+        {status === "done" ? <CheckCircle2 aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" /> : null}
+        <span>{label}</span>
+      </div>
+      {detail ? <div className="font-mono text-[11px] leading-4 text-muted-foreground">{detail}</div> : null}
+    </div>
+  );
+}
+
+function renderStageTrack(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = directComponentChildren(node, "StageItem");
+  const title = componentTitle(node);
+  if (!items.length) return null;
+  return (
+    <section className="grid gap-2" key={key}>
+      {title ? <h3 className="m-0 text-sm font-bold leading-snug">{title}</h3> : null}
+      <ol className="m-0 grid list-none gap-0 border-l border-border/80 p-0 pl-4 pt-1">
+        {items.map((item, index) => renderStageItem(item, `${key}-stage-${index}`, onNavigate, path))}
+      </ol>
+    </section>
+  );
+}
+
+function renderStageItem(item: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const label = item.getAttribute("label") || item.textContent?.trim() || "Stage";
+  const detail = item.getAttribute("detail") || "";
+  const href = item.getAttribute("href") || "";
+  const wikiPath = href ? resolveWikiLink(href, path) : null;
+  // The linked page's actual status wins over the hand-written attribute so
+  // stage tracks stay truthful as units complete.
+  const derivedStatus = wikiPath ? planRenderContext.pageStatuses?.[wikiPath] : undefined;
+  const status = derivedStatus || item.getAttribute("status") || "";
+  const normalizedStatus = status.toLowerCase();
+  return (
+    <li className="relative grid gap-0.5 pb-4 pl-3 last:pb-1" key={key}>
+      <div
+        className={cn(
+          "absolute -left-[1.36rem] top-1.5 size-3 rounded-full border",
+          normalizedStatus.includes("done") || normalizedStatus.includes("complete")
+            ? "border-primary bg-primary"
+            : normalizedStatus.includes("current") || normalizedStatus.includes("active")
+              ? "border-primary bg-background ring-2 ring-primary/30"
+              : normalizedStatus.includes("blocked")
+                ? "border-destructive bg-destructive/80"
+                : "border-border bg-background",
+        )}
+      />
+      <div className="flex flex-wrap items-center gap-2 text-sm leading-6">
+        {href ? (
+          <a
+            className="font-semibold text-primary underline-offset-4 hover:underline"
+            href={href}
+            onClick={(event) => {
+              if (!wikiPath) return;
+              event.preventDefault();
+              onNavigate(wikiPath);
+            }}
+          >
+            {label}
+          </a>
+        ) : (
+          <span className="font-semibold text-foreground">{label}</span>
+        )}
+        {status ? <Badge variant={statusBadgeVariant(status)}>{status}</Badge> : null}
+      </div>
+      {detail ? <div className="text-xs leading-5 text-muted-foreground">{detail}</div> : null}
+    </li>
+  );
+}
+
+function renderTaskItems(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = Array.from(node.querySelectorAll(":scope > ul > li, :scope > ol > li"));
+  if (!items.length) return null;
+  return (
+    <ul className="m-0 grid list-none gap-1.5 p-0 text-sm leading-6">
+      {items.map((item, index) => {
+        const text = (item.textContent || "").trim();
+        const match = text.match(/^\[( |x|X)\]\s*(.*)$/);
+        if (!match) {
+          return <li className="pl-6" key={`${key}-task-${index}`}>{Array.from(item.childNodes).map((child, childIndex) => renderNode(child, `${key}-task-${index}-${childIndex}`, onNavigate, path))}</li>;
+        }
+        const checked = match[1].toLowerCase() === "x";
+        const taskText = match[2].trim();
+        const canToggle = Boolean(planRenderContext.onToggleTask);
+        return (
+          <li key={`${key}-task-${index}-${checked}`}>
+            <label className={cn("flex items-start gap-2", canToggle ? "cursor-pointer" : "cursor-default")}>
+              <input
+                className="mt-1.5 size-3.5 shrink-0 accent-primary"
+                defaultChecked={checked}
+                disabled={!canToggle}
+                type="checkbox"
+                onChange={(event) => void planRenderContext.onToggleTask?.(taskText, event.target.checked)}
+              />
+              <span className={checked ? "text-muted-foreground line-through" : "text-foreground"}>{taskText}</span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function renderOpenDecision(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const title = componentTitle(node);
+  const detail = node.getAttribute("detail") || node.getAttribute("description") || "";
+  const options = directComponentChildren(node, "DecisionOption");
+  const otherChildren = Array.from(node.childNodes).filter(
+    (child) => !(child instanceof Element && child.getAttribute("data-plan-component") === "DecisionOption"),
+  );
+  return (
+    <section className="grid gap-3 rounded-md border border-primary/40 bg-secondary/25 p-4" key={key}>
+      <div className="grid gap-1">
+        <div className="flex items-center gap-2">
+          <MessageSquareText aria-hidden="true" className="size-4 text-primary" />
+          <h3 className="m-0 text-sm font-bold leading-snug">{title || "Open decision"}</h3>
+        </div>
+        {detail ? <p className="m-0 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
+      </div>
+      {otherChildren.length ? (
+        <div className="grid gap-2">
+          {otherChildren.map((child, index) => renderNode(child, `${key}-od-${index}`, onNavigate, path))}
+        </div>
+      ) : null}
+      {options.length ? (
+        <div className="grid gap-1.5">
+          {options.map((option, index) => renderDecisionOption(option, title, `${key}-od-option-${index}`))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function renderDecisionOption(option: Element, decisionTitle: string, key: string) {
+  const label = option.getAttribute("label") || option.textContent?.trim() || "Option";
+  const detail = option.getAttribute("detail") || option.getAttribute("description") || "";
+  const recommended = booleanAttr(option, "recommended");
+  const canPropose = Boolean(planRenderContext.onProposeChange);
+  const propose = () => {
+    const pagePath = planRenderContext.path || "this plan page";
+    planRenderContext.onProposeChange?.(
+      `Resolve the open decision "${decisionTitle || "Open decision"}" in ${pagePath} by choosing: "${label}". Update the plan accordingly: record it as a Decision with rationale and consequences, adjust affected stages or units, and remove the resolved OpenDecision block.`,
+    );
+  };
+  return (
+    <button
+      className={cn(
+        "grid gap-0.5 rounded-md border bg-card px-3 py-2 text-left transition-colors",
+        recommended && "border-primary",
+        canPropose ? "cursor-pointer hover:bg-accent" : "cursor-default",
+      )}
+      disabled={!canPropose}
+      key={key}
+      type="button"
+      onClick={propose}
+    >
+      <span className="flex flex-wrap items-center gap-2 text-sm font-semibold leading-6 text-foreground">
+        {label}
+        {recommended ? <Badge>recommended</Badge> : null}
+        {canPropose ? <span className="text-xs font-normal text-muted-foreground">choose → modify plan</span> : null}
+      </span>
+      {detail ? <span className="text-xs leading-5 text-muted-foreground">{detail}</span> : null}
+    </button>
+  );
+}
+
+function cardStatusBorderClass(value: string) {
+  const normalized = value.toLowerCase();
+  if (/blocked|danger|deprecated|high|critical|rejected/.test(normalized)) return "border-l-destructive";
+  if (/current|active|recommended/.test(normalized)) return "border-l-primary";
+  return "border-l-border";
+}
+
+function cardGroupClass(node: Element) {
+  const cols = node.getAttribute("cols") || node.getAttribute("columns") || "";
+  if (cols === "2") return "grid grid-cols-1 gap-3 md:grid-cols-2";
+  if (cols === "3") return "grid grid-cols-1 gap-3 md:grid-cols-3";
+  if (cols === "4") return "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4";
   return "grid grid-cols-1 gap-3";
 }
 
@@ -1052,4 +1362,135 @@ function decodeCommonHtmlEntities(value: string) {
     .replaceAll("&gt;", ">")
     .replaceAll("&quot;", '"')
     .replaceAll("&#39;", "'");
+}
+
+const svgElementTags = new Set([
+  "svg",
+  "g",
+  "path",
+  "rect",
+  "circle",
+  "ellipse",
+  "line",
+  "polyline",
+  "polygon",
+  "text",
+  "tspan",
+  "defs",
+  "marker",
+  "title",
+]);
+
+const svgChildTags = new Set([...svgElementTags].filter((tag) => tag !== "svg" && tag !== "title"));
+
+const svgAttributeMap: Record<string, string> = {
+  "aria-hidden": "aria-hidden",
+  "aria-label": "aria-label",
+  cx: "cx",
+  cy: "cy",
+  d: "d",
+  "dominant-baseline": "dominantBaseline",
+  dx: "dx",
+  dy: "dy",
+  fill: "fill",
+  "fill-opacity": "fillOpacity",
+  "font-family": "fontFamily",
+  "font-size": "fontSize",
+  "font-weight": "fontWeight",
+  height: "height",
+  id: "id",
+  "marker-end": "markerEnd",
+  "marker-mid": "markerMid",
+  "marker-start": "markerStart",
+  markerheight: "markerHeight",
+  markerwidth: "markerWidth",
+  opacity: "opacity",
+  orient: "orient",
+  points: "points",
+  preserveaspectratio: "preserveAspectRatio",
+  r: "r",
+  refx: "refX",
+  refy: "refY",
+  role: "role",
+  rx: "rx",
+  ry: "ry",
+  stroke: "stroke",
+  "stroke-dasharray": "strokeDasharray",
+  "stroke-linecap": "strokeLinecap",
+  "stroke-linejoin": "strokeLinejoin",
+  "stroke-opacity": "strokeOpacity",
+  "stroke-width": "strokeWidth",
+  "text-anchor": "textAnchor",
+  transform: "transform",
+  viewbox: "viewBox",
+  width: "width",
+  x: "x",
+  x1: "x1",
+  x2: "x2",
+  y: "y",
+  y1: "y1",
+  y2: "y2",
+};
+
+function renderSvgElement(node: Element, key: string, isRoot = false): ReactNode {
+  const tag = node.tagName.toLowerCase();
+  if (!svgElementTags.has(tag)) return null;
+  if (tag === "title") return createElement("title", { key }, node.textContent || "");
+
+  const props: Record<string, string> = {};
+  for (const attr of Array.from(node.attributes)) {
+    const prop = svgAttributeMap[attr.name.toLowerCase()];
+    if (!prop) continue;
+    const value = sanitizeSvgAttributeValue(prop, attr.value);
+    if (value === null) continue;
+    props[prop] = value;
+  }
+
+  const children = Array.from(node.childNodes)
+    .map((child, index) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        return tag === "text" || tag === "tspan" ? child.textContent : null;
+      }
+      return child instanceof Element ? renderSvgElement(child, `${key}-${index}`) : null;
+    })
+    .filter((child) => child !== null && child !== "");
+
+  if (tag !== "svg") return createElement(tag, { ...props, key }, ...children);
+
+  const svg = createElement(
+    "svg",
+    {
+      ...props,
+      key: `${key}-svg`,
+      className: props.width ? "h-auto max-w-full" : "h-auto w-full",
+      xmlns: "http://www.w3.org/2000/svg",
+    },
+    ...children,
+  );
+  if (!isRoot) return svg;
+  return (
+    <div className="overflow-x-auto rounded-md border bg-card p-3 text-foreground" key={key}>
+      {svg}
+    </div>
+  );
+}
+
+function sanitizeSvgAttributeValue(prop: string, value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed || /[<>]/.test(trimmed) || /javascript:/i.test(trimmed)) return null;
+  if (prop === "fill" || prop === "stroke") {
+    if (/^(currentcolor|none|transparent)$/i.test(trimmed)) return trimmed;
+    if (/^var\(--[a-z0-9-]+\)$/i.test(trimmed)) return trimmed;
+    if (/^#[0-9a-f]{3,8}$/i.test(trimmed)) return trimmed;
+    if (/^[a-z]+$/i.test(trimmed)) return trimmed;
+    return null;
+  }
+  if (prop === "markerEnd" || prop === "markerMid" || prop === "markerStart") {
+    return /^url\(#[a-z0-9_-]+\)$/i.test(trimmed) ? trimmed : null;
+  }
+  if (prop === "id") {
+    return /^[a-z][a-z0-9_-]*$/i.test(trimmed) ? trimmed : null;
+  }
+  if (/url\(/i.test(trimmed)) return null;
+  return trimmed;
 }

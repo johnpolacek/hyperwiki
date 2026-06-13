@@ -28,5 +28,17 @@ assert.ok(
   promptSource.includes("do not do any repo or wiki exploration before that first answer"),
   "blank initial user intent should explicitly forbid pre-question exploration",
 );
+assert.ok(
+  promptSource.includes("plan-page-skeletons.md") && promptSource.includes("start from the matching skeleton"),
+  "plan creation prompt should point agents at the skill's plan page skeletons",
+);
+assert.ok(
+  promptSource.includes("must open with PlanHero followed by PlanSummary"),
+  "plan creation prompt should require the PlanHero + PlanSummary opening",
+);
+assert.ok(
+  promptSource.includes("below the quality bar and will fail validation"),
+  "plan creation prompt should state the bare-prose quality floor",
+);
 
 console.log("plan creation prompt static smoke passed");

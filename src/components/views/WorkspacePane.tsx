@@ -4,12 +4,12 @@ import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
 import { NewProjectView } from "@/components/views/NewProjectView";
-import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
+import { AdoptingView, PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, titleForPath } from "@/lib/wiki-pages";
-import type { CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
@@ -19,15 +19,20 @@ export function WorkspacePane(props: {
   isExpanded: boolean;
   isLoading: boolean;
   onCreateProject: (input: { title: string; document: string; documentType: string; sourceDocuments?: SourceDocumentInput[]; initializeGit: boolean }) => Promise<ProjectRecord | void>;
+  onInspectProject: (root: string) => Promise<AdoptInspectResponse>;
+  onAdoptProject: (input: { root: string }) => Promise<AdoptProjectResponse | void>;
   onCancelImportPlanningTurn: () => Promise<void>;
   onNavigate: (route: ViewRoute) => void;
   onAnswerPlanningQuestion: (answers: PlanningQuestionAnswer[]) => Promise<void>;
   onPlanImportedProject: (project: ProjectRecord) => Promise<void>;
+  onRetryAdoption: (project: ProjectRecord) => Promise<void>;
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onDeletePlan: (path: string) => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  onSendCommandToTerminal: (command: string) => void;
+  onToggleWikiTask: (text: string, checked: boolean) => Promise<void>;
   onToggleExpanded: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
   planningActivity: string;
@@ -47,13 +52,14 @@ export function WorkspacePane(props: {
   wikiSource: WikiSourceResponse | null;
   wikiPath: string;
   wikiPages: WikiPage[];
+  wikiPageStatuses: Record<string, string>;
 }) {
   const isFirstProject = props.hasLoadedProjects && props.projectGroups.length === 0;
   if (props.route.kind === "projects") {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
   if (props.route.kind === "new-project") {
-    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} onInspectProject={props.onInspectProject} onAdoptProject={props.onAdoptProject} />;
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} onOpenProjectEnv={props.onOpenProjectEnv} settings={props.settings} />;
@@ -61,8 +67,19 @@ export function WorkspacePane(props: {
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
   }
+  const adoptionStatus = props.activeProject?.importPlanning?.status;
+  if (adoptionStatus === "adopting" || adoptionStatus === "adoptionFailed") {
+    return (
+      <AdoptingView
+        project={props.activeProject!}
+        activity={props.planningActivity}
+        workstream={props.planningWorkstream}
+        onRetry={() => { if (props.activeProject) void props.onRetryAdoption(props.activeProject); }}
+      />
+    );
+  }
   if (props.hasLoadedProjects && !props.activeProject) {
-    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} />;
+    return <NewProjectView isFirstProject={isFirstProject} onCreateProject={props.onCreateProject} onInspectProject={props.onInspectProject} onAdoptProject={props.onAdoptProject} />;
   }
   const isActivePlanPage = displayWikiPath(props.wikiPath) === displayWikiPath(props.activePlanState.currentPath);
   if (props.isImportPlanningView) {
@@ -144,6 +161,10 @@ export function WorkspacePane(props: {
               markdown={props.wikiSource.markdown}
               onDeletePlan={() => props.onDeletePlan(props.wikiPath)}
               onNavigate={(path) => props.onNavigate({ kind: "wiki", path })}
+              onProposeChange={(prompt) => props.onRunCommand("modify", { prompt })}
+              onSendCommand={props.onSendCommandToTerminal}
+              onToggleTask={props.onToggleWikiTask}
+              pageStatuses={props.wikiPageStatuses}
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
               source={props.wikiSource.source}

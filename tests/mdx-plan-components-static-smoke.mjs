@@ -42,6 +42,12 @@ const requiredComponents = [
   "Columns",
   "Column",
   "Aside",
+  "Flow",
+  "FlowStep",
+  "StageTrack",
+  "StageItem",
+  "OpenDecision",
+  "DecisionOption",
   "RequestExample",
   "ResponseExample",
   "Steps",
@@ -68,6 +74,24 @@ const requiredComponents = [
 for (const component of requiredComponents) {
   if (!renderer.includes(`"${component}"`)) {
     throw new Error(`MDX plan renderer must recognize <${component}>.`);
+  }
+}
+
+const wikiRs = await readFile(path.resolve("src-tauri/src/domain/wiki.rs"), "utf8");
+const frontendTagList = renderer.match(/const componentTags = \[([\s\S]*?)\];/)?.[1] || "";
+const backendTagList = wikiRs.match(/const MDX_SECTION_TAGS: &\[&str\] = &\[([\s\S]*?)\];/)?.[1] || "";
+const frontendTags = new Set([...frontendTagList.matchAll(/"([A-Za-z]+)"/g)].map((match) => match[1]));
+const backendTags = new Set([...backendTagList.matchAll(/"([A-Za-z]+)"/g)].map((match) => match[1]));
+// CodeBlock/CommandBlock/Visibility are handled by dedicated backend replacements, not MDX_SECTION_TAGS.
+const backendExemptTags = new Set(["CodeBlock", "CommandBlock", "Visibility"]);
+for (const tag of frontendTags) {
+  if (!backendTags.has(tag) && !backendExemptTags.has(tag)) {
+    throw new Error(`Component tag lists out of sync: <${tag}> is in MdxPlanRenderer.tsx but missing from wiki.rs MDX_SECTION_TAGS.`);
+  }
+}
+for (const tag of backendTags) {
+  if (!frontendTags.has(tag)) {
+    throw new Error(`Component tag lists out of sync: <${tag}> is in wiki.rs MDX_SECTION_TAGS but missing from MdxPlanRenderer.tsx.`);
   }
 }
 
@@ -123,11 +147,15 @@ for (const contrastContract of [
 
 for (const generationContract of [
   "choose the planning composition pattern",
-  "full-width CardGroup cards for alternatives or work tracks",
+  "CardGroup cards for alternatives or work tracks",
   "avoid multi-column plan layouts",
   "RequestExample/ResponseExample/ParamField/ResponseField for contracts",
   "Prefer CodeBlock over raw fenced code blocks",
   "one CodeBlock per tab",
+  "plan-page-skeletons.md",
+  "start from the matching skeleton",
+  "PlanHero followed by PlanSummary",
+  "will fail validation",
 ]) {
   if (!app.includes(generationContract)) {
     throw new Error(`Plan generation prompt must advertise rich MDX composition: ${generationContract}`);

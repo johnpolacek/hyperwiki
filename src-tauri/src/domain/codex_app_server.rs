@@ -18,6 +18,10 @@ pub struct CodexTurnRequest {
     pub current_page: String,
     #[serde(default)]
     pub request_id: String,
+    /// Optional per-turn timeout override (seconds). Heavier agentic turns such
+    /// as wiki adoption raise this above the default planning-turn budget.
+    #[serde(default)]
+    pub timeout_secs: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -804,6 +808,10 @@ pub fn run_import_planning_turn(
     } else {
         request.request_id.clone()
     };
+    let app_server_timeout = request
+        .timeout_secs
+        .map(Duration::from_secs)
+        .unwrap_or(APP_SERVER_TURN_TIMEOUT);
     if matches!(
         crate::domain::agent_provider::provider_for_project(project),
         crate::domain::agent_provider::AgentProvider::Claude
@@ -813,6 +821,7 @@ pub fn run_import_planning_turn(
             run_id,
             &request_id,
             prompt,
+            request.timeout_secs.map(Duration::from_secs),
             app.as_ref(),
         );
     }
@@ -915,7 +924,7 @@ pub fn run_import_planning_turn(
         let result = server.wait_for_turn(
             &thread_id,
             before_index,
-            APP_SERVER_TURN_TIMEOUT,
+            app_server_timeout,
             first_event_fallback_after,
             run_id,
             timing_marks,
@@ -948,6 +957,7 @@ pub fn run_import_planning_turn(
                 run_id,
                 &request_id,
                 prompt,
+                request.timeout_secs.map(Duration::from_secs),
                 app.as_ref(),
                 Some(&error),
             );
@@ -1005,9 +1015,11 @@ fn run_exec_json_turn(
     run_id: &str,
     request_id: &str,
     prompt: &str,
+    timeout: Option<Duration>,
     app: Option<&tauri::AppHandle>,
     fallback_reason: Option<&str>,
 ) -> Result<CodexTurnResponse, (u16, String)> {
+    let turn_timeout = timeout.unwrap_or(EXEC_JSON_TURN_TIMEOUT);
     let start = Instant::now();
     let timing_marks = CodexAdapterTimingMarks {
         provider_ready_ms: Some(0),
@@ -1093,7 +1105,7 @@ fn run_exec_json_turn(
         }
     });
 
-    let deadline = start + EXEC_JSON_TURN_TIMEOUT;
+    let deadline = start + turn_timeout;
     let mut thread_id = "codex-exec-json".to_string();
     let mut turn_id = "codex-exec-json".to_string();
     let mut text = String::new();

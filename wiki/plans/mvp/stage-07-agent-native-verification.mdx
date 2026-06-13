@@ -4,9 +4,9 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Stage 07 - Agent-native Verification</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Stage 07 - Agent-native Verification" status="complete" description="Turn hyperwiki from an agent-visible workspace into Localhost Tooling for agent-native development: repo-local context, structured tool surfaces, explicit verification loops, auditable agent review workflows, and machine-readable project contracts." />
+
+<PlanSummary>
   <ul>
     <li>Status: complete</li>
     <li>Shape: single MVP stage with multiple execution units</li>
@@ -15,7 +15,8 @@ wikiKind: "plan"
     <li>Blockers: none</li>
     <li>Validation: <code>pnpm run check</code>, targeted smoke coverage for new APIs and browser-visible workflow state, and manual dogfood from an agent session.</li>
   </ul>
-</section>
+</PlanSummary>
+
 <h2>Intent</h2>
 <p>Turn hyperwiki from an agent-visible workspace into Localhost Tooling for agent-native development: repo-local context, structured tool surfaces, explicit verification loops, auditable agent review workflows, and machine-readable project contracts inside the developer's own trust boundary.</p>
 <h2>Source Context</h2>
@@ -53,13 +54,10 @@ wikiKind: "plan"
   <li>Do not make hosted sync, remote execution, telemetry, or cloud-backed memory default requirements.</li>
   <li>Do not make MCP integration depend on one agent vendor's private protocol when a local CLI/API contract can remain stable.</li>
 </ul>
-<section>
-  <h2>Execution Units</h2>
-  <ol>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.mdx">Unit 01 - Verification Loop Model</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.mdx">Unit 02 - Machine-readable Project Contract</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.mdx">Unit 03 - Agent Review Workflows</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.mdx">Unit 04 - MCP Surface Definition</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-mcp-server-transport.mdx">Unit 05 - MCP Server Transport</a> - complete</li>
-  </ol>
-</section>
+<StageTrack title="Execution Units">
+  <StageItem label="Unit 01 - Verification Loop Model" status="complete" href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-01-verification-loop-model.mdx" />
+  <StageItem label="Unit 02 - Machine-readable Project Contract" status="complete" href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-02-machine-readable-project-contract.mdx" />
+  <StageItem label="Unit 03 - Agent Review Workflows" status="complete" href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-03-agent-review-workflows.mdx" />
+  <StageItem label="Unit 04 - MCP Surface Definition" status="complete" href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-04-mcp-surface-definition.mdx" />
+  <StageItem label="Unit 05 - MCP Server Transport" status="complete" href="/wiki/plans/mvp/stage-07-agent-native-verification/unit-05-mcp-server-transport.mdx" />
+</StageTrack>

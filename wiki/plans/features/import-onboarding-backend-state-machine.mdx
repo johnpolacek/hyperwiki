@@ -4,9 +4,9 @@ description: "Move imported-project Q&A orchestration from React into the Rust b
 wikiKind: "plan"
 ---
 
-<h1>Import Onboarding Backend State Machine</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Import Onboarding Backend State Machine" status="draft" description="Move imported-project Q&A orchestration from React into the Rust backend with a Codex adapter and typed onboarding state." />
+
+<PlanSummary>
   <ul>
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
@@ -14,7 +14,7 @@ wikiKind: "plan"
     <li>Goal: imported-project Q&amp;A should not stall, and first and follow-up questions should appear quickly with visible progress.</li>
     <li>Next action: compare this candidate against the other architecture candidates before implementation selection.</li>
   </ul>
-</section>
+</PlanSummary>
 <section>
   <h2>Intent</h2>
   <p>Move imported-project onboarding orchestration out of React and into the Tauri Rust backend. React should render state, submit answers, and show progress. Rust should own Codex lifecycle, onboarding state, retries, timing, question extraction, answer recording, plan detection, and recovery.</p>

@@ -4,9 +4,9 @@ description: "Evaluate an open-harness or deepagents-style runtime for imported-
 wikiKind: "plan"
 ---
 
-<h1>Import Onboarding Agent Harness Runtime</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Import Onboarding Agent Harness Runtime" status="draft" description="Evaluate an open-harness or deepagents-style runtime for imported-project Q&A, virtual files, structured events, and human-input continuation." />
+
+<PlanSummary>
   <ul>
     <li>Status: draft</li>
     <li>Shape: candidate architecture plan</li>
@@ -14,7 +14,7 @@ wikiKind: "plan"
     <li>Goal: manage import onboarding through a structured harness with virtual filesystem staging, session bridging, streaming events, and explicit human-input pause or resume points.</li>
     <li>Next action: compare this candidate against direct Codex attachment, the backend state machine, sidecar service, and engine-first runtime before implementation selection.</li>
   </ul>
-</section>
+</PlanSummary>
 <section>
   <h2>Intent</h2>
   <p>Use an agent harness pattern for imported-project onboarding instead of letting the model conversation, React state, and filesystem writes blur together. The harness owns the loop: prepare context, call the agent, validate structured outputs, pause for a human answer, resume with that answer, and commit approved artifacts to the real wiki.</p>

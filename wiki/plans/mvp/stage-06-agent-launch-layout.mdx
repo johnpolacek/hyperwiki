@@ -4,9 +4,9 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Stage 06 - Agent-first Launch Layout</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Stage 06 - Agent-first Launch Layout" status="complete" description="Make hyperwiki launch into the actual working set: an agent first when configured, a dev command when present, and a single CLI shell." />
+
+<PlanSummary>
   <ul>
     <li>Status: complete</li>
     <li>Current unit: none</li>
@@ -14,16 +14,15 @@ wikiKind: "plan"
     <li>Blockers: none</li>
     <li>Validation: <code>pnpm run check</code>, <code>pnpm run smoke:launch</code>, <code>pnpm run smoke:reset</code>, <code>pnpm run smoke:browser</code>, <code>pnpm run smoke:init</code>, <code>pnpm run smoke:sessions</code>, <code>pnpm run smoke:pty</code>.</li>
   </ul>
-</section>
+</PlanSummary>
+
 <h2>Intent</h2>
 <p>Make hyperwiki launch into the actual working set: an agent first when configured, a dev command when present, and a single CLI shell.</p>
-<section>
-  <h2>Execution Units</h2>
-  <ol>
-    <li><a href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-01-agent-launch-setting.mdx">Unit 01 - Agent Launch Setting</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-02-three-panel-startup-contract.mdx">Unit 02 - Three-panel Startup Contract</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-04-workspace-chrome-reduction.mdx">Unit 04 - Workspace Chrome Reduction</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-05-agent-plan-prompt.mdx">Unit 05 - Agent Plan Prompt</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-03-repeatable-fresh-launch-reset.mdx">Unit 03 - Repeatable Fresh-launch Reset</a> - complete</li>
-  </ol>
-</section>
+
+<StageTrack title="Execution Units">
+  <StageItem label="Unit 01 - Agent Launch Setting" status="complete" href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-01-agent-launch-setting.mdx" />
+  <StageItem label="Unit 02 - Three-panel Startup Contract" status="complete" href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-02-three-panel-startup-contract.mdx" />
+  <StageItem label="Unit 04 - Workspace Chrome Reduction" status="complete" href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-04-workspace-chrome-reduction.mdx" />
+  <StageItem label="Unit 05 - Agent Plan Prompt" status="complete" href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-05-agent-plan-prompt.mdx" />
+  <StageItem label="Unit 03 - Repeatable Fresh-launch Reset" status="complete" href="/wiki/plans/mvp/stage-06-agent-launch-layout/unit-03-repeatable-fresh-launch-reset.mdx" />
+</StageTrack>

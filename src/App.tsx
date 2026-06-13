@@ -71,7 +71,7 @@ import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefe
 import { agentLaunchCommand, agentProviderFromCommand, claudeCommandWithThinkingEffort, codexCommandWithThinkingEffort, defaultAgentCommand, defaultThinkingEffort, importAgentLaunchCommand, layoutAgentProvider, normalizedThinkingEffort, type AgentProviderAvailability, type AgentProviderId } from "@/lib/agent";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
-import type { AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
 
 
 const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
@@ -98,6 +98,14 @@ const generalAgentPrewarmRefillDelayMs = 1500;
 function App() {
   const [route, setRoute] = useState<ViewRoute>(() => routeFromLocation());
   const [wikiPages, setWikiPages] = useState<WikiPage[]>([]);
+  const wikiPageStatuses = useMemo(() => {
+    const statuses: Record<string, string> = {};
+    for (const page of wikiPages) {
+      const status = pageStatus(page);
+      if (status) statuses[page.path] = status;
+    }
+    return statuses;
+  }, [wikiPages]);
   const [wikiHtml, setWikiHtml] = useState("");
   const [wikiSource, setWikiSource] = useState<WikiSourceResponse | null>(null);
   const [wikiError, setWikiError] = useState("");
@@ -502,7 +510,11 @@ function App() {
         setPendingImportProject(null);
         setActiveProject(project);
         setStatus("Imported project ready");
-        void startTerminalImportPlanning(project, "pending-import");
+        if (isAdoptingProject(project)) {
+          void waitForWikiAdoption(project);
+        } else {
+          void startTerminalImportPlanning(project, "pending-import");
+        }
       } catch (error) {
         console.warn("[hyperwiki] import ui pending poll failed", error);
       }
@@ -710,8 +722,9 @@ function App() {
     setIsSessionsLoading(true);
     const loaded = await loadProjectData(project);
     const loadedWorkspace = loaded.workspace;
-    const landingPath = isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
-    if (isIncompleteImportProject(project)) void startTerminalImportPlanning(project, "switch-project");
+    const landingPath = isAdoptingProject(project) ? "/wiki/index.mdx" : isIncompleteImportProject(project) ? defaultWikiPath : planLandingPath(loaded.pages);
+    if (isAdoptingProject(project)) void waitForWikiAdoption(project);
+    else if (isIncompleteImportProject(project)) void startTerminalImportPlanning(project, "switch-project");
     const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
     latestTerminalContext.current = { projectId: project.id, scope: normalizeTerminalScope(scopeForRoute(nextRoute)).scope };
     setRoute(nextRoute);
@@ -2443,6 +2456,92 @@ function App() {
     return project;
   }
 
+  async function inspectExistingProject(root: string) {
+    return hyperwikiApi.json<AdoptInspectResponse>("/api/projects/adopt/inspect", {
+      method: "POST",
+      body: { root },
+    });
+  }
+
+  async function adoptExistingProject(input: { root: string }) {
+    baseDataRequestId.current += 1;
+    setStatus("Adopting existing project");
+    appendImportLog(`Adopt request started root=${input.root}`);
+    const response = await hyperwikiApi.json<AdoptProjectResponse>("/api/projects/adopt", {
+      method: "POST",
+      body: {
+        root: input.root,
+        confirmReplace: true,
+        agentLaunchCommand: agentLaunchCommand(layout, thinkingEffort, agentProviders),
+      },
+    });
+    const project = response.project;
+    appendImportLog(`Adopt request resolved project=${project.id} needsAdoptTurn=${response.needsAdoptTurn} checkpoint=${response.checkpoint.commit.slice(0, 8)}`);
+    setStatus(`Project adopted: ${project.name}`);
+    setProjects((current) => withOptimisticProject(current, project));
+    if (response.needsAdoptTurn) {
+      setPlanningInterviewStatus("starting");
+      setPlanningActivity("Porting the existing wiki to hyperwiki MDX.");
+      setPlanningWorkstream(["Porting the existing wiki to hyperwiki MDX."]);
+    }
+    void hyperwikiApi
+      .json<ProjectListResponse>(`/api/projects?project=${encodeURIComponent(project.id)}`)
+      .then((projectsResult) => {
+        setProjects(projectsResult);
+        setActiveProject(findActiveProject(projectsResult, unavailableProjectIds, {
+          projectSlug: project.projectSlug,
+          worktreeSlug: project.worktreeSlug,
+        }) || project);
+      })
+      .catch((error) => {
+        console.error("Could not refresh projects after adoption", error);
+      });
+    return response;
+  }
+
+  async function waitForWikiAdoption(project: ProjectRecord) {
+    const startedAt = Date.now();
+    // Re-entering the workspace (page reload, app restart, or reopen from the
+    // projects list) may find the adopt turn dead. POST start so the backend
+    // re-spawns it if needed; spawn_runtime_turn no-ops when a run is active.
+    try {
+      const started = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery("/api/import-onboarding/start", project), { method: "POST" });
+      applyImportPlanningStatus(started.importPlanning, project.id);
+    } catch (error) {
+      appendImportLog(`Wiki adoption resume start failed project=${project.id}`, error);
+    }
+    // Adoption is a heavy agentic turn (up to ~10 min) plus a repair turn, so
+    // poll well past the 3-minute Q&A budget.
+    for (let attempt = 1; attempt <= 3600; attempt += 1) {
+      await delay(500);
+      const status = await hyperwikiApi.json<ImportOnboardingStatusResponse>(withProjectQuery("/api/import-onboarding/status", project));
+      applyImportPlanningStatus(status.importPlanning, project.id);
+      applyImportOnboardingEventLines(status.recentEvents || []);
+      setPlanningActivity(importOnboardingPhaseLabel(status.activeRun?.phase || status.session.phase));
+      if (attempt === 1 || attempt % 10 === 0 || status.session.status !== "running") {
+        appendImportLog(`Wiki adoption status project=${project.id} attempt=${attempt} status=${status.session.status} phase=${status.session.phase} elapsedMs=${Date.now() - startedAt}`);
+      }
+      if (status.importPlanning.status === "complete") {
+        setPlanningInterviewStatus("idle");
+        setPlanningActivity("Adopted wiki is ready.");
+        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Adopted wiki is ready."]));
+        setStatus("Wiki adopted");
+        await loadProjectData(project);
+        return;
+      }
+      if (status.importPlanning.status === "adoptionFailed" || status.session.status === "retryable_failure") {
+        setPlanningInterviewStatus("failed");
+        setPlanningActivity(status.retryableFailure || status.importPlanning.nextAction || "Wiki adoption needs attention.");
+        setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, [status.retryableFailure || status.importPlanning.nextAction || "Wiki adoption failed."]));
+        setStatus("Wiki adoption needs attention");
+        return;
+      }
+    }
+    setPlanningInterviewStatus("stalled");
+    setPlanningActivity("Wiki adoption timed out.");
+    setPlanningWorkstream((current) => appendPlanningWorkstreamLines(current, ["Wiki adoption timed out."]));
+  }
+
   async function recoverCreatedProject(title: string, startedAt: number) {
     await delay(800);
     const titleSlug = slugify(title);
@@ -2481,6 +2580,42 @@ function App() {
     });
     await refreshWikiStateFromDisk("plan-delete");
     setStatus("Plan deleted");
+  }
+
+  async function toggleWikiTask(text: string, checked: boolean) {
+    if (route.kind !== "wiki") return;
+    try {
+      await hyperwikiApi.json(withProjectQuery("/api/wiki/toggle-task", activeProject), {
+        method: "POST",
+        body: { path: displayWikiPath(route.path), text, checked },
+      });
+      const refreshed = await hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(route.path)}`, activeProject));
+      setWikiSource(refreshed);
+      setStatus(checked ? "Task checked" : "Task unchecked");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not update task");
+    }
+  }
+
+  async function sendCommandToTerminal(command: string) {
+    const session = sessions.find((candidate) => candidate.id === activeSessionId && isLiveTerminalSession(candidate))
+      || sessions.find((candidate) => isLiveTerminalSession(candidate));
+    if (!session) {
+      try {
+        await navigator.clipboard?.writeText(command);
+        setStatus("No live terminal; command copied to clipboard");
+      } catch {
+        setStatus("No live terminal available");
+      }
+      return;
+    }
+    try {
+      await sendInput(session.id, terminalBracketedPaste(command));
+      setActiveSessionId(session.id);
+      setStatus("Command sent to terminal — press Enter to run");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not send command to terminal");
+    }
   }
 
   async function downloadWikiMarkdownZip() {
@@ -2566,13 +2701,18 @@ function App() {
             isLoading={isWikiLoading}
             onNavigate={navigate}
             onCreateProject={createProject}
+            onInspectProject={inspectExistingProject}
+            onAdoptProject={adoptExistingProject}
             activeImportPlanningRun={activeImportPlanningRun}
             onCancelImportPlanningTurn={cancelActiveImportPlanningTurn}
             onPlanImportedProject={planImportedProject}
+            onRetryAdoption={waitForWikiAdoption}
             onResumeImportPlanning={resumeImportPlanning}
             onRemoveProject={removeProject}
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
+            onSendCommandToTerminal={sendCommandToTerminal}
+            onToggleWikiTask={toggleWikiTask}
             onAnswerPlanningQuestion={answerPlanningQuestion}
             onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
             onSwitchProject={switchProject}
@@ -2594,6 +2734,7 @@ function App() {
             wikiSource={wikiSource}
             wikiPath={currentWikiPath}
             wikiPages={wikiPages}
+            wikiPageStatuses={wikiPageStatuses}
             activePlanState={activePlanState}
           />
           {isMainPaneExpanded || isUtilityRoute ? null : isImportPlanningView ? null : (
@@ -3056,6 +3197,12 @@ function importOnboardingPhaseLabel(phase: string) {
     case "running_plan_turn":
     case "running_plan_repair_turn":
       return "Planning agent is writing the MVP plan.";
+    case "running_adopt_turn":
+      return "Agent is porting the existing wiki to hyperwiki MDX.";
+    case "running_adopt_repair_turn":
+      return "Agent is fixing the adopted wiki to pass validation.";
+    case "validating_adoption":
+      return "Validating the adopted wiki.";
     case "parsing_contract":
       return "Parsing the planning contract.";
     case "waiting_for_answer":
@@ -3103,6 +3250,10 @@ function isImportedPlanningIntakeRoute(route: ViewRoute, pages: WikiPage[]) {
 
 function isIncompleteImportProject(project: ProjectRecord | null | undefined) {
   return project?.importPlanning?.status === "incomplete";
+}
+
+function isAdoptingProject(project: ProjectRecord | null | undefined) {
+  return project?.importPlanning?.status === "adopting";
 }
 
 function importPlanningQuestionToPlanningQuestion(question: ImportPlanningQuestion): PlanningQuestion {
@@ -3171,6 +3322,7 @@ function terminalImportPlanningPrompt(project: ProjectRecord) {
     "- Write wiki/plans/mvp/index.mdx.",
     "- Write separate stage and executable unit files under wiki/plans/mvp/.",
     "- Keep wiki/plans/index.mdx structural only.",
+    "- Start each plan page from the matching skeleton in the hyperwiki skill's plan-page-skeletons.md reference; open with PlanHero and PlanSummary and use StageTrack/StageItem, Flow/FlowStep, and Verification components where they fit. Bare-prose plan pages fail validation.",
     "- Each executable unit must include intent, scope, implementation notes, dependencies or blockers, verification, and completion gate.",
     "- If a unit requires manual verification or external setup, spell out the exact user action, command or settings path when known, expected success signal, and what to rerun afterward.",
     "- Update wiki/log.mdx only with durable import-planning decisions or plan creation history.",
@@ -3350,8 +3502,9 @@ function importedProjectPlanGenerationPrompt(project: ProjectRecord, requestId: 
     "- Write separate stage and executable unit files under wiki/plans/mvp/.",
     "- Keep wiki/plans/index.mdx structural only; put current plan, current stage/unit, blockers, and next action in the active plan files.",
     "- Update wiki/log.mdx and source briefs only when the import decisions created durable project context.",
-    "- Choose a planning composition pattern before writing: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-    "- Use CardGroup for full-width stacked cards and Columns only for logical grouping; avoid multi-column plan layouts so generated briefs read as one full-width column.",
+    "- Choose a planning composition pattern before writing: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff. Read the hyperwiki skill references mdx-artifact-patterns.md and plan-page-skeletons.md and start from the matching skeleton.",
+    "- Every plan page must open with PlanHero followed by PlanSummary, with StageTrack/StageItem for stage and unit progress, Flow/FlowStep for pipelines, and Verification for checks; a page of bare sections and bullet lists is below the quality bar and will fail validation.",
+    "- Use CardGroup for full-width stacked cards and Columns only for logical grouping; avoid multi-column plan layouts except CardGroup cols=\"2\" or cols=\"3\" comparison grids of alternatives.",
     "- Use RequestExample and ResponseExample for API, MCP, command, event, or schema contracts.",
     "- Every executable unit must include intent, scope, implementation notes, dependencies or blockers, and a Verification section.",
     "- Name unknowns instead of inventing certainty.",
@@ -3375,6 +3528,7 @@ function importedProjectPlanRepairPrompt(project: ProjectRecord, requestId: stri
     `- requestId: ${requestId}`,
     "- Write the missing MVP plan files now under wiki/plans/mvp/.",
     "- Keep wiki/plans/index.mdx structural only.",
+    "- Plan pages must open with PlanHero and PlanSummary and use hyperwiki plan components per the skill's plan-page-skeletons.md; bare-prose pages fail validation.",
     "- Do not ask another question unless the imported source and Q&A make MVP planning impossible.",
     "- If you ask a question, emit exactly one hyperwiki-question JSON object and stop.",
     "- Do not emit future-tense procedural prose.",
@@ -3429,9 +3583,9 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
     "- Unit Completion Gate must make required manual steps impossible to miss: name who performs the step, what is blocked until it happens, how to perform it, what evidence proves success, and what to rerun afterward.",
     "- Mark the next unit as blocked or not-started until the current unit's verification is recorded or explicitly deferred with risk.",
     "- Every executable unit must include a Verification section or component.",
-    "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
-    "- Before writing, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-    "- Prefer PlanHero for the title, intent, and canonical page status. Use PlanSummary for current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, CodeBlock for file snippets/schema/config/API examples, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Callout/Warning/Danger for important constraints. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate.",
+    "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, OpenDecision, DecisionOption, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, Flow, FlowStep, StageTrack, StageItem, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
+    "- Before writing, read the hyperwiki skill references mdx-artifact-patterns.md and plan-page-skeletons.md, choose the planning composition pattern that fits the content (feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff), and start from the matching skeleton.",
+    "- Every plan page must open with PlanHero followed by PlanSummary, and each major section should use a structural component where one fits: StageTrack/StageItem for stage and unit progress, Flow/FlowStep for pipelines and user flows, Steps for sequences, CardGroup cards for alternatives or work tracks (cols=\"2\" or cols=\"3\" only for comparison grids), CodeBlock/CommandBlock for code and commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Verification for checks. A page of bare sections and bullet lists is below the quality bar and will fail validation. Use plain semantic sections only for routine headings like Scope, Implementation Notes, and Completion Gate.",
     "- Prefer CodeBlock over raw fenced code blocks for visible plan examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose Tabs/Tab with one CodeBlock per tab instead of dumping repeated fences.",
     "- Use Visibility for=\"agents\" around long source context, raw Q&A, or implementation handoff details that agents need but humans should not see in the rendered app. Use Visibility for=\"humans\" only for app-visible explanation that should be stripped from agent Markdown.",
     "- Do not dump long imported source bundles or Q&A transcripts into visible paragraphs; summarize visibly and preserve the full context in agent-only Visibility blocks when needed.",
@@ -3467,6 +3621,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
       "",
       "Restrictions:",
       "- Do not implement product code, format product code, or change src/**, app/**, components/**, lib/**, public/**, tests/**, package manifests, lockfiles, build config, runtime config, or generated application assets.",
+      "- Preserve plan page component structure. Update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections, strip plan components, or rewrite skeleton pages into bare sections and bullet lists.",
       "- Do not run ahead into Execute Unit behavior. If the requested change requires code, update the plan to describe that execution work and stop.",
       "- If you edit files, run relevant checks before finishing.",
       "- Report only repo-visible non-wiki changes as a caution; leave .hyperwiki/ runtime/session state alone and do not treat it as a blocker.",
@@ -3491,6 +3646,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- The `Manual step required` section must include: what is blocked, why it is blocked, who must do it, exact commands/settings/UI path when known, expected success signal/output, files/status intentionally left unchanged, and what button or command the user should rerun after completing it.",
     "- Do not merely say a manual gate remains; explain how the user can clear it.",
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
+    "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
 }
@@ -3534,6 +3690,7 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
     "- Complete exactly this execution unit.",
     "- If the unit reaches a manual review, approval, external configuration, credential, deployment setting, browser inspection, or human validation gate, stop and put a clearly titled `Manual step required` section before the general summary.",
     "- The `Manual step required` section must include: what is blocked, why it is blocked, who must do it, exact commands/settings/UI path when known, expected success signal/output, files/status intentionally left unchanged, and what button or command the user should rerun after completing it.",
+    "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
 }

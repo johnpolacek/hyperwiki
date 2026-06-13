@@ -171,6 +171,46 @@ export interface ProjectRemoveResponse {
   deletedFiles?: boolean;
 }
 
+export interface WikiShape {
+  exists: boolean;
+  mdFiles: string[];
+  mdxCount: number;
+  otherFiles: string[];
+  classification: "legacyMarkdown" | "alreadyMdx" | "mixed" | "none";
+}
+
+export interface AdoptInspectResponse {
+  ok: boolean;
+  root: string;
+  isGitRepo: boolean;
+  isGitRoot: boolean;
+  gitDirty: boolean;
+  alreadyRegistered: boolean;
+  hasHyperwiki: boolean;
+  wiki: WikiShape;
+}
+
+export interface AdoptionState {
+  status: "adopting" | "complete" | "failed";
+  mdFiles: string[];
+  checkpointCommit: string;
+  updatedAtMs: number;
+}
+
+export interface AdoptionCheckpoint {
+  commit: string;
+  createdCommit: boolean;
+}
+
+export interface AdoptProjectResponse {
+  ok: boolean;
+  project: ProjectRecord;
+  workspaceUrl: string;
+  checkpoint: AdoptionCheckpoint;
+  adoption: AdoptionState;
+  needsAdoptTurn: boolean;
+}
+
 export interface ProjectEnvKey {
   name: string;
   present: boolean;
@@ -471,7 +511,7 @@ export interface ImportPlanningArtifactValidation {
 }
 
 export interface ImportPlanningStatus {
-  status: "notImported" | "incomplete" | "complete" | "needsRepair";
+  status: "notImported" | "incomplete" | "complete" | "needsRepair" | "adopting" | "adoptionFailed";
   answeredCount: number;
   currentQuestion?: ImportPlanningQuestion | null;
   currentRequestId?: string | null;

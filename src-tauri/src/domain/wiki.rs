@@ -1,6 +1,6 @@
 use super::DomainSurface;
 use base64::Engine;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -310,6 +310,85 @@ pub fn read_wiki_source(root: impl AsRef<Path>, request_path: &str) -> Result<Wi
         status,
         source,
     })
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiTaskToggleRequest {
+    #[serde(default)]
+    pub path: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub checked: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WikiTaskToggleResponse {
+    pub path: String,
+    pub checked: bool,
+}
+
+pub fn toggle_wiki_task(
+    root: impl AsRef<Path>,
+    request: &WikiTaskToggleRequest,
+) -> Result<WikiTaskToggleResponse, String> {
+    let Some(relative) = wiki_relative_path(&request.path) else {
+        return Err("Not a wiki page path.".to_string());
+    };
+    if relative
+        .split('/')
+        .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err("Invalid wiki page path.".to_string());
+    }
+    let page_path = root.as_ref().join("wiki").join(relative);
+    if page_path.extension().and_then(|value| value.to_str()) != Some("mdx") {
+        return Err("Only MDX wiki pages can be updated.".to_string());
+    }
+    let needle = request.text.trim();
+    if needle.is_empty() {
+        return Err("Task text is required.".to_string());
+    }
+    let source = fs::read_to_string(&page_path).map_err(|error| error.to_string())?;
+    let mut found = false;
+    let mut output_lines = Vec::new();
+    for line in source.lines() {
+        if !found {
+            if let Some(updated) = toggle_task_marker_in_line(line, needle, request.checked) {
+                found = true;
+                output_lines.push(updated);
+                continue;
+            }
+        }
+        output_lines.push(line.to_string());
+    }
+    if !found {
+        return Err("Task item not found in page.".to_string());
+    }
+    let mut output = output_lines.join("\n");
+    if source.ends_with('\n') {
+        output.push('\n');
+    }
+    fs::write(&page_path, output).map_err(|error| error.to_string())?;
+    Ok(WikiTaskToggleResponse {
+        path: format!("/wiki/{relative}"),
+        checked: request.checked,
+    })
+}
+
+fn toggle_task_marker_in_line(line: &str, needle: &str, checked: bool) -> Option<String> {
+    let marker_start = line
+        .find("[ ]")
+        .or_else(|| line.find("[x]"))
+        .or_else(|| line.find("[X]"))?;
+    let after = &line[marker_start + 3..];
+    if strip_html(after).trim() != needle {
+        return None;
+    }
+    let replacement = if checked { "[x]" } else { "[ ]" };
+    Some(format!("{}{replacement}{after}", &line[..marker_start]))
 }
 
 pub fn wiki_page_markdown(
@@ -769,10 +848,12 @@ fn strip_mdx_wrappers(line: &str) -> String {
         .replace("</CommandBlock>", "</pre>")
 }
 
-const MDX_SECTION_TAGS: &[&str] = &[
+pub(crate) const MDX_SECTION_TAGS: &[&str] = &[
     "PlanHero",
     "PlanSummary",
     "PlanUnit",
+    "DecisionOption",
+    "OpenDecision",
     "Decision",
     "Evidence",
     "Verification",
@@ -789,6 +870,10 @@ const MDX_SECTION_TAGS: &[&str] = &[
     "Column",
     "Card",
     "Aside",
+    "FlowStep",
+    "Flow",
+    "StageTrack",
+    "StageItem",
     "RequestExample",
     "ResponseExample",
     "Steps",
@@ -823,6 +908,11 @@ fn strip_visibility_wrappers(line: &str) -> String {
 }
 
 fn mdx_component_markdown_hint(line: &str) -> Option<String> {
+    if line.starts_with("<svg ") || line.starts_with("<svg>") {
+        let label = mdx_attr_value(line, "aria-label").unwrap_or_else(|| "inline diagram".to_string());
+        return Some(format!("Diagram: {label}"));
+    }
+
     if is_mdx_opening(line, "ParamField") || is_mdx_opening(line, "ResponseField") {
         let field_kind = if is_mdx_opening(line, "ParamField") {
             "param"
@@ -859,6 +949,37 @@ fn mdx_component_markdown_hint(line: &str) -> Option<String> {
             .map(|title| format!("### {title}"));
     }
 
+    if is_mdx_opening(line, "OpenDecision") {
+        let title = mdx_attr_value(line, "title").unwrap_or_else(|| "Open decision".to_string());
+        return Some(format!("**Open decision:** {title}"));
+    }
+
+    if is_mdx_opening(line, "DecisionOption") {
+        let label = mdx_attr_value(line, "label").unwrap_or_else(|| "Option".to_string());
+        let mut hint = format!("- Option: {label}");
+        if mdx_bool_attr(line, "recommended") {
+            hint.push_str(" (recommended)");
+        }
+        if let Some(detail) = mdx_attr_value(line, "detail") {
+            hint.push_str(&format!(" — {detail}"));
+        }
+        return Some(hint);
+    }
+
+    if is_mdx_opening(line, "FlowStep") || is_mdx_opening(line, "StageItem") {
+        let label = mdx_attr_value(line, "label")
+            .or_else(|| mdx_attr_value(line, "title"))
+            .unwrap_or_else(|| "Step".to_string());
+        let mut hint = format!("- {label}");
+        if let Some(status) = mdx_attr_value(line, "status") {
+            hint.push_str(&format!(" ({status})"));
+        }
+        if let Some(detail) = mdx_attr_value(line, "detail") {
+            hint.push_str(&format!(" — {detail}"));
+        }
+        return Some(hint);
+    }
+
     let labeled_components = [
         ("Decision", "Decision"),
         ("Evidence", "Evidence"),
@@ -872,6 +993,8 @@ fn mdx_component_markdown_hint(line: &str) -> Option<String> {
         ("Panel", "Panel"),
         ("Card", "Card"),
         ("Aside", "Aside"),
+        ("Flow", "Flow"),
+        ("StageTrack", "Stages"),
         ("RequestExample", "Request example"),
         ("ResponseExample", "Response example"),
         ("Prompt", "Prompt"),
@@ -2494,6 +2617,55 @@ mod tests {
     use std::path::PathBuf;
     use std::thread::sleep;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn toggles_task_checkbox_in_wiki_page() {
+        let root = temp_root("wiki-toggle-task");
+        let plan_dir = root.join("wiki").join("plans");
+        fs::create_dir_all(&plan_dir).unwrap();
+        let page = plan_dir.join("checklist.mdx");
+        fs::write(
+            &page,
+            "<h1>Checklist</h1>\n<TaskList title=\"Tasks\">\n  <ul>\n    <li>[ ] Verify dark mode</li>\n    <li>[ ] Run checks</li>\n  </ul>\n</TaskList>\n",
+        )
+        .unwrap();
+
+        let result = toggle_wiki_task(
+            &root,
+            &WikiTaskToggleRequest {
+                path: "/wiki/plans/checklist.mdx".to_string(),
+                text: "Verify dark mode".to_string(),
+                checked: true,
+            },
+        )
+        .unwrap();
+        assert!(result.checked);
+        let updated = fs::read_to_string(&page).unwrap();
+        assert!(updated.contains("[x] Verify dark mode"));
+        assert!(updated.contains("[ ] Run checks"));
+
+        let result = toggle_wiki_task(
+            &root,
+            &WikiTaskToggleRequest {
+                path: "/wiki/plans/checklist.mdx".to_string(),
+                text: "Verify dark mode".to_string(),
+                checked: false,
+            },
+        )
+        .unwrap();
+        assert!(!result.checked);
+        assert!(fs::read_to_string(&page).unwrap().contains("[ ] Verify dark mode"));
+
+        let missing = toggle_wiki_task(
+            &root,
+            &WikiTaskToggleRequest {
+                path: "/wiki/plans/checklist.mdx".to_string(),
+                text: "Nonexistent task".to_string(),
+                checked: true,
+            },
+        );
+        assert!(missing.is_err());
+    }
 
     #[test]
     fn lists_wiki_pages_with_titles_summary_and_status() {

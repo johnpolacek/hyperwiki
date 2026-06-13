@@ -589,6 +589,18 @@ pub fn init_hyperwiki_project(
     options: InitProjectOptions,
 ) -> Result<(), String> {
     let root = root.as_ref();
+    let options = write_project_scaffold(root, options)?;
+    write_basic_wiki(root, &options)?;
+    Ok(())
+}
+
+/// Writes the non-wiki project scaffold (.hyperwiki dirs + config.json, AGENTS.md,
+/// optional agent skills and static package.json) without touching `wiki/`.
+/// Used by both fresh project initialization and existing-project adoption.
+pub(crate) fn write_project_scaffold(
+    root: &Path,
+    options: InitProjectOptions,
+) -> Result<InitProjectOptions, String> {
     let mut options = options;
     let slug = slugify(&options.project_name);
     let should_write_static_package = should_generate_static_package(root, &options);
@@ -640,8 +652,7 @@ pub fn init_hyperwiki_project(
     if options.install_agent_skills {
         install_agent_skills(root, options.overwrite)?;
     }
-    write_basic_wiki(root, &options)?;
-    Ok(())
+    Ok(options)
 }
 
 fn should_generate_static_package(root: &Path, options: &InitProjectOptions) -> bool {
@@ -924,7 +935,7 @@ fn with_unique_slugs(projects: Vec<ProjectRecord>) -> Vec<ProjectRecord> {
         .collect()
 }
 
-fn unsafe_removal_root(root: &Path) -> bool {
+pub(crate) fn unsafe_removal_root(root: &Path) -> bool {
     let Ok(root) = root.canonicalize() else {
         return false;
     };
@@ -936,7 +947,7 @@ fn unsafe_removal_root(root: &Path) -> bool {
             .unwrap_or(false)
 }
 
-fn same_path(left: &Path, right: &Path) -> bool {
+pub(crate) fn same_path(left: &Path, right: &Path) -> bool {
     left.canonicalize().ok() == right.canonicalize().ok()
 }
 
@@ -1973,7 +1984,7 @@ fn escape_html(value: &str) -> String {
         .replace('"', "&quot;")
 }
 
-fn percent_encode_path_segment(value: &str) -> String {
+pub(crate) fn percent_encode_path_segment(value: &str) -> String {
     value
         .bytes()
         .flat_map(|byte| match byte {

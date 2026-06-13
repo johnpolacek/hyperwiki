@@ -1,6 +1,6 @@
 # MDX Artifact Patterns
 
-Use this reference before creating or materially updating generated `wiki/**/*.mdx` artifacts. The goal is to make each page a purpose-built rendered MDX artifact that remains useful in a terminal.
+Use this reference before creating or materially updating generated `wiki/**/*.mdx` artifacts. The goal is to make each page a purpose-built rendered MDX artifact that remains useful in a terminal. For plan pages, start from the matching skeleton in `references/plan-page-skeletons.md`.
 
 ## Quality Bar
 
@@ -15,13 +15,13 @@ Every substantial MDX artifact must pass a structure and readability bar before 
 - Include at least one artifact-specific structure when the content supports it: evidence matrix, execution track, status table, decision panel, workflow diagram, annotated snippet, or roadmap rail.
 - Check that raw MDX is readable with `sed`, `head`, or `less`.
 
-If a generated page reads like a prose dump, revise it into clearer sections, tables, diagrams, or decision panels.
+If a generated page reads like a prose dump, revise it into clearer sections, tables, diagrams, or decision panels. A substantial plan page with zero hyperwiki plan components fails the quality bar and fails hyperwiki plan validation — start from a skeleton in `references/plan-page-skeletons.md` instead of writing bare sections.
 
 ## hyperwiki Plan Components
 
 Plan MDX can use these built-in components without imports:
 
-`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `OpenDecision`, `DecisionOption`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `Flow`, `FlowStep`, `StageTrack`, `StageItem`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 
 Use them conservatively:
 
@@ -30,10 +30,15 @@ Use them conservatively:
 | Page title, intent, concise setup | `PlanHero` |
 | Status, current unit, next action, blockers, validation | `PlanSummary` |
 | Accepted choices and consequences | `Decision` |
+| Unresolved decisions with selectable options | `OpenDecision` containing `DecisionOption` entries (the app renders options as buttons that start a modify-plan turn) |
+| Human-actionable checklists | `TaskList` with `[ ]`/`[x]` list items (the app renders live checkboxes that persist back to the file) |
 | Source-grounded facts, imported Q&A, confidence | `Evidence` |
 | Checks and completion gates | `Verification` |
 | Stage or unit sequence | `Steps` and `Step` |
+| Stage/unit progress with status and links | `StageTrack` and `StageItem` |
+| Pipelines, user flows, data flows | `Flow` and `FlowStep` |
 | Alternatives, risks, dependencies, work tracks | `CardGroup`, `Card`, `Columns`, `Column` |
+| Comparison grid of options | `CardGroup cols="2"` or `cols="3"` with `Card status="..."` |
 | API, MCP, command, event, or schema contracts | `RequestExample`, `ResponseExample`, `ParamField`, `ResponseField` |
 | File snippets, schemas, config, API examples | `CodeBlock` |
 | Exact shell commands | `CommandBlock` |
@@ -43,7 +48,7 @@ Use them conservatively:
 
 Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
 
-Prefer `CodeBlock` over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose `Tabs`/`Tab` with one `CodeBlock` per tab instead of dumping repeated fences.
+Prefer `CodeBlock` over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose `Tabs`/`Tab` with one `CodeBlock` per tab instead of dumping repeated fences. Use `CodeBlock language="diff"` for before/after changes; `+`/`-` lines render color-coded.
 
 ## Planning Composition Cookbook
 
@@ -56,7 +61,8 @@ Use for focused product, workflow, UI, runtime, or maintenance work.
 - `PlanHero` with title, status, and one-sentence outcome.
 - `PlanSummary` with status, shape, current unit, next action, blockers, and validation.
 - Plain sections for Scope, Non-goals, and Implementation Notes.
-- `Steps` for execution order when there is more than one unit.
+- `Flow` with `FlowStep` chips for the user or data flow when the feature has a pipeline shape.
+- `Steps` for execution order when there is more than one unit; `StageTrack` with linked `StageItem` entries on staged plan indexes and stage pages.
 - `TaskList` only for small concrete checklists that will be updated by humans or agents.
 - `Verification` with acceptance checks and automated/manual commands.
 
@@ -203,15 +209,25 @@ Use `<details>` for optional detail:
 </details>
 ```
 
-Inline SVG is allowed when a diagram materially improves clarity:
+For pipelines and sequential flows, prefer `Flow`/`FlowStep` over hand-authored SVG:
+
+```mdx
+<Flow title="Import pipeline">
+  <FlowStep label="Read sources" detail="wiki/sources/import.mdx" status="done" />
+  <FlowStep label="Q&A interview" status="current" />
+  <FlowStep label="Write MVP plan" detail="wiki/plans/mvp/" />
+</Flow>
+```
+
+Inline SVG is for spatial or topology diagrams a linear flow cannot express. Author it theme-safe: `aria-label` is required, use `fill="none" stroke="currentColor"` on shapes and `fill="currentColor"` on text (never hard-coded colors), and keep it small:
 
 ```mdx
 <svg viewBox="0 0 640 120" role="img" aria-label="Import flow from source to validation to commit">
-  <rect x="20" y="35" width="140" height="50" rx="8" />
-  <text x="90" y="65" textAnchor="middle">Source</text>
-  <path d="M160 60 H250" />
-  <rect x="250" y="35" width="140" height="50" rx="8" />
-  <text x="320" y="65" textAnchor="middle">Validate</text>
+  <rect x="20" y="35" width="140" height="50" rx="8" fill="none" stroke="currentColor" />
+  <text x="90" y="65" text-anchor="middle" fill="currentColor" font-size="14">Source</text>
+  <path d="M160 60 H250" stroke="currentColor" />
+  <rect x="250" y="35" width="140" height="50" rx="8" fill="none" stroke="currentColor" />
+  <text x="320" y="65" text-anchor="middle" fill="currentColor" font-size="14">Validate</text>
 </svg>
 ```
 

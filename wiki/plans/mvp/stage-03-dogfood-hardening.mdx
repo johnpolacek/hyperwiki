@@ -4,26 +4,26 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<h1>Stage 03 - wterm Dogfood and Hardening</h1>
-<section className="summary">
-  <h2>Summary</h2>
+<PlanHero title="Stage 03 - wterm Dogfood and Hardening" status="complete" description="Connect @wterm/dom to a local WebSocket PTY backend." />
+
+<PlanSummary>
   <ul>
     <li>Status: complete</li>
     <li>Current unit: none</li>
     <li>Next action: none; this stage is complete.</li>
     <li>Blockers: none</li>
   </ul>
-</section>
+</PlanSummary>
+
 <h2>Intent</h2>
 <p>Connect @wterm/dom to a local WebSocket PTY backend.</p>
-<section>
-  <h2>Execution Units</h2>
-  <ol>
-    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-true-pty-compatibility.mdx">Unit 01 - True PTY Compatibility</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-terminal-session-persistence-and-retention.mdx">Unit 02 - Terminal Session Persistence And Retention</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-dogfood-operating-layout.mdx">Unit 03 - Dogfood Operating Layout</a> - complete</li>
-    <li><a href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-guardrails-and-auditability.mdx">Unit 04 - Guardrails And Auditability</a> - complete</li>
-  </ol>
-</section>
+
+<StageTrack title="Execution Units">
+  <StageItem label="Unit 01 - True PTY Compatibility" status="complete" href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-01-true-pty-compatibility.mdx" />
+  <StageItem label="Unit 02 - Terminal Session Persistence And Retention" status="complete" href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-02-terminal-session-persistence-and-retention.mdx" />
+  <StageItem label="Unit 03 - Dogfood Operating Layout" status="complete" href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-03-dogfood-operating-layout.mdx" />
+  <StageItem label="Unit 04 - Guardrails And Auditability" status="complete" href="/wiki/plans/mvp/stage-03-dogfood-hardening/unit-04-guardrails-and-auditability.mdx" />
+</StageTrack>
+
 <h2>Verification</h2>
 <p>Record automated or manual validation in <a href="/wiki/log.mdx">log.mdx</a> before marking this stage complete.</p>

@@ -1,3 +1,4 @@
+pub mod adopt;
 pub mod agent_provider;
 pub mod app_shell;
 pub mod claude_agent;
