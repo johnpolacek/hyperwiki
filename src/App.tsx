@@ -2166,6 +2166,9 @@ function App() {
     const normalizedCurrentPage = displayWikiPath(currentWikiPath);
     const executionPage = activePlanState.currentPath || normalizedCurrentPage;
     const executionScope = scopeForRoute({ kind: "wiki", path: executionPage });
+    if (!(route.kind === "wiki" && displayWikiPath(route.path) === displayWikiPath(executionPage))) {
+      navigate({ kind: "wiki", path: executionPage });
+    }
     const prompt = workflowPrompt("execute-main", workspace, wikiPages, executionPage, payload?.prompt || "");
     const candidateSession = selectExecuteAgentReuseCandidate(sessions, activeSessionId);
     if (candidateSession) {
