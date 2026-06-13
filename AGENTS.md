@@ -1,6 +1,6 @@
 # AGENTS.md instructions for /Users/johnpolacek/Projects/hyperwiki
 
-Prefer to commit and pull whenever confident that the code is good and there are no questions about implementation.
+Commit work when it is complete. As soon as a unit of work is finished and verified—code is good and there are no open questions about the implementation—commit it before moving on. Do not leave completed changes sitting uncommitted in the working tree, and prefer focused, single-purpose commits over batching unrelated finished work together. Pull whenever confident the code is good.
 
 Always use `pnpm` for package management and package scripts in this repository.
 
