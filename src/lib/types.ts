@@ -7,13 +7,18 @@ export type ViewRoute =
 
 export interface UnitScreenshot {
   unitPath: string;
+  count: number;
   capturedAt: number;
   bytes: number;
 }
 
-export interface UnitScreenshotImage extends UnitScreenshot {
+export interface UnitScreenshotImage {
+  unitPath: string;
+  name: string;
   mediaType: string;
   base64: string;
+  capturedAt: number;
+  bytes: number;
 }
 
 export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";

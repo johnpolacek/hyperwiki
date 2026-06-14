@@ -48,13 +48,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { hyperwikiApi, withProjectQuery } from "@/lib/api";
+import { fetchUnitScreenshotImages, hyperwikiApi, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
+import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
 import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/layout/TopBar";
@@ -64,7 +65,7 @@ import { TerminalPane } from "@/components/terminal/TerminalPane";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isLiveTerminalSession, isStandbySession, newestSession, sessionSortMs, fileToBase64, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, listenTerminalCompletion, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, previewDetachedDevSession, saveTerminalDroppedFiles, selectDevTerminalSession, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalCollapsedSummary, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalPaneLabel, terminalPaneStatusLabel, terminalPasteImageFileName, terminalStartupNotice, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, worktreePreviewForSlug, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { isReactRenderedMdxPath } from "@/lib/wiki-pages";
-import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitScreenshotRelPath, type SidebarModel } from "@/lib/wiki-pages";
+import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
 import { clearPendingImportProject, readPendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS, slugify } from "@/lib/utils";
 import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefersReducedMotion } from "@/components/ui/beam-surface";
@@ -141,6 +142,7 @@ function App() {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
+  const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const prewarmingGeneralSessions = useRef<Set<string>>(new Set());
   const generalPrewarmRefillTimers = useRef<Map<string, number>>(new Map());
@@ -158,7 +160,7 @@ function App() {
   const planningQuestionBuffers = useRef(new Map<string, string>());
   const answeredPlanningQuestionIds = useRef(new Set<string>());
   const loggedPlanningQuestionIds = useRef(new Set<string>());
-  const armedAgentCompletions = useRef(new Map<string, { minPromptIndex: number; label: string; planPath: string | null }>());
+  const armedAgentCompletions = useRef(new Map<string, { minPromptIndex: number; label: string; kind: AgentRunKind; planPath: string | null; armedAt: number }>());
   const notifiedTerminalCompletions = useRef(new Set<string>());
   const envHintCandidateRef = useRef("");
   const latestNotificationSettings = useRef<SettingsResponse["notifications"] | null>(null);
@@ -1224,14 +1226,16 @@ function App() {
     });
   }, []);
 
-  function armAgentCompletion(session: SessionRecord, label: string) {
+  function armAgentCompletion(session: SessionRecord, label: string, kind: AgentRunKind) {
     const bufferedText = planningQuestionBuffers.current.get(session.id) || "";
     const readiness = agentPromptReadinessSnapshot(bufferedText);
     const pageTitle = session.planPath ? titleForPath(session.planPath, wikiPages) : "";
     armedAgentCompletions.current.set(session.id, {
       minPromptIndex: readiness.promptIndex,
       label,
+      kind,
       planPath: session.planPath || null,
+      armedAt: Date.now(),
     });
     appendImportLog(`Agent completion armed session=${session.id} label=${label} promptIndex=${readiness.promptIndex} plan=${pageTitle || session.planPath || "none"}`);
   }
@@ -1337,6 +1341,9 @@ function App() {
           reason: "agent-ready",
           completedAt: new Date().toISOString(),
         });
+        if (armedCompletion.kind === "execute" && armedCompletion.planPath) {
+          void maybeOpenScreenshotReview(armedCompletion.planPath, sessionId, armedCompletion.armedAt);
+        }
       }
     }
     const activity = latestPlanningActivity(next);
@@ -1565,7 +1572,7 @@ function App() {
             },
           });
           appendImportLog(`Agent prompt submit ok attempt=${attempt + 1} session=${session.id} elapsedMs=${Date.now() - handoffStartedAt}`);
-          armAgentCompletion(session, label);
+          armAgentCompletion(session, label, kind);
           if (kind === "execute" && promptProject) {
             scheduleGeneralAgentPrewarmRefill(promptProject, projectLayout, scope, "execute-submit");
           }
@@ -2171,6 +2178,65 @@ function App() {
     setStatus("Execute prompt sent");
   }
 
+  // After an Execute Unit run finishes, open the screenshot review gate when the
+  // unit produced screenshots during *this* run (capturedAt at/after the run
+  // started). No fresh screenshots -> no modal (covers no-UI units).
+  async function maybeOpenScreenshotReview(unitPath: string, sessionId: string | null, armedAt: number) {
+    const images = await fetchUnitScreenshotImages(unitPath, activeProject);
+    const freshnessFloorSeconds = (armedAt - 5_000) / 1000;
+    const fresh = images.filter((image) => image.capturedAt >= freshnessFloorSeconds);
+    if (!fresh.length) return;
+    void refreshWikiStateFromDisk("screenshot-review");
+    setScreenshotReview({ unitPath, sessionId, images: fresh });
+  }
+
+  // "Report issue": bundle the per-screenshot comments into one prompt and send
+  // it back to the same execute-agent session (reused when still alive) so it
+  // fixes this unit and re-captures. Re-using kind "execute" re-arms completion,
+  // so the review re-opens when the fix finishes (review -> fix -> review loop).
+  async function reportScreenshotIssues(comments: { name: string; comment: string }[]) {
+    const review = screenshotReview;
+    if (!review || !comments.length) {
+      setScreenshotReview(null);
+      return;
+    }
+    setScreenshotReview(null);
+    const unitTitle = titleForPath(review.unitPath, wikiPages) || review.unitPath;
+    const issuePrompt = [
+      `You just executed the hyperwiki unit "${unitTitle}" (${review.unitPath}).`,
+      "The user reviewed the captured screenshots and reported these issues:",
+      "",
+      ...comments.map((entry) => `- ${entry.name}: ${entry.comment}`),
+      "",
+      "Fix these issues on this same unit; keep changes grounded in this unit.",
+      `Then re-capture the affected views with the agent-browser skill into \`${unitScreenshotDir(review.unitPath)}/\` (overwrite the existing PNGs) so the review reflects the fixes.`,
+      "Run relevant checks before summarizing the result.",
+    ].join("\n");
+    const scope = scopeForRoute({ kind: "wiki", path: review.unitPath });
+    const canReuse = Boolean(review.sessionId && sessions.some((session) => session.id === review.sessionId && isReusableVisibleExecuteAgentSession(session)));
+    try {
+      await sendTrackedAgentPrompt(
+        "execute",
+        "Execute Unit",
+        issuePrompt,
+        review.unitPath,
+        scope,
+        layout,
+        sessions,
+        undefined,
+        canReuse ? { targetSessionId: review.sessionId! } : { forceNewSession: true },
+      );
+      setStatus("Reported screenshot issues to the agent");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function executeNextUnitFromReview() {
+    setScreenshotReview(null);
+    await runCommandAction("execute-main");
+  }
+
   async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
     const normalizedCurrentPage = displayWikiPath(currentWikiPath);
     const executionPage = activePlanState.currentPath || normalizedCurrentPage;
@@ -2276,7 +2342,7 @@ function App() {
             scope: terminalScope.scope,
           },
         });
-        armAgentCompletion(session, "Review Workflow");
+        armAgentCompletion(session, "Review Workflow", "review");
         setStatus("Review prompt sent");
       }
       if (action === "new-plan") {
@@ -2821,6 +2887,16 @@ function App() {
             </div>
           )}
         </section>
+        {screenshotReview ? (
+          <UnitScreenshotReviewDialog
+            hasNextUnit={activePlanState.canExecute && displayWikiPath(activePlanState.currentPath) !== displayWikiPath(screenshotReview.unitPath)}
+            review={screenshotReview}
+            unitTitle={titleForPath(screenshotReview.unitPath, wikiPages) || "unit"}
+            onClose={() => setScreenshotReview(null)}
+            onExecuteNext={() => void executeNextUnitFromReview()}
+            onReportIssues={(comments) => void reportScreenshotIssues(comments)}
+          />
+        ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -3680,7 +3756,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
   }
   const unitTitle = context.unitTitle;
   const unitPath = context.unitPath;
-  const screenshotPath = unitPath ? unitScreenshotRelPath(unitPath) : "";
+  const screenshotDir = unitPath ? unitScreenshotDir(unitPath) : "";
   return [
     "Execute exactly one hyperwiki unit on main.",
     "",
@@ -3699,8 +3775,8 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- Do not merely say a manual gate remains; explain how the user can clear it.",
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
-    ...(screenshotPath
-      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot the relevant page of the running app (the project's dev preview URL) and save it to \`${screenshotPath}\`. Skip cleanly if the unit has no visible UI result.`]
+    ...(screenshotDir
+      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the project's dev preview URL) and save them into \`${screenshotDir}/\` as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`]
       : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
@@ -3727,7 +3803,7 @@ function planningPromptContext(workspace: WorkspaceResponse | null, pages: WikiP
 function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }) {
   const status = workspace?.status || {};
   const unitPath = status.currentPath ? displayWikiPath(status.currentPath) : "";
-  const screenshotPath = unitPath ? unitScreenshotRelPath(unitPath) : "";
+  const screenshotDir = unitPath ? unitScreenshotDir(unitPath) : "";
   return [
     "Execute exactly one hyperwiki unit in the already-created worktree.",
     "",
@@ -3748,8 +3824,8 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
     "- If the unit reaches a manual review, approval, external configuration, credential, deployment setting, browser inspection, or human validation gate, stop and put a clearly titled `Manual step required` section before the general summary.",
     "- The `Manual step required` section must include: what is blocked, why it is blocked, who must do it, exact commands/settings/UI path when known, expected success signal/output, files/status intentionally left unchanged, and what button or command the user should rerun after completing it.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
-    ...(screenshotPath
-      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot the relevant page of the running app (the worktree preview URL above) and save it to \`${screenshotPath}\` inside the worktree. Skip cleanly if the unit has no visible UI result.`]
+    ...(screenshotDir
+      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the worktree preview URL above) and save them into \`${screenshotDir}/\` inside the worktree as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`]
       : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");

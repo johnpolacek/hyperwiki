@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readSources } from "./lib/read-sources.mjs";
 
-// Part A — the agent-browser skill is bundled so `hyperwiki init` installs it.
+// Bundling — the agent-browser skill ships so `hyperwiki init` installs it.
 const buildRs = await readSources("src-tauri/build.rs");
 assert.ok(
   buildRs.includes('name: "agent-browser"'),
@@ -14,7 +14,7 @@ assert.ok(
   "Vendored agent-browser SKILL.md should be the discovery stub.",
 );
 
-// Part A — guarded, non-fatal CLI install during project init.
+// Guarded, non-fatal CLI install during project init.
 const projectsRs = await readSources("src-tauri/src/domain/projects.rs");
 assert.ok(
   projectsRs.includes("fn ensure_agent_browser_cli()") && projectsRs.includes("ensure_agent_browser_cli();"),
@@ -29,20 +29,21 @@ assert.ok(
   "CLI install must stay hermetic under tests / when a harness opts out.",
 );
 
-// Part A — agent guidance documents the screenshot expectation.
+// Agent guidance documents the per-unit screenshot directory.
 const agentsMd = await readSources("AGENTS.md");
 assert.ok(
-  agentsMd.includes(".hyperwiki/state/screenshots/"),
-  "AGENTS.md should document the unit screenshot location.",
+  agentsMd.includes(".hyperwiki/state/screenshots/<unit-path>/"),
+  "AGENTS.md should document the per-unit screenshot directory.",
 );
 
-// Part C — backend routes + storage convention live in one authoritative module.
+// Backend — per-unit folder storage + listing live in one authoritative module.
 const screenshotsRs = await readSources("src-tauri/src/domain/screenshots.rs");
 assert.ok(
   screenshotsRs.includes('".hyperwiki/state/screenshots"')
-    && screenshotsRs.includes("pub fn screenshot_path_for_unit")
+    && screenshotsRs.includes("pub fn screenshot_dir_for_unit")
+    && screenshotsRs.includes("pub fn read_unit_screenshots")
     && screenshotsRs.includes("pub fn list_unit_screenshots"),
-  "screenshots.rs should own the mapping and listing helpers.",
+  "screenshots.rs should own the per-unit directory mapping + listing helpers.",
 );
 
 const commandRs = await readSources("src-tauri/src/command.rs");
@@ -54,42 +55,52 @@ assert.ok(
   commandRs.indexOf('"/api/unit-screenshots"') < commandRs.indexOf('"/api/unit-screenshot"'),
   "The plural list route must be matched before the singular prefix route.",
 );
+assert.ok(
+  commandRs.includes("read_unit_screenshots(project_root, &unit_path)"),
+  "/api/unit-screenshots?path should return every screenshot for the unit.",
+);
 
-// Part B — the path mapping is shared and the execute prompts instruct capture.
+// Capture — the shared dir mapping + multi-screenshot prompt instruction.
 const tsSources = await readSources(
   "src/lib/wiki-pages.ts",
   "src/lib/api.ts",
   "src/lib/types.ts",
   "src/App.tsx",
+  "src/components/ScreenshotCarousel.tsx",
   "src/components/MdxPlanRenderer.tsx",
   "src/components/views/WorkspacePane.tsx",
   "src/components/views/UnitGalleryView.tsx",
+  "src/components/views/UnitScreenshotReviewDialog.tsx",
   "src/components/layout/TopBar.tsx",
 );
 
 assert.ok(
-  tsSources.includes("export function unitScreenshotRelPath")
-    && tsSources.includes('export const unitScreenshotDir = ".hyperwiki/state/screenshots"'),
-  "wiki-pages.ts should expose the unit screenshot path helper mirroring the Rust mapping.",
+  tsSources.includes("export function unitScreenshotDir")
+    && tsSources.includes('export const unitScreenshotsRoot = ".hyperwiki/state/screenshots"'),
+  "wiki-pages.ts should expose the per-unit screenshot directory helper mirroring Rust.",
 );
 assert.ok(
-  tsSources.includes("use the agent-browser skill to screenshot the relevant page of the running app"),
-  "The execute prompts should instruct the agent to capture a screenshot.",
+  tsSources.includes("use the agent-browser skill to screenshot each distinct view/state"),
+  "The execute prompts should instruct the agent to capture one screenshot per view.",
 );
 
-// Part D — fetch helpers, inline display, gallery route + view, and nav entry.
+// Viewing — fetch helpers, carousel, inline display, gallery route + view, nav.
 assert.ok(
-  tsSources.includes("export async function fetchUnitScreenshot")
+  tsSources.includes("export async function fetchUnitScreenshotImages")
     && tsSources.includes("export async function fetchUnitScreenshots"),
-  "api.ts should expose both screenshot fetch helpers.",
+  "api.ts should expose per-unit image fetch + gallery list helpers.",
+);
+assert.ok(
+  tsSources.includes("export function ScreenshotCarousel"),
+  "A shared ScreenshotCarousel should exist for step-through viewing.",
 );
 assert.ok(
   tsSources.includes('{ kind: "unit-gallery" }'),
   "ViewRoute should include the unit-gallery route.",
 );
 assert.ok(
-  tsSources.includes("unitScreenshot") && tsSources.includes("Latest screenshot"),
-  "MdxPlanRenderer should render the inline screenshot card via the unitScreenshot prop.",
+  tsSources.includes("unitScreenshots") && tsSources.includes("<ScreenshotCarousel"),
+  "MdxPlanRenderer should render the inline screenshots via the carousel.",
 );
 assert.ok(
   tsSources.includes("<UnitGalleryView"),
@@ -98,6 +109,28 @@ assert.ok(
 assert.ok(
   tsSources.includes('onNavigate({ kind: "unit-gallery" })'),
   "TopBar should offer a Screenshots nav entry.",
+);
+
+// Review gate — auto-open on execute completion, per-screenshot comments,
+// report-issue back to the same agent, execute-next.
+assert.ok(
+  tsSources.includes("function maybeOpenScreenshotReview")
+    && tsSources.includes('armedCompletion.kind === "execute"'),
+  "App should open the review gate when an execute run finishes with fresh screenshots.",
+);
+assert.ok(
+  tsSources.includes("function reportScreenshotIssues")
+    && tsSources.includes("targetSessionId: review.sessionId"),
+  "Report-issue should send the bundled comments back to the same execute session.",
+);
+assert.ok(
+  tsSources.includes("export function UnitScreenshotReviewDialog")
+    && tsSources.includes("<UnitScreenshotReviewDialog"),
+  "The review dialog should exist and be rendered.",
+);
+assert.ok(
+  tsSources.includes("function executeNextUnitFromReview"),
+  "The review gate should be able to launch the next unit.",
 );
 
 console.log("unit screenshots static smoke passed");

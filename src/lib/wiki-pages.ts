@@ -84,19 +84,19 @@ export function isUnitPage(page: WikiPage) {
   return /\/unit-\d+-[^/]+\.mdx$/.test(displayWikiPath(page.path));
 }
 
-export const unitScreenshotDir = ".hyperwiki/state/screenshots";
+export const unitScreenshotsRoot = ".hyperwiki/state/screenshots";
 
-// Map a unit wiki page path to its screenshot file path, mirroring the unit's
-// wiki-relative path under the gitignored runtime dir (drop the `wiki/` prefix,
-// `.mdx` -> `.png`). Must stay in lockstep with `screenshot_path_for_unit` in
-// src-tauri/src/domain/screenshots.rs so the execute prompt and the serving
-// route agree on where the PNG lives.
-export function unitScreenshotRelPath(unitPath: string) {
-  const relative = displayWikiPath(unitPath)
+// Map a unit wiki page path to its per-unit screenshot directory, mirroring the
+// unit's wiki-relative path under the gitignored runtime dir (drop the `wiki/`
+// prefix and the `.mdx` suffix). Must stay in lockstep with
+// `screenshot_dir_for_unit` in src-tauri/src/domain/screenshots.rs so the
+// execute prompt and the serving routes agree on where PNGs live.
+export function unitScreenshotDir(unitPath: string) {
+  const stem = displayWikiPath(unitPath)
     .replace(/^\//, "")
     .replace(/^wiki\//, "")
-    .replace(/\.mdx$/i, ".png");
-  return `${unitScreenshotDir}/${relative}`;
+    .replace(/\.mdx$/i, "");
+  return `${unitScreenshotsRoot}/${stem}`;
 }
 
 export function childPlanPages(parent: WikiPage, pages: WikiPage[]) {

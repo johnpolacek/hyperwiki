@@ -407,6 +407,14 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             .map(|project| project.root)
             .or_else(|| std::env::current_dir().ok())
             .unwrap_or_else(|| ".".into());
+        // With ?path= -> every screenshot for that unit (carousel/review);
+        // without -> one entry per unit for the gallery.
+        if let Some(unit_path) = query_param(&request.path, "path") {
+            return json_response(
+                200,
+                &crate::domain::screenshots::read_unit_screenshots(project_root, &unit_path),
+            );
+        }
         return json_response(
             200,
             &crate::domain::screenshots::list_unit_screenshots(project_root),

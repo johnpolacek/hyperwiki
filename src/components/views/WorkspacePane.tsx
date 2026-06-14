@@ -9,7 +9,7 @@ import { SettingsView } from "@/components/views/SettingsView";
 import { UnitGalleryView } from "@/components/views/UnitGalleryView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
-import { fetchUnitScreenshot } from "@/lib/api";
+import { fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
 import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, titleForPath } from "@/lib/wiki-pages";
 import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
@@ -61,17 +61,17 @@ export function WorkspacePane(props: {
     const page = props.wikiPages.find((candidate) => displayWikiPath(candidate.path) === displayWikiPath(props.wikiPath));
     return page && isUnitPage(page) ? displayWikiPath(page.path) : "";
   })();
-  const [unitScreenshot, setUnitScreenshot] = useState<{ dataUrl: string; capturedAt: number } | null>(null);
+  const [unitScreenshots, setUnitScreenshots] = useState<UnitScreenshotImageData[]>([]);
   const screenshotProjectId = props.activeProject?.id || "";
   useEffect(() => {
     if (!unitScreenshotPath) {
-      setUnitScreenshot(null);
+      setUnitScreenshots([]);
       return;
     }
     let active = true;
-    setUnitScreenshot(null);
-    void fetchUnitScreenshot(unitScreenshotPath, props.activeProject).then((result) => {
-      if (active) setUnitScreenshot(result);
+    setUnitScreenshots([]);
+    void fetchUnitScreenshotImages(unitScreenshotPath, props.activeProject).then((result) => {
+      if (active) setUnitScreenshots(result);
     });
     return () => {
       active = false;
@@ -194,7 +194,7 @@ export function WorkspacePane(props: {
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
               source={props.wikiSource.source}
-              unitScreenshot={unitScreenshot}
+              unitScreenshots={unitScreenshots}
               validationWarnings={props.wikiSource.validationWarnings}
             />
           ) : (

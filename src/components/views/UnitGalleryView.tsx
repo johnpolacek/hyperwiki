@@ -10,6 +10,7 @@ import type { ProjectRecord, WikiPage } from "@/lib/types";
 interface GalleryEntry {
   unitPath: string;
   capturedAt: number;
+  count: number;
   dataUrl: string | null;
 }
 
@@ -30,6 +31,7 @@ export function UnitGalleryView({ activeProject, wikiPages, onOpenUnit }: {
         list.map(async (shot) => ({
           unitPath: shot.unitPath,
           capturedAt: shot.capturedAt,
+          count: shot.count,
           dataUrl: (await fetchUnitScreenshot(shot.unitPath, activeProject))?.dataUrl ?? null,
         })),
       );
@@ -80,7 +82,7 @@ export function UnitGalleryView({ activeProject, wikiPages, onOpenUnit }: {
                   onClick={() => onOpenUnit(entry.unitPath)}
                 >
                   <Card className="overflow-hidden transition-colors group-hover:border-primary/50">
-                    <div className="aspect-video overflow-hidden bg-muted">
+                    <div className="relative aspect-video overflow-hidden bg-muted">
                       {entry.dataUrl ? (
                         <img
                           alt={`Screenshot of ${title}`}
@@ -92,6 +94,9 @@ export function UnitGalleryView({ activeProject, wikiPages, onOpenUnit }: {
                           <Camera aria-hidden="true" className="size-6" />
                         </div>
                       )}
+                      {entry.count > 1 ? (
+                        <span className="absolute right-2 top-2 rounded-full bg-background/85 px-2 py-0.5 text-xs font-medium text-foreground shadow-sm">{entry.count}</span>
+                      ) : null}
                     </div>
                     <CardHeader className="gap-1 py-3">
                       <div className="flex items-center justify-between gap-2">

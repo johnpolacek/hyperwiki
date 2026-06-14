@@ -31,6 +31,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScreenshotCarousel } from "@/components/ScreenshotCarousel";
+import type { UnitScreenshotImageData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
@@ -47,7 +49,7 @@ interface MdxPlanRendererProps {
   onSendCommand?: (command: string) => void;
   onToggleTask?: (text: string, checked: boolean) => Promise<void> | void;
   onProposeChange?: (prompt: string) => void;
-  unitScreenshot?: { dataUrl: string; capturedAt: number } | null;
+  unitScreenshots?: UnitScreenshotImageData[];
 }
 
 interface PlanRenderContext {
@@ -124,7 +126,7 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshot }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [] }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [copyStatus, setCopyStatus] = useState("");
@@ -132,6 +134,8 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
   const [screenshotExpanded, setScreenshotExpanded] = useState(false);
+  const [screenshotIndex, setScreenshotIndex] = useState(0);
+  const latestScreenshotAt = unitScreenshots.reduce((max, image) => Math.max(max, image.capturedAt), 0);
   const copyMarkdown = async () => {
     if (!markdown?.trim()) return;
     try {
@@ -159,6 +163,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
     setIsDeletingPlan(false);
     setDeleteStatus("");
     setScreenshotExpanded(false);
+    setScreenshotIndex(0);
   }, [path]);
   if (!source.trim()) {
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
@@ -253,46 +258,58 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
               </AlertDescription>
             </Alert>
           ) : null}
-          {unitScreenshot ? (
+          {unitScreenshots.length ? (
             <Card className="overflow-hidden" data-unit-screenshot="true">
               <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 py-3">
                 <div className="flex items-center gap-2">
                   <Camera aria-hidden="true" className="size-4 text-muted-foreground" />
-                  <CardTitle className="text-sm">Latest screenshot</CardTitle>
+                  <CardTitle className="text-sm">{unitScreenshots.length > 1 ? `Screenshots (${unitScreenshots.length})` : "Latest screenshot"}</CardTitle>
                 </div>
-                <span className="text-xs text-muted-foreground">Captured {formatCapturedAt(unitScreenshot.capturedAt)}</span>
+                <span className="text-xs text-muted-foreground">Captured {formatCapturedAt(latestScreenshotAt)}</span>
               </CardHeader>
               <CardContent className="p-0">
                 <button
-                  aria-label="Expand screenshot"
+                  aria-label={unitScreenshots.length > 1 ? "View all screenshots" : "Expand screenshot"}
                   className="block w-full"
                   type="button"
-                  onClick={() => setScreenshotExpanded(true)}
+                  onClick={() => { setScreenshotIndex(0); setScreenshotExpanded(true); }}
                 >
                   <img
                     alt="Screenshot of the completed unit's working result"
                     className="block max-h-[26rem] w-full cursor-zoom-in bg-muted object-contain"
-                    src={unitScreenshot.dataUrl}
+                    src={unitScreenshots[0].dataUrl}
                   />
                 </button>
+                {unitScreenshots.length > 1 ? (
+                  <p className="border-t px-3 py-2 text-xs text-muted-foreground">{unitScreenshots.length} screenshots — click to step through.</p>
+                ) : null}
               </CardContent>
             </Card>
           ) : null}
           {content}
           {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
         </div>
-        {unitScreenshot && screenshotExpanded ? (
+        {unitScreenshots.length && screenshotExpanded ? (
           <div
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+            className="fixed inset-0 z-50 flex flex-col bg-black/80 p-6"
             role="dialog"
             onClick={() => setScreenshotExpanded(false)}
           >
-            <img
-              alt="Screenshot of the completed unit's working result"
-              className="max-h-full max-w-full cursor-zoom-out object-contain"
-              src={unitScreenshot.dataUrl}
-            />
+            <div className="flex justify-end">
+              <Button aria-label="Close" size="icon" variant="outline" onClick={() => setScreenshotExpanded(false)}>
+                <X aria-hidden="true" />
+              </Button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col pt-2 text-background" onClick={(event) => event.stopPropagation()}>
+              <ScreenshotCarousel
+                className="min-h-0 flex-1"
+                images={unitScreenshots}
+                imageClassName="cursor-default"
+                index={screenshotIndex}
+                onIndexChange={setScreenshotIndex}
+              />
+            </div>
           </div>
         ) : null}
       </TooltipProvider>

@@ -13,7 +13,7 @@ assert.ok(source.includes("@tauri-apps/plugin-notification"), "React app should 
 assert.ok(source.includes("listenTerminalCompletion") && source.includes('"terminal://completion"'), "React app should listen for terminal completion events.");
 assert.ok(source.includes("isPermissionGranted") && source.includes("requestPermission") && source.includes("sendNotification"), "React app should request permission and send OS notifications.");
 assert.ok(source.includes("document.hasFocus()"), "Terminal completion notifications should be gated by app focus.");
-assert.ok(source.includes("armAgentCompletion(session, label)") && source.includes('reason: "agent-ready"'), "Agent prompt submissions should arm agent-ready completion notifications.");
+assert.ok(source.includes("armAgentCompletion(session, label, kind)") && source.includes('reason: "agent-ready"'), "Agent prompt submissions should arm agent-ready completion notifications.");
 assert.ok(source.includes("terminalCompletionNotificationSettings") && source.includes("Only when hyperwiki is unfocused"), "Settings UI should expose terminal completion notification preferences.");
 
 assert.ok(settings.includes('"notifications"') && settings.includes('"terminalCompletion"') && settings.includes('"onlyWhenUnfocused": true'), "Settings defaults should include terminal completion notification preferences.");

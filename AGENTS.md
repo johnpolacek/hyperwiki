@@ -6,7 +6,7 @@ Always use `pnpm` for package management and package scripts in this repository.
 
 Prefer the `agent-browser` CLI for browser automation and visual checks when inspecting project previews.
 
-When you finish an Execute Unit task that produces a browser-observable result, use the `agent-browser` skill to screenshot the relevant page of the running app and save it to the path named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>.png`. Skip cleanly when the unit has no visible UI result.
+When you finish an Execute Unit task that produces a browser-observable result, use the `agent-browser` skill to screenshot each distinct view/state of the running app and save them into the per-unit directory named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>/` as ordered PNGs (e.g. `01-home.png`, `02-settings.png`). Skip cleanly when the unit has no visible UI result.
 
 Use Portless for user project previews and prefer named `.localhost` URLs over fixed ports when working across worktrees. hyperwiki's own `pnpm dev` command starts the Tauri desktop app.
 

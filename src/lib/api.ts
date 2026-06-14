@@ -102,23 +102,52 @@ export function withProjectQuery(path: string, activeProject: ProjectRecord | nu
   return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
 }
 
-// Fetch one unit's screenshot as a data URL, or null when none was captured.
+export interface UnitScreenshotImageData {
+  name: string;
+  dataUrl: string;
+  capturedAt: number;
+}
+
+function toImageData(image: UnitScreenshotImage): UnitScreenshotImageData {
+  return {
+    name: image.name,
+    dataUrl: `data:${image.mediaType || "image/png"};base64,${image.base64}`,
+    capturedAt: image.capturedAt,
+  };
+}
+
+// Fetch one unit's newest screenshot as a data URL, or null when none exist.
 export async function fetchUnitScreenshot(
   unitPath: string,
   activeProject: ProjectRecord | null,
-): Promise<{ dataUrl: string; capturedAt: number } | null> {
+): Promise<UnitScreenshotImageData | null> {
   try {
     const image = await hyperwikiApi.json<UnitScreenshotImage>(
       withProjectQuery(`/api/unit-screenshot?path=${encodeURIComponent(unitPath)}`, activeProject),
     );
     if (!image?.base64) return null;
-    return { dataUrl: `data:${image.mediaType || "image/png"};base64,${image.base64}`, capturedAt: image.capturedAt };
+    return toImageData(image);
   } catch {
     return null;
   }
 }
 
-// List all captured unit screenshots (metadata only) for the gallery.
+// Fetch every screenshot for a unit (carousel + review), sorted by file name.
+export async function fetchUnitScreenshotImages(
+  unitPath: string,
+  activeProject: ProjectRecord | null,
+): Promise<UnitScreenshotImageData[]> {
+  try {
+    const images = await hyperwikiApi.json<UnitScreenshotImage[]>(
+      withProjectQuery(`/api/unit-screenshots?path=${encodeURIComponent(unitPath)}`, activeProject),
+    );
+    return (images || []).filter((image) => image?.base64).map(toImageData);
+  } catch {
+    return [];
+  }
+}
+
+// List all units that have screenshots (metadata only, with count) for the gallery.
 export async function fetchUnitScreenshots(activeProject: ProjectRecord | null): Promise<UnitScreenshot[]> {
   try {
     return (await hyperwikiApi.json<UnitScreenshot[]>(withProjectQuery("/api/unit-screenshots", activeProject))) || [];

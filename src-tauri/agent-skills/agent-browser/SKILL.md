@@ -30,16 +30,16 @@ between releases, which is why it just points at `skills get core`.
 
 hyperwiki uses this skill to capture visual proof of completed unit work.
 When you finish an Execute Unit task that produces a browser-observable
-result, screenshot the relevant page of the running app (the project's
-dev preview URL — discover it via the `portless` skill / project preview)
-and save the PNG to the path named in the Execute Unit prompt, under
-`.hyperwiki/state/screenshots/<unit-path>.png`. Skip cleanly when the
-unit has no visible UI result. Example:
+result, screenshot each distinct view/state of the running app (the
+project's dev preview URL — discover it via the `portless` skill / project
+preview) and save them into the per-unit directory named in the Execute
+Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>/` as ordered
+PNGs. Skip cleanly when the unit has no visible UI result. Example:
 
 ```bash
 agent-browser open https://myproject.localhost
 agent-browser wait --load networkidle
-agent-browser screenshot .hyperwiki/state/screenshots/plans/foo/stage-1/unit-3-bar.png
+agent-browser screenshot .hyperwiki/state/screenshots/plans/foo/stage-1/unit-3-bar/01-home.png
 ```
 
 ## Specialized skills

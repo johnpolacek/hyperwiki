@@ -54,7 +54,7 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
 4. Write the smallest durable wiki update that preserves future implementation clarity.
 5. Record material planning, validation, maintenance, bootstrap, or implementation context in `wiki/log.mdx` only when it affects future decisions.
 
-When executing a unit (`record_execution`) whose result is browser-observable, capture visual evidence with the `agent-browser` skill: screenshot the relevant page of the running app and save it to the path named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>.png`. Skip cleanly when the unit has no visible UI result.
+When executing a unit (`record_execution`) whose result is browser-observable, capture visual evidence with the `agent-browser` skill: screenshot each distinct view/state of the running app and save them into the per-unit directory named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>/` as ordered PNGs (e.g. `01-home.png`, `02-settings.png`). Skip cleanly when the unit has no visible UI result.
 
 ## Reference Loading
 
