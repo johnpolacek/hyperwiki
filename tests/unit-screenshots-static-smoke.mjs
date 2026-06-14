@@ -45,6 +45,10 @@ assert.ok(
     && screenshotsRs.includes("pub fn list_unit_screenshots"),
   "screenshots.rs should own the per-unit directory mapping + listing helpers.",
 );
+assert.ok(
+  screenshotsRs.includes('strip_prefix("unit-").unwrap_or(leaf)'),
+  "Gallery unit detection should accept both unit-NN and imported NN- folder names.",
+);
 
 const commandRs = await readSources("src-tauri/src/command.rs");
 assert.ok(
@@ -78,6 +82,10 @@ assert.ok(
   tsSources.includes("export function unitScreenshotDir")
     && tsSources.includes('export const unitScreenshotsRoot = ".hyperwiki/state/screenshots"'),
   "wiki-pages.ts should expose the per-unit screenshot directory helper mirroring Rust.",
+);
+assert.ok(
+  tsSources.includes('path.includes("/units/")'),
+  "isUnitPage should recognize the imported NN-slug.mdx-under-units/ convention so the inline card shows.",
 );
 assert.ok(
   tsSources.includes("use the agent-browser skill to screenshot each distinct view/state"),

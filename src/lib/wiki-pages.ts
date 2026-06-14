@@ -81,7 +81,10 @@ export function isCompletedTopLevelPlanPage(page: WikiPage) {
 }
 
 export function isUnitPage(page: WikiPage) {
-  return /\/unit-\d+-[^/]+\.mdx$/.test(displayWikiPath(page.path));
+  const path = displayWikiPath(page.path);
+  // Canonical `unit-NN-slug.mdx`, or the imported convention `NN-slug.mdx`
+  // nested under a `units/` directory (e.g. plans/mvp/units/stage-04/03-foo.mdx).
+  return /\/unit-\d+-[^/]+\.mdx$/.test(path) || (path.includes("/units/") && /\/\d+-[^/]+\.mdx$/.test(path));
 }
 
 export const unitScreenshotsRoot = ".hyperwiki/state/screenshots";

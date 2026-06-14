@@ -212,20 +212,19 @@ fn unit_stem_for_screenshot(relative_png: &str) -> Option<String> {
             return Some(parent.to_string());
         }
     }
-    // Legacy single file named after the unit.
-    if is_unit_leaf(leaf) {
+    // Legacy single file named after the unit (canonical `unit-NN-...` only).
+    if leaf.starts_with("unit-") && is_unit_leaf(leaf) {
         return Some(stem.to_string());
     }
     None
 }
 
+/// True for a unit folder/file leaf: the canonical `unit-NN-...` form, or the
+/// imported `NN-...` form (numeric-prefixed slug, e.g. `03-email-invite-flow`).
 fn is_unit_leaf(leaf: &str) -> bool {
-    let rest = match leaf.strip_prefix("unit-") {
-        Some(rest) => rest,
-        None => return false,
-    };
-    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-    !digits.is_empty() && rest[digits.len()..].starts_with('-')
+    let rest = leaf.strip_prefix("unit-").unwrap_or(leaf);
+    let digits = rest.chars().take_while(|c| c.is_ascii_digit()).count();
+    digits > 0 && rest[digits..].starts_with('-')
 }
 
 fn is_png(path: &Path) -> bool {
@@ -361,5 +360,36 @@ mod tests {
         assert_eq!(shots[1].count, 1);
 
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn lists_numeric_prefixed_unit_folders() {
+        // Imported projects name units `NN-slug.mdx` under `units/`, not `unit-NN-...`.
+        let dir = std::env::temp_dir().join(format!("hyperwiki-shots-numeric-{}", std::process::id()));
+        let unit_dir = dir.join(".hyperwiki/state/screenshots/plans/mvp/units/stage-04/03-email-invite-flow");
+        fs::create_dir_all(&unit_dir).unwrap();
+        fs::write(unit_dir.join("01-onboarding-step3-send-invites.png"), b"a").unwrap();
+        fs::write(unit_dir.join("06-invite-not-found.png"), b"bb").unwrap();
+
+        let shots = list_unit_screenshots(&dir);
+        assert_eq!(shots.len(), 1);
+        assert_eq!(shots[0].unit_path, "/wiki/plans/mvp/units/stage-04/03-email-invite-flow.mdx");
+        assert_eq!(shots[0].count, 2);
+
+        // The same path also reads as a unit's image set.
+        let images = read_unit_screenshots(&dir, "/wiki/plans/mvp/units/stage-04/03-email-invite-flow.mdx");
+        assert_eq!(images.len(), 2);
+        assert_eq!(images[0].name, "01-onboarding-step3-send-invites.png");
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn is_unit_leaf_accepts_both_conventions() {
+        assert!(is_unit_leaf("unit-03-email-invite-flow"));
+        assert!(is_unit_leaf("03-email-invite-flow"));
+        assert!(!is_unit_leaf("stage-04"));
+        assert!(!is_unit_leaf("scratch"));
+        assert!(!is_unit_leaf("index"));
     }
 }
