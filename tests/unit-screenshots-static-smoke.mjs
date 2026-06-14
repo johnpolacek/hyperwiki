@@ -99,16 +99,16 @@ assert.ok(
   "api.ts should expose per-unit image fetch + gallery list helpers.",
 );
 assert.ok(
-  tsSources.includes("export function ScreenshotCarousel"),
-  "A shared ScreenshotCarousel should exist for step-through viewing.",
+  tsSources.includes("export function ScreenshotCarousel") && tsSources.includes("<ScreenshotCarousel"),
+  "A shared ScreenshotCarousel should exist and power the review dialog.",
 );
 assert.ok(
   tsSources.includes('{ kind: "unit-gallery" }'),
   "ViewRoute should include the unit-gallery route.",
 );
 assert.ok(
-  tsSources.includes("unitScreenshots") && tsSources.includes("<ScreenshotCarousel"),
-  "MdxPlanRenderer should render the inline screenshots via the carousel.",
+  tsSources.includes('data-unit-screenshot="true"') && tsSources.includes("onReviewScreenshots?.()"),
+  "MdxPlanRenderer should show the inline screenshot card and open the review dialog on click.",
 );
 assert.ok(
   tsSources.includes("<UnitGalleryView"),

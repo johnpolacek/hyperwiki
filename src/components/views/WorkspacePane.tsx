@@ -173,7 +173,7 @@ export function WorkspacePane(props: {
             {unitScreenshots.length ? (
               <Button size="sm" variant="outline" onClick={() => props.onReviewScreenshots(unitScreenshotPath)}>
                 <Camera aria-hidden="true" data-icon="inline-start" />
-                Review ({unitScreenshots.length})
+                Review UI
               </Button>
             ) : null}
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
@@ -200,6 +200,7 @@ export function WorkspacePane(props: {
               pageStatuses={props.wikiPageStatuses}
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
+              onReviewScreenshots={unitScreenshots.length ? () => props.onReviewScreenshots(unitScreenshotPath) : undefined}
               source={props.wikiSource.source}
               unitScreenshots={unitScreenshots}
               validationWarnings={props.wikiSource.validationWarnings}
