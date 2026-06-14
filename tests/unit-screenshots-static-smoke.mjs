@@ -148,6 +148,10 @@ assert.ok(
   "AGENTS.md should document how to reach auth/deploy-gated previews.",
 );
 assert.ok(
+  agentsMd.includes("Cloudflare Turnstile") && agentsMd.includes("backend API"),
+  "AGENTS.md should cover the bot-challenge sign-up workaround (provision via backend API).",
+);
+assert.ok(
   tsSources.includes("previewCapture` profile in `.hyperwiki/config.json"),
   "The execute prompts should point the agent at the previewCapture profile for gated views.",
 );

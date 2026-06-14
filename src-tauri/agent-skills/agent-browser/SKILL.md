@@ -46,9 +46,13 @@ If the view is behind sign-in, read the `previewCapture` profile in
 `.hyperwiki/config.json` (sign-in path, auth mode, the `.env.local` keys
 holding test credentials) and authenticate first. For Clerk test instances
 use a `+clerk_test` email and verification code `424242`, adapting to the
-form (`snapshot -i`, then `fill`/`click`). Save the authenticated state with
-`agent-browser state save` if you need to revisit across commands. Use test
-credentials only — never production secrets.
+form (`snapshot -i`, then `fill`/`click`). If the sign-up form shows a bot
+challenge (e.g. Cloudflare Turnstile) that won't solve headlessly, do not
+drive sign-up — ensure the test user via the provider's backend API (e.g. the
+Clerk Backend API with `CLERK_SECRET_KEY`), then sign in (code `424242`); or
+disable bot sign-up protection on the dev/test instance. Save the
+authenticated state with `agent-browser state save` if you need to revisit
+across commands. Use test credentials only — never production secrets.
 
 ## Specialized skills
 
