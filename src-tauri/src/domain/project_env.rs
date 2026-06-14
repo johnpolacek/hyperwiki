@@ -322,6 +322,8 @@ fn known_env_key_hints() -> &'static [&'static str] {
         "CLERK_SECRET_KEY",
         "NEXT_PUBLIC_CONVEX_URL",
         "CONVEX_DEPLOYMENT",
+        "HYPERWIKI_PREVIEW_AUTH_EMAIL",
+        "HYPERWIKI_PREVIEW_AUTH_PASSWORD",
     ]
 }
 

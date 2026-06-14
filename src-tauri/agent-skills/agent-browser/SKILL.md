@@ -42,6 +42,14 @@ agent-browser wait --load networkidle
 agent-browser screenshot .hyperwiki/state/screenshots/plans/foo/stage-1/unit-3-bar/01-home.png
 ```
 
+If the view is behind sign-in, read the `previewCapture` profile in
+`.hyperwiki/config.json` (sign-in path, auth mode, the `.env.local` keys
+holding test credentials) and authenticate first. For Clerk test instances
+use a `+clerk_test` email and verification code `424242`, adapting to the
+form (`snapshot -i`, then `fill`/`click`). Save the authenticated state with
+`agent-browser state save` if you need to revisit across commands. Use test
+credentials only — never production secrets.
+
 ## Specialized skills
 
 Load a specialized skill when the task falls outside browser web pages:

@@ -186,7 +186,16 @@ const delay = Math.min(30_000, base * 2 ** attempt) + jitter()
 <Warning title="Completion gate">
   The user performs the manual network-drop check; unit 03 stays blocked until the success signal (reconnect under 30s, zero duplicates) is recorded.
 </Warning>
+
+## Screenshot capture
+
+- Route: `/dashboard` (the live socket status panel)
+- Requires auth: yes (any signed-in user)
+- Preconditions: a reconnect must have occurred so the panel shows history
+- Views: `01-connected`, `02-reconnecting`, `03-recovered`
 ```
+
+Add the optional `## Screenshot capture` section only to units with a browser-observable result. The execute agent reads it to know what to shoot and how to reach the state; it signs in (when auth is required) using the project's `previewCapture` profile in `.hyperwiki/config.json`. Omit it for non-UI units.
 
 ## 5. Architecture Comparison (inside any plan page)
 

@@ -3776,7 +3776,10 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     ...(screenshotDir
-      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the project's dev preview URL) and save them into \`${screenshotDir}/\` as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`]
+      ? [
+          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the project's dev preview URL) and save them into \`${screenshotDir}/\` as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`,
+          "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
+        ]
       : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
@@ -3825,7 +3828,10 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
     "- The `Manual step required` section must include: what is blocked, why it is blocked, who must do it, exact commands/settings/UI path when known, expected success signal/output, files/status intentionally left unchanged, and what button or command the user should rerun after completing it.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     ...(screenshotDir
-      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the worktree preview URL above) and save them into \`${screenshotDir}/\` inside the worktree as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`]
+      ? [
+          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the worktree preview URL above) and save them into \`${screenshotDir}/\` inside the worktree as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`,
+          "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
+        ]
       : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");

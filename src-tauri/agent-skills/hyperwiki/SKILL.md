@@ -56,6 +56,8 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
 
 When executing a unit (`record_execution`) whose result is browser-observable, capture visual evidence with the `agent-browser` skill: screenshot each distinct view/state of the running app and save them into the per-unit directory named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>/` as ordered PNGs (e.g. `01-home.png`, `02-settings.png`). Skip cleanly when the unit has no visible UI result.
 
+Reaching gated previews: before capturing, ensure the full app is running — `pnpm dev` must start the frontend and any backend it needs (e.g. push Convex functions), and the preview URL must respond. If the view requires auth, read the `previewCapture` profile in `.hyperwiki/config.json` plus the test credentials in `.env.local` (key names live in the profile) and sign in with `agent-browser`; for Clerk test instances use a `+clerk_test` email and verification code `424242`, adapting to the form shown. Honor any `## Screenshot capture` section on the unit page for the route(s) and the steps needed to reach a deep state. Test credentials only.
+
 ## Reference Loading
 
 | Mode | Read Before Writing |
@@ -83,6 +85,8 @@ Planning shape is flexible:
 
 The structure must still support `plan > stages > units`. Compact plans may use one implicit stage, but executable units always need verification.
 If a plan has explicit stages, a current stage, a multi-stage sequence, or more than one phase gate, create a plan-root directory with separate stage and unit MDX pages instead of collapsing the stages into headings inside one page. Stage pages must name the stage goal, dependencies or blockers, detailed unit sequence, completion gate, and verification expectations. Unit pages must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate, with concrete automated, manual, or explicitly deferred verification before the next unit starts. Manual verification must be user-actionable: identify who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
+
+When a unit produces a browser-observable result, add an optional `## Screenshot capture` section to the unit page so the execute agent can capture it. List: the route(s) to capture (e.g. `/onboarding`), whether auth is required (and who, e.g. owner), any preconditions/steps to reach a deep state (e.g. "complete Step 1 first"), and the distinct views to shoot (one ordered PNG each). The agent reads this section, signs in per the project's `previewCapture` profile if needed, navigates to the state, and saves the screenshots. Omit the section for units with no UI.
 
 For agent-guided plan creation:
 

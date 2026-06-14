@@ -133,4 +133,23 @@ assert.ok(
   "The review gate should be able to launch the next unit.",
 );
 
+// Gated previews — per-project previewCapture profile, env hints, guidance, prompt pointer.
+assert.ok(
+  projectsRs.includes('"previewCapture"') && projectsRs.includes('"authMode"') && projectsRs.includes('"authEmailEnv"'),
+  "Init should scaffold a previewCapture profile in .hyperwiki/config.json.",
+);
+const projectEnvRs = await readSources("src-tauri/src/domain/project_env.rs");
+assert.ok(
+  projectEnvRs.includes("HYPERWIKI_PREVIEW_AUTH_EMAIL") && projectEnvRs.includes("HYPERWIKI_PREVIEW_AUTH_PASSWORD"),
+  "Env-key hints should suggest the preview auth credentials.",
+);
+assert.ok(
+  agentsMd.includes("Reaching gated previews for capture"),
+  "AGENTS.md should document how to reach auth/deploy-gated previews.",
+);
+assert.ok(
+  tsSources.includes("previewCapture` profile in `.hyperwiki/config.json"),
+  "The execute prompts should point the agent at the previewCapture profile for gated views.",
+);
+
 console.log("unit screenshots static smoke passed");
