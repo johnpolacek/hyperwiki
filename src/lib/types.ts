@@ -2,7 +2,19 @@ export type ViewRoute =
   | { kind: "wiki"; path: string }
   | { kind: "projects" }
   | { kind: "new-project" }
-  | { kind: "settings" };
+  | { kind: "settings" }
+  | { kind: "unit-gallery" };
+
+export interface UnitScreenshot {
+  unitPath: string;
+  capturedAt: number;
+  bytes: number;
+}
+
+export interface UnitScreenshotImage extends UnitScreenshot {
+  mediaType: string;
+  base64: string;
+}
 
 export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
 export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";

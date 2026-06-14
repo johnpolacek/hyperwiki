@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { NewProjectView } from "@/components/views/NewProjectView";
 import { AdoptingView, PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { SettingsView } from "@/components/views/SettingsView";
+import { UnitGalleryView } from "@/components/views/UnitGalleryView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
-import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, titleForPath } from "@/lib/wiki-pages";
+import { fetchUnitScreenshot } from "@/lib/api";
+import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, titleForPath } from "@/lib/wiki-pages";
 import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
@@ -55,6 +57,27 @@ export function WorkspacePane(props: {
   wikiPageStatuses: Record<string, string>;
 }) {
   const isFirstProject = props.hasLoadedProjects && props.projectGroups.length === 0;
+  const unitScreenshotPath = (() => {
+    const page = props.wikiPages.find((candidate) => displayWikiPath(candidate.path) === displayWikiPath(props.wikiPath));
+    return page && isUnitPage(page) ? displayWikiPath(page.path) : "";
+  })();
+  const [unitScreenshot, setUnitScreenshot] = useState<{ dataUrl: string; capturedAt: number } | null>(null);
+  const screenshotProjectId = props.activeProject?.id || "";
+  useEffect(() => {
+    if (!unitScreenshotPath) {
+      setUnitScreenshot(null);
+      return;
+    }
+    let active = true;
+    setUnitScreenshot(null);
+    void fetchUnitScreenshot(unitScreenshotPath, props.activeProject).then((result) => {
+      if (active) setUnitScreenshot(result);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitScreenshotPath, screenshotProjectId]);
   if (props.route.kind === "projects") {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
@@ -63,6 +86,9 @@ export function WorkspacePane(props: {
   }
   if (props.route.kind === "settings") {
     return <SettingsView activeProject={props.activeProject} onOpenProjectEnv={props.onOpenProjectEnv} settings={props.settings} />;
+  }
+  if (props.route.kind === "unit-gallery") {
+    return <UnitGalleryView activeProject={props.activeProject} onOpenUnit={(path) => props.onNavigate({ kind: "wiki", path })} wikiPages={props.wikiPages} />;
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;
@@ -168,6 +194,7 @@ export function WorkspacePane(props: {
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
               source={props.wikiSource.source}
+              unitScreenshot={unitScreenshot}
               validationWarnings={props.wikiSource.validationWarnings}
             />
           ) : (

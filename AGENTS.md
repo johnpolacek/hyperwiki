@@ -6,6 +6,8 @@ Always use `pnpm` for package management and package scripts in this repository.
 
 Prefer the `agent-browser` CLI for browser automation and visual checks when inspecting project previews.
 
+When you finish an Execute Unit task that produces a browser-observable result, use the `agent-browser` skill to screenshot the relevant page of the running app and save it to the path named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>.png`. Skip cleanly when the unit has no visible UI result.
+
 Use Portless for user project previews and prefer named `.localhost` URLs over fixed ports when working across worktrees. hyperwiki's own `pnpm dev` command starts the Tauri desktop app.
 
 For hyperwiki-managed projects, `pnpm dev` is always the local run command. If a project needs frontend, backend, workers, or other long-running services, keep `pnpm dev` as the single entrypoint and orchestrate those services inside the package `dev` script, commonly with `concurrently`.

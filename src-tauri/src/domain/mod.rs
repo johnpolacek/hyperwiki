@@ -11,6 +11,7 @@ pub mod previews;
 pub mod project_env;
 pub mod projects;
 pub mod reviews;
+pub mod screenshots;
 pub mod sessions;
 pub mod settings;
 pub mod terminals;

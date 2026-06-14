@@ -94,10 +94,35 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { ProjectRecord } from "@/lib/types";
+import type { ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
   const joiner = path.includes("?") ? "&" : "?";
   return `${path}${joiner}project=${encodeURIComponent(activeProject.id)}`;
+}
+
+// Fetch one unit's screenshot as a data URL, or null when none was captured.
+export async function fetchUnitScreenshot(
+  unitPath: string,
+  activeProject: ProjectRecord | null,
+): Promise<{ dataUrl: string; capturedAt: number } | null> {
+  try {
+    const image = await hyperwikiApi.json<UnitScreenshotImage>(
+      withProjectQuery(`/api/unit-screenshot?path=${encodeURIComponent(unitPath)}`, activeProject),
+    );
+    if (!image?.base64) return null;
+    return { dataUrl: `data:${image.mediaType || "image/png"};base64,${image.base64}`, capturedAt: image.capturedAt };
+  } catch {
+    return null;
+  }
+}
+
+// List all captured unit screenshots (metadata only) for the gallery.
+export async function fetchUnitScreenshots(activeProject: ProjectRecord | null): Promise<UnitScreenshot[]> {
+  try {
+    return (await hyperwikiApi.json<UnitScreenshot[]>(withProjectQuery("/api/unit-screenshots", activeProject))) || [];
+  } catch {
+    return [];
+  }
 }

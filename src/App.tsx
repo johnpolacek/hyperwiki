@@ -64,7 +64,7 @@ import { TerminalPane } from "@/components/terminal/TerminalPane";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isLiveTerminalSession, isStandbySession, newestSession, sessionSortMs, fileToBase64, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, listenTerminalCompletion, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, previewDetachedDevSession, saveTerminalDroppedFiles, selectDevTerminalSession, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalCollapsedSummary, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalPaneLabel, terminalPaneStatusLabel, terminalPasteImageFileName, terminalStartupNotice, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, worktreePreviewForSlug, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { isReactRenderedMdxPath } from "@/lib/wiki-pages";
-import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, type SidebarModel } from "@/lib/wiki-pages";
+import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitScreenshotRelPath, type SidebarModel } from "@/lib/wiki-pages";
 import { clearPendingImportProject, readPendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS, slugify } from "@/lib/utils";
 import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefersReducedMotion } from "@/components/ui/beam-surface";
@@ -2689,7 +2689,7 @@ function App() {
   }
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || isProjectUnavailable || isPendingImportRoute;
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || route.kind === "unit-gallery" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute;
   const prefersReducedMotion = usePrefersReducedMotion();
   const gridBeamTheme = useDocumentGridBeamTheme();
@@ -2870,6 +2870,7 @@ function routeFromLocation(): ViewRoute {
   if (window.location.pathname === "/projects/new") return { kind: "new-project" };
   if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
+  if (window.location.pathname === "/screenshots") return { kind: "unit-gallery" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
 }
@@ -2887,6 +2888,7 @@ function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "projects") return "/projects";
   if (route.kind === "new-project") return "/projects/new";
   if (route.kind === "settings") return "/settings";
+  if (route.kind === "unit-gallery") return "/screenshots";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;
 }
@@ -3678,6 +3680,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
   }
   const unitTitle = context.unitTitle;
   const unitPath = context.unitPath;
+  const screenshotPath = unitPath ? unitScreenshotRelPath(unitPath) : "";
   return [
     "Execute exactly one hyperwiki unit on main.",
     "",
@@ -3696,6 +3699,9 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- Do not merely say a manual gate remains; explain how the user can clear it.",
     "- Update unit, stage, dashboard, sidebar-relevant status, and log entries only when the evidence supports those status changes.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
+    ...(screenshotPath
+      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot the relevant page of the running app (the project's dev preview URL) and save it to \`${screenshotPath}\`. Skip cleanly if the unit has no visible UI result.`]
+      : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
 }
@@ -3720,6 +3726,8 @@ function planningPromptContext(workspace: WorkspaceResponse | null, pages: WikiP
 
 function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }) {
   const status = workspace?.status || {};
+  const unitPath = status.currentPath ? displayWikiPath(status.currentPath) : "";
+  const screenshotPath = unitPath ? unitScreenshotRelPath(unitPath) : "";
   return [
     "Execute exactly one hyperwiki unit in the already-created worktree.",
     "",
@@ -3740,6 +3748,9 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
     "- If the unit reaches a manual review, approval, external configuration, credential, deployment setting, browser inspection, or human validation gate, stop and put a clearly titled `Manual step required` section before the general summary.",
     "- The `Manual step required` section must include: what is blocked, why it is blocked, who must do it, exact commands/settings/UI path when known, expected success signal/output, files/status intentionally left unchanged, and what button or command the user should rerun after completing it.",
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
+    ...(screenshotPath
+      ? [`- If this unit produces a browser-observable result, use the agent-browser skill to screenshot the relevant page of the running app (the worktree preview URL above) and save it to \`${screenshotPath}\` inside the worktree. Skip cleanly if the unit has no visible UI result.`]
+      : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
 }

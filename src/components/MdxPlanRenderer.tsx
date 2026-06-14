@@ -1,6 +1,7 @@
 import { createElement, Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -46,6 +47,7 @@ interface MdxPlanRendererProps {
   onSendCommand?: (command: string) => void;
   onToggleTask?: (text: string, checked: boolean) => Promise<void> | void;
   onProposeChange?: (prompt: string) => void;
+  unitScreenshot?: { dataUrl: string; capturedAt: number } | null;
 }
 
 interface PlanRenderContext {
@@ -122,13 +124,14 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshot }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [copyStatus, setCopyStatus] = useState("");
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
+  const [screenshotExpanded, setScreenshotExpanded] = useState(false);
   const copyMarkdown = async () => {
     if (!markdown?.trim()) return;
     try {
@@ -155,6 +158,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
     setIsDeleteConfirming(false);
     setIsDeletingPlan(false);
     setDeleteStatus("");
+    setScreenshotExpanded(false);
   }, [path]);
   if (!source.trim()) {
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
@@ -249,12 +253,60 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
               </AlertDescription>
             </Alert>
           ) : null}
+          {unitScreenshot ? (
+            <Card className="overflow-hidden" data-unit-screenshot="true">
+              <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 py-3">
+                <div className="flex items-center gap-2">
+                  <Camera aria-hidden="true" className="size-4 text-muted-foreground" />
+                  <CardTitle className="text-sm">Latest screenshot</CardTitle>
+                </div>
+                <span className="text-xs text-muted-foreground">Captured {formatCapturedAt(unitScreenshot.capturedAt)}</span>
+              </CardHeader>
+              <CardContent className="p-0">
+                <button
+                  aria-label="Expand screenshot"
+                  className="block w-full"
+                  type="button"
+                  onClick={() => setScreenshotExpanded(true)}
+                >
+                  <img
+                    alt="Screenshot of the completed unit's working result"
+                    className="block max-h-[26rem] w-full cursor-zoom-in bg-muted object-contain"
+                    src={unitScreenshot.dataUrl}
+                  />
+                </button>
+              </CardContent>
+            </Card>
+          ) : null}
           {content}
           {markdown ? <span className="sr-only" data-markdown-derivative={markdown.length}>Markdown derivative available</span> : null}
         </div>
+        {unitScreenshot && screenshotExpanded ? (
+          <div
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+            role="dialog"
+            onClick={() => setScreenshotExpanded(false)}
+          >
+            <img
+              alt="Screenshot of the completed unit's working result"
+              className="max-h-full max-w-full cursor-zoom-out object-contain"
+              src={unitScreenshot.dataUrl}
+            />
+          </div>
+        ) : null}
       </TooltipProvider>
     </article>
   );
+}
+
+function formatCapturedAt(capturedAt: number) {
+  if (!capturedAt) return "recently";
+  try {
+    return new Date(capturedAt * 1000).toLocaleString();
+  } catch {
+    return "recently";
+  }
 }
 
 function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string, pageStatus?: string) {

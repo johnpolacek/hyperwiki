@@ -1,4 +1,4 @@
-import { LayoutDashboard, Plus, Settings } from "lucide-react";
+import { Camera, LayoutDashboard, Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -41,6 +41,12 @@ export function TopBar(props: {
             <ProjectsMenu groups={props.projectGroups} onClose={() => props.setIsProjectsOpen(false)} onNavigate={props.onNavigate} onSwitchProject={props.onSwitchProject} />
           </PopoverContent>
         </Popover>
+        {props.activeProject ? (
+          <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "unit-gallery" })}>
+            <Camera aria-hidden="true" data-icon="inline-start" />
+            Screenshots
+          </Button>
+        ) : null}
         <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "settings" })}>
           <Settings aria-hidden="true" data-icon="inline-start" />
           Settings

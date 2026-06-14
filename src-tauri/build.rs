@@ -22,6 +22,12 @@ const BUNDLED_SKILLS: &[SkillMetadata] = &[
         skill_path: "SKILL.md",
     },
     SkillMetadata {
+        name: "agent-browser",
+        source: "agent-browser",
+        source_type: "npm",
+        skill_path: "SKILL.md",
+    },
+    SkillMetadata {
         name: "portless",
         source: "vercel-labs/portless",
         source_type: "github",

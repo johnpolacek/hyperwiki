@@ -396,6 +396,41 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(404, error),
         };
     }
+    if request.method == "GET" && request.path.starts_with("/api/unit-screenshots") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(
+            200,
+            &crate::domain::screenshots::list_unit_screenshots(project_root),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/unit-screenshot") {
+        let registry = crate::domain::projects::ProjectRegistry::from_environment();
+        let project_id = query_param(&request.path, "project");
+        let Some(unit_path) = query_param(&request.path, "path") else {
+            return error_response(400, "Missing unit page path.");
+        };
+        let project = registry.resolve(
+            project_id.as_deref(),
+            std::env::current_dir().ok().as_deref(),
+        );
+        let project_root = project
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return match crate::domain::screenshots::read_unit_screenshot(project_root, &unit_path) {
+            Some(image) => json_response(200, &image),
+            None => error_response(404, "No screenshot for this unit."),
+        };
+    }
     if request.method == "POST" && request.path.starts_with("/api/wiki/toggle-task") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");

@@ -651,6 +651,7 @@ pub(crate) fn write_project_scaffold(
     )?;
     if options.install_agent_skills {
         install_agent_skills(root, options.overwrite)?;
+        ensure_agent_browser_cli();
     }
     Ok(options)
 }
@@ -1270,6 +1271,48 @@ fn merge_skills_lock(root: &Path, overwrite: bool) -> Result<(), String> {
         ),
         true,
     )
+}
+
+/// Best-effort global install of the `agent-browser` CLI used to capture unit
+/// screenshots. Skipped when the binary already resolves. Failures are logged
+/// and never abort project init: a missing npm, an offline machine, or a
+/// permission error must not break `hyperwiki init`. The bundled
+/// `agent-browser` skill still installs regardless; this only provisions the
+/// runtime binary so the execute agent can run it without a manual setup step.
+fn ensure_agent_browser_cli() {
+    // Never shell out to npm under `cargo test` or when a harness opts out, so
+    // tests and CI that exercise project init stay hermetic and offline.
+    if cfg!(test) || std::env::var_os("HYPERWIKI_SKIP_AGENT_BROWSER_INSTALL").is_some() {
+        return;
+    }
+    if crate::domain::agent_provider::binary_on_path("agent-browser") {
+        return;
+    }
+    eprintln!("[hyperwiki] installing agent-browser CLI (npm i -g agent-browser)");
+    let installed = std::process::Command::new("npm")
+        .args(["install", "-g", "agent-browser"])
+        .stdin(std::process::Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false);
+    if !installed {
+        eprintln!(
+            "[hyperwiki] agent-browser CLI install skipped or failed; install manually with `npm i -g agent-browser && agent-browser install`"
+        );
+        return;
+    }
+    // Download the browser binary agent-browser drives. Non-fatal on failure.
+    let prepared = std::process::Command::new("agent-browser")
+        .arg("install")
+        .stdin(std::process::Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false);
+    if !prepared {
+        eprintln!(
+            "[hyperwiki] agent-browser installed but `agent-browser install` did not complete; run it manually to download the browser"
+        );
+    }
 }
 
 fn layout_panels(options: &InitProjectOptions) -> Result<Vec<serde_json::Value>, String> {
@@ -1971,7 +2014,7 @@ fn wiki_agent_page(options: &InitProjectOptions) -> String {
 
 fn agents_markdown(options: &InitProjectOptions) -> String {
     format!(
-        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nRun the project locally with `pnpm dev`. If the project needs frontend, backend, workers, or other long-running services, keep `pnpm dev` as the single entrypoint and orchestrate those processes inside the package `dev` script, commonly with `concurrently`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer the project-level `pnpm dev` entrypoint over fixed localhost ports or alternate package-manager commands.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, and `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
+        "# AGENTS.md instructions for {}\n\nRead `wiki/index.mdx` before project-specific work and use `wiki/sources.mdx` as the source index.\n\nDo not add a duplicate `wiki/Sources.mdx`; hyperwiki uses lowercase `wiki/sources.mdx`.\n\nFor active plans, prefer the project contract or `/api/wiki/source` Markdown derivative over rendered app HTML.\n\nRun the project locally with `pnpm dev`. If the project needs frontend, backend, workers, or other long-running services, keep `pnpm dev` as the single entrypoint and orchestrate those processes inside the package `dev` script, commonly with `concurrently`.\n\nIf this project needs an app preview, add or maintain a Portless-backed `dev` script and keep preview instructions in `.hyperwiki/config.json`.\n\nUse Portless for local dev previews. Prefer the project-level `pnpm dev` entrypoint over fixed localhost ports or alternate package-manager commands.\n\nRepo-local agent skills are installed under `.agents/skills/` by default unless initialization used `--no-skills`. Use `hyperwiki` for wiki maintenance, `grill-with-docs` for plan and domain-language stress tests, `parallel-dev-worktrees` and `portless` for branch-local previews, `frontend-design` and `make-interfaces-feel-better` for substantial UI work and polish, `shadcn` plus `tailwind-design-system` for React, shadcn/ui, or Tailwind changes, and `agent-browser` for browser automation and visual checks.\n\nWhen you finish an Execute Unit task that produces a browser-observable result, use the `agent-browser` skill to screenshot the relevant page of the running app and save it to the path named in the Execute Unit prompt, under `.hyperwiki/state/screenshots/<unit-path>.png`. Skip cleanly when the unit has no visible UI result.\n\nCreate or update `wiki/plans/` before meaningful code, config, schema, dependency, architecture, test, build, or app behavior changes.\n",
         options.project_name
     )
 }
