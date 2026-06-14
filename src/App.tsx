@@ -2237,6 +2237,18 @@ function App() {
     await runCommandAction("execute-main");
   }
 
+  // Open the full review dialog on demand (not just auto on completion) for a
+  // unit that already has screenshots. No live session, so report-issue starts a
+  // fresh execute run on that unit.
+  async function openScreenshotReviewManual(unitPath: string) {
+    const images = await fetchUnitScreenshotImages(unitPath, activeProject);
+    if (!images.length) {
+      setStatus("No screenshots captured for this unit yet");
+      return;
+    }
+    setScreenshotReview({ unitPath, sessionId: null, images });
+  }
+
   async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
     const normalizedCurrentPage = displayWikiPath(currentWikiPath);
     const executionPage = activePlanState.currentPath || normalizedCurrentPage;
@@ -2826,6 +2838,7 @@ function App() {
             onRemoveProject={removeProject}
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
+            onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
             onSendCommandToTerminal={sendCommandToTerminal}
             onToggleWikiTask={toggleWikiTask}
             onAnswerPlanningQuestion={answerPlanningQuestion}

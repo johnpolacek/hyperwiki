@@ -140,6 +140,10 @@ assert.ok(
   tsSources.includes("function executeNextUnitFromReview"),
   "The review gate should be able to launch the next unit.",
 );
+assert.ok(
+  tsSources.includes("function openScreenshotReviewManual") && tsSources.includes("onReviewScreenshots"),
+  "A manual Review button should open the review dialog on demand for a unit with screenshots.",
+);
 
 // Gated previews — per-project previewCapture profile, env hints, guidance, prompt pointer.
 assert.ok(

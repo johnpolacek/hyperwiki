@@ -259,7 +259,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             </Alert>
           ) : null}
           {unitScreenshots.length ? (
-            <Card className="overflow-hidden" data-unit-screenshot="true">
+            <Card className="mt-9 overflow-hidden" data-unit-screenshot="true">
               <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 py-3">
                 <div className="flex items-center gap-2">
                   <Camera aria-hidden="true" className="size-4 text-muted-foreground" />

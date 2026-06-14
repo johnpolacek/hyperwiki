@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
+import { BookOpen, Camera, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function WorkspacePane(props: {
   onDeletePlan: (path: string) => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
+  onReviewScreenshots: (unitPath: string) => void;
   onSendCommandToTerminal: (command: string) => void;
   onToggleWikiTask: (text: string, checked: boolean) => Promise<void>;
   onToggleExpanded: () => void;
@@ -169,6 +170,12 @@ export function WorkspacePane(props: {
             <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {unitScreenshots.length ? (
+              <Button size="sm" variant="outline" onClick={() => props.onReviewScreenshots(unitScreenshotPath)}>
+                <Camera aria-hidden="true" data-icon="inline-start" />
+                Review ({unitScreenshots.length})
+              </Button>
+            ) : null}
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
           </div>
         </div>
