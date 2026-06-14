@@ -144,6 +144,10 @@ assert.ok(
   tsSources.includes("function openScreenshotReviewManual") && tsSources.includes("onReviewScreenshots"),
   "A manual Review button should open the review dialog on demand for a unit with screenshots.",
 );
+assert.ok(
+  tsSources.includes('aria-label="Copy page Markdown"') && tsSources.includes("wikiMarkdown"),
+  "Copy Markdown should live as an icon-only button in the TopBar, not overlapping the page.",
+);
 
 // Gated previews — per-project previewCapture profile, env hints, guidance, prompt pointer.
 assert.ok(

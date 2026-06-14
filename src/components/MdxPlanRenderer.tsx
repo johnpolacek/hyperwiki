@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronRight,
   Clipboard,
-  Copy,
   Code2,
   FileText,
   Folder,
@@ -129,21 +128,10 @@ const inlineCodeClassName =
 export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
-  const [copyStatus, setCopyStatus] = useState("");
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
   const latestScreenshotAt = unitScreenshots.reduce((max, image) => Math.max(max, image.capturedAt), 0);
-  const copyMarkdown = async () => {
-    if (!markdown?.trim()) return;
-    try {
-      await navigator.clipboard?.writeText(markdown);
-      setCopyStatus("Markdown copied");
-      window.setTimeout(() => setCopyStatus(""), 1800);
-    } catch {
-      setCopyStatus("Could not copy Markdown");
-    }
-  };
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -167,32 +155,9 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
   return (
     <article className="relative h-full overflow-auto bg-background text-foreground">
       <TooltipProvider>
-        {markdown || canDeletePlan ? (
+        {canDeletePlan ? (
           <div className="pointer-events-none absolute right-3 top-5 z-10 flex items-start gap-1.5">
-            {markdown && !isDeleteConfirming ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    aria-label="Copy Markdown"
-                    className="pointer-events-auto h-8 gap-1.5 px-2.5 text-xs"
-                    disabled={!markdown.trim()}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                    onClick={copyMarkdown}
-                  >
-                    {copyStatus === "Markdown copied" ? (
-                      <CheckCircle2 aria-hidden="true" data-icon="inline-start" />
-                    ) : (
-                      <Copy aria-hidden="true" data-icon="inline-start" />
-                    )}
-                    <span>Copy</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">{copyStatus || "Copy Markdown"}</TooltipContent>
-              </Tooltip>
-            ) : null}
-            {canDeletePlan ? (
+            {(
               isDeleteConfirming ? (
                 <div className="pointer-events-auto ml-3 flex items-center gap-1.5">
                   <span className="text-xs font-medium text-muted-foreground">Are you sure?</span>
@@ -234,8 +199,8 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                   <X aria-hidden="true" data-icon="inline-start" />
                 </Button>
               )
-            ) : null}
-            <span className="sr-only" aria-live="polite">{copyStatus || deleteStatus}</span>
+            )}
+            <span className="sr-only" aria-live="polite">{deleteStatus}</span>
           </div>
         ) : null}
         <div className="mx-auto flex max-w-[68rem] flex-col gap-4 px-5 py-5 md:px-8">
@@ -255,7 +220,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             </Alert>
           ) : null}
           {unitScreenshots.length ? (
-            <Card className="mt-9 gap-0 overflow-hidden py-0" data-unit-screenshot="true">
+            <Card className="gap-0 overflow-hidden py-0" data-unit-screenshot="true">
               <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -264,7 +229,6 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                 </div>
                 {onReviewScreenshots ? (
                   <Button className="shrink-0" size="sm" variant="outline" onClick={onReviewScreenshots}>
-                    <Camera aria-hidden="true" />
                     Review UI
                   </Button>
                 ) : null}

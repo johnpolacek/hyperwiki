@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Camera, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
+import { BookOpen, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -172,7 +172,6 @@ export function WorkspacePane(props: {
           <div className="flex shrink-0 items-center gap-2">
             {unitScreenshots.length ? (
               <Button size="sm" variant="outline" onClick={() => props.onReviewScreenshots(unitScreenshotPath)}>
-                <Camera aria-hidden="true" data-icon="inline-start" />
                 Review UI
               </Button>
             ) : null}
