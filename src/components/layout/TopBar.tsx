@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Camera, Check, Copy, LayoutDashboard, Plus, Settings } from "lucide-react";
+import { Camera, LayoutDashboard, Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,20 +15,8 @@ export function TopBar(props: {
   projectGroups: ProjectGroup[];
   setIsProjectsOpen: (value: boolean) => void;
   status: string;
-  wikiMarkdown?: string;
   workspace: WorkspaceResponse | null;
 }) {
-  const [copied, setCopied] = useState(false);
-  async function copyMarkdown() {
-    if (!props.wikiMarkdown) return;
-    try {
-      await navigator.clipboard?.writeText(props.wikiMarkdown);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  }
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 overflow-hidden border-b bg-background px-3 text-sm">
       <button className="group flex min-w-0 items-center gap-3 rounded-md px-1.5 py-1 text-left font-mono transition-colors duration-150 hover:bg-muted" onClick={() => props.onNavigate({ kind: "wiki", path: props.homePath })} type="button">
@@ -43,18 +30,6 @@ export function TopBar(props: {
         ) : null}
       </button>
       <div className="flex items-center gap-2">
-        {props.wikiMarkdown ? (
-          <Button
-            aria-label="Copy page Markdown"
-            className="size-8"
-            size="icon"
-            title={copied ? "Copied" : "Copy page Markdown"}
-            variant="ghost"
-            onClick={copyMarkdown}
-          >
-            {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-          </Button>
-        ) : null}
         <Popover open={props.isProjectsOpen} onOpenChange={props.setIsProjectsOpen}>
           <PopoverTrigger asChild>
             <Button className="h-8" size="sm" variant="ghost">

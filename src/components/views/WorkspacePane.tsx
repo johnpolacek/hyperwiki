@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
+import { BookOpen, Check, Copy, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,18 @@ export function WorkspacePane(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitScreenshotPath, screenshotProjectId]);
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const pageMarkdown = props.wikiSource?.markdown || "";
+  async function copyPageMarkdown() {
+    if (!pageMarkdown.trim()) return;
+    try {
+      await navigator.clipboard?.writeText(pageMarkdown);
+      setCopiedMarkdown(true);
+      window.setTimeout(() => setCopiedMarkdown(false), 1500);
+    } catch {
+      setCopiedMarkdown(false);
+    }
+  }
   if (props.route.kind === "projects") {
     return <ProjectsView groups={props.projectGroups} onNewProject={() => props.onNavigate({ kind: "new-project" })} onOpenProject={props.onSwitchProject} onRemoveProject={props.onRemoveProject} />;
   }
@@ -176,6 +188,18 @@ export function WorkspacePane(props: {
               </Button>
             ) : null}
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+            {pageMarkdown.trim() ? (
+              <Button
+                aria-label="Copy page Markdown"
+                className="size-8"
+                size="icon"
+                title={copiedMarkdown ? "Copied" : "Copy page Markdown"}
+                variant="outline"
+                onClick={copyPageMarkdown}
+              >
+                {copiedMarkdown ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+              </Button>
+            ) : null}
           </div>
         </div>
         <div className="relative min-h-0 flex-1 overflow-hidden">

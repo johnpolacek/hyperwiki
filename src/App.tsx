@@ -2796,7 +2796,6 @@ function App() {
           projectGroups={projectGroups}
           setIsProjectsOpen={setIsProjectsOpen}
           status={status}
-          wikiMarkdown={route.kind === "wiki" && !isUtilityRoute ? wikiSource?.markdown || "" : ""}
           workspace={workspace}
         />
         <section
