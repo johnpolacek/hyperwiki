@@ -47,6 +47,7 @@ export function TerminalPane(props: {
   const [worktreeStatus, setWorktreeStatus] = useState("");
   const [isCreatingWorktree, setIsCreatingWorktree] = useState(false);
   const [collapsedSessionIds, setCollapsedSessionIds] = useState<Set<string>>(() => new Set());
+  const [devIdleExpanded, setDevIdleExpanded] = useState(false);
   const sessionSectionRefs = useRef<Record<string, HTMLElement | null>>({});
   const branchLabel = props.repoContext?.git?.worktree || props.activeProject?.worktreeSlug || props.repoContext?.git?.branch || props.activeProject?.branch || "main";
   const terminalContextLabel = props.currentWorkTitle || titleForPath(props.scope.planPath || "", []) || branchLabel;
@@ -57,6 +58,8 @@ export function TerminalPane(props: {
   const devIsRunning = props.preview?.running === true;
   const devPaneIsDetached = Boolean(devPaneSession && isDetachedDevSession(devPaneSession));
   const expandedDevPaneSession = devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? devPaneSession : null;
+  const expandedDevIdle = !devPaneSession && devIdleExpanded;
+  const devSectionExpanded = Boolean(expandedDevPaneSession) || expandedDevIdle;
   const devPaneNeedsTerminalSpace = Boolean(expandedDevPaneSession && !isDetachedDevSession(expandedDevPaneSession));
   const devPreviewUrl = props.preview?.url || "";
   const runDevTitle = canRunDev
@@ -142,29 +145,12 @@ export function TerminalPane(props: {
     });
   }
 
-  function revealDevTerminal() {
-    if (devPaneSession) {
-      setCollapsedSessionIds((current) => {
-        if (!current.has(devPaneSession.id)) return current;
-        const next = new Set(current);
-        next.delete(devPaneSession.id);
-        return next;
-      });
-      props.onSelectSession(devPaneSession.id);
-      requestAnimationFrame(() => {
-        sessionSectionRefs.current[devPaneSession.id]?.scrollIntoView({ block: "nearest" });
-      });
-      return;
-    }
-    props.onShowDev();
-  }
-
   function toggleDevCollapsed() {
     if (devPaneSession) {
       toggleSessionCollapsed(devPaneSession.id);
       return;
     }
-    props.onShowDev();
+    setDevIdleExpanded((value) => !value);
   }
 
   return (
@@ -239,8 +225,8 @@ export function TerminalPane(props: {
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <section ref={(element) => { if (devPaneSession) setSessionSectionRef(devPaneSession.id, element); }} className={cn("flex shrink-0 flex-col overflow-hidden border-b border-terminal-border bg-terminal-toolbar", devPaneNeedsTerminalSpace && "min-h-0 flex-1")}>
           <header className="flex min-h-9 shrink-0 items-center justify-between gap-3 px-3 text-xs">
-            <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={devPaneSession ? toggleDevCollapsed : revealDevTerminal} aria-expanded={Boolean(devPaneSession && !collapsedSessionIds.has(devPaneSession.id))} title={devPaneSession && collapsedSessionIds.has(devPaneSession.id) ? "Expand dev terminal" : devPaneSession ? "Collapse dev terminal" : "Load dev session details"}>
-              {devPaneSession && !collapsedSessionIds.has(devPaneSession.id) ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" />}
+            <button className="flex min-w-0 flex-1 items-center gap-2 text-left" type="button" onClick={toggleDevCollapsed} aria-expanded={devSectionExpanded} title={devSectionExpanded ? "Collapse dev terminal" : "Expand dev terminal"}>
+              {devSectionExpanded ? <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" /> : <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-terminal-muted" />}
               <strong className="shrink-0 font-mono text-[11px] font-medium lowercase text-terminal-text">dev</strong>
               <span className={cn("shrink-0", devIsRunning ? "text-terminal-success" : "text-terminal-muted")}>{devIsRunning ? "running" : "not running"}</span>
             </button>
@@ -275,6 +261,8 @@ export function TerminalPane(props: {
                 <XtermSession activeProject={props.activeProject} isActive={props.activeSessionId === expandedDevPaneSession.id} onTerminalText={props.onTerminalText} session={expandedDevPaneSession} />
               )}
             </div>
+          ) : expandedDevIdle ? (
+            <DevIdleSession canStart={canRunDev} reason={props.preview?.reason || runDevTitle} onStart={props.onRunDev} />
           ) : null}
         </section>
         {props.terminalEnvHint ? (
@@ -396,6 +384,24 @@ export function PendingTerminalSession({ session }: { session: SessionRecord }) 
         {!failed ? <p className="m-0 text-terminal-muted">Preparing the terminal session...</p> : null}
       </div>
       <p className="m-0 truncate text-[11px] text-terminal-muted/70">{session.command || session.id}</p>
+    </div>
+  );
+}
+
+export function DevIdleSession({ canStart, reason, onStart }: { canStart: boolean; reason: string; onStart: () => void }) {
+  return (
+    <div className="grid min-h-[180px] place-items-center bg-terminal-bg p-6 text-center">
+      <div className="grid max-w-[360px] gap-3">
+        <strong className="text-sm text-terminal-text">Dev server is not running</strong>
+        <p className="m-0 text-xs leading-relaxed text-terminal-muted">
+          {canStart ? "Start the dev server to preview this project and stream its output here." : reason}
+        </p>
+        <div className="flex justify-center gap-2">
+          <Button className="h-8 border-terminal-accent bg-terminal-accent/15 px-3 text-xs font-bold text-terminal-text hover:bg-terminal-accent/25 disabled:cursor-not-allowed disabled:border-terminal-border disabled:text-terminal-muted/70" disabled={!canStart} size="sm" title={reason} variant="outline" type="button" onClick={onStart}>
+            start dev
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

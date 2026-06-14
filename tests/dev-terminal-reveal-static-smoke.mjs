@@ -62,6 +62,17 @@ assert.ok(
   terminalPane.includes("scrollIntoView({ block: \"nearest\" })"),
   "Dev terminal reveal should scroll the selected pane into view.",
 );
+assert.ok(
+  terminalPane.includes("setDevIdleExpanded") && terminalPane.includes("<DevIdleSession"),
+  "Toggling the dev row while the dev server is stopped should expand an idle empty state.",
+);
+const idleStart = source.indexOf("function DevIdleSession");
+assert.notEqual(idleStart, -1, "DevIdleSession empty state should exist.");
+const idleDev = source.slice(idleStart, source.indexOf("function DetachedDevSession", idleStart));
+assert.ok(
+  idleDev.includes("Dev server is not running") && />\s*start dev\s*<\/Button>/.test(idleDev),
+  "The idle dev empty state should say the server is stopped and offer a start dev button.",
+);
 
 const showDevStart = source.indexOf("async function showDevTerminal");
 const showDevEnd = source.indexOf("async function initializeGitFromTerminal", showDevStart);
