@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { FolderInput, FolderPlus, Loader2, Upload } from "lucide-react";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,16 @@ export function NewProjectView({
   function logImport(message: string, error?: unknown) {
     appendImportLog(message, error);
     setImportLog(readImportLog());
+  }
+
+  async function chooseImportFolder() {
+    setImportError("");
+    try {
+      const selected = await openFolderDialog({ directory: true, multiple: false, title: "Select project folder" });
+      if (typeof selected === "string") setImportPath(selected);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : "Could not open the folder picker.");
+    }
   }
 
   async function inspectImportProject() {
@@ -227,11 +238,11 @@ export function NewProjectView({
           {mode === "import" && canImport ? (
             <ImportExistingPanel
               importPath={importPath}
-              setImportPath={setImportPath}
               step={importStep}
               inspection={inspection}
               isSubmitting={isSubmitting}
               error={importError}
+              onChoose={chooseImportFolder}
               onInspect={inspectImportProject}
               onConfirm={confirmAdopt}
               onBack={() => { setImportStep("enterPath"); setInspection(null); setImportError(""); }}
@@ -302,21 +313,21 @@ function ModeTab({ active, label, onClick }: { active: boolean; label: string; o
 
 function ImportExistingPanel({
   importPath,
-  setImportPath,
   step,
   inspection,
   isSubmitting,
   error,
+  onChoose,
   onInspect,
   onConfirm,
   onBack,
 }: {
   importPath: string;
-  setImportPath: (value: string) => void;
   step: "enterPath" | "consent";
   inspection: AdoptInspectResponse | null;
   isSubmitting: boolean;
   error: string;
+  onChoose: () => void;
   onInspect: () => void;
   onConfirm: () => void;
   onBack: () => void;
@@ -335,19 +346,23 @@ function ImportExistingPanel({
     <div className="rounded-lg border bg-card p-6 shadow-xs" data-testid="import-existing-panel">
       {step === "enterPath" || !inspection ? (
         <div className="grid gap-4">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium text-card-foreground">Project folder path</span>
-            <Input
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              autoComplete="off"
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-card-foreground">Project folder</span>
+            <button
+              type="button"
               data-testid="import-path-input"
-              placeholder="/Users/you/Projects/my-app"
-              value={importPath}
-              onChange={(event) => setImportPath(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); onInspect(); } }}
-            />
+              onClick={onChoose}
+              disabled={isSubmitting}
+              className="group flex min-h-11 w-full items-center gap-3 rounded-md border border-input bg-background px-3 text-left text-sm transition-colors duration-150 hover:border-primary hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FolderInput aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-colors duration-150 group-hover:text-primary" />
+              <span className={cn("min-w-0 flex-1 truncate", importPath ? "font-mono text-foreground" : "text-muted-foreground")}>
+                {importPath || "Choose a project folder…"}
+              </span>
+              <span className="shrink-0 rounded-sm border bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">Browse</span>
+            </button>
             <small className="text-xs text-muted-foreground">hyperwiki ports the existing wiki into its MDX conventions using the project's agent.</small>
-          </label>
+          </div>
           <Button className="min-h-11 w-full text-sm font-semibold" disabled={isSubmitting || !importPath.trim()} onClick={onInspect} type="button">
             {isSubmitting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <FolderInput aria-hidden="true" data-icon="inline-start" />}
             {isSubmitting ? "Inspecting" : "Inspect project"}
