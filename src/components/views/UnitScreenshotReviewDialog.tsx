@@ -11,16 +11,16 @@ export interface ScreenshotReview {
   images: UnitScreenshotImageData[];
 }
 
-// Post-run review gate: step through a unit's screenshots, leave a comment on
-// any with a problem, then close / queue the feedback (drained to the agent
-// later, in batches) / execute the next unit.
-export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onClose, onQueueFeedback, onSendFeedback, onExecuteNext }: {
+// Post-run review gate: step through a unit's screenshots. With no issues,
+// approve (Looks good) or advance (Execute next unit). With comments, Add
+// feedback to the queue — it's sent to the agent later via "Send all".
+export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onApprove, onDismiss, onQueueFeedback, onExecuteNext }: {
   review: ScreenshotReview;
   unitTitle: string;
   hasNextUnit: boolean;
-  onClose: () => void;
+  onApprove: () => void;
+  onDismiss: () => void;
   onQueueFeedback: (comments: { name: string; comment: string }[]) => void;
-  onSendFeedback: (comments: { name: string; comment: string }[]) => void;
   onExecuteNext: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -28,26 +28,23 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
   const current = review.images[Math.min(index, review.images.length - 1)];
   const commentedCount = Object.values(comments).filter((value) => value.trim()).length;
 
-  const buildPayload = () =>
-    review.images
+  // Closing with no typed comments approves (you looked, no issues); with unsent
+  // comments it just dismisses so the gate isn't silently cleared.
+  const handleClose = () => (commentedCount > 0 ? onDismiss() : onApprove());
+  const queueFeedback = () => {
+    const payload = review.images
       .map((image) => ({ name: image.name, comment: (comments[image.name] || "").trim() }))
       .filter((entry) => entry.comment);
-  const queueFeedback = () => {
-    const payload = buildPayload();
     if (payload.length) onQueueFeedback(payload);
-  };
-  const sendFeedback = () => {
-    const payload = buildPayload();
-    if (payload.length) onSendFeedback(payload);
   };
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="w-[min(calc(100vw-2rem),56rem)] sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Review screenshots — {unitTitle}</DialogTitle>
           <DialogDescription>
-            Step through what the agent built. Add a comment on any screenshot with a problem, then queue the feedback or move on.
+            Step through what the agent built. Comment on any screenshot with a problem and Add feedback to the queue, or approve and move on.
           </DialogDescription>
         </DialogHeader>
 
@@ -78,13 +75,12 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
         <DialogFooter>
           {commentedCount > 0 ? (
             <>
-              <Button variant="outline" onClick={onClose}>Close</Button>
-              <Button variant="outline" onClick={queueFeedback}>Add Feedback ({commentedCount})</Button>
-              <Button onClick={sendFeedback}>Send Feedback ({commentedCount})</Button>
+              <Button variant="outline" onClick={onDismiss}>Close</Button>
+              <Button onClick={queueFeedback}>Add feedback ({commentedCount})</Button>
             </>
           ) : (
             <>
-              <Button variant="outline" onClick={onClose}>Looks good</Button>
+              <Button variant="outline" onClick={onApprove}>Looks good</Button>
               {hasNextUnit ? <Button onClick={onExecuteNext}>Execute next unit</Button> : null}
             </>
           )}

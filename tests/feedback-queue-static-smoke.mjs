@@ -48,16 +48,16 @@ assert.ok(
   "api.ts should expose the feedback queue helpers.",
 );
 assert.ok(
-  ts.includes("onQueueFeedback") && ts.includes("Add Feedback"),
-  "The review dialog should enqueue via an 'Add Feedback' button, not report immediately.",
+  ts.includes("onQueueFeedback") && ts.includes("Add feedback (") && !ts.includes("onSendFeedback"),
+  "The review dialog should only enqueue via 'Add feedback' — no immediate send-now path.",
 );
 assert.ok(
   ts.includes("function dispatchUnitFeedback") && ts.includes("dispatchFeedback(items.map"),
   "App should drain a unit's queued feedback to the agent and mark it dispatched.",
 );
 assert.ok(
-  ts.includes("Send Feedback (") && ts.includes("function sendScreenshotFeedback"),
-  "With comments present, the dialog should offer 'Send Feedback' (enqueue + dispatch now) in place of Execute next unit.",
+  ts.includes("function sendAllFeedback") && ts.includes("Send all (") && !ts.includes("Send to agent ("),
+  "Draining is a single 'Send all' that flushes the whole queue; no per-unit send buttons.",
 );
 assert.ok(
   ts.includes('"## Revisions"') && ts.includes("Regenerate replacement screenshots"),

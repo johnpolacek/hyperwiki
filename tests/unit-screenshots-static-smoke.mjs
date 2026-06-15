@@ -73,7 +73,6 @@ const tsSources = await readSources(
   "src/components/ScreenshotCarousel.tsx",
   "src/components/MdxPlanRenderer.tsx",
   "src/components/views/WorkspacePane.tsx",
-  "src/components/views/UnitGalleryView.tsx",
   "src/components/views/UnitScreenshotReviewDialog.tsx",
   "src/components/layout/TopBar.tsx",
 );
@@ -103,20 +102,12 @@ assert.ok(
   "A shared ScreenshotCarousel should exist and power the review dialog.",
 );
 assert.ok(
-  tsSources.includes('{ kind: "unit-gallery" }'),
-  "ViewRoute should include the unit-gallery route.",
-);
-assert.ok(
   tsSources.includes('data-unit-screenshot="true"') && tsSources.includes("onReviewScreenshots?.()"),
-  "MdxPlanRenderer should show the inline screenshot card and open the review dialog on click.",
+  "The inline screenshot card is the single review entry — click it to open the review dialog.",
 );
 assert.ok(
-  tsSources.includes("<UnitGalleryView"),
-  "WorkspacePane should render the gallery view for the unit-gallery route.",
-);
-assert.ok(
-  tsSources.includes('onNavigate({ kind: "unit-gallery" })'),
-  "TopBar should offer a Screenshots nav entry.",
+  !tsSources.includes('{ kind: "unit-gallery" }') && !tsSources.includes("UnitGalleryView"),
+  "The Screenshots gallery view/route should be removed.",
 );
 
 // Review gate — auto-open on execute completion, per-screenshot comments,

@@ -2256,22 +2256,21 @@ function App() {
     }
   }
 
-  // "Send Feedback" from the review dialog: enqueue this unit's comments, then
-  // dispatch them to the agent right away (records them as dispatched).
-  async function sendScreenshotFeedback(comments: { name: string; comment: string }[]) {
-    const review = screenshotReview;
-    setScreenshotReview(null);
-    if (!review || !comments.length) return;
-    try {
-      const created = await queueFeedback(
-        review.unitPath,
-        comments.map((entry) => ({ screenshot: entry.name, comment: entry.comment })),
-        activeProject,
-      );
-      await dispatchUnitFeedback(review.unitPath, created);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
+  // "Send all": flush the entire queue at once — one fix-run per queued unit.
+  async function sendAllFeedback() {
+    const items = (await fetchFeedback(activeProject)).filter((item) => item.status === "pending");
+    if (!items.length) return;
+    const byUnit = new Map<string, FeedbackItem[]>();
+    for (const item of items) {
+      const list = byUnit.get(item.unitPath) || [];
+      list.push(item);
+      byUnit.set(item.unitPath, list);
     }
+    for (const [unitPath, unitItems] of byUnit) {
+      await dispatchUnitFeedback(unitPath, unitItems);
+    }
+    setStatus(`Sent ${items.length} queued item${items.length === 1 ? "" : "s"} across ${byUnit.size} unit${byUnit.size === 1 ? "" : "s"}`);
+    void refreshFeedbackCount();
   }
 
   function feedbackIssuePrompt(unitPath: string, entries: { screenshot: string; comment: string }[]) {
@@ -2874,7 +2873,7 @@ function App() {
   }
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || route.kind === "unit-gallery" || route.kind === "feedback-queue" || isProjectUnavailable || isPendingImportRoute;
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || route.kind === "feedback-queue" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute;
   const prefersReducedMotion = usePrefersReducedMotion();
   const gridBeamTheme = useDocumentGridBeamTheme();
@@ -2947,7 +2946,7 @@ function App() {
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
             onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
-            onDispatchFeedback={dispatchUnitFeedback}
+            onSendAllFeedback={() => void sendAllFeedback()}
             onRemoveFeedback={removeQueuedFeedback}
             onSendCommandToTerminal={sendCommandToTerminal}
             onToggleWikiTask={toggleWikiTask}
@@ -3015,10 +3014,10 @@ function App() {
             hasNextUnit={activePlanState.canExecute && displayWikiPath(activePlanState.currentPath) !== displayWikiPath(screenshotReview.unitPath)}
             review={screenshotReview}
             unitTitle={titleForPath(screenshotReview.unitPath, wikiPages) || "unit"}
-            onClose={() => void reviewScreenshotsReviewed()}
+            onApprove={() => void reviewScreenshotsReviewed()}
+            onDismiss={() => setScreenshotReview(null)}
             onExecuteNext={() => void executeNextUnitFromReview()}
             onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
-            onSendFeedback={(comments) => void sendScreenshotFeedback(comments)}
           />
         ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
@@ -3070,7 +3069,6 @@ function routeFromLocation(): ViewRoute {
   if (window.location.pathname === "/projects/new") return { kind: "new-project" };
   if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
-  if (window.location.pathname === "/screenshots") return { kind: "unit-gallery" };
   if (window.location.pathname === "/feedback") return { kind: "feedback-queue" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
@@ -3089,7 +3087,6 @@ function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "projects") return "/projects";
   if (route.kind === "new-project") return "/projects/new";
   if (route.kind === "settings") return "/settings";
-  if (route.kind === "unit-gallery") return "/screenshots";
   if (route.kind === "feedback-queue") return "/feedback";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;

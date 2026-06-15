@@ -43,8 +43,8 @@ assert.ok(
   "App should mark a unit reviewed on approve/close.",
 );
 assert.ok(
-  ts.includes("Looks good") && ts.includes("onClick={onClose}"),
-  "The review dialog should offer 'Looks good' and treat close as reviewed.",
+  ts.includes("Looks good") && ts.includes("onClick={onApprove}"),
+  "The review dialog should offer 'Looks good' (approve → marks reviewed).",
 );
 
 console.log("review gate static smoke passed");

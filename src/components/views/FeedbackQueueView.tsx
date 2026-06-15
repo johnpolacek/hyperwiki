@@ -8,16 +8,16 @@ import { titleForPath } from "@/lib/wiki-pages";
 import type { FeedbackItem, ProjectRecord, WikiPage } from "@/lib/types";
 
 // Pending screenshot feedback, grouped by unit, drained to the agent on demand.
-export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onDispatchUnit, onRemoveItem }: {
+export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onSendAll, onRemoveItem }: {
   activeProject: ProjectRecord | null;
   wikiPages: WikiPage[];
   onOpenUnit: (path: string) => void;
-  onDispatchUnit: (unitPath: string, items: FeedbackItem[]) => Promise<void> | void;
+  onSendAll: () => Promise<void> | void;
   onRemoveItem: (id: string) => Promise<void> | void;
 }) {
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [busyUnit, setBusyUnit] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const projectId = activeProject?.id || "";
 
   async function reload() {
@@ -38,12 +38,12 @@ export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onDisp
     else groups.push([item.unitPath, [item]]);
   }
 
-  async function sendGroup(unitPath: string, groupItems: FeedbackItem[]) {
-    setBusyUnit(unitPath);
+  async function sendAll() {
+    setIsSending(true);
     try {
-      await onDispatchUnit(unitPath, groupItems);
+      await onSendAll();
     } finally {
-      setBusyUnit(null);
+      setIsSending(false);
       await reload();
     }
   }
@@ -57,7 +57,12 @@ export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onDisp
       <div className="min-h-full">
         <SettingsPageHeader
           title="Feedback queue"
-          description="Queued screenshot feedback, grouped by unit. Send a unit's batch to the agent when you're ready."
+          description="Queued screenshot feedback, grouped by unit. Send all of it to the agent when you're ready."
+          actions={groups.length ? (
+            <Button disabled={isSending} onClick={() => void sendAll()}>
+              {isSending ? "Sending…" : `Send all (${items.length})`}
+            </Button>
+          ) : undefined}
         />
         {isLoading ? (
           <div className="flex items-center gap-2 px-8 py-10 text-sm text-muted-foreground">
@@ -70,7 +75,7 @@ export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onDisp
               <MessageSquareText aria-hidden="true" className="size-5" />
             </div>
             <p className="m-0 max-w-md text-sm leading-6">
-              No queued feedback. Open a unit's screenshots (Review UI), comment on any that need changes, and add them to the queue.
+              No queued feedback. Open a unit's screenshots, comment on any that need changes, and add them to the queue.
             </p>
           </div>
         ) : (
@@ -81,9 +86,7 @@ export function FeedbackQueueView({ activeProject, wikiPages, onOpenUnit, onDisp
                   <button className="min-w-0 truncate text-left text-sm font-semibold hover:underline" type="button" onClick={() => onOpenUnit(unitPath)}>
                     {titleForPath(unitPath, wikiPages)}
                   </button>
-                  <Button className="shrink-0" disabled={busyUnit === unitPath} size="sm" onClick={() => void sendGroup(unitPath, groupItems)}>
-                    {busyUnit === unitPath ? "Sending…" : `Send to agent (${groupItems.length})`}
-                  </Button>
+                  <span className="shrink-0 text-xs text-muted-foreground">{groupItems.length} item{groupItems.length === 1 ? "" : "s"}</span>
                 </div>
                 <div className="grid gap-2 p-4">
                   {groupItems.map((item) => (

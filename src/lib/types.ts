@@ -3,7 +3,6 @@ export type ViewRoute =
   | { kind: "projects" }
   | { kind: "new-project" }
   | { kind: "settings" }
-  | { kind: "unit-gallery" }
   | { kind: "feedback-queue" };
 
 export interface FeedbackItem {
