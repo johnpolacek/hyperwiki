@@ -2255,12 +2255,13 @@ function App() {
     const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
     return [
       `You previously executed the hyperwiki unit "${unitTitle}" (${unitPath}).`,
-      "The user reviewed the captured screenshots and queued these issues:",
+      "The user reviewed the captured screenshots and requested these revisions:",
       "",
       ...entries.map((entry) => `- ${entry.screenshot}: ${entry.comment}`),
       "",
-      "Fix these issues on this same unit; keep changes grounded in this unit.",
-      `Then re-capture the affected views with the agent-browser skill into \`${unitScreenshotDir(unitPath)}/\` (overwrite the existing PNGs) so the review reflects the fixes.`,
+      "Apply these revisions on this same unit; keep changes grounded in this unit.",
+      `Append a "## Revisions" section at the end of the unit page (${unitPath}) — create it if absent, otherwise add a new dated entry — listing the feedback you addressed and a short summary of what changed. Preserve the page's existing plan components.`,
+      `Regenerate replacement screenshots of the affected views with the agent-browser skill into \`${unitScreenshotDir(unitPath)}/\` (overwrite the existing PNGs) so the new state can be reviewed.`,
       "Run relevant checks before summarizing the result.",
     ].join("\n");
   }

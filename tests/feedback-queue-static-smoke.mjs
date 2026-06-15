@@ -60,6 +60,10 @@ assert.ok(
   "With comments present, the dialog should offer 'Send Feedback' (enqueue + dispatch now) in place of Execute next unit.",
 );
 assert.ok(
+  ts.includes('"## Revisions"') && ts.includes("Regenerate replacement screenshots"),
+  "The feedback dispatch prompt should append a Revisions section and regenerate replacement screenshots for re-review.",
+);
+assert.ok(
   ts.includes("export function FeedbackQueueView") && ts.includes("<FeedbackQueueView"),
   "The feedback queue view should exist and be routed.",
 );
