@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchUnitScreenshotImages, hyperwikiApi, queueFeedback, withProjectQuery } from "@/lib/api";
+import { deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
@@ -144,14 +144,19 @@ function App() {
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
   const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
   const [feedbackPendingCount, setFeedbackPendingCount] = useState(0);
+  const [awaitingReviewUnits, setAwaitingReviewUnits] = useState<string[]>([]);
   useEffect(() => {
     let active = true;
     if (!activeProject) {
       setFeedbackPendingCount(0);
+      setAwaitingReviewUnits([]);
       return;
     }
     void fetchFeedback(activeProject).then((items) => {
       if (active) setFeedbackPendingCount(items.filter((item) => item.status === "pending").length);
+    });
+    void Promise.all([fetchUnitScreenshots(activeProject), fetchScreenshotReviews(activeProject)]).then(([shots, reviews]) => {
+      if (active) setAwaitingReviewUnits(shots.filter((shot) => shot.capturedAt > (reviews[shot.unitPath] ?? 0)).map((shot) => shot.unitPath));
     });
     return () => {
       active = false;
@@ -2202,7 +2207,25 @@ function App() {
     const fresh = images.filter((image) => image.capturedAt >= freshnessFloorSeconds);
     if (!fresh.length) return;
     void refreshWikiStateFromDisk("screenshot-review");
+    setAwaitingReviewUnits((prev) => (prev.includes(unitPath) ? prev : [...prev, unitPath]));
     setScreenshotReview({ unitPath, sessionId, images: fresh });
+  }
+
+  async function refreshAwaitingReview() {
+    const [shots, reviews] = await Promise.all([fetchUnitScreenshots(activeProject), fetchScreenshotReviews(activeProject)]);
+    setAwaitingReviewUnits(shots.filter((shot) => shot.capturedAt > (reviews[shot.unitPath] ?? 0)).map((shot) => shot.unitPath));
+  }
+
+  // Mark a unit's current screenshots reviewed (approve/close). Optimistically
+  // clears the gate, then reconciles with the server.
+  async function markReviewed(unitPath: string, capturedAt: number) {
+    setAwaitingReviewUnits((prev) => prev.filter((path) => path !== unitPath));
+    try {
+      await markScreenshotReviewed(unitPath, capturedAt, activeProject);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+    void refreshAwaitingReview();
   }
 
   // "Report issue": bundle the per-screenshot comments into one prompt and send
@@ -2303,8 +2326,17 @@ function App() {
   }
 
   async function executeNextUnitFromReview() {
+    const review = screenshotReview;
     setScreenshotReview(null);
-    await runCommandAction("execute-main");
+    if (review) await markReviewed(review.unitPath, latestCapturedAt(review.images));
+    await runCommandAction("execute-main", undefined, { skipReviewGate: true });
+  }
+
+  // Approve/close marks the unit's current screenshots reviewed (clears the gate).
+  async function reviewScreenshotsReviewed() {
+    const review = screenshotReview;
+    setScreenshotReview(null);
+    if (review) await markReviewed(review.unitPath, latestCapturedAt(review.images));
   }
 
   // Open the full review dialog on demand (not just auto on completion) for a
@@ -2369,10 +2401,15 @@ function App() {
     setStatus("Execute canceled");
   }
 
-  async function runCommandAction(action: CommandAction, payload?: Record<string, string>) {
+  async function runCommandAction(action: CommandAction, payload?: Record<string, string>, options?: { skipReviewGate?: boolean }) {
     setStatus(`Running ${action}`);
     try {
       if (action === "execute-main") {
+        if (!options?.skipReviewGate && awaitingReviewUnits.length) {
+          setStatus("Review the screenshots before advancing");
+          await openScreenshotReviewManual(awaitingReviewUnits[0]);
+          return;
+        }
         await stageExecuteUnitPrompt(payload);
         return;
       }
@@ -2978,7 +3015,7 @@ function App() {
             hasNextUnit={activePlanState.canExecute && displayWikiPath(activePlanState.currentPath) !== displayWikiPath(screenshotReview.unitPath)}
             review={screenshotReview}
             unitTitle={titleForPath(screenshotReview.unitPath, wikiPages) || "unit"}
-            onClose={() => setScreenshotReview(null)}
+            onClose={() => void reviewScreenshotsReviewed()}
             onExecuteNext={() => void executeNextUnitFromReview()}
             onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
             onSendFeedback={(comments) => void sendScreenshotFeedback(comments)}
@@ -3924,6 +3961,10 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
       : []),
     "- Run relevant checks before summarizing the result.",
   ].join("\n");
+}
+
+function latestCapturedAt(images: { capturedAt: number }[]) {
+  return images.reduce((max, image) => Math.max(max, image.capturedAt), 0);
 }
 
 function scopeForRoute(route: ViewRoute) {

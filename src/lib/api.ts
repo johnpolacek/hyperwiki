@@ -186,3 +186,20 @@ export async function dispatchFeedback(ids: string[], activeProject: ProjectReco
 export async function deleteFeedbackItem(id: string, activeProject: ProjectRecord | null): Promise<void> {
   await hyperwikiApi.json(withProjectQuery(`/api/feedback?id=${encodeURIComponent(id)}`, activeProject), { method: "DELETE" });
 }
+
+// Map of unit path -> reviewed screenshot capturedAt (the gate's source of truth).
+export async function fetchScreenshotReviews(activeProject: ProjectRecord | null): Promise<Record<string, number>> {
+  try {
+    return (await hyperwikiApi.json<Record<string, number>>(withProjectQuery("/api/screenshot-reviews", activeProject))) || {};
+  } catch {
+    return {};
+  }
+}
+
+// Mark a unit's current screenshots reviewed (approve/close in the review dialog).
+export async function markScreenshotReviewed(unitPath: string, capturedAt: number, activeProject: ProjectRecord | null): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery("/api/screenshot-reviews", activeProject), {
+    method: "POST",
+    body: { unitPath, capturedAt },
+  });
+}

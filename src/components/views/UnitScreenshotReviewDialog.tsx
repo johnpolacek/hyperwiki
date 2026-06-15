@@ -76,15 +76,18 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button disabled={commentedCount === 0} variant="outline" onClick={queueFeedback}>
-            Add Feedback{commentedCount > 0 ? ` (${commentedCount})` : ""}
-          </Button>
           {commentedCount > 0 ? (
-            <Button onClick={sendFeedback}>Send Feedback ({commentedCount})</Button>
-          ) : hasNextUnit ? (
-            <Button onClick={onExecuteNext}>Execute next unit</Button>
-          ) : null}
+            <>
+              <Button variant="outline" onClick={onClose}>Close</Button>
+              <Button variant="outline" onClick={queueFeedback}>Add Feedback ({commentedCount})</Button>
+              <Button onClick={sendFeedback}>Send Feedback ({commentedCount})</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={onClose}>Looks good</Button>
+              {hasNextUnit ? <Button onClick={onExecuteNext}>Execute next unit</Button> : null}
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

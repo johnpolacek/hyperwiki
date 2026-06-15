@@ -439,6 +439,31 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => error_response(404, "No screenshot for this unit."),
         };
     }
+    if request.path.starts_with("/api/screenshot-reviews") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if request.method == "GET" {
+            return json_response(200, &crate::domain::screenshot_reviews::reviewed(&project_root));
+        }
+        if request.method == "POST" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+                .unwrap_or(serde_json::Value::Null);
+            let unit_path = body.get("unitPath").and_then(|value| value.as_str()).unwrap_or_default().to_string();
+            let captured_at = body.get("capturedAt").and_then(|value| value.as_u64()).unwrap_or_default();
+            if unit_path.is_empty() {
+                return error_response(400, "Missing unitPath.");
+            }
+            return match crate::domain::screenshot_reviews::mark_reviewed(&project_root, &unit_path, captured_at) {
+                Ok(()) => json_response(200, &serde_json::json!({ "ok": true })),
+                Err(error) => error_response(500, error),
+            };
+        }
+    }
     if request.method == "POST" && request.path.starts_with("/api/feedback/dispatch") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
