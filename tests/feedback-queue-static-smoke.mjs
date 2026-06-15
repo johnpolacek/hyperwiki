@@ -48,8 +48,8 @@ assert.ok(
   "api.ts should expose the feedback queue helpers.",
 );
 assert.ok(
-  ts.includes("onQueueFeedback") && ts.includes("Add ") && ts.includes("to queue"),
-  "The review dialog should enqueue (Add to queue), not report immediately.",
+  ts.includes("onQueueFeedback") && ts.includes("Add Feedback"),
+  "The review dialog should enqueue via an 'Add Feedback' button, not report immediately.",
 );
 assert.ok(
   ts.includes("function dispatchUnitFeedback") && ts.includes("dispatchFeedback(items.map"),

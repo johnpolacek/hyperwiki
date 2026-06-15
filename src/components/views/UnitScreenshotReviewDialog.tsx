@@ -71,7 +71,7 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
           <Button disabled={commentedCount === 0} variant="outline" onClick={queueFeedback}>
-            Add {commentedCount > 0 ? `${commentedCount} ` : ""}to queue
+            Add Feedback{commentedCount > 0 ? ` (${commentedCount})` : ""}
           </Button>
           {hasNextUnit ? <Button onClick={onExecuteNext}>Execute next unit</Button> : null}
         </DialogFooter>
