@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { NewProjectView } from "@/components/views/NewProjectView";
 import { AdoptingView, PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { SettingsView } from "@/components/views/SettingsView";
+import { FeedbackQueueView } from "@/components/views/FeedbackQueueView";
 import { UnitGalleryView } from "@/components/views/UnitGalleryView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
 import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, titleForPath } from "@/lib/wiki-pages";
-import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, FeedbackItem, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
@@ -34,6 +35,8 @@ export function WorkspacePane(props: {
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onReviewScreenshots: (unitPath: string) => void;
+  onDispatchFeedback: (unitPath: string, items: FeedbackItem[]) => Promise<void> | void;
+  onRemoveFeedback: (id: string) => Promise<void> | void;
   onSendCommandToTerminal: (command: string) => void;
   onToggleWikiTask: (text: string, checked: boolean) => Promise<void>;
   onToggleExpanded: () => void;
@@ -102,6 +105,17 @@ export function WorkspacePane(props: {
   }
   if (props.route.kind === "unit-gallery") {
     return <UnitGalleryView activeProject={props.activeProject} onOpenUnit={(path) => props.onNavigate({ kind: "wiki", path })} wikiPages={props.wikiPages} />;
+  }
+  if (props.route.kind === "feedback-queue") {
+    return (
+      <FeedbackQueueView
+        activeProject={props.activeProject}
+        onDispatchUnit={props.onDispatchFeedback}
+        onOpenUnit={(path) => props.onNavigate({ kind: "wiki", path })}
+        onRemoveItem={props.onRemoveFeedback}
+        wikiPages={props.wikiPages}
+      />
+    );
   }
   if (props.pendingImportProject) {
     return <PendingImportView project={props.pendingImportProject} />;

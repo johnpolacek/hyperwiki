@@ -127,9 +127,8 @@ assert.ok(
   "App should open the review gate when an execute run finishes with fresh screenshots.",
 );
 assert.ok(
-  tsSources.includes("function reportScreenshotIssues")
-    && tsSources.includes("targetSessionId: review.sessionId"),
-  "Report-issue should send the bundled comments back to the same execute session.",
+  tsSources.includes("function queueScreenshotFeedback") && tsSources.includes("onQueueFeedback"),
+  "Reviewing should queue feedback (enqueue-only) rather than dispatch immediately.",
 );
 assert.ok(
   tsSources.includes("export function UnitScreenshotReviewDialog")

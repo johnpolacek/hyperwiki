@@ -1,4 +1,4 @@
-import { Camera, LayoutDashboard, Plus, Settings } from "lucide-react";
+import { Camera, LayoutDashboard, MessageSquareText, Plus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ export function TopBar(props: {
   projectGroups: ProjectGroup[];
   setIsProjectsOpen: (value: boolean) => void;
   status: string;
+  feedbackCount?: number;
   workspace: WorkspaceResponse | null;
 }) {
   return (
@@ -45,6 +46,12 @@ export function TopBar(props: {
           <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "unit-gallery" })}>
             <Camera aria-hidden="true" data-icon="inline-start" />
             Screenshots
+          </Button>
+        ) : null}
+        {props.activeProject && (props.feedbackCount || 0) > 0 ? (
+          <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "feedback-queue" })}>
+            <MessageSquareText aria-hidden="true" data-icon="inline-start" />
+            Feedback ({props.feedbackCount})
           </Button>
         ) : null}
         <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "settings" })}>

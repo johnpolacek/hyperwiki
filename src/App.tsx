@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { fetchUnitScreenshotImages, hyperwikiApi, withProjectQuery } from "@/lib/api";
+import { deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchUnitScreenshotImages, hyperwikiApi, queueFeedback, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
@@ -72,7 +72,7 @@ import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefe
 import { agentLaunchCommand, agentProviderFromCommand, claudeCommandWithThinkingEffort, codexCommandWithThinkingEffort, defaultAgentCommand, defaultThinkingEffort, importAgentLaunchCommand, layoutAgentProvider, normalizedThinkingEffort, type AgentProviderAvailability, type AgentProviderId } from "@/lib/agent";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
-import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
 
 
 const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
@@ -143,6 +143,21 @@ function App() {
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
   const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
+  const [feedbackPendingCount, setFeedbackPendingCount] = useState(0);
+  useEffect(() => {
+    let active = true;
+    if (!activeProject) {
+      setFeedbackPendingCount(0);
+      return;
+    }
+    void fetchFeedback(activeProject).then((items) => {
+      if (active) setFeedbackPendingCount(items.filter((item) => item.status === "pending").length);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProject?.id]);
   const prewarmingModifySessions = useRef<Set<string>>(new Set());
   const prewarmingGeneralSessions = useRef<Set<string>>(new Set());
   const generalPrewarmRefillTimers = useRef<Map<string, number>>(new Map());
@@ -2194,39 +2209,75 @@ function App() {
   // it back to the same execute-agent session (reused when still alive) so it
   // fixes this unit and re-captures. Re-using kind "execute" re-arms completion,
   // so the review re-opens when the fix finishes (review -> fix -> review loop).
-  async function reportScreenshotIssues(comments: { name: string; comment: string }[]) {
+  async function refreshFeedbackCount() {
+    const items = await fetchFeedback(activeProject);
+    setFeedbackPendingCount(items.filter((item) => item.status === "pending").length);
+  }
+
+  // Reviewing queues feedback instead of dispatching it. Drain happens later
+  // from the Feedback view, batched per unit.
+  async function queueScreenshotFeedback(comments: { name: string; comment: string }[]) {
     const review = screenshotReview;
-    if (!review || !comments.length) {
-      setScreenshotReview(null);
-      return;
-    }
     setScreenshotReview(null);
-    const unitTitle = titleForPath(review.unitPath, wikiPages) || review.unitPath;
-    const issuePrompt = [
-      `You just executed the hyperwiki unit "${unitTitle}" (${review.unitPath}).`,
-      "The user reviewed the captured screenshots and reported these issues:",
+    if (!review || !comments.length) return;
+    try {
+      await queueFeedback(
+        review.unitPath,
+        comments.map((entry) => ({ screenshot: entry.name, comment: entry.comment })),
+        activeProject,
+      );
+      setStatus(`Queued ${comments.length} feedback item${comments.length === 1 ? "" : "s"}`);
+      void refreshFeedbackCount();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function feedbackIssuePrompt(unitPath: string, entries: { screenshot: string; comment: string }[]) {
+    const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
+    return [
+      `You previously executed the hyperwiki unit "${unitTitle}" (${unitPath}).`,
+      "The user reviewed the captured screenshots and queued these issues:",
       "",
-      ...comments.map((entry) => `- ${entry.name}: ${entry.comment}`),
+      ...entries.map((entry) => `- ${entry.screenshot}: ${entry.comment}`),
       "",
       "Fix these issues on this same unit; keep changes grounded in this unit.",
-      `Then re-capture the affected views with the agent-browser skill into \`${unitScreenshotDir(review.unitPath)}/\` (overwrite the existing PNGs) so the review reflects the fixes.`,
+      `Then re-capture the affected views with the agent-browser skill into \`${unitScreenshotDir(unitPath)}/\` (overwrite the existing PNGs) so the review reflects the fixes.`,
       "Run relevant checks before summarizing the result.",
     ].join("\n");
-    const scope = scopeForRoute({ kind: "wiki", path: review.unitPath });
-    const canReuse = Boolean(review.sessionId && sessions.some((session) => session.id === review.sessionId && isReusableVisibleExecuteAgentSession(session)));
+  }
+
+  // Drain one unit's queued feedback to the agent as a single execute run, then
+  // mark those items dispatched. kind:"execute" re-arms the review gate.
+  async function dispatchUnitFeedback(unitPath: string, items: FeedbackItem[]) {
+    if (!items.length) return;
+    const prompt = feedbackIssuePrompt(unitPath, items.map((item) => ({ screenshot: item.screenshot, comment: item.comment })));
+    const scope = scopeForRoute({ kind: "wiki", path: unitPath });
+    const candidate = selectExecuteAgentReuseCandidate(sessions, activeSessionId);
     try {
       await sendTrackedAgentPrompt(
         "execute",
         "Execute Unit",
-        issuePrompt,
-        review.unitPath,
+        prompt,
+        unitPath,
         scope,
         layout,
         sessions,
         undefined,
-        canReuse ? { targetSessionId: review.sessionId! } : { forceNewSession: true },
+        candidate ? { targetSessionId: candidate.id } : { forceNewSession: true },
       );
-      setStatus("Reported screenshot issues to the agent");
+      await dispatchFeedback(items.map((item) => item.id), activeProject);
+      setStatus(`Sent ${items.length} queued item${items.length === 1 ? "" : "s"} to the agent`);
+      void refreshFeedbackCount();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function removeQueuedFeedback(id: string) {
+    try {
+      await deleteFeedbackItem(id, activeProject);
+      void refreshFeedbackCount();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -2767,7 +2818,7 @@ function App() {
   }
 
   const isProjectUnavailable = hasLoadedProjects && !activeProject && !isPendingImportRoute;
-  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || route.kind === "unit-gallery" || isProjectUnavailable || isPendingImportRoute;
+  const isUtilityRoute = route.kind === "projects" || route.kind === "new-project" || route.kind === "settings" || route.kind === "unit-gallery" || route.kind === "feedback-queue" || isProjectUnavailable || isPendingImportRoute;
   const isMainPaneExpanded = isWorkspaceExpanded && !isUtilityRoute;
   const prefersReducedMotion = usePrefersReducedMotion();
   const gridBeamTheme = useDocumentGridBeamTheme();
@@ -2796,6 +2847,7 @@ function App() {
           projectGroups={projectGroups}
           setIsProjectsOpen={setIsProjectsOpen}
           status={status}
+          feedbackCount={feedbackPendingCount}
           workspace={workspace}
         />
         <section
@@ -2839,6 +2891,8 @@ function App() {
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
             onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
+            onDispatchFeedback={dispatchUnitFeedback}
+            onRemoveFeedback={removeQueuedFeedback}
             onSendCommandToTerminal={sendCommandToTerminal}
             onToggleWikiTask={toggleWikiTask}
             onAnswerPlanningQuestion={answerPlanningQuestion}
@@ -2907,7 +2961,7 @@ function App() {
             unitTitle={titleForPath(screenshotReview.unitPath, wikiPages) || "unit"}
             onClose={() => setScreenshotReview(null)}
             onExecuteNext={() => void executeNextUnitFromReview()}
-            onReportIssues={(comments) => void reportScreenshotIssues(comments)}
+            onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
           />
         ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
@@ -2960,6 +3014,7 @@ function routeFromLocation(): ViewRoute {
   if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
   if (window.location.pathname === "/screenshots") return { kind: "unit-gallery" };
+  if (window.location.pathname === "/feedback") return { kind: "feedback-queue" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
 }
@@ -2978,6 +3033,7 @@ function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "new-project") return "/projects/new";
   if (route.kind === "settings") return "/settings";
   if (route.kind === "unit-gallery") return "/screenshots";
+  if (route.kind === "feedback-queue") return "/feedback";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;
 }
@@ -3718,14 +3774,14 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
     "- Staged plans must use a plan-root directory: wiki/plans/<slug>/index.mdx, child wiki/plans/<slug>/stage-XX-*.mdx pages, and child unit pages under each stage directory.",
     "- For complex staged plans, create all stage pages and all currently planned unit pages before finishing. Do not leave stages as headings inside the root plan.",
     "- Each stage page must include the stage goal, dependencies or blockers, detailed unit sequence, completion gate, and verification expectations before later stages begin.",
-    "- Each unit page must be highly detailed enough for one implementation pass: Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate.",
+    "- Each unit page must be highly detailed enough for one implementation pass: Intent or Goal, Scope, Implementation, Dependencies/Blockers, Verification, and Completion Gate.",
     "- Unit Verification must name concrete automated, manual, or explicitly deferred checks. Manual checks must include exact user-facing steps, commands or settings when known, and the expected success signal.",
     "- Unit Completion Gate must make required manual steps impossible to miss: name who performs the step, what is blocked until it happens, how to perform it, what evidence proves success, and what to rerun afterward.",
     "- Mark the next unit as blocked or not-started until the current unit's verification is recorded or explicitly deferred with risk.",
     "- Every executable unit must include a Verification section or component.",
-    "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, OpenDecision, DecisionOption, Evidence, Verification, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, Flow, FlowStep, StageTrack, StageItem, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
+    "- hyperwiki plan pages can use these built-in MDX components without imports: PlanHero, PlanSummary, PlanUnit, Decision, OpenDecision, DecisionOption, Evidence, Verification, Scope, ImplementationNotes, Dependencies, CompletionGate, Callout, Note, Tip, Warning, Danger, Check, Panel, Frame, Card, CardGroup, Columns, Column, Aside, Flow, FlowStep, StageTrack, StageItem, RequestExample, ResponseExample, Steps, Step, Prompt, Update, TaskList, StatusBadge, ParamField, ResponseField, Tree, TreeFolder, TreeFile, CodeBlock, CommandBlock, Tabs, Tab, AccordionGroup, Accordion, Tooltip, and Visibility.",
     "- Before writing, read the hyperwiki skill references mdx-artifact-patterns.md and plan-page-skeletons.md, choose the planning composition pattern that fits the content (feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff), and start from the matching skeleton.",
-    "- Every plan page must open with PlanHero followed by PlanSummary, and each major section should use a structural component where one fits: StageTrack/StageItem for stage and unit progress, Flow/FlowStep for pipelines and user flows, Steps for sequences, CardGroup cards for alternatives or work tracks (cols=\"2\" or cols=\"3\" only for comparison grids), CodeBlock/CommandBlock for code and commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Verification for checks. A page of bare sections and bullet lists is below the quality bar and will fail validation. Use plain semantic sections only for routine headings like Scope, Implementation Notes, and Completion Gate.",
+    "- Every plan page must open with PlanHero followed by PlanSummary, and each major section should use a structural component where one fits: StageTrack/StageItem for stage and unit progress, Flow/FlowStep for pipelines and user flows, Steps for sequences, CardGroup cards for alternatives or work tracks (cols=\"2\" or cols=\"3\" only for comparison grids), CodeBlock/CommandBlock for code and commands, RequestExample/ResponseExample/ParamField/ResponseField for contracts, and Verification for checks. A page of bare sections and bullet lists is below the quality bar and will fail validation. Use the dedicated section components for the canonical unit sections: Scope, ImplementationNotes, Dependencies, Verification, and CompletionGate (each self-titles from its tag; pass title=\"...\" only to override) so they render with consistent, scannable section headers instead of bare Markdown headings.",
     "- Prefer CodeBlock over raw fenced code blocks for visible plan examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose Tabs/Tab with one CodeBlock per tab instead of dumping repeated fences.",
     "- Use Visibility for=\"agents\" around long source context, raw Q&A, or implementation handoff details that agents need but humans should not see in the rendered app. Use Visibility for=\"humans\" only for app-visible explanation that should be stripped from agent Markdown.",
     "- Do not dump long imported source bundles or Q&A transcripts into visible paragraphs; summarize visibly and preserve the full context in agent-only Visibility blocks when needed.",

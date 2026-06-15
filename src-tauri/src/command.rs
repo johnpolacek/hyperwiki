@@ -439,6 +439,65 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             None => error_response(404, "No screenshot for this unit."),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/feedback/dispatch") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let ids = request
+            .body
+            .as_deref()
+            .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+            .and_then(|value| value.get("ids").cloned())
+            .and_then(|value| serde_json::from_value::<Vec<String>>(value).ok())
+            .unwrap_or_default();
+        return match crate::domain::feedback::mark_dispatched(&project_root, &ids) {
+            Ok(()) => json_response(200, &serde_json::json!({ "ok": true, "dispatched": ids.len() })),
+            Err(error) => error_response(500, error),
+        };
+    }
+    if request.path.starts_with("/api/feedback") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if request.method == "GET" {
+            return json_response(200, &crate::domain::feedback::list(&project_root));
+        }
+        if request.method == "POST" {
+            let body = request
+                .body
+                .as_deref()
+                .and_then(|body| serde_json::from_str::<serde_json::Value>(body).ok())
+                .unwrap_or(serde_json::Value::Null);
+            let unit_path = body
+                .get("unitPath")
+                .and_then(|value| value.as_str())
+                .unwrap_or_default()
+                .to_string();
+            if unit_path.is_empty() {
+                return error_response(400, "Missing unitPath.");
+            }
+            let items = body
+                .get("items")
+                .cloned()
+                .and_then(|value| serde_json::from_value::<Vec<crate::domain::feedback::FeedbackCommentInput>>(value).ok())
+                .unwrap_or_default();
+            return match crate::domain::feedback::enqueue(&project_root, &unit_path, &items) {
+                Ok(created) => json_response(200, &created),
+                Err(error) => error_response(500, error),
+            };
+        }
+        if request.method == "DELETE" {
+            let Some(id) = query_param(&request.path, "id") else {
+                return error_response(400, "Missing feedback id.");
+            };
+            return match crate::domain::feedback::remove(&project_root, &id) {
+                Ok(()) => json_response(200, &serde_json::json!({ "ok": true })),
+                Err(error) => error_response(500, error),
+            };
+        }
+    }
     if request.method == "POST" && request.path.starts_with("/api/wiki/toggle-task") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");

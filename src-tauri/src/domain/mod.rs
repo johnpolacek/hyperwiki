@@ -3,6 +3,7 @@ pub mod agent_provider;
 pub mod app_shell;
 pub mod claude_agent;
 pub mod codex_app_server;
+pub mod feedback;
 pub mod git;
 pub mod import_onboarding_runtime;
 pub mod import_planning;

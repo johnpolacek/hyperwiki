@@ -12,14 +12,14 @@ export interface ScreenshotReview {
 }
 
 // Post-run review gate: step through a unit's screenshots, leave a comment on
-// any with a problem, then close / report the issues (sent back to the agent) /
-// execute the next unit.
-export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onClose, onReportIssues, onExecuteNext }: {
+// any with a problem, then close / queue the feedback (drained to the agent
+// later, in batches) / execute the next unit.
+export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onClose, onQueueFeedback, onExecuteNext }: {
   review: ScreenshotReview;
   unitTitle: string;
   hasNextUnit: boolean;
   onClose: () => void;
-  onReportIssues: (comments: { name: string; comment: string }[]) => void;
+  onQueueFeedback: (comments: { name: string; comment: string }[]) => void;
   onExecuteNext: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -27,11 +27,11 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
   const current = review.images[Math.min(index, review.images.length - 1)];
   const commentedCount = Object.values(comments).filter((value) => value.trim()).length;
 
-  const reportIssues = () => {
+  const queueFeedback = () => {
     const payload = review.images
       .map((image) => ({ name: image.name, comment: (comments[image.name] || "").trim() }))
       .filter((entry) => entry.comment);
-    if (payload.length) onReportIssues(payload);
+    if (payload.length) onQueueFeedback(payload);
   };
 
   return (
@@ -40,7 +40,7 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
         <DialogHeader>
           <DialogTitle>Review screenshots — {unitTitle}</DialogTitle>
           <DialogDescription>
-            Step through what the agent built. Add a comment on any screenshot with a problem, then report the issues or move on.
+            Step through what the agent built. Add a comment on any screenshot with a problem, then queue the feedback or move on.
           </DialogDescription>
         </DialogHeader>
 
@@ -70,8 +70,8 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Close</Button>
-          <Button disabled={commentedCount === 0} variant="outline" onClick={reportIssues}>
-            Report {commentedCount > 0 ? `${commentedCount} ` : ""}issue{commentedCount === 1 ? "" : "s"}
+          <Button disabled={commentedCount === 0} variant="outline" onClick={queueFeedback}>
+            Add {commentedCount > 0 ? `${commentedCount} ` : ""}to queue
           </Button>
           {hasNextUnit ? <Button onClick={onExecuteNext}>Execute next unit</Button> : null}
         </DialogFooter>

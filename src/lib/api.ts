@@ -94,7 +94,7 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
+import type { FeedbackItem, ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
@@ -154,4 +154,35 @@ export async function fetchUnitScreenshots(activeProject: ProjectRecord | null):
   } catch {
     return [];
   }
+}
+
+// Queue per-screenshot feedback for a unit (no agent dispatch).
+export async function queueFeedback(
+  unitPath: string,
+  items: { screenshot: string; comment: string }[],
+  activeProject: ProjectRecord | null,
+): Promise<FeedbackItem[]> {
+  return (await hyperwikiApi.json<FeedbackItem[]>(withProjectQuery("/api/feedback", activeProject), {
+    method: "POST",
+    body: { unitPath, items },
+  })) || [];
+}
+
+// All feedback items (pending + dispatched). Callers filter by status.
+export async function fetchFeedback(activeProject: ProjectRecord | null): Promise<FeedbackItem[]> {
+  try {
+    return (await hyperwikiApi.json<FeedbackItem[]>(withProjectQuery("/api/feedback", activeProject))) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Mark queued items dispatched after sending them to the agent.
+export async function dispatchFeedback(ids: string[], activeProject: ProjectRecord | null): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery("/api/feedback/dispatch", activeProject), { method: "POST", body: { ids } });
+}
+
+// Remove a single queued feedback item.
+export async function deleteFeedbackItem(id: string, activeProject: ProjectRecord | null): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery(`/api/feedback?id=${encodeURIComponent(id)}`, activeProject), { method: "DELETE" });
 }

@@ -3,7 +3,18 @@ export type ViewRoute =
   | { kind: "projects" }
   | { kind: "new-project" }
   | { kind: "settings" }
-  | { kind: "unit-gallery" };
+  | { kind: "unit-gallery" }
+  | { kind: "feedback-queue" };
+
+export interface FeedbackItem {
+  id: string;
+  unitPath: string;
+  screenshot: string;
+  comment: string;
+  status: string;
+  createdAt: number;
+  dispatchedAt?: number;
+}
 
 export interface UnitScreenshot {
   unitPath: string;
