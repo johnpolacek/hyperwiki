@@ -56,6 +56,10 @@ assert.ok(
   "App should drain a unit's queued feedback to the agent and mark it dispatched.",
 );
 assert.ok(
+  ts.includes("Send Feedback (") && ts.includes("function sendScreenshotFeedback"),
+  "With comments present, the dialog should offer 'Send Feedback' (enqueue + dispatch now) in place of Execute next unit.",
+);
+assert.ok(
   ts.includes("export function FeedbackQueueView") && ts.includes("<FeedbackQueueView"),
   "The feedback queue view should exist and be routed.",
 );

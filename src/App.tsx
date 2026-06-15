@@ -2233,6 +2233,24 @@ function App() {
     }
   }
 
+  // "Send Feedback" from the review dialog: enqueue this unit's comments, then
+  // dispatch them to the agent right away (records them as dispatched).
+  async function sendScreenshotFeedback(comments: { name: string; comment: string }[]) {
+    const review = screenshotReview;
+    setScreenshotReview(null);
+    if (!review || !comments.length) return;
+    try {
+      const created = await queueFeedback(
+        review.unitPath,
+        comments.map((entry) => ({ screenshot: entry.name, comment: entry.comment })),
+        activeProject,
+      );
+      await dispatchUnitFeedback(review.unitPath, created);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   function feedbackIssuePrompt(unitPath: string, entries: { screenshot: string; comment: string }[]) {
     const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
     return [
@@ -2962,6 +2980,7 @@ function App() {
             onClose={() => setScreenshotReview(null)}
             onExecuteNext={() => void executeNextUnitFromReview()}
             onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
+            onSendFeedback={(comments) => void sendScreenshotFeedback(comments)}
           />
         ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>

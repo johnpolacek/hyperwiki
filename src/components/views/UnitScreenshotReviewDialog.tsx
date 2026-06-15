@@ -14,12 +14,13 @@ export interface ScreenshotReview {
 // Post-run review gate: step through a unit's screenshots, leave a comment on
 // any with a problem, then close / queue the feedback (drained to the agent
 // later, in batches) / execute the next unit.
-export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onClose, onQueueFeedback, onExecuteNext }: {
+export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onClose, onQueueFeedback, onSendFeedback, onExecuteNext }: {
   review: ScreenshotReview;
   unitTitle: string;
   hasNextUnit: boolean;
   onClose: () => void;
   onQueueFeedback: (comments: { name: string; comment: string }[]) => void;
+  onSendFeedback: (comments: { name: string; comment: string }[]) => void;
   onExecuteNext: () => void;
 }) {
   const [index, setIndex] = useState(0);
@@ -27,11 +28,17 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
   const current = review.images[Math.min(index, review.images.length - 1)];
   const commentedCount = Object.values(comments).filter((value) => value.trim()).length;
 
-  const queueFeedback = () => {
-    const payload = review.images
+  const buildPayload = () =>
+    review.images
       .map((image) => ({ name: image.name, comment: (comments[image.name] || "").trim() }))
       .filter((entry) => entry.comment);
+  const queueFeedback = () => {
+    const payload = buildPayload();
     if (payload.length) onQueueFeedback(payload);
+  };
+  const sendFeedback = () => {
+    const payload = buildPayload();
+    if (payload.length) onSendFeedback(payload);
   };
 
   return (
@@ -73,7 +80,11 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onC
           <Button disabled={commentedCount === 0} variant="outline" onClick={queueFeedback}>
             Add Feedback{commentedCount > 0 ? ` (${commentedCount})` : ""}
           </Button>
-          {hasNextUnit ? <Button onClick={onExecuteNext}>Execute next unit</Button> : null}
+          {commentedCount > 0 ? (
+            <Button onClick={sendFeedback}>Send Feedback ({commentedCount})</Button>
+          ) : hasNextUnit ? (
+            <Button onClick={onExecuteNext}>Execute next unit</Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
