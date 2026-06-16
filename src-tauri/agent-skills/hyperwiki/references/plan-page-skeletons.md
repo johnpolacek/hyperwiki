@@ -199,13 +199,36 @@ const delay = Math.min(30_000, base * 2 ** attempt) + jitter()
   The user performs the manual network-drop check; unit 03 stays blocked until the success signal (reconnect under 30s, zero duplicates) is recorded.
 </CompletionGate>
 
-## Screenshot capture
+## Screen content & layout
 
-- Route: `/dashboard` (the live socket status panel)
-- Requires auth: yes (any signed-in user)
-- Preconditions: a reconnect must have occurred so the panel shows history
-- Views: `01-connected`, `02-reconnecting`, `03-recovered`
+Shared frame. Header is the live status panel's title bar; no nav changes. A conditional alert sits above the panel body and shows the last socket error without clearing connection history.
+
+<Screen name="Connection panel" route="/dashboard">
+
+Purpose. Show the current socket state and recent reconnect history.
+
+<Mockup title="Connection panel">
+
 ```
+┌─ Connection ───────────────────────┐
+│ ● Connected        last ack: #1842  │
+│ Reconnects                          │
+│  • 14:02  recovered in 3.1s         │
+│  • 13:40  recovered in 0.9s         │
+└─────────────────────────────────────┘
+```
+
+</Mockup>
+
+- Heading. "Connection"; subhead "Live sync status".
+- Layout (top → bottom): (1) status pill — "Connected" / "Reconnecting…" / "Offline"; (2) last-acked sequence line; (3) reconnect history list (one row per drop, newest first), empty state "No reconnects yet".
+- States. Connected (green pill, history may be empty), Reconnecting (amber pill, spinner), Offline (red pill, "Retrying in Ns").
+- Backed by. The socket client's connection store; no user-committed mutation — the panel is read-only and updates from socket events.
+
+</Screen>
+```
+
+Add a `## Screen content & layout` section to any unit that creates or changes screens: one `<Screen>` per screen (with `route`/`step`/`progress` when relevant), an optional `<Mockup>` ASCII wireframe, then the screen's purpose, canonical copy, top-to-bottom layout, states, and the action each control commits. Describe the shared frame once above the screens. Omit the whole section for non-UI units. See the **UI Units** section of `planning-contract.md`.
 
 Add the optional `## Screenshot capture` section only to units with a browser-observable result. The execute agent reads it to know what to shoot and how to reach the state; it signs in (when auth is required) using the project's `previewCapture` profile in `.hyperwiki/config.json`. Omit it for non-UI units.
 

@@ -73,7 +73,7 @@ When the accepted plan has explicit stages, a `Current stage`, a multi-stage imp
 
 ## CLI Plan Workflow
 
-Plan files must be useful from a terminal. Optimize the first 80 lines of every active plan for quick inspection with `sed`, `head`, or `less`.
+Plan files must be useful from a terminal. Optimize the first 80 lines of every active plan for quick inspection with `sed`, `head`, or `less`. This is about meaning-in-source — status, next action, and key decisions reachable in the file's text — not about avoiding rich components. Below the summary, compose freely with visual components, `Screen` specs, and mockups; the only rule is that their meaning (copy, layout, decisions) lives in the source text or attributes, not solely in how they render.
 
 `wiki/plans/index.mdx` is a structural route target, not a visible top-level Plans page. Keep it minimal and do not add visible plan summaries, active-plan cards, current-unit detail, next action, blockers, or validation there. The app renders an empty "No active plans" state on this route when no incomplete plan exists; put current-unit detail, next action, blockers, and validation in the active plan page itself.
 
@@ -284,7 +284,7 @@ wiki/plans/
 `wiki/plans/mvp/index.mdx` should act as the live roadmap index. It should name the current status, most recent completed unit when known, and exactly one next execution unit or planning target.
 
 Stage files should describe the stage goal, completion gate, and unit sequence. Unit files should be small enough for one implementation pass.
-For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include an Intent or Goal plus the `Scope`, `ImplementationNotes`, `Dependencies`, `Verification`, and `CompletionGate` section components. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk. Any required manual step must be user-actionable, naming who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
+For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include an Intent or Goal plus the `Scope`, `ImplementationNotes`, `Dependencies`, `Verification`, and `CompletionGate` section components. When the unit creates or changes user-facing screens, it must also include a `## Screen content & layout` section as described in **UI Units** below. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk. Any required manual step must be user-actionable, naming who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
 
 When all MVP stages and units are complete, move the whole `wiki/plans/mvp/` tree to `wiki/plans/zzz_completed/mvp/`. Do not move an MVP tree while any stage, unit, completion gate, or required verification remains incomplete, blocked, or unresolved.
 
@@ -327,10 +327,28 @@ A good unit includes:
 - the key boundaries or non-goals
 - any dependencies or prior decisions that matter
 - design considerations when the unit touches UI, preferably linking to the design brief instead of restating it
+- a `## Screen content & layout` section when the unit creates or changes screens (see **UI Units**)
 - a `Verification` section component with automated, manual, or explicitly deferred verification
 - a `CompletionGate` section component describing when the unit can be marked complete
 
 Keep unit plans lean. If a unit needs many bullets, hidden assumptions, or several unrelated outcomes, split it into follow-up units before implementation starts.
+
+## UI Units
+
+When a unit creates or changes user-facing screens, naming the screen is not decision-complete: an implementer should not have to invent copy, layout, or which control commits what. Such a unit must include a `## Screen content & layout` section that specifies the UI before implementation.
+
+Cross-cutting design principles, the visual system, and reusable interaction patterns belong in `wiki/sources/design-brief.mdx`; link to it instead of restating it. The unit's `## Screen content & layout` section captures the screen-specific decisions for this unit.
+
+Describe the shared frame once (header, branding, nav or its absence, progress indicator, action row, error region), then one `<Screen name="..." route="..." step="..." progress="...">` per screen or wizard step. Drop in a `<Mockup>` with an ASCII wireframe when a quick layout sketch helps; keep the wireframe as plain text. For every screen specify:
+
+- its purpose and entry/exit (what advances to it, what it advances to)
+- the canonical copy as final wording, not paraphrase: headings, subheads, field labels and placeholders, button text, hint text, and empty/error/success messages
+- the top-to-bottom order of regions and controls
+- which fields are required vs optional, and what disables or enables the primary action
+- the states the screen can show (loading, empty, error, success) and what each looks like
+- the action, mutation, or navigation each primary control commits, including idempotency or re-entry behavior when it matters
+
+Keep it to the decisions an implementer needs; do not duplicate the design brief or restate component internals. A unit whose `## Screenshot capture` views cannot be predicted from its `## Screen content & layout` section is not yet decision-complete.
 
 ## Unit Verification
 

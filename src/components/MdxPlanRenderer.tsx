@@ -1,6 +1,7 @@
 import { createElement, Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   AlertCircle,
+  AppWindow,
   Camera,
   Check,
   CheckCircle2,
@@ -99,6 +100,8 @@ const componentTags = [
   "Check",
   "Panel",
   "Frame",
+  "Screen",
+  "Mockup",
   "Card",
   "CardGroup",
   "Columns",
@@ -738,6 +741,57 @@ function renderPlanComponent(
         ) : null}
         <div className="grid gap-3 p-4">{children}</div>
       </div>
+    );
+  }
+
+  // Screen: a screen/step spec for a UI unit. The header carries optional route,
+  // step, and progress chrome; the body is free MDX (purpose, canonical copy,
+  // top-to-bottom layout, states, backing action). The copy stays in the source,
+  // so an agent reading raw MDX gets the same decisions the rendered card shows.
+  if (component === "Screen") {
+    const route = node.getAttribute("route") || "";
+    const step = node.getAttribute("step") || node.getAttribute("badge") || "";
+    const progressRaw = node.getAttribute("progress") || "";
+    const progressMatch = progressRaw.match(/\d+(?:\.\d+)?/);
+    const progressValue = progressMatch ? Math.max(0, Math.min(100, Number(progressMatch[0]))) : null;
+    return (
+      <section className="grid gap-3 rounded-lg border bg-card p-4" key={key}>
+        <div className="grid gap-2 border-b border-border/60 pb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AppWindow aria-hidden="true" className="size-4 shrink-0 text-primary" />
+            <h3 className="m-0 text-sm font-bold leading-tight text-foreground">{title || "Screen"}</h3>
+            {route ? <code className={cn(inlineCodeClassName, "text-[11px]")}>{route}</code> : null}
+            {step ? <span className="ml-auto text-[11px] font-medium text-muted-foreground">{step}</span> : null}
+          </div>
+          {progressValue !== null ? (
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${progressValue}%` }} />
+              </div>
+              <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{progressRaw}</span>
+            </div>
+          ) : null}
+        </div>
+        {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
+        <div className="grid gap-2.5">{children}</div>
+      </section>
+    );
+  }
+
+  // Mockup: a text/ASCII wireframe shown in a faux window frame. The wireframe is
+  // plain monospace text in the source (typically a fenced block), so it reads
+  // identically in a terminal and renders as a framed preview in-app.
+  if (component === "Mockup") {
+    return (
+      <figure className="m-0 overflow-hidden rounded-md border bg-muted/30" key={key}>
+        <div className="flex items-center gap-1.5 border-b bg-secondary/50 px-3 py-1.5">
+          <span aria-hidden="true" className="size-2 rounded-full bg-muted-foreground/30" />
+          <span aria-hidden="true" className="size-2 rounded-full bg-muted-foreground/30" />
+          <span aria-hidden="true" className="size-2 rounded-full bg-muted-foreground/30" />
+          {title ? <figcaption className="ml-2 text-[11px] font-medium text-muted-foreground">{title}</figcaption> : null}
+        </div>
+        <div className="overflow-x-auto px-4 py-3 font-mono text-xs leading-5 text-foreground [&_pre]:m-0 [&_pre]:overflow-visible [&_pre]:border-0 [&_pre]:bg-transparent [&_pre]:p-0">{children}</div>
+      </figure>
     );
   }
 

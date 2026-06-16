@@ -869,6 +869,8 @@ pub(crate) const MDX_SECTION_TAGS: &[&str] = &[
     "Check",
     "Panel",
     "Frame",
+    "Screen",
+    "Mockup",
     "CardGroup",
     "Columns",
     "Column",
@@ -982,6 +984,28 @@ fn mdx_component_markdown_hint(line: &str) -> Option<String> {
             hint.push_str(&format!(" — {detail}"));
         }
         return Some(hint);
+    }
+
+    // Screen specs self-title from their `name`. Emit a `### <name>` heading so the
+    // screen name survives in the Markdown derivative, appending route/step/progress
+    // chrome so none of the header attributes are silently dropped.
+    if is_mdx_opening(line, "Screen") {
+        let name = mdx_attr_value(line, "name")
+            .or_else(|| mdx_attr_value(line, "title"))
+            .or_else(|| mdx_attr_value(line, "label"))
+            .unwrap_or_else(|| "Screen".to_string());
+        let meta: Vec<String> = [
+            mdx_attr_value(line, "route"),
+            mdx_attr_value(line, "step").or_else(|| mdx_attr_value(line, "badge")),
+            mdx_attr_value(line, "progress"),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+        if meta.is_empty() {
+            return Some(format!("### {name}"));
+        }
+        return Some(format!("### {name} — {}", meta.join(" · ")));
     }
 
     // Canonical plan-section components self-title from their tag name. Emit a
