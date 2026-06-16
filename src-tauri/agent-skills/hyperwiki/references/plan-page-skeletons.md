@@ -34,10 +34,12 @@ wikiKind: "plan"
   - Validation: manual download check plus serializer unit test
 </PlanSummary>
 
-## Scope
+<Scope>
 
 - Billing screen export button, CSV only.
 - Respect the active date and customer filters.
+
+</Scope>
 
 ## Non-goals
 
@@ -49,18 +51,22 @@ wikiKind: "plan"
   <FlowStep label="CSV stream" detail="content-disposition download" />
 </Flow>
 
-## Implementation Notes
+<ImplementationNotes>
 
 - Reuse the invoice query in `src/lib/invoices.ts`; add a `format=csv` branch to the existing route.
 
-<Verification title="Verification">
+</ImplementationNotes>
+
+<Verification>
   <CommandBlock>pnpm test invoices</CommandBlock>
   - Manual: open Billing, set a date filter, click Export, confirm the CSV contains only filtered rows.
 </Verification>
 
-## Completion Gate
+<CompletionGate>
 
 - Serializer test passes and the manual download check above is recorded in `wiki/log.mdx`.
+
+</CompletionGate>
 ```
 
 ## 2. Staged Plan Index (`wiki/plans/<slug>/index.mdx`)
@@ -130,13 +136,13 @@ A client can hold a websocket session that survives server restarts and network 
   <StageItem label="Unit 02 — Reconnect and backoff" status="current" href="./stage-01-transport/unit-02-reconnect.mdx" />
 </StageTrack>
 
-<Callout title="Dependencies">
+<Dependencies>
   Requires the auth token refresh endpoint from the platform plan; blocked units must not start before it ships.
-</Callout>
+</Dependencies>
 
-<Check title="Completion gate">
+<CompletionGate title="Completion gate">
   Both units verified, reconnect demo recorded in `wiki/log.mdx`, and stage 02 unblocked only after a reviewer confirms the drop/reconnect manual check.
-</Check>
+</CompletionGate>
 ```
 
 ## 4. Unit Page (`wiki/plans/<slug>/stage-XX-<name>/unit-YY-<name>.mdx`)
@@ -162,11 +168,13 @@ wikiKind: "plan"
 
 Drops and restarts must not lose messages or duplicate handlers.
 
-## Scope
+<Scope>
 
 - `src/lib/socket-client.ts` only; server handshake is unit 01.
 
-## Implementation Notes
+</Scope>
+
+<ImplementationNotes>
 
 <CodeBlock title="src/lib/socket-client.ts" language="ts">
 const delay = Math.min(30_000, base * 2 ** attempt) + jitter()
@@ -174,18 +182,22 @@ const delay = Math.min(30_000, base * 2 ** attempt) + jitter()
 
 - Resume with `?since=<lastAckedSeq>`; the server replays from its ring buffer.
 
-## Dependencies or Blockers
+</ImplementationNotes>
+
+<Dependencies>
 
 - Unit 01 socket server must be merged.
+
+</Dependencies>
 
 <Verification title="Verification">
   <CommandBlock>pnpm test socket-client</CommandBlock>
   - Manual: run `pnpm dev`, open the app, kill the dev server, restart it, and confirm the client reconnects within 30s and no duplicate messages render. Record the result in `wiki/log.mdx`.
 </Verification>
 
-<Warning title="Completion gate">
+<CompletionGate title="Completion gate">
   The user performs the manual network-drop check; unit 03 stays blocked until the success signal (reconnect under 30s, zero duplicates) is recorded.
-</Warning>
+</CompletionGate>
 
 ## Screenshot capture
 

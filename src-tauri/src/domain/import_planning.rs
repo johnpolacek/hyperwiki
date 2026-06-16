@@ -558,7 +558,7 @@ fn validate_plan_artifact_content(path: &str, content: &str) -> Vec<String> {
         for (label, alternatives) in [
             ("intent or goal", &["intent", "goal"][..]),
             ("scope", &["scope"][..]),
-            ("implementation notes", &["implementation notes"][..]),
+            ("implementation", &["implementation notes", "implementation"][..]),
             (
                 "dependencies or blockers",
                 &["dependencies", "blockers", "dependency", "blocker"][..],

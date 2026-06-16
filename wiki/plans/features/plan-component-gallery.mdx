@@ -14,6 +14,45 @@ wikiKind: "plan"
   - Validation: visual check in light and dark themes
 </PlanSummary>
 
+## Canonical Sections
+
+<Scope>
+
+- Each canonical plan section is a self-titling component that renders a consistent, scannable header.
+- `Scope`, `ImplementationNotes`, and `Dependencies` render with a muted icon and a divider.
+
+</Scope>
+
+<ImplementationNotes>
+
+- The heading comes from the tag name; pass `title="..."` only to override the default label.
+
+</ImplementationNotes>
+
+<Dependencies>
+
+- The default label for `Dependencies` is "Dependencies or Blockers".
+
+</Dependencies>
+
+<Verification>
+
+- `Verification` and `CompletionGate` are the gate family and render with a stronger primary accent.
+
+</Verification>
+
+<CompletionGate>
+
+- The default label for `CompletionGate` is "Completion Gate".
+
+</CompletionGate>
+
+<Scope title="Scope (overridden title)">
+
+- This block passes `title` to override the tag-derived default label.
+
+</Scope>
+
 ## Flow
 
 <Flow title="Plan generation pipeline">

@@ -104,6 +104,9 @@ assert.match(runtime, /<Aside title=\\"Unlocks next\\">/);
 assert.match(runtime, /<Card title=\\"Build\\"/);
 assert.match(runtime, /<Card title=\\"Where\\"/);
 assert.match(runtime, /<Card title=\\"Ready when\\"/);
-assert.match(runtime, /<h2>Implementation Notes<\/h2>/);
+assert.match(runtime, /<ImplementationNotes>/);
+assert.match(runtime, /<Scope>/);
+assert.match(runtime, /<Dependencies>/);
+assert.match(runtime, /<CompletionGate title=\\"Completion Gate\\">/);
 
 console.log("import onboarding manager static smoke passed");

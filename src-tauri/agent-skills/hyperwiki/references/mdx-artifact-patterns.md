@@ -21,7 +21,7 @@ If a generated page reads like a prose dump, revise it into clearer sections, ta
 
 Plan MDX can use these built-in components without imports:
 
-`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `OpenDecision`, `DecisionOption`, `Evidence`, `Verification`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `Flow`, `FlowStep`, `StageTrack`, `StageItem`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
+`PlanHero`, `PlanSummary`, `PlanUnit`, `Decision`, `OpenDecision`, `DecisionOption`, `Evidence`, `Verification`, `Scope`, `ImplementationNotes`, `Dependencies`, `CompletionGate`, `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check`, `Panel`, `Frame`, `Card`, `CardGroup`, `Columns`, `Column`, `Aside`, `Flow`, `FlowStep`, `StageTrack`, `StageItem`, `RequestExample`, `ResponseExample`, `Steps`, `Step`, `Prompt`, `Update`, `TaskList`, `StatusBadge`, `ParamField`, `ResponseField`, `Tree`, `TreeFolder`, `TreeFile`, `CodeBlock`, `CommandBlock`, `Tabs`, `Tab`, `AccordionGroup`, `Accordion`, `Tooltip`, and `Visibility`.
 
 Use them conservatively:
 
@@ -33,7 +33,9 @@ Use them conservatively:
 | Unresolved decisions with selectable options | `OpenDecision` containing `DecisionOption` entries (the app renders options as buttons that start a modify-plan turn) |
 | Human-actionable checklists | `TaskList` with `[ ]`/`[x]` list items (the app renders live checkboxes that persist back to the file) |
 | Source-grounded facts, imported Q&A, confidence | `Evidence` |
-| Checks and completion gates | `Verification` |
+| Canonical unit sections | `Scope`, `ImplementationNotes`, `Dependencies` (self-titling section headers) |
+| Acceptance checks | `Verification` |
+| When the unit can be marked complete | `CompletionGate` |
 | Stage or unit sequence | `Steps` and `Step` |
 | Stage/unit progress with status and links | `StageTrack` and `StageItem` |
 | Pipelines, user flows, data flows | `Flow` and `FlowStep` |
@@ -46,7 +48,7 @@ Use them conservatively:
 | Important notes, constraints, risks | `Callout`, `Note`, `Tip`, `Warning`, `Danger`, `Check` |
 | Long source context for agents only | `Visibility for="agents"` |
 
-Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
+Use the dedicated section components for the canonical unit sections: `Scope`, `ImplementationNotes`, `Dependencies`, `Verification`, and `CompletionGate`. Each self-titles from its tag name and renders a consistent, scannable section header, so write `<Scope>...</Scope>` rather than a bare `## Scope` heading; pass `title="..."` only to override the default label. Do not dump long imported source bundles into visible paragraphs. Summarize visibly, then preserve the raw source/Q&A/handoff detail inside `Visibility for="agents"` so the rendered app stays readable while the Markdown derivative remains complete for agents.
 
 Prefer `CodeBlock` over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. For alternatives, compose `Tabs`/`Tab` with one `CodeBlock` per tab instead of dumping repeated fences. Use `CodeBlock language="diff"` for before/after changes; `+`/`-` lines render color-coded.
 
@@ -60,7 +62,7 @@ Use for focused product, workflow, UI, runtime, or maintenance work.
 
 - `PlanHero` with title, status, and one-sentence outcome.
 - `PlanSummary` with status, shape, current unit, next action, blockers, and validation.
-- Plain sections for Scope, Non-goals, and Implementation Notes.
+- `Scope` and `ImplementationNotes` section components; keep `Non-goals` as a plain `## Non-goals` section.
 - `Flow` with `FlowStep` chips for the user or data flow when the feature has a pipeline shape.
 - `Steps` for execution order when there is more than one unit; `StageTrack` with linked `StageItem` entries on staged plan indexes and stage pages.
 - `TaskList` only for small concrete checklists that will be updated by humans or agents.
@@ -129,7 +131,7 @@ Use `Tabs` and `Tab` around multiple `CodeBlock` examples when the same contract
 Use for executable unit pages.
 
 - `PlanHero` and `PlanSummary` first.
-- Plain sections for Intent, Scope, Implementation Notes, Dependencies or Blockers, and Completion Gate.
+- `Scope`, `ImplementationNotes`, `Dependencies`, and `CompletionGate` section components; keep Intent as a plain section or fold it into the `PlanHero` intent.
 - `Evidence` only when the unit depends on source-grounded facts.
 - `Verification` is mandatory before marking complete.
 - Manual verification or completion gates must include exact user steps, commands/settings paths when known, expected success signals, and what to rerun afterward.

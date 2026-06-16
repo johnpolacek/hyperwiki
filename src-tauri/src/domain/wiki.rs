@@ -857,6 +857,10 @@ pub(crate) const MDX_SECTION_TAGS: &[&str] = &[
     "Decision",
     "Evidence",
     "Verification",
+    "Scope",
+    "ImplementationNotes",
+    "Dependencies",
+    "CompletionGate",
     "Callout",
     "Note",
     "Tip",
@@ -980,10 +984,28 @@ fn mdx_component_markdown_hint(line: &str) -> Option<String> {
         return Some(hint);
     }
 
+    // Canonical plan-section components self-title from their tag name. Emit a
+    // `## <label>` heading into the Markdown derivative (using `title` when set,
+    // otherwise the default label) so the section words survive `strip_mdx_wrappers`
+    // and the substring-based plan validators keep finding them. Keep these default
+    // labels in sync with planSectionDefaults in src/components/MdxPlanRenderer.tsx.
+    let plan_sections = [
+        ("Scope", "Scope"),
+        ("ImplementationNotes", "Implementation"),
+        ("Dependencies", "Dependencies/Blockers"),
+        ("Verification", "Verification"),
+        ("CompletionGate", "Completion Gate"),
+    ];
+    for (tag, label) in plan_sections {
+        if is_mdx_opening(line, tag) {
+            let title = mdx_attr_value(line, "title").unwrap_or_else(|| label.to_string());
+            return Some(format!("## {title}"));
+        }
+    }
+
     let labeled_components = [
         ("Decision", "Decision"),
         ("Evidence", "Evidence"),
-        ("Verification", "Verification"),
         ("Callout", "Note"),
         ("Note", "Note"),
         ("Tip", "Tip"),
@@ -1323,11 +1345,11 @@ fn missing_unit_sections(markdown: &str) -> Vec<&'static str> {
         ("Intent or Goal", &["intent", "goal"][..]),
         ("Scope", &["scope"][..]),
         (
-            "Implementation Notes",
+            "Implementation",
             &["implementation notes", "implementation"][..],
         ),
         (
-            "Dependencies or Blockers",
+            "Dependencies/Blockers",
             &["dependencies", "dependency", "blockers", "blocker"][..],
         ),
         ("Verification", &["verification"][..]),

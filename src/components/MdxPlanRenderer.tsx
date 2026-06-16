@@ -2,18 +2,27 @@ import { createElement, Fragment, useEffect, useMemo, useState, type ReactNode }
 import {
   AlertCircle,
   Camera,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  CircleSlash2,
   Clipboard,
+  Clock,
   Code2,
+  CodeXml,
   FileText,
+  FlagTriangleRight,
   Folder,
   Info,
   Lightbulb,
   MessageSquareText,
+  MousePointerClick,
   Play,
   ShieldAlert,
+  ShieldCheck,
+  Target,
+  Terminal,
   X,
 } from "lucide-react";
 import {
@@ -78,6 +87,10 @@ const componentTags = [
   "Decision",
   "Evidence",
   "Verification",
+  "Scope",
+  "ImplementationNotes",
+  "Dependencies",
+  "CompletionGate",
   "Callout",
   "Note",
   "Tip",
@@ -203,7 +216,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             <span className="sr-only" aria-live="polite">{deleteStatus}</span>
           </div>
         ) : null}
-        <div className="mx-auto flex max-w-[68rem] flex-col gap-4 px-5 py-5 md:px-8">
+        <div className="mx-auto flex max-w-[68rem] flex-col gap-4 px-5 pt-5 pb-16 md:px-8 md:pb-24">
           {validationWarnings.length ? (
             <Alert className="rounded-lg">
               <AlertCircle aria-hidden="true" />
@@ -221,17 +234,10 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
           ) : null}
           {unitScreenshots.length ? (
             <Card className="gap-0 overflow-hidden py-0" data-unit-screenshot="true">
-              <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm font-semibold">Screenshots{unitScreenshots.length > 1 ? ` (${unitScreenshots.length})` : ""}</span>
-                  <span className="truncate text-xs text-muted-foreground">· captured {formatCapturedAt(latestScreenshotAt)}</span>
-                </div>
-                {onReviewScreenshots ? (
-                  <Button className="shrink-0" size="sm" variant="outline" onClick={onReviewScreenshots}>
-                    Review UI
-                  </Button>
-                ) : null}
+              <div className="flex items-center gap-2 border-b px-3 py-2">
+                <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm font-semibold">Screenshots{unitScreenshots.length > 1 ? ` (${unitScreenshots.length})` : ""}</span>
+                <span className="truncate text-xs text-muted-foreground">· captured {formatCapturedAt(latestScreenshotAt)} · click to review</span>
               </div>
               <button
                 aria-label="Open screenshot review"
@@ -500,6 +506,7 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   if (tag === "h3") return <h3 className="m-0 text-sm font-bold leading-snug" key={key}>{titleChildren}</h3>;
   if (tag === "p") return <p className="m-0 max-w-3xl text-sm leading-6 text-muted-foreground" key={key}>{children}</p>;
   if (tag === "strong") return <strong className="font-bold text-foreground" key={key}>{children}</strong>;
+  if (tag === "em") return <em className="italic" key={key}>{children}</em>;
   if (tag === "code") {
     const isPreformatted = node.parentElement?.tagName.toLowerCase() === "pre";
     return <code className={isPreformatted ? "font-mono text-foreground" : inlineCodeClassName} key={key}>{children}</code>;
@@ -521,7 +528,7 @@ function renderNode(node: ChildNode, key: string, onNavigate: (path: string) => 
   const isSummary = component === "PlanSummary" || classTokens.has("summary") || classTokens.has("status-grid");
   const isStage = classTokens.has("stage");
   const isUnit = component === "PlanUnit" || classTokens.has("unit");
-  const isPanel = classTokens.has("panel") || classTokens.has("decision-panel") || component === "Decision" || component === "Evidence" || component === "Verification" || component === "Callout";
+  const isPanel = classTokens.has("panel") || classTokens.has("decision-panel") || component === "Decision" || component === "Evidence" || component === "Callout";
 
   if (isHero) return <section className="grid gap-3 pb-5" key={key}>{children}</section>;
   if (isSummary) return <section className="grid gap-2 rounded-md border bg-secondary/50 p-3" key={key}>{children}</section>;
@@ -646,12 +653,72 @@ function renderPlanComponent(
     return renderExamplePanel(node, component, children, key);
   }
 
-  if (component === "Decision" || component === "Evidence" || component === "Verification") {
+  if (component === "Decision" || component === "Evidence") {
     return (
       <section className="grid gap-2 py-1" key={key}>
         {title ? <h2 className="m-0 text-base font-bold leading-tight">{title}</h2> : null}
         {description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null}
         <div className="grid gap-2">{children}</div>
+      </section>
+    );
+  }
+
+  if (planSectionDefaults[component]) {
+    const heading = title || planSectionDefaults[component];
+    // Only Completion Gate is a card; the rest render inline with a header + divider.
+    const sectionBase = "grid gap-3 py-1.5";
+    const descriptionNode = description ? <p className="m-0 text-sm leading-6 text-muted-foreground">{description}</p> : null;
+    const fallbackBody = <div className="grid gap-2">{children}</div>;
+
+    if (component === "Scope") {
+      return (
+        <section className={sectionBase} key={key}>
+          {planSectionHeader(component, heading)}
+          {descriptionNode}
+          {renderScopeItems(node, key, onNavigate, path) ?? fallbackBody}
+        </section>
+      );
+    }
+    if (component === "ImplementationNotes") {
+      return (
+        <section className={sectionBase} key={key}>
+          {planSectionHeader(component, heading)}
+          {descriptionNode}
+          {renderNumberedItems(node, key, onNavigate, path) ?? fallbackBody}
+        </section>
+      );
+    }
+    if (component === "Verification") {
+      return (
+        <section className={sectionBase} key={key}>
+          {planSectionHeader(component, heading)}
+          {descriptionNode}
+          {renderVerificationChecks(node, key, onNavigate, path) ?? fallbackBody}
+        </section>
+      );
+    }
+    if (component === "Dependencies") {
+      const noBlockers = /\bno blockers\b|blockers?:?\s*none/i.test(node.textContent || "");
+      const pill = noBlockers ? (
+        <span className="ml-auto inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <Check className="size-3" aria-hidden="true" />
+          No blockers
+        </span>
+      ) : null;
+      return (
+        <section className={sectionBase} key={key}>
+          {planSectionHeader(component, heading, pill)}
+          {descriptionNode}
+          <div className="grid gap-2 text-sm leading-6 text-muted-foreground">{children}</div>
+        </section>
+      );
+    }
+    // CompletionGate: the only carded section — an accent-tinted criterion callout.
+    return (
+      <section className="grid gap-3 rounded-lg border border-primary/30 bg-primary/[0.06] p-4" key={key}>
+        {planSectionHeader(component, heading)}
+        {descriptionNode}
+        <div className="grid gap-2 text-sm leading-6 text-foreground">{children}</div>
       </section>
     );
   }
@@ -1307,6 +1374,128 @@ function calloutIcon(kind: string, icon: string) {
   return <Info className="size-4" />;
 }
 
+// Canonical plan-section components. Self-title from the tag name; `title` overrides.
+// Keep these default labels in sync with the Rust hint table in
+// src-tauri/src/domain/wiki.rs (mdx_component_markdown_hint) so the Markdown
+// derivative still carries the section words the plan validators look for.
+const planSectionDefaults: Record<string, string> = {
+  Scope: "Scope",
+  ImplementationNotes: "Implementation",
+  Dependencies: "Dependencies/Blockers",
+  Verification: "Verification",
+  CompletionGate: "Completion Gate",
+};
+
+// Single accent: every section icon uses the theme primary. The custom per-section
+// layout (not color) is what differentiates the sections.
+function planSectionIcon(component: string) {
+  const className = "size-4 shrink-0 text-primary";
+  if (component === "Scope") return <Target aria-hidden="true" className={className} />;
+  if (component === "ImplementationNotes") return <CodeXml aria-hidden="true" className={className} />;
+  if (component === "Dependencies") return <CircleSlash2 aria-hidden="true" className={className} />;
+  if (component === "CompletionGate") return <FlagTriangleRight aria-hidden="true" className={className} />;
+  return <ShieldCheck aria-hidden="true" className={className} />;
+}
+
+function planSectionHeader(component: string, heading: string, trailing?: ReactNode) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+      {planSectionIcon(component)}
+      <h2 className="m-0 text-sm font-bold leading-tight text-foreground">{heading}</h2>
+      {trailing}
+    </div>
+  );
+}
+
+function planSectionItems(node: Element) {
+  return Array.from(node.querySelectorAll(":scope > ul > li, :scope > ol > li"));
+}
+
+// Scope: accent-marked rows; bold lead-ins (rendered as <strong>) read as item titles.
+function renderScopeItems(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = planSectionItems(node);
+  if (!items.length) return null;
+  return (
+    <ul className="m-0 grid list-none gap-2.5 p-0">
+      {items.map((item, index) => (
+        <li className="flex gap-2.5 text-sm leading-6 text-muted-foreground" key={`${key}-scope-${index}`}>
+          <span aria-hidden="true" className="flex h-6 shrink-0 items-center">
+            <span className="size-1.5 rounded-full bg-primary" />
+          </span>
+          <div className="min-w-0">{Array.from(item.childNodes).map((child, childIndex) => renderNode(child, `${key}-scope-${index}-${childIndex}`, onNavigate, path))}</div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Implementation: numbered rows with accent index badges.
+function renderNumberedItems(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = planSectionItems(node);
+  if (!items.length) return null;
+  return (
+    <ol className="m-0 grid list-none gap-3 p-0">
+      {items.map((item, index) => (
+        <li className="flex gap-3 text-sm leading-6 text-muted-foreground" key={`${key}-note-${index}`}>
+          <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">{index + 1}</span>
+          <div className="min-w-0">{Array.from(item.childNodes).map((child, childIndex) => renderNode(child, `${key}-note-${index}-${childIndex}`, onNavigate, path))}</div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const verificationKinds = [
+  { re: /^(automated|auto)\s*:/i, label: "Auto", icon: Terminal, accent: true, muted: false },
+  { re: /^manual\s*:/i, label: "Manual", icon: MousePointerClick, accent: false, muted: false },
+  { re: /^(deferred|defer)\s*:/i, label: "Deferred", icon: Clock, accent: false, muted: true },
+];
+
+// Verification: split list items into Auto / Manual / Deferred check rows when the
+// content follows that convention; otherwise return null to fall back to a plain list.
+function renderVerificationChecks(node: Element, key: string, onNavigate: (path: string) => void, path?: string) {
+  const items = planSectionItems(node);
+  if (!items.length) return null;
+  const matched = items.some((item) => verificationKinds.some((kind) => kind.re.test((item.textContent || "").trim())));
+  if (!matched) return null;
+  return (
+    <div className="grid gap-2.5">
+      {items.map((item, index) => {
+        const text = (item.textContent || "").trim();
+        const kind = verificationKinds.find((entry) => entry.re.test(text));
+        const body = Array.from(item.childNodes).map((child, childIndex) => {
+          if (childIndex === 0 && kind && child.nodeType === Node.TEXT_NODE) {
+            return (child.textContent || "").replace(kind.re, "").replace(/^\s+/, "");
+          }
+          return renderNode(child, `${key}-check-${index}-${childIndex}`, onNavigate, path);
+        });
+        if (!kind) {
+          return (
+            <div className="flex gap-2.5 text-sm leading-6 text-muted-foreground" key={`${key}-check-${index}`}>
+              <span aria-hidden="true" className="flex h-6 shrink-0 items-center">
+                <span className="size-1.5 rounded-full bg-primary" />
+              </span>
+              <div className="min-w-0">{body}</div>
+            </div>
+          );
+        }
+        const Icon = kind.icon;
+        return (
+          <div className="flex items-start gap-2.5 text-sm leading-6" key={`${key}-check-${index}`}>
+            <span className="flex h-6 shrink-0 items-center">
+              <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium", kind.accent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+                <Icon className="size-3" aria-hidden="true" />
+                {kind.label}
+              </span>
+            </span>
+            <div className={cn("min-w-0", kind.muted ? "text-muted-foreground/75" : "text-muted-foreground")}>{body}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function statusBadgeVariant(value: string): "default" | "secondary" | "destructive" | "outline" {
   const normalized = value.toLowerCase();
   if (normalized.includes("blocked") || normalized.includes("danger") || normalized.includes("deprecated")) return "destructive";
@@ -1351,7 +1540,9 @@ function resolveWikiLink(href: string, currentPath?: string) {
 function inlineMarkdown(value: string) {
   return escapeHtml(value)
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
 }
 
 function escapeHtml(value: string) {

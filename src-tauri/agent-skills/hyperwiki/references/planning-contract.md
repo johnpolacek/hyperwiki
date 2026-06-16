@@ -284,7 +284,7 @@ wiki/plans/
 `wiki/plans/mvp/index.mdx` should act as the live roadmap index. It should name the current status, most recent completed unit when known, and exactly one next execution unit or planning target.
 
 Stage files should describe the stage goal, completion gate, and unit sequence. Unit files should be small enough for one implementation pass.
-For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk. Any required manual step must be user-actionable, naming who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
+For complex plans, stage and unit pages should be detailed enough to enforce verification between steps. A stage page must include dependencies or blockers, a detailed unit sequence, completion gate, and verification expectations before later stages begin. A unit page must include an Intent or Goal plus the `Scope`, `ImplementationNotes`, `Dependencies`, `Verification`, and `CompletionGate` section components. Verification must name concrete automated, manual, or explicitly deferred checks; the next unit should not start until the current unit records verification or a documented deferral with risk. Any required manual step must be user-actionable, naming who performs it, exact commands/settings/UI paths when known, expected success signals, and what to rerun afterward.
 
 When all MVP stages and units are complete, move the whole `wiki/plans/mvp/` tree to `wiki/plans/zzz_completed/mvp/`. Do not move an MVP tree while any stage, unit, completion gate, or required verification remains incomplete, blocked, or unresolved.
 
@@ -327,8 +327,8 @@ A good unit includes:
 - the key boundaries or non-goals
 - any dependencies or prior decisions that matter
 - design considerations when the unit touches UI, preferably linking to the design brief instead of restating it
-- a `Verification` section with automated, manual, or explicitly deferred verification
-- a `Completion Gate` section describing when the unit can be marked complete
+- a `Verification` section component with automated, manual, or explicitly deferred verification
+- a `CompletionGate` section component describing when the unit can be marked complete
 
 Keep unit plans lean. If a unit needs many bullets, hidden assumptions, or several unrelated outcomes, split it into follow-up units before implementation starts.
 

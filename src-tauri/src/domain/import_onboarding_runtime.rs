@@ -1774,16 +1774,16 @@ fn plan_repair_prompt(
         &format!("The requestId must be exactly \"{request_id}\"."),
         "The runtime will write and validate the artifacts. You only generate the file paths and complete MDX contents.",
         "Apply the bundled hyperwiki planning contract even though you cannot call a skill tool in this turn.",
-        "Use built-in hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
+        "Use built-in hyperwiki MDX plan components where they improve structure: PlanHero, PlanSummary, PlanUnit, Decision, Evidence, Verification, Scope, ImplementationNotes, Dependencies, CompletionGate, Card, CardGroup, Columns, Column, Aside, RequestExample, ResponseExample, Steps, Step, StatusBadge, ParamField, ResponseField, Callout, Warning, Danger, CodeBlock, CommandBlock, and Visibility.",
         "Before writing artifacts, choose the planning composition pattern that fits the content: feature plan, architecture comparison, API/MCP contract, implementation unit, or verification handoff.",
-        "Prefer PlanHero for the title, intent, and canonical page status. Use PlanSummary for current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, CodeBlock for file snippets/schema/config/API examples, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Prefer CodeBlock over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. Use plain semantic sections for routine headings like Scope, Implementation Notes, and Completion Gate. Avoid multi-column plan layouts so generated briefs read as one full-width column.",
+        "Prefer PlanHero for the title, intent, and canonical page status. Use PlanSummary for current unit/next action/blockers/validation, Decision for accepted choices, Evidence for source-grounded facts, Verification for checks, Steps/Step for stage or unit sequences, full-width CardGroup cards for alternatives or work tracks, CommandBlock for exact local commands, CodeBlock for file snippets/schema/config/API examples, and RequestExample/ResponseExample/ParamField/ResponseField for contracts. Prefer CodeBlock over raw fenced code blocks for visible examples when a title, language label, copy affordance, or tabbed alternatives would help. Use the dedicated section components Scope, ImplementationNotes, Dependencies, Verification, and CompletionGate for the canonical unit sections; each self-titles from its tag. Avoid multi-column plan layouts so generated briefs read as one full-width column.",
         "Use Visibility for=\"agents\" around long source context, raw Q&A, or handoff details that agents need but humans should not see in the rendered app.",
         "Do not dump long imported source bundles into visible paragraphs; summarize visibly and preserve full context in agent-only Visibility blocks.",
         "Required artifact paths: wiki/plans/index.mdx, wiki/plans/mvp/index.mdx, one wiki/plans/mvp/stage-01-*.mdx stage page, and at least two wiki/plans/mvp/stage-01-*/unit-*.mdx executable unit pages.",
         "wiki/plans/index.mdx is structural route target only. Keep it minimal and do not duplicate status, shape, current unit, next action, blockers, validation, active plan cards, or visible plan lists there.",
         "wiki/plans/mvp/index.mdx must summarize source decisions, assumptions or unknowns, stage sequence, current unit, and deferred work.",
         "The stage page must explain the stage goal, unit sequence, completion gate, dependencies, and verification expectations.",
-        "Every executable unit must include Intent or Goal, Scope, Implementation Notes, Dependencies or Blockers, Verification, and Completion Gate sections.",
+        "Every executable unit must include Intent or Goal, Scope, Implementation, Dependencies/Blockers, Verification, and Completion Gate sections.",
         "Split the MVP into concrete implementation slices from the source evidence; do not produce a generic single \"Confirmed MVP Slice\" unit.",
         "Preserve accepted Q&A decisions and imported source details inside the relevant unit notes.",
         "If the imported source and Q&A make MVP planning impossible, emit exactly one hyperwiki-question JSON object and stop.",
@@ -1969,10 +1969,9 @@ wikiKind: "plan"
   </Column>
 </Columns>
 
-<section>
-  <h2>Completion Gate</h2>
+<CompletionGate title="Completion Gate">
   <p>Complete when all three units pass the local happy path and the final unit records the verification result.</p>
-</section>
+</CompletionGate>
 "#
             ),
         },
@@ -2014,20 +2013,18 @@ wikiKind: "plan"
 
 <Columns>
   <Column>
-    <section>
-      <h2>Scope</h2>
+    <Scope>
       <p>Build only the static document shell for the accepted journal MVP: title, primary editor, save-status region, and clear-entry control.</p>
-    </section>
-    <section>
-      <h2>Implementation Notes</h2>
+    </Scope>
+    <ImplementationNotes>
       <p>Use plain HTML, CSS, and JavaScript in one file. Keep the layout responsive and make the textarea the primary interaction.</p>
-    </section>
+    </ImplementationNotes>
     <Aside title="Do not add">
       <p>Frameworks, package installs, servers, accounts, external services, and network calls are outside this unit.</p>
     </Aside>
-    <Decision title="Dependencies">
+    <Dependencies>
       <p>Depends on the accepted static local-only MVP decision. Blockers: none.</p>
-    </Decision>
+    </Dependencies>
   </Column>
   <Column>
     <TaskList title="Acceptance checks">
@@ -2056,10 +2053,9 @@ wikiKind: "plan"
   <p>Open the root <code>index.html</code> in a browser and confirm the page renders, the textarea is usable, controls are visible, and no network or build process is required.</p>
 </Verification>
 
-<section>
-  <h2>Completion Gate</h2>
+<CompletionGate title="Completion Gate">
   <p>Complete when the static shell renders from the project root and is ready for local persistence wiring.</p>
-</section>
+</CompletionGate>
 "#
             ),
         },
@@ -2100,20 +2096,18 @@ wikiKind: "plan"
 
 <Columns>
   <Column>
-    <section>
-      <h2>Scope</h2>
+    <Scope>
       <p>Add a stable storage key, load-on-open restore, debounced autosave after textarea input, and user-visible save status.</p>
-    </section>
-    <section>
-      <h2>Implementation Notes</h2>
+    </Scope>
+    <ImplementationNotes>
       <p>Use a small debounce timer around <code>localStorage.setItem</code>. Restore from the same key during initialization and handle empty content consistently.</p>
-    </section>
+    </ImplementationNotes>
     <Aside title="Do not add">
       <p>Backend sync, accounts, analytics, external calls, framework state managers, and build tooling are outside this unit.</p>
     </Aside>
-    <Decision title="Dependencies">
-      <p>Depends on Unit 01's textarea and status elements. Blockers: none.</p>
-    </Decision>
+    <Dependencies>
+      <p>Depends on Unit 01's textarea and status elements and the accepted local-only persistence decision. Blockers: none.</p>
+    </Dependencies>
   </Column>
   <Column>
     <TaskList title="Acceptance checks">
@@ -2134,10 +2128,9 @@ wikiKind: "plan"
   <p>Type a journal entry, wait through the debounce, reload the browser, and confirm the same text is restored from <code>localStorage</code>. Inspect behavior with browser dev tools if needed.</p>
 </Verification>
 
-<section>
-  <h2>Completion Gate</h2>
+<CompletionGate title="Completion Gate">
   <p>Complete when autosave and restore work with the browser as the only runtime and persistence owner.</p>
-</section>
+</CompletionGate>
 "#
             .to_string(),
         },
@@ -2178,20 +2171,18 @@ wikiKind: "plan"
 
 <Columns>
   <Column>
-    <section>
-      <h2>Scope</h2>
+    <Scope>
       <p>Wire the clear-entry control to clear the textarea, update <code>localStorage</code>, return focus to the editor, and update save status.</p>
-    </section>
-    <section>
-      <h2>Implementation Notes</h2>
+    </Scope>
+    <ImplementationNotes>
       <p>Keep the clear action immediate and predictable. Ask for confirmation only if the imported source explicitly requires it.</p>
-    </section>
+    </ImplementationNotes>
     <Aside title="Do not add">
       <p>Additional storage layers, networking, accounts, framework code, deployment scope, and external services stay outside the MVP.</p>
     </Aside>
-    <Decision title="Dependencies">
+    <Dependencies>
       <p>Depends on Unit 02's storage key and autosave behavior. Blockers: none.</p>
-    </Decision>
+    </Dependencies>
   </Column>
   <Column>
     <TaskList title="Happy-path proof">
@@ -2213,10 +2204,9 @@ wikiKind: "plan"
   <p>Enter text, confirm autosave, reload to confirm restore, activate Clear Entry, reload again, and confirm the entry remains cleared. Run the repository checks that apply to static HTML changes.</p>
 </Verification>
 
-<section>
-  <h2>Completion Gate</h2>
+<CompletionGate title="Completion Gate">
   <p>Complete when the full MVP happy path works locally and verification confirms the browser remains the only runtime and storage boundary.</p>
-</section>
+</CompletionGate>
 "#
             .to_string(),
         },
@@ -2247,7 +2237,7 @@ fn compile_generic_source_mvp_artifacts(
         },
         GeneratedPlanArtifact {
             path: "wiki/plans/mvp/stage-01-source-grounded-mvp.mdx".to_string(),
-            content: format!("---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the accepted imported-project MVP.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Stage 01 - Source Grounded MVP</h1><p>Stage goal: implement the source-decided {source_focus} MVP behavior without adding unrequested product scope.</p></PlanHero><Steps><Step title=\"{unit_01_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">Create the minimum source-decided {source_focus} user-facing surface.</a></p></Step><Step title=\"{unit_02_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-source-workflow.mdx\">Implement the primary {source_focus} workflow described by the imported source and accepted decisions.</a></p></Step><Step title=\"{unit_03_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-source-verification.mdx\">Verify the {source_focus} happy path and record remaining unknowns.</a></p></Step></Steps><Decision title=\"Dependencies\"><p>Depends on accepted import source decisions and Q&amp;A answers for {source_focus}.</p></Decision><Verification><p>Run applicable repository checks, then manually exercise the {source_focus} workflow named by the imported source.</p></Verification><section><h2>Completion Gate</h2><p>Complete when all {source_focus} units are implemented and verified against source decisions.</p></section>"),
+            content: format!("---\ntitle: \"Stage 01 - Source Grounded MVP\"\ndescription: \"Build the accepted imported-project MVP.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>Stage 01 - Source Grounded MVP</h1><p>Stage goal: implement the source-decided {source_focus} MVP behavior without adding unrequested product scope.</p></PlanHero><Steps><Step title=\"{unit_01_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx\">Create the minimum source-decided {source_focus} user-facing surface.</a></p></Step><Step title=\"{unit_02_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-02-source-workflow.mdx\">Implement the primary {source_focus} workflow described by the imported source and accepted decisions.</a></p></Step><Step title=\"{unit_03_title}\"><p><a href=\"/wiki/plans/mvp/stage-01-source-grounded-mvp/unit-03-source-verification.mdx\">Verify the {source_focus} happy path and record remaining unknowns.</a></p></Step></Steps><Dependencies><p>Depends on accepted import source decisions and Q&amp;A answers for {source_focus}.</p></Dependencies><Verification><p>Run applicable repository checks, then manually exercise the {source_focus} workflow named by the imported source.</p></Verification><CompletionGate title=\"Completion Gate\"><p>Complete when all {source_focus} units are implemented and verified against source decisions.</p></CompletionGate>"),
         },
         generic_unit_artifact(
             "wiki/plans/mvp/stage-01-source-grounded-mvp/unit-01-source-surface.mdx",
@@ -2283,7 +2273,7 @@ fn generic_unit_artifact(
     GeneratedPlanArtifact {
         path: path.to_string(),
         content: format!(
-            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><PlanSummary><ul><li>Status: planned</li><li>Next action: implement this unit and run its verification</li></ul></PlanSummary><section><h2>Scope</h2><p>Stay inside the accepted imported-project MVP surface and implement only the {source_focus} behavior named by source evidence. Avoid unrequested product, service, framework, deployment, account, or integration scope.</p></section><section><h2>Implementation Notes</h2><p>Use accepted source decisions for {source_focus} as authority. Preserve source-specific constraints in code or handoff notes when implementation discovers a contradiction.</p></section><Evidence title=\"Accepted source decisions\"><p>The visible execution target is {source_focus}. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Decision title=\"Dependencies\"><p>Depends on prior units in Stage 01 and accepted import Q&amp;A decisions for {source_focus}. Blockers: none unless implementation contradicts source evidence.</p></Decision><Verification><p>Run applicable repository checks, open the implemented {source_focus} surface, exercise the source-described happy path, and confirm the observed behavior matches accepted import decisions before marking complete.</p></Verification><section><h2>Completion Gate</h2><p>Complete when the {source_focus} behavior is implemented, verified, and no source decision has been contradicted.</p></section>"
+            "---\ntitle: \"{title}\"\ndescription: \"Source-grounded MVP implementation unit.\"\nwikiKind: \"plan\"\n---\n\n<PlanHero><h1>{title}</h1><p>Intent: {intent}</p></PlanHero><PlanSummary><ul><li>Status: planned</li><li>Next action: implement this unit and run its verification</li></ul></PlanSummary><Scope><p>Stay inside the accepted imported-project MVP surface and implement only the {source_focus} behavior named by source evidence. Avoid unrequested product, service, framework, deployment, account, or integration scope.</p></Scope><ImplementationNotes><p>Use accepted source decisions for {source_focus} as authority. Preserve source-specific constraints in code or handoff notes when implementation discovers a contradiction.</p></ImplementationNotes><Evidence title=\"Accepted source decisions\"><p>The visible execution target is {source_focus}. Full context is preserved for agents.</p><Visibility for=\"agents\">{decision_summary}</Visibility></Evidence><Dependencies><p>Depends on prior units in Stage 01 and accepted import Q&amp;A decisions for {source_focus}. Blockers: none unless implementation contradicts source evidence.</p></Dependencies><Verification><p>Run applicable repository checks, open the implemented {source_focus} surface, exercise the source-described happy path, and confirm the observed behavior matches accepted import decisions before marking complete.</p></Verification><CompletionGate title=\"Completion Gate\"><p>Complete when the {source_focus} behavior is implemented, verified, and no source decision has been contradicted.</p></CompletionGate>"
         ),
     }
 }
@@ -3004,7 +2994,7 @@ mod tests {
         assert!(joined.contains("<Card title=\"Build\""));
         assert!(joined.contains("<Card title=\"Where\""));
         assert!(joined.contains("<Card title=\"Ready when\""));
-        assert!(joined.contains("<h2>Implementation Notes</h2>"));
+        assert!(joined.contains("<ImplementationNotes>"));
         assert!(joined.contains("<Evidence title=\"Accepted source decisions\">"));
         assert!(joined.contains("<Visibility for=\"agents\">"));
 
