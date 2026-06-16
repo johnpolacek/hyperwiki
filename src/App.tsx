@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, withProjectQuery } from "@/lib/api";
+import { clearUnitScreenshots, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, withProjectQuery } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
@@ -2283,7 +2283,7 @@ function App() {
       "",
       "Apply these revisions on this same unit; keep changes grounded in this unit.",
       `Append a "## Revisions" section at the end of the unit page (${unitPath}) — create it if absent, otherwise add a new dated entry — listing the feedback you addressed and a short summary of what changed. Preserve the page's existing plan components.`,
-      `Regenerate replacement screenshots of the affected views with the agent-browser skill into \`${unitScreenshotDir(unitPath)}/\` (overwrite the existing PNGs) so the new state can be reviewed.`,
+      `Regenerate the screenshots: first remove any existing PNGs in \`${unitScreenshotDir(unitPath)}/\`, then capture the current views fresh with the agent-browser skill into that directory so the set fully reflects the new state (no stale shots) and can be reviewed.`,
       "Run relevant checks before summarizing the result.",
     ].join("\n");
   }
@@ -2336,6 +2336,20 @@ function App() {
     const review = screenshotReview;
     setScreenshotReview(null);
     if (review) await markReviewed(review.unitPath, latestCapturedAt(review.images));
+  }
+
+  // "Discard screenshots": wipe the unit's folder so a redesign starts clean.
+  async function discardScreenshotReview() {
+    const review = screenshotReview;
+    setScreenshotReview(null);
+    if (!review) return;
+    try {
+      await clearUnitScreenshots(review.unitPath, activeProject);
+      setStatus("Screenshots discarded");
+      void refreshAwaitingReview();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
   }
 
   // Open the full review dialog on demand (not just auto on completion) for a
@@ -3018,6 +3032,7 @@ function App() {
             onDismiss={() => setScreenshotReview(null)}
             onExecuteNext={() => void executeNextUnitFromReview()}
             onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
+            onReset={() => void discardScreenshotReview()}
           />
         ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
@@ -3901,7 +3916,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     ...(screenshotDir
       ? [
-          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the project's dev preview URL) and save them into \`${screenshotDir}/\` as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`,
+          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the project's dev preview URL). First remove any existing PNGs in \`${screenshotDir}/\`, then save the fresh set there as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`) so a redesign fully replaces the old shots. Skip cleanly if the unit has no visible UI result.`,
           "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
         ]
       : []),
@@ -3953,7 +3968,7 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
     "- When updating plan pages, preserve their component structure and update status in place: PlanSummary list values, StageItem/FlowStep status attributes, and PlanHero status. Do not append prose status sections or strip plan components.",
     ...(screenshotDir
       ? [
-          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the worktree preview URL above) and save them into \`${screenshotDir}/\` inside the worktree as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`). Skip cleanly if the unit has no visible UI result.`,
+          `- If this unit produces a browser-observable result, use the agent-browser skill to screenshot each distinct view/state of the running app (the worktree preview URL above). First remove any existing PNGs in \`${screenshotDir}/\` inside the worktree, then save the fresh set there as ordered PNGs (e.g. \`01-home.png\`, \`02-settings.png\`) so a redesign fully replaces the old shots. Skip cleanly if the unit has no visible UI result.`,
           "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
         ]
       : []),

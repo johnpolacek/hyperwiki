@@ -420,6 +420,19 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             &crate::domain::screenshots::list_unit_screenshots(project_root),
         );
     }
+    if request.method == "DELETE" && request.path.starts_with("/api/unit-screenshots") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(unit_path) = query_param(&request.path, "path") else {
+            return error_response(400, "Missing unit page path.");
+        };
+        return match crate::domain::screenshots::clear_unit_screenshots(&project_root, &unit_path) {
+            Ok(()) => json_response(200, &serde_json::json!({ "ok": true })),
+            Err(error) => error_response(500, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/unit-screenshot") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");

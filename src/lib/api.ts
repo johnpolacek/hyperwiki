@@ -147,6 +147,11 @@ export async function fetchUnitScreenshotImages(
   }
 }
 
+// Discard a unit's screenshots so a redesign replaces the set cleanly.
+export async function clearUnitScreenshots(unitPath: string, activeProject: ProjectRecord | null): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery(`/api/unit-screenshots?path=${encodeURIComponent(unitPath)}`, activeProject), { method: "DELETE" });
+}
+
 // List all units that have screenshots (metadata only, with count) for the gallery.
 export async function fetchUnitScreenshots(activeProject: ProjectRecord | null): Promise<UnitScreenshot[]> {
   try {

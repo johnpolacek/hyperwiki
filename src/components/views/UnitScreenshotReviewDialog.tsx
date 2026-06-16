@@ -14,7 +14,7 @@ export interface ScreenshotReview {
 // Post-run review gate: step through a unit's screenshots. With no issues,
 // approve (Looks good) or advance (Execute next unit). With comments, Add
 // feedback to the queue — it's sent to the agent later via "Send all".
-export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onApprove, onDismiss, onQueueFeedback, onExecuteNext }: {
+export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onApprove, onDismiss, onQueueFeedback, onExecuteNext, onReset }: {
   review: ScreenshotReview;
   unitTitle: string;
   hasNextUnit: boolean;
@@ -22,6 +22,7 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onA
   onDismiss: () => void;
   onQueueFeedback: (comments: { name: string; comment: string }[]) => void;
   onExecuteNext: () => void;
+  onReset: () => void;
 }) {
   const [index, setIndex] = useState(0);
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -73,6 +74,9 @@ export function UnitScreenshotReviewDialog({ review, unitTitle, hasNextUnit, onA
         </div>
 
         <DialogFooter>
+          <Button className="mr-auto text-muted-foreground hover:text-destructive" size="sm" variant="ghost" onClick={onReset}>
+            Discard screenshots
+          </Button>
           {commentedCount > 0 ? (
             <>
               <Button variant="outline" onClick={onDismiss}>Close</Button>

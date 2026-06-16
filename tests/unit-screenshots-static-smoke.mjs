@@ -63,6 +63,11 @@ assert.ok(
   commandRs.includes("read_unit_screenshots(project_root, &unit_path)"),
   "/api/unit-screenshots?path should return every screenshot for the unit.",
 );
+assert.ok(
+  screenshotsRs.includes("pub fn clear_unit_screenshots")
+    && commandRs.includes('request.method == "DELETE" && request.path.starts_with("/api/unit-screenshots")'),
+  "A redesign can clear a unit's screenshots (clear_unit_screenshots + DELETE route).",
+);
 
 // Capture — the shared dir mapping + multi-screenshot prompt instruction.
 const tsSources = await readSources(
@@ -89,6 +94,14 @@ assert.ok(
 assert.ok(
   tsSources.includes("use the agent-browser skill to screenshot each distinct view/state"),
   "The execute prompts should instruct the agent to capture one screenshot per view.",
+);
+assert.ok(
+  tsSources.includes("First remove any existing PNGs") && tsSources.includes("export async function clearUnitScreenshots"),
+  "Capture should clear the unit folder first (clean replace) and expose a clear helper.",
+);
+assert.ok(
+  tsSources.includes("Discard screenshots") && tsSources.includes("function discardScreenshotReview"),
+  "The review dialog should offer a manual 'Discard screenshots' reset.",
 );
 
 // Viewing — fetch helpers, carousel, inline display, gallery route + view, nav.

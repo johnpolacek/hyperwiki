@@ -100,6 +100,23 @@ fn unit_path_for_stem(stem: &str) -> String {
     format!("/wiki/{stem}.mdx")
 }
 
+/// Remove all screenshots for a unit (its per-unit folder and any legacy single
+/// file) so a redesign replaces the set cleanly instead of leaving stale shots.
+/// Non-wiki / traversal paths resolve to `None` and are a no-op.
+pub fn clear_unit_screenshots(root: impl AsRef<Path>, unit_path: &str) -> Result<(), String> {
+    if let Some(dir) = screenshot_dir_for_unit(&root, unit_path) {
+        if dir.exists() {
+            fs::remove_dir_all(&dir).map_err(|error| error.to_string())?;
+        }
+    }
+    if let Some(legacy) = legacy_screenshot_path(&root, unit_path) {
+        if legacy.is_file() {
+            fs::remove_file(&legacy).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 /// Read every screenshot for a unit, sorted by file name. Reads the per-unit
 /// folder, falling back to a legacy single `<stem>.png`.
 pub fn read_unit_screenshots(root: impl AsRef<Path>, unit_path: &str) -> Vec<UnitScreenshotImage> {
@@ -380,6 +397,27 @@ mod tests {
         let images = read_unit_screenshots(&dir, "/wiki/plans/mvp/units/stage-04/03-email-invite-flow.mdx");
         assert_eq!(images.len(), 2);
         assert_eq!(images[0].name, "01-onboarding-step3-send-invites.png");
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn clear_removes_the_unit_folder_and_is_traversal_safe() {
+        let dir = std::env::temp_dir().join(format!("hyperwiki-shots-clear-{}", std::process::id()));
+        let unit_dir = dir.join(".hyperwiki/state/screenshots/plans/mvp/units/stage-04/03-foo");
+        fs::create_dir_all(&unit_dir).unwrap();
+        fs::write(unit_dir.join("01-old.png"), b"stale").unwrap();
+        fs::write(unit_dir.join("02-old.png"), b"stale").unwrap();
+
+        let unit = "/wiki/plans/mvp/units/stage-04/03-foo.mdx";
+        assert_eq!(read_unit_screenshots(&dir, unit).len(), 2);
+        clear_unit_screenshots(&dir, unit).unwrap();
+        assert!(read_unit_screenshots(&dir, unit).is_empty());
+        assert!(!unit_dir.exists());
+
+        // Clearing an already-empty unit and a traversal path are no-ops.
+        clear_unit_screenshots(&dir, unit).unwrap();
+        clear_unit_screenshots(&dir, "/wiki/../../etc/passwd.mdx").unwrap();
 
         fs::remove_dir_all(&dir).ok();
     }

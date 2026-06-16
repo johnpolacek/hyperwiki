@@ -60,8 +60,8 @@ assert.ok(
   "Draining is a single 'Send all' that flushes the whole queue; no per-unit send buttons.",
 );
 assert.ok(
-  ts.includes('"## Revisions"') && ts.includes("Regenerate replacement screenshots"),
-  "The feedback dispatch prompt should append a Revisions section and regenerate replacement screenshots for re-review.",
+  ts.includes('"## Revisions"') && ts.includes("Regenerate the screenshots: first remove any existing PNGs"),
+  "The feedback dispatch prompt should append a Revisions section and regenerate screenshots (clear-then-capture) for re-review.",
 );
 assert.ok(
   ts.includes("export function FeedbackQueueView") && ts.includes("<FeedbackQueueView"),
