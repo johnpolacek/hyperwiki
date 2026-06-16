@@ -90,8 +90,7 @@ wikiKind: "plan"
     <li>Mitigation: implement only the import-onboarding run type first, keep provider abstraction thin, and require latency measurements before broadening the engine to other workflows.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Fresh import opens an onboarding session, starts a run, and emits immediate progress.</li>
     <li>First and follow-up questions are represented as durable <code>Question</code> objects, not parsed ad hoc in React.</li>
@@ -102,7 +101,7 @@ wikiKind: "plan"
     <li>Latency measurements cover app startup, first question, answer-to-follow-up, and plan generation start.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, engine unit tests, provider-adapter tests, and an import-onboarding run replay smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Assumptions</h2>
   <ul>

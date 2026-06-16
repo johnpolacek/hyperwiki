@@ -20,9 +20,10 @@ wikiKind: "plan"
   <p>Execute should behave like a real submitted agent prompt, not queue behind Codex starter text such as <code>Explain this codebase</code>.</p>
   <h2>Change</h2>
   <p>Prefix routed agent prompts with terminal input that clears the active prompt line before bracketed paste and submit.</p>
-  <h2>Verification</h2>
+  <Verification>
   <ul>
     <li>Command tests confirm agent prompt routing reports the clear prefix.</li>
     <li>Helper tests confirm the paste input starts with the clear sequence.</li>
   </ul>
+  </Verification>
 </PlanUnit>

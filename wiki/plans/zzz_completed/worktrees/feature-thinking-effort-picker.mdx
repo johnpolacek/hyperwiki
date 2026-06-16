@@ -34,14 +34,13 @@ wikiKind: "plan"
         <li>Verified syntax with <code>pnpm run check</code> and browser behavior with <code>agent-browser</code> against the worktree preview.</li>
       </ul>
     </section>
-    <section>
-      <h2>Implementation Notes</h2>
+    <ImplementationNotes>
       <ul>
         <li>Keep the durable project command in <code>.hyperwiki/config.json</code> as the source command.</li>
         <li>Apply the thinking-effort default in the browser when creating agent terminals.</li>
         <li>Use Codex CLI <code>-c model_reasoning_effort="..."</code> overrides so the feature remains compatible with current Codex config behavior.</li>
       </ul>
-    </section>
+    </ImplementationNotes>
   <section>
       <h2>Finish</h2>
       <ul>

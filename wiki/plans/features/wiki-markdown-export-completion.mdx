@@ -22,15 +22,14 @@ wikiKind: "plan"
   <p>Make a hyperwiki project easy for Codex, Claude, or another local agent to ingest as Markdown without scraping rendered HTML or relying on hosted docs conventions.</p>
 </section>
 
-<section>
-  <h2>Scope</h2>
+<Scope>
   <ul>
     <li>Add a local <code>/api/wiki/export-markdown-zip</code> endpoint that packages wiki Markdown derivatives into a zip payload returned to the app.</li>
     <li>Add a generated project <code>SKILL.md</code> export that points agents to the canonical wiki, plan, source, and Markdown export surfaces.</li>
     <li>Add app actions to download the Markdown zip and generated skill from the wiki page header.</li>
     <li>Render MDX wiki pages through the React renderer so non-plan pages also get copy-as-Markdown and validation-warning affordances.</li>
   </ul>
-</section>
+</Scope>
 
 <section>
   <h2>Non-Goals</h2>

@@ -19,8 +19,7 @@ wikiKind: "plan"
       <h2>Intent</h2>
       <p>Support Claude alongside Codex without weakening hyperwiki's visible terminal handoff model. Codex remains the default provider for Execute and new handoffs, while users can start Claude sessions and run Codex and Claude side by side in the same workspace.</p>
     </section>
-    <section>
-      <h2>Scope</h2>
+    <Scope>
       <ul>
         <li>Add provider-aware agent configuration with Codex as the default provider and Claude as an additional local CLI provider.</li>
         <li>Preserve legacy <code>agent.launchCommand</code> by treating it as the Codex provider command when newer provider configuration is absent.</li>
@@ -28,7 +27,7 @@ wikiKind: "plan"
         <li>Route Execute, dashboard, plan, review, and MCP prompt handoffs to the default Codex provider unless a specific provider or session is selected.</li>
         <li>Keep provider-specific behavior isolated behind adapters: Codex keeps its readiness detection and thinking-effort flag handling; Claude uses the interactive <code>claude</code> CLI path and never receives Codex-specific flags.</li>
       </ul>
-    </section>
+    </Scope>
     <section>
       <h2>Non-Goals</h2>
       <ul>

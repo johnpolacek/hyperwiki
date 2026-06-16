@@ -19,19 +19,17 @@ wikiKind: "plan"
       <h2>Goal</h2>
       <p>Start work intentionally from the current wiki context instead of opening terminals on workspace load.</p>
     </section>
-    <section>
-      <h2>Scope</h2>
+    <Scope>
       <ul>
         <li>Add an Execute menu with main and worktree targets.</li>
         <li>Create agent terminals lazily and run the dev log collapsed after execution starts.</li>
         <li>Prepare initialized projects with Portless and parallel worktree guidance.</li>
       </ul>
-    </section>
-    <section>
-      <h2>Verification</h2>
+    </Scope>
+    <Verification>
       <ul>
         <li><code>pnpm run check</code>.</li>
         <li><code>pnpm run smoke:launch</code>.</li>
         <li><code>pnpm run smoke:browser</code>.</li>
       </ul>
-    </section>
+    </Verification>

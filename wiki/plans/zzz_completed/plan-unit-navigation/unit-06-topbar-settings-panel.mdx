@@ -16,22 +16,24 @@ wikiKind: "plan"
 </section>
 <h2>Intent</h2>
 <p>Make the TopBar action group feel complete enough for dogfooding by adding an icon to Projects, reserving a Settings surface, and simplifying panel motion so dialogs drop straight down from the bar.</p>
-<h2>Scope</h2>
+<Scope>
 <ul>
   <li>Add a circle-pile icon to the Projects button.</li>
   <li>Add a Settings button with a gear icon and placeholder panel UI.</li>
   <li>Keep Projects, Up Next, and Settings mutually exclusive with existing outside-click and Escape close behavior.</li>
   <li>Change shared TopBar panel entry animation from diagonal/top-left-feeling motion to vertical-only down motion.</li>
 </ul>
+</Scope>
 <h2>Non-goals</h2>
 <ul>
   <li>No persistent settings storage.</li>
   <li>No new project management behavior.</li>
   <li>No broader workspace layout redesign.</li>
 </ul>
-<h2>Verification</h2>
+<Verification>
 <ul>
   <li><code>pnpm run check</code> passed on 2026-05-11.</li>
   <li><code>pnpm run smoke:launch</code> passed on 2026-05-11.</li>
   <li>Agent-browser visual check passed on 2026-05-11: Settings opens as a compact top-right panel, Projects remains mutually exclusive, and the TopBar buttons fit without overlap.</li>
 </ul>
+</Verification>

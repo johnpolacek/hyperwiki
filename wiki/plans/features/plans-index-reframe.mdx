@@ -19,20 +19,18 @@ wikiKind: "plan"
   <h2>Intent</h2>
   <p>hyperwiki should not present a separate current-work dashboard product surface when the durable artifact is really the Plans index. The canonical <code>wiki/plans/index.mdx</code> file remains the current-work contract for compatibility with project contracts, MCP, import planning, generated scaffolds, and agent handoffs.</p>
 </section>
-<section>
-  <h2>Scope</h2>
+<Scope>
   <ul>
     <li>Rename visible page titles, generated templates, tests, and active agent guidance from dashboard language to Plans or Plans index.</li>
     <li>Keep existing routes, public contract field names, terminal scoping, and import fallback behavior stable.</li>
     <li>Leave historical log entries unchanged unless they are active guidance.</li>
   </ul>
-</section>
-<section>
-  <h2>Verification</h2>
+</Scope>
+<Verification>
   <ul>
     <li><code>pnpm run check</code> passed.</li>
     <li><code>pnpm run test:tauri</code> passed.</li>
     <li><code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, <code>pnpm run smoke:mcp-transport</code>, <code>pnpm run smoke:tauri-harness</code>, and <code>pnpm run smoke:tauri-static-assets</code> passed.</li>
     <li><code>pnpm run smoke:tauri-webdriver</code> skipped because Tauri desktop WebDriver is not supported on macOS WKWebView.</li>
   </ul>
-</section>
+</Verification>

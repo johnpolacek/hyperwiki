@@ -16,13 +16,14 @@ wikiKind: "plan"
     </section>
     <h2>Intent</h2>
     <p>Agents working on generated projects should not infer dev-preview setup from scattered docs. If the project is an app or previewable site, the handoff should explicitly tell the agent to create or update <code>package.json</code> with a runnable <code>dev</code> script, preferably backed by Portless.</p>
-    <h2>Scope</h2>
+    <Scope>
     <ul>
       <li>Update new-project handoff prompts.</li>
       <li>Update Execute prompts for main and worktree implementation.</li>
       <li>Update generated <code>AGENTS.md</code>, development page, and technical brief defaults.</li>
       <li>Keep existing Portless wrapping behavior for repositories that already have a <code>dev</code> script.</li>
     </ul>
+    </Scope>
     <h2>Outcome</h2>
     <ul>
       <li>New Project handoffs now tell agents to create or update <code>package.json</code> with a runnable <code>dev</code> script for previewable apps.</li>

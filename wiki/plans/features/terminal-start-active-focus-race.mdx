@@ -14,7 +14,8 @@ status: "active"
   </ul>
 </PlanSummary>
 
-## Scope
+<Scope>
+
 
 <ul>
   <li>Carry an explicit selected session id through terminal session reloads after start, restart, and dev terminal creation.</li>
@@ -22,9 +23,14 @@ status: "active"
   <li>Add static smoke coverage so future terminal starts cannot regress to preserving a stale active pane.</li>
 </ul>
 
-## Verification
+</Scope>
+
+<Verification>
+
 
 <ul>
   <li><code>node tests/new-project-upload-static-smoke.mjs</code></li>
   <li><code>pnpm run check</code></li>
 </ul>
+
+</Verification>

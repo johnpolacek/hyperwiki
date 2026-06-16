@@ -22,13 +22,14 @@ status: "complete"
 <PlanUnit title="Unit 01 - Wiki Change Fingerprint And Sidebar Refresh" status="complete">
   <h2>Intent</h2>
   <p>Plan modifications should update the left sidebar automatically when new units, stages, or plans are written by an agent or another local editor.</p>
-  <h2>Implementation Notes</h2>
+  <ImplementationNotes>
   <ul>
     <li>Add a lightweight fingerprint for <code>wiki/**/*.mdx</code> based on relative path, size, and modified time.</li>
     <li>Expose the fingerprint through the Tauri request API.</li>
     <li>Poll the fingerprint while live agent sessions are active and recheck when the app regains focus or visibility.</li>
     <li>Reload wiki pages, workspace status, and the visible wiki page when the fingerprint changes.</li>
   </ul>
+  </ImplementationNotes>
   <h2>Result</h2>
   <p>The sidebar's plan tree is rebuilt from fresh <code>/api/wiki</code> data after wiki fingerprints change, so new plan, stage, and unit files become visible without manual refresh.</p>
   <Verification>

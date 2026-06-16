@@ -216,8 +216,7 @@ wikiKind: "plan"
     <li>Unit 08 is complete when Codex provider startup is off the first import-planning critical path, imported-project thread prewarm is available through the backend, warm turns fall back faster when app-server emits no first event, and the visible activity stream no longer repeats identical generic start lines.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Fresh import shows progress immediately and produces a first valid question without a false 25-second stall.</li>
     <li>Answer submission records durable Q&amp;A and produces a follow-up question or final plan state without duplicate turns.</li>
@@ -227,7 +226,7 @@ wikiKind: "plan"
     <li>Latency metrics are captured for provider startup, first progress, first question, answer-to-follow-up, and plan generation start.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, focused Codex adapter tests, state-machine unit tests, checkpoint resume tests, artifact validator tests, and an import-onboarding smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Acceptance Bar</h2>
   <ul>

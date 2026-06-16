@@ -18,20 +18,22 @@ wikiKind: "plan"
 </section>
 <h2>Intent</h2>
 <p>Add ideas as a lightweight incubation layer for concepts that are not projects yet. Ideas should stay free-form and repo-visible until the user promotes one into a real hyperwiki project.</p>
-<h2>Scope</h2>
+<Scope>
 <ul>
   <li>Create a top-level <code>wiki/ideas/</code> area with an index page and workspace navigation.</li>
   <li>Add a hyperwiki Dashboard that shows ideas and registered projects together.</li>
   <li>Add an explicit, confirmed action that initializes an idea as a new local hyperwiki project under <code>~/Projects</code>.</li>
   <li>Seed promoted projects with a planning package from the idea and replace the original idea with a compact promoted note.</li>
 </ul>
+</Scope>
 <h2>Non-goals</h2>
 <ul>
   <li>No structured idea template, status lifecycle, tags, remote repository creation, or generated application code in this unit.</li>
   <li>No hidden idea storage under ignored runtime state.</li>
 </ul>
-<h2>Verification</h2>
+<Verification>
 <ul>
   <li>Verified syntax checks, generated idea scaffold, idea listing, path rejection, promotion, project seeding, origin replacement, and one-command launch.</li>
   <li>Promotion uses a unique project root under <code>~/Projects</code> by default and uses <code>HYPERWIKI_PROJECTS_DIR</code> in smoke coverage.</li>
 </ul>
+</Verification>

@@ -27,11 +27,10 @@ wikiKind: "plan"
     <li>When starting new, preserve the existing hidden general standby promotion and refill behavior.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li><code>pnpm run check</code> passed.</li>
     <li><code>cargo test --manifest-path src-tauri/Cargo.toml</code> passed.</li>
     <li><code>pnpm run smoke:tauri-static-assets</code> passed after removing ignored local <code>.DS_Store</code> artifacts from source asset directories.</li>
   </ul>
-</section>
+</Verification>

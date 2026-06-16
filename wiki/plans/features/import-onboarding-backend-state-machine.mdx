@@ -61,8 +61,7 @@ wikiKind: "plan"
     <li>App reload during onboarding should show the backend session state instead of restarting blindly.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Fresh import starts backend-owned onboarding and emits progress without React polling the app-server turn directly.</li>
     <li>A first question appears and can be answered from the import UI.</li>
@@ -73,7 +72,7 @@ wikiKind: "plan"
     <li>Cancel and retry paths leave backend state consistent.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and a focused import-onboarding smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Assumptions</h2>
   <ul>

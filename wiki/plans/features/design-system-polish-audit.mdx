@@ -23,15 +23,21 @@ status: "complete"
 
 hyperwiki should keep its quiet local-devtool identity while reading less like a document page on operational surfaces. This pass preserves IA and behavior, then improves app typography, form hierarchy, CTA contrast, and token consistency.
 
-## Implementation Notes
+<ImplementationNotes>
+
 
 - Split app UI typography from document typography so shell chrome, forms, settings, and project controls use a sans UI voice while rendered docs can keep their reader font.
 - Reduce heavy onboarding card treatment and improve disabled CTA readability.
 - Keep lucide icons because the project shadcn configuration selects lucide.
 - Route terminal and status color choices through existing semantic tokens where practical, without changing terminal behavior.
 
-## Verification
+</ImplementationNotes>
+
+<Verification>
+
 
 - `pnpm run check`
 - `pnpm run build:frontend`
 - `agent-browser` desktop and mobile checks for `/projects/new`
+
+</Verification>

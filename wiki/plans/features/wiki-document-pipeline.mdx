@@ -22,15 +22,14 @@ wikiKind: "plan"
   <p>Give hyperwiki one coherent local document pipeline that can feed rendering, Markdown exports, agent context, navigation metadata, validation warnings, and future search without repeatedly rescanning MDX source with unrelated string transforms.</p>
 </section>
 
-<section>
-  <h2>Scope</h2>
+<Scope>
   <ul>
     <li>Add a parsed <code>WikiDocument</code> representation for frontmatter, body nodes, headings, links, component references, Markdown derivative, and validation warnings.</li>
     <li>Make <code>/api/wiki/source</code>, <code>/api/wiki/page-markdown</code>, <code>/api/wiki</code>, <code>/api/wiki/llms.txt</code>, and the Markdown zip export consume the same document pipeline.</li>
     <li>Expose component references in wiki page/source payloads for future validation, search, and component documentation.</li>
     <li>Keep the current trusted local MDX rendering surface and local-only trust boundary unchanged.</li>
   </ul>
-</section>
+</Scope>
 
 <section>
   <h2>Non-Goals</h2>

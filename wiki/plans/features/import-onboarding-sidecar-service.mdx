@@ -81,8 +81,7 @@ wikiKind: "plan"
     <li>Mitigation: scope the first slice to import onboarding only, with a narrow API and no broad engine rewrite.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Sidecar starts once, reports healthy, and remains available across webview reloads.</li>
     <li>Fresh import creates an onboarding session, starts a run, and streams progress immediately.</li>
@@ -93,7 +92,7 @@ wikiKind: "plan"
     <li>Port conflict, sidecar crash, and malformed Codex output produce explicit UI states.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, sidecar unit tests, and a local import-onboarding event-stream smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Assumptions</h2>
   <ul>

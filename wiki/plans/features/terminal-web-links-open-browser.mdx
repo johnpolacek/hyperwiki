@@ -16,14 +16,13 @@ currentUnit: "Completed on 2026-06-07."
   </ul>
 </PlanSummary>
 
-<section>
-  <h2>Implementation Notes</h2>
+<ImplementationNotes>
   <ul>
     <li>Keep URL validation in the Rust app-shell domain, where external opening is already constrained to <code>http</code> and <code>https</code>.</li>
     <li>Configure <code>WebLinksAddon</code> with an activation callback instead of relying on default hover-only detection.</li>
     <li>Log opener failures to the console rather than writing error text into the terminal PTY stream.</li>
   </ul>
-</section>
+</ImplementationNotes>
 
 <Verification>
   <ul>

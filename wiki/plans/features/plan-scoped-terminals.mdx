@@ -31,8 +31,7 @@ wikiKind: "plan"
         <li>Keep session metadata under ignored <code>.hyperwiki/sessions/</code> and preserve the runtime-only export boundary.</li>
       </ul>
     </section>
-    <section>
-      <h2>Verification</h2>
+    <Verification>
       <ul>
         <li>Different plans show independent terminal sets.</li>
         <li>Sibling units inside the same parent plan or stage show the same terminal set.</li>
@@ -42,4 +41,4 @@ wikiKind: "plan"
         <li>Verified passing checks: <code>pnpm run check</code>, <code>pnpm run smoke:pty</code>, <code>pnpm run smoke:sessions</code>, and <code>pnpm run smoke:launch</code>.</li>
         <li>Known unrelated blocker: <code>pnpm run smoke:browser</code> currently fails on a completed-stage dot color expectation before terminal-scope assertions complete.</li>
       </ul>
-    </section>
+    </Verification>

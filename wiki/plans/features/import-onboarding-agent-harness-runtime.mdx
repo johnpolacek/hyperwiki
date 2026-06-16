@@ -90,8 +90,7 @@ wikiKind: "plan"
     <li>Mitigation: prototype the harness contract locally with one import-onboarding workflow before committing to an external library or generalized harness abstraction.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Fresh import starts a harness workflow and emits immediate progress.</li>
     <li>First and follow-up questions are represented as durable <code>HumanInputRequest</code> objects and survive a UI reload.</li>
@@ -102,7 +101,7 @@ wikiKind: "plan"
     <li>Latency measurements cover import start to first progress, first question, answer to follow-up question, and plan artifact staging.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, harness unit tests, checkpoint resume tests, and an import-onboarding virtual-file commit smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Assumptions</h2>
   <ul>

@@ -33,12 +33,11 @@ wikiKind: "plan"
     <li>App-server failure is surfaced in the import UI instead of silently starting a fresh terminal turn.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li><code>pnpm run smoke:codex-app-server</code> passed.</li>
     <li><code>pnpm run check</code> passed.</li>
     <li><code>pnpm run check:tauri</code> passed.</li>
     <li>Manual follow-up: fresh-import RouteChat and confirm each answer advances on the same app-server thread without a new visible Codex TUI.</li>
   </ul>
-</section>
+</Verification>

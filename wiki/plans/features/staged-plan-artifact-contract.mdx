@@ -28,11 +28,14 @@ After 2 minutes, the reader can understand why staged plans must create child pa
 
 The existing imported-MVP planner already requires separate stage and executable unit files, but the general new-plan workflow still allows a multi-stage plan to be written as one compact feature page. That breaks navigation and execution because feature pages are sidebar leaves.
 
-## Scope
+<Scope>
+
 
 - Tighten the general plan creation prompt so explicit multi-stage plans use a plan-root directory with stage and unit MDX pages.
 - Add wiki validation warnings for plan pages that declare stages or current units but have no child stage/unit files.
 - Keep compact feature plans valid when they do not claim a staged execution sequence.
+
+</Scope>
 
 <Verification>
   <ul>
@@ -41,6 +44,9 @@ The existing imported-MVP planner already requires separate stage and executable
   </ul>
 </Verification>
 
-## Completion Gate
+<CompletionGate title="Completion Gate">
+
 
 Complete. The prompt contract, bundled skill guidance, validation warnings, and tests are in place.
+
+</CompletionGate>

@@ -16,15 +16,14 @@ currentUnit: "Completed on 2026-06-09."
   </ul>
 </PlanSummary>
 
-<section>
-  <h2>Implementation Notes</h2>
+<ImplementationNotes>
   <ul>
     <li>Intercept image clipboard files at the xterm container while leaving text-only paste owned by xterm.</li>
     <li>Save pasted image bytes through <code>/api/terminal/drop</code> under ignored <code>.hyperwiki/state/drops</code>.</li>
     <li>Bracket-paste the saved local image path into the active terminal so Codex TUI converts it into an image attachment.</li>
     <li>If clipboard text is present with image files, send image paths first and then bracket-paste the text.</li>
   </ul>
-</section>
+</ImplementationNotes>
 
 <Verification>
   <ul>

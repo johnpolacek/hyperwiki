@@ -80,8 +80,7 @@ wikiKind: "plan"
     <li>Mitigation: normalize every Codex event into explicit UI state, add protocol watchdogs, and keep Candidate 1's backend state machine as the fallback escalation path.</li>
   </ul>
 </section>
-<section>
-  <h2>Verification</h2>
+<Verification>
   <ul>
     <li>Codex app-server starts once and remains attached across multiple import-onboarding turns.</li>
     <li>Fresh import produces visible progress immediately and a first valid question without frontend-owned polling.</li>
@@ -92,7 +91,7 @@ wikiKind: "plan"
     <li>Generated plan completion is based on actual wiki files, not assistant text.</li>
     <li>Run <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and a focused Codex app-server import-onboarding smoke test.</li>
   </ul>
-</section>
+</Verification>
 <section>
   <h2>Assumptions</h2>
   <ul>

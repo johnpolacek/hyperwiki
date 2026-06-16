@@ -21,9 +21,10 @@ wikiKind: "plan"
   <p>The plan sidebar should mark the first incomplete stage or unit as current. Completed units should show completion affordances and must not stay green because a previous workspace current path still points at them.</p>
   <h2>Change</h2>
   <p>Keep current-work resolution in the React sidebar aligned with the wiki tree's completion status by using the first incomplete work path as the source of truth.</p>
-  <h2>Verification</h2>
+  <Verification>
   <ul>
     <li>Run frontend checks.</li>
     <li>Run the existing Rust test that verifies workspace summary advances from a completed unit to the next incomplete unit.</li>
   </ul>
+  </Verification>
 </PlanUnit>

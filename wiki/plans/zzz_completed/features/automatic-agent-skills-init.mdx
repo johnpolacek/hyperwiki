@@ -40,8 +40,7 @@ wikiKind: "plan"
         <li><strong>Guidance.</strong> Update generated <code>AGENTS.md</code>, <code>wiki/AGENTS.mdx</code>, README, and source docs to describe the default repo-local skills.</li>
       </ol>
     </section>
-    <section>
-      <h2>Verification</h2>
+    <Verification>
       <ul>
         <li>Rust unit tests assert default init creates all six <code>SKILL.md</code> files and lock entries.</li>
         <li>Rust unit tests assert opt-out init creates no skill bundle or lock file.</li>
@@ -50,4 +49,4 @@ wikiKind: "plan"
         <li><code>pnpm run check:all</code> passed.</li>
         <li>Temp-dir CLI smoke checks passed for default init and <code>--no-skills</code>.</li>
       </ul>
-    </section>
+    </Verification>
