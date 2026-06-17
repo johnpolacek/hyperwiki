@@ -5,64 +5,111 @@ wikiKind: "plan"
 ---
 
 <h1>Image-Gen Design Explorations</h1>
-    <section className="summary" aria-labelledby="summary">
-      <h2 id="summary">Summary</h2>
-      <dl>
-        <dt>Status</dt><dd>planned</dd>
-        <dt>Shape</dt><dd>compact feature plan (to refine before execution)</dd>
-        <dt>Current unit</dt><dd>none</dd>
-        <dt>Next action</dt><dd>refine the open questions (esp. the gpt-image-2 API), then execute.</dd>
-        <dt>Blockers</dt><dd>confirm the exact gpt-image-2 model id / endpoint / params and cost guardrails.</dd>
-        <dt>Validation</dt><dd>none yet; this is a design artifact.</dd>
-      </dl>
-    </section>
-    <section>
-      <h2>Intent</h2>
-      <p>Before (or while) the Codex agent implements a unit's UI, generate candidate UI <strong>mockup images</strong> so the user can explore directions and pick one. This adds a visual ideation step ahead of implementation, then hands the chosen direction to Codex, which implements it; agent-browser then captures the real result into the existing screenshot review/gate. Image-gen = ideation, Codex = implementation, agent-browser = verification.</p>
-      <p>This mirrors the per-unit screenshot infrastructure (folder storage, carousel, review dialog, awaiting/review gate, feedback queue) so most of it is a straight reuse — the only genuinely new piece is the image-generation step.</p>
-    </section>
-    <section>
-      <h2>Storage</h2>
-      <ul>
-        <li>A per-unit <strong>explorations</strong> folder: <code>.hyperwiki/state/explorations/&lt;unit-path&gt;/NN-*.png</code> (gitignored runtime), mirroring <code>screenshots.rs</code>.</li>
-        <li>New <code>src-tauri/src/domain/explorations.rs</code> with dir-map + list + clear, reusing the <code>screenshot_dir_for_unit</code> traversal-guarded pattern; routes mirror <code>/api/unit-screenshots</code> (GET list, GET ?path, DELETE ?path).</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Generate (Codex via CLI)</h2>
-      <ul>
-        <li>A new command/prompt <strong>"Explore designs"</strong> sent to the Codex agent for a unit.</li>
-        <li>The agent synthesizes a design brief from the unit's <code>Intent</code> / <code>Scope</code> / <code>Screen Content</code> sections, then calls the OpenAI Images API (<strong>gpt-image-2</strong>) via CLI using the project's <code>OPENAI_API_KEY</code> (already in <code>.env.local</code>), saving <strong>N</strong> candidate mockups (default ~4) into the explorations folder as ordered PNGs.</li>
-        <li>Open question — confirm the exact gpt-image-2 model id, endpoint, params, and per-image cost at build time. This is the one step that is not a straight mirror of existing code; verify the API shape rather than assuming.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Review and pick</h2>
-      <ul>
-        <li>Reuse <code>ScreenshotCarousel</code> + a review dialog (an "explorations" variant) to step through candidates and annotate.</li>
-        <li>The user <strong>picks a direction</strong> (and may add notes).</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Hand to Codex</h2>
-      <ul>
-        <li>A "Use this direction" action injects the chosen exploration into the Execute Unit prompt — the image reference plus the user's notes, and/or a short textual description of the picked design (Codex is text-first; decide image-vs-text handoff during refinement).</li>
-        <li>Codex implements → agent-browser captures the real result → the existing screenshot review and advance-gate take over.</li>
-      </ul>
-    </section>
-    <section>
-      <h2>Reuse vs new</h2>
-      <p><strong>Reuse:</strong> per-unit folder storage, the carousel, the review dialog, the awaiting/review gate and feedback-queue patterns, the agent-driven <code>previewCapture</code> conventions, and the clear-then-write lifecycle.</p>
-      <p><strong>New:</strong> the explorations store + routes, the "Explore designs" command, and the gpt-image-2 CLI generation step.</p>
-    </section>
-    <section>
-      <h2>Open questions to refine</h2>
-      <ul>
-        <li>Confirm the gpt-image-2 model id / endpoint / params / cost; add cost guardrails (max images per run).</li>
-        <li>How many variants per run (default ~4) and mockup prompt-engineering for usable UI concepts.</li>
-        <li>Whether Codex consumes the chosen <em>image</em> directly or a textual brief synthesized from it.</li>
-        <li>Entry points: design-first (new unit) vs redesign of an existing unit.</li>
-        <li>Surface: reuse the screenshot carousel/dialog vs a dedicated "Explorations" view.</li>
-        <li>Whether explorations are agent-generated only, or hyperwiki could also offer a backend path later.</li>
-      </ul>
-    </section>
+<section className="summary" aria-labelledby="summary">
+  <h2 id="summary">Summary</h2>
+  <dl>
+    <dt>Status</dt><dd>planned</dd>
+    <dt>Shape</dt><dd>feature plan refined from product questions on 2026-06-17</dd>
+    <dt>Current unit</dt><dd>Unit 01 - exploration contract and provider capability check</dd>
+    <dt>Next action</dt><dd>verify the current image generation API details, then implement the unit-page exploration contract.</dd>
+    <dt>Blockers</dt><dd>confirm exact model id, endpoint, parameters, cost behavior, and whether any non-Codex provider can generate images inside the same workflow.</dd>
+    <dt>Validation</dt><dd>unit-level static checks, Rust route tests, agent-prompt smoke coverage, and browser screenshots for visible UI states.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>Intent</h2>
+  <p>Let a user ask for visual design explorations from an individual plan unit page before implementation, while keeping the feature optional. The action should feel recommended and important for visual UI units, but it must not block non-visual or already-decided work.</p>
+  <p>Explorations cover both new mockup generation and redesigns of existing UI states. For a new unit, the agent generates candidate mockup images from the unit brief. For a redesign, the agent can use an existing screenshot or captured state as input and produce alternate directions.</p>
+  <p>The product loop stays local-first: image generation is an ideation step, Codex turns the chosen direction into code, and agent-browser captures the implemented result for the existing screenshot review gate.</p>
+</section>
+
+<section>
+  <h2>Product Decisions</h2>
+  <ul>
+    <li><strong>Entry point:</strong> the first surface is the individual plan unit page.</li>
+    <li><strong>Workflow posture:</strong> optional, but visibly recommended for browser-observable UI units.</li>
+    <li><strong>Exploration modes:</strong> support both blank-slate mockups and screenshot-informed redesign explorations.</li>
+    <li><strong>Variant count:</strong> user-selectable with a hard maximum of four generated candidates per run.</li>
+    <li><strong>Prompt priority:</strong> the user prompt is the strongest steering signal; hyperwiki should still blend in the project product/domain, unit intent, and relevant visual constraints.</li>
+    <li><strong>Handoff:</strong> the chosen direction passes both the selected image reference and a synthesized textual brief into the Execute Unit prompt.</li>
+    <li><strong>Provider path:</strong> Codex-owned generation is the v1 path. Claude support is a capability check only: if the configured Claude path can generate or call an approved image tool in the same local workflow, it may be added later behind the same exploration contract.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Storage</h2>
+  <ul>
+    <li>Store generated candidates under ignored runtime state: <code>.hyperwiki/state/explorations/&lt;unit-path&gt;/NN-*.png</code>.</li>
+    <li>Store run metadata beside the images, including prompt text, mode, source screenshot path when present, provider, model id, image count, selected candidate, user notes, and generated text brief.</li>
+    <li>Add <code>src-tauri/src/domain/explorations.rs</code> with traversal-guarded per-unit paths, mirroring the screenshot storage pattern.</li>
+    <li>Add routes mirroring <code>/api/unit-screenshots</code>: list, fetch image, clear unit explorations, read/write run metadata, and mark a selected direction.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Unit Page Experience</h2>
+  <ul>
+    <li>The plan unit page exposes an <strong>Explore designs</strong> action near Execute Unit, preview, and screenshot review controls.</li>
+    <li>The action opens a compact dialog or drawer with mode selection: <strong>New mockups</strong> or <strong>Redesign from screenshot</strong>.</li>
+    <li>The dialog includes a prompt field, a variant count control capped at four, and source-screenshot selection when redesign mode is active.</li>
+    <li>For browser-observable UI units with no exploration yet, the page can show a small recommended cue without blocking Execute Unit.</li>
+    <li>After generation, the unit page reuses the screenshot carousel/review patterns to browse candidates, add notes, and choose a direction.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Generation Contract</h2>
+  <ul>
+    <li>Generation runs through the agent path, not through an app-owned image API call in v1.</li>
+    <li>The agent receives a structured exploration prompt containing the user's prompt, unit Intent/Scope/Screen Content, project product/domain context, current app design constraints, mode, desired count, output folder, and source screenshot path when present.</li>
+    <li>The agent must clear the unit exploration folder before writing a fresh set, then save ordered PNGs such as <code>01-dashboard-focus.png</code>.</li>
+    <li>The agent must write metadata for the run so the app can display prompt provenance and later hand the selected direction to Execute Unit.</li>
+    <li>The first implementation unit must verify the current image-generation model id, endpoint, CLI invocation shape, image-edit support, and cost behavior before hardcoding guidance.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Review And Execute Handoff</h2>
+  <ul>
+    <li>The review surface lets the user mark one candidate as selected and add notes about what to keep, change, or avoid.</li>
+    <li>The app creates or stores a short text brief for the selected direction, either generated by the agent or captured as part of the selection workflow.</li>
+    <li><strong>Use this direction</strong> injects both the image path and text brief into the Execute Unit prompt.</li>
+    <li>Codex implements the unit, then agent-browser captures the real result into <code>.hyperwiki/state/screenshots/&lt;unit-path&gt;/</code> and the normal screenshot review gate takes over.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Execution Units</h2>
+  <ol>
+    <li><strong>Unit 01 - Exploration contract and provider capability check:</strong> verify current image-generation API/CLI facts, decide how Codex invokes generation/editing, document Claude as unsupported or capability-gated, and define the exploration metadata schema.</li>
+    <li><strong>Unit 02 - Runtime storage and routes:</strong> add exploration folder mapping, metadata read/write, clear/list/fetch/select routes, traversal tests, and parity with screenshot storage conventions.</li>
+    <li><strong>Unit 03 - Unit page exploration UI:</strong> add the Explore designs entry point, mode selection, prompt field, max-four variant picker, source screenshot selector, recommended cue, and exploration carousel/review state.</li>
+    <li><strong>Unit 04 - Agent prompt and generation workflow:</strong> add the structured Codex prompt/action that gathers unit and project context, clears old explorations, generates or edits images, writes ordered PNGs and metadata, and reports failures clearly.</li>
+    <li><strong>Unit 05 - Selection-to-execution handoff:</strong> pass selected image plus text brief into Execute Unit, preserve user notes, and ensure implemented screenshots remain separate from ideation images.</li>
+    <li><strong>Unit 06 - Verification and polish:</strong> add smoke coverage, route tests, visible-state screenshots, empty/error/loading states, and wiki/log updates; then close or archive the plan.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Acceptance Gates</h2>
+  <ul>
+    <li>A user can start image explorations from an individual plan unit page without leaving the unit context.</li>
+    <li>A user can choose new mockups or redesign from an existing screenshot.</li>
+    <li>A user can choose 1-4 variants, with four enforced as the maximum per run.</li>
+    <li>The user's prompt remains the primary creative instruction while project/domain context enriches it.</li>
+    <li>Generated images and metadata are stored under ignored per-unit runtime state and can be cleared/replaced safely.</li>
+    <li>The selected direction carries both an image reference and text brief into Execute Unit.</li>
+    <li>The real implemented result is still verified by agent-browser screenshots through the existing screenshot review flow.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Open Questions</h2>
+  <ul>
+    <li>What is the exact current image-generation model id, endpoint, edit endpoint support, parameter shape, and cost profile at implementation time?</li>
+    <li>Can the configured Claude agent path generate or edit images locally in a way that fits this contract, or should Claude users be routed through Codex for explorations?</li>
+    <li>Should the text brief for a selected direction be generated immediately after image generation, only after selection, or by the Execute Unit prompt itself?</li>
+    <li>Which existing screenshot should redesign mode default to when several review screenshots exist for the same unit?</li>
+  </ul>
+</section>
