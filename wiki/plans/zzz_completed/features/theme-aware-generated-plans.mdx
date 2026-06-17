@@ -4,15 +4,15 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<PlanHero title="Theme-Aware Generated Plans" status="active" description="Make newly generated HTML wiki plans keep their rich per-plan layouts while inheriting hyperwiki's current wiki theme through shared CSS variables and app-served theme tokens." />
+<PlanHero title="Theme-Aware Generated Plans" status="complete" description="Make newly generated HTML wiki plans keep their rich per-plan layouts while inheriting hyperwiki's current wiki theme through shared CSS variables and app-served theme tokens." />
 
 <PlanSummary>
   <ul>
-    <li>Status: active</li>
-    <li>Phase: planning/exploration; theme token drafting table</li>
+    <li>Status: complete; superseded as a standalone workstream by the React/shadcn/MDX rewrite, theme CSS bridge, scaffold contract, and generated-plan guidance.</li>
+    <li>Phase: archived guidance</li>
     <li>Shape: compact feature plan with three units</li>
-    <li>Current unit: Unit 01 - Theme contract audit</li>
-    <li>Next action: Trace how settings theme tokens reach wiki iframes and generated plan HTML.</li>
+    <li>Current unit: none</li>
+    <li>Next action: apply the shared theme-variable guidance inside future generated-plan work when needed.</li>
     <li>Blockers: None; one design decision remains around skill-template scope.</li>
     <li>Validation: <code>pnpm run check</code>, static asset smoke, and visual theme toggle QA.</li>
   </ul>
@@ -150,6 +150,6 @@ wikiKind: "plan"
 
     <section className="panel copy-row" aria-labelledby="handoff">
       <h2 id="handoff">Next Agent Handoff</h2>
-      <textarea id="handoffText" readonly>Use $hyperwiki to continue wiki/plans/features/theme-aware-generated-plans.mdx. Start with Unit 01 - Theme contract audit. Trace Settings theme tokens, /assets/wiki.css, wiki iframe styling, and generated plan template or prompt ownership. Define the shared CSS variable contract that rich generated plans must use before changing generation behavior.</textarea>
+      <textarea id="handoffText" readonly>This archived plan is retained as guidance. For future generated-plan theming work, create a focused follow-up plan and reuse the shared CSS variable direction recorded here.</textarea>
       <button type="button" id="copyHandoff">Copy Handoff</button>
     </section>
