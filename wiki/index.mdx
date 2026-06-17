@@ -9,18 +9,17 @@ wikiKind: "page"
 <p>It runs as a local app over the developer's own machine, repo files, Git state, terminal sessions, credentials, and environment variables, keeping that local environment as the trust boundary.</p>
 <section>
   <h2>Current Focus</h2>
-<p>The MVP now ships as a Tauri desktop app with a Rust-owned local runtime, Vite React app shell, Tailwind v4 and shadcn/ui components, MDX wiki scaffold, local dev workspace, xterm-backed terminal panels, visible Localhost Tooling guardrails, Rust CLI commands, multi-project switching, direct project import and removal, plan command actions, plan-scoped terminals, in-app worktree creation, global Settings for theme, Soul, Memory, and AGENTS.md sync, and provider-aware local agent terminals. Completed feature plans are archived under <code>wiki/plans/zzz_completed/features/</code>; active feature planning now centers on import onboarding, generated-plan theming, multi-document imports, and a small terminal focus fix.</p>
+<p>The MVP now ships as a Tauri desktop app with a Rust-owned local runtime, Vite React app shell, Tailwind v4 and shadcn/ui components, MDX wiki scaffold, local dev workspace, xterm-backed terminal panels, visible Localhost Tooling guardrails, Rust CLI commands, multi-project switching, direct project import and removal, plan command actions, plan-scoped terminals, in-app worktree creation, global Settings for theme, Soul, Memory, and AGENTS.md sync, and provider-aware local agent terminals. Completed feature plans are archived under <code>wiki/plans/zzz_completed/features/</code>; active feature planning now centers on generated-plan theming, multi-document imports, a small terminal focus fix, and later image-generation explorations.</p>
 </section>
 <section>
   <h2>Active Plan Priorities</h2>
   <ol>
-    <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a> - highest priority; dogfood a fresh import and verify the backend-owned onboarding/runtime path completes through validated stage and unit artifacts.</li>
-    <li><a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> - high priority; finish the theme contract audit before more rich generated-plan templates drift from the app theme system.</li>
-    <li><a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> - medium-high priority; useful user-facing import expansion with a bounded scope and clear verification path.</li>
+    <li><a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> - highest priority; finish the theme contract audit before more rich generated-plan templates drift from the app theme system.</li>
+    <li><a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> - high priority; useful user-facing import expansion with a bounded scope and clear verification path.</li>
     <li><a href="/wiki/plans/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a> - medium priority; small targeted terminal reliability fix that should be closed or archived after confirming whether the current app already satisfies it.</li>
     <li><a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> - later; promising but blocked on current OpenAI image model/API/cost details and should not distract from core onboarding reliability.</li>
   </ol>
-  <p>The five import-onboarding candidate architecture pages are retained as reference material while the recommended architecture remains the implementation source of truth.</p>
+  <p>The completed <a href="/wiki/plans/zzz_completed/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a> remains the implementation record; spin up a focused follow-up plan if fresh-import dogfooding reveals new onboarding work.</p>
 </section>
 <section>
   <h2>Core Pages</h2>
@@ -62,7 +61,7 @@ wikiKind: "page"
     <li><a href="/wiki/plans/zzz_completed/features/dev-terminal-reveal-and-collapse.mdx">Dev Terminal Reveal And Collapse</a></li>
     <li><a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a></li>
     <li><a href="/wiki/plans/zzz_completed/features/stronger-import-qa-protocol.mdx">Stronger Import Q&amp;A Protocol</a></li>
-    <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-backend-state-machine.mdx">Import Onboarding Backend State Machine</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-sidecar-service.mdx">Import Onboarding Sidecar Service</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-direct-codex-attachment.mdx">Import Onboarding Direct Codex Attachment</a></li>
