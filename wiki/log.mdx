@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-17 maintenance | terminal focus race archived</h2>
+  <ul>
+    <li>Marked <a href="/wiki/plans/zzz_completed/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a> complete because session reloads already accept explicit <code>selectSessionId</code> values after terminal start, restart, dev start, and dev reveal paths.</li>
+    <li>Verification is covered by <code>tests/new-project-upload-static-smoke.mjs</code>, <code>tests/dev-terminal-reveal-static-smoke.mjs</code>, and the full <code>pnpm run check</code> suite.</li>
+    <li>Active priority now centers on <a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a>, with image-generation explorations kept as later work.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-17 maintenance | theme-aware generated plans archived</h2>
   <ul>
     <li>Marked <a href="/wiki/plans/zzz_completed/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> complete as a standalone workstream because the React/shadcn/MDX rewrite, theme CSS bridge, scaffold contract, and generated-plan guidance now cover the theme-variable concern.</li>
@@ -269,7 +277,7 @@ wikiKind: "page"
   <h2>2026-06-05 fix | terminal start active focus race</h2>
   <ul>
     <li>Changed terminal session reloads to accept an explicit selected session id so newly started CLI, agent, restart, and dev panes remain the active input target after async session refresh.</li>
-    <li>Added static smoke coverage for the reload selection handoff and recorded the focused plan at <a href="/wiki/plans/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a>.</li>
+    <li>Added static smoke coverage for the reload selection handoff and recorded the focused plan at <a href="/wiki/plans/zzz_completed/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a>.</li>
   </ul>
 </article>
 <article>
