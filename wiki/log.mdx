@@ -7,10 +7,18 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-17 feature | multiple project doc import completed</h2>
+  <ul>
+    <li>Marked <a href="/wiki/plans/zzz_completed/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> complete because New Project creation already accepts ordered multi-file bundles, preserves <code>sourceDocuments</code>, keeps <code>wiki/sources/import.mdx</code> as the canonical import marker, and writes per-document provenance pages under <code>wiki/sources/imported/</code>.</li>
+    <li>Kept the implemented text-file superset for plain text, JSON, YAML, CSV, and TSV imports alongside Markdown, MDX, HTML, and HTM.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>cargo test --manifest-path src-tauri/Cargo.toml import</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-17 maintenance | plan component gallery archived</h2>
   <ul>
     <li>Archived <a href="/wiki/plans/zzz_completed/features/plan-component-gallery.mdx">Plan Component Gallery</a> as a retained renderer reference fixture rather than active feature work.</li>
-    <li>The active feature plan directory now contains only <a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> and the later <a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> plan.</li>
+    <li>The active feature plan directory then contained only <a href="/wiki/plans/zzz_completed/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> and the later <a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> plan.</li>
   </ul>
 </article>
 <article>
@@ -26,14 +34,14 @@ wikiKind: "page"
   <ul>
     <li>Marked <a href="/wiki/plans/zzz_completed/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a> complete because session reloads already accept explicit <code>selectSessionId</code> values after terminal start, restart, dev start, and dev reveal paths.</li>
     <li>Verification is covered by <code>tests/new-project-upload-static-smoke.mjs</code>, <code>tests/dev-terminal-reveal-static-smoke.mjs</code>, and the full <code>pnpm run check</code> suite.</li>
-    <li>Active priority now centers on <a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a>, with image-generation explorations kept as later work.</li>
+    <li>Active priority then centered on <a href="/wiki/plans/zzz_completed/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a>, with image-generation explorations kept as later work.</li>
   </ul>
 </article>
 <article>
   <h2>2026-06-17 maintenance | theme-aware generated plans archived</h2>
   <ul>
     <li>Marked <a href="/wiki/plans/zzz_completed/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> complete as a standalone workstream because the React/shadcn/MDX rewrite, theme CSS bridge, scaffold contract, and generated-plan guidance now cover the theme-variable concern.</li>
-    <li>Moved active priority to <a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a>, followed by the terminal focus race fix and later image-generation explorations.</li>
+    <li>Moved active priority to <a href="/wiki/plans/zzz_completed/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a>, followed by the terminal focus race fix and later image-generation explorations.</li>
   </ul>
 </article>
 <article>

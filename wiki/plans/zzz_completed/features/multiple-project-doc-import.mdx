@@ -1,0 +1,30 @@
+---
+title: "Multiple Project Doc Import"
+description: "Allow New Project creation from an ordered bundle of Markdown, MDX, and HTML source documents."
+wikiKind: "plan"
+---
+
+<PlanHero title="Multiple Project Doc Import" status="complete" description="Allow New Project creation from an ordered bundle of Markdown, MDX, and HTML source documents." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Goal: allow multiple Markdown, MDX, HTML, and HTM docs during New Project creation.</li>
+    <li>Scope: project creation only; adding docs to an existing project remains out of scope for v1.</li>
+    <li>Completed on 2026-06-17 with a compatible text-file superset for plain text, JSON, YAML, CSV, and TSV imports.</li>
+  </ul>
+</PlanSummary>
+<ImplementationNotes>
+  <ul>
+    <li>Implemented: browser file selection order is preserved as the import bundle order.</li>
+    <li>Implemented: the legacy single-document payload is preserved while <code>sourceDocuments</code> carries multi-file provenance.</li>
+    <li>Implemented: <code>wiki/sources/import.mdx</code> remains the canonical imported-source marker for incomplete import resume behavior.</li>
+    <li>Implemented: original bundle members are written under <code>wiki/sources/imported/</code> when more than one document is imported.</li>
+  </ul>
+</ImplementationNotes>
+<Verification>
+  <ul>
+    <li>Passed on 2026-06-17: <code>pnpm run check</code>.</li>
+    <li>Passed on 2026-06-17: <code>cargo test --manifest-path src-tauri/Cargo.toml import</code>.</li>
+  </ul>
+</Verification>
