@@ -71,6 +71,14 @@ pub struct OpenTargetRequest {
     pub target: String,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenFileRequest {
+    pub path: String,
+    #[serde(default)]
+    pub line: Option<u32>,
+}
+
 pub fn app_shell_summary() -> AppShellSummary {
     AppShellSummary {
         product_name: "hyperwiki",
@@ -80,6 +88,7 @@ pub fn app_shell_summary() -> AppShellSummary {
         actions: vec![
             action("open-preview", "Open Preview", "external-url"),
             action("reveal-project", "Reveal Project", "local-filesystem"),
+            action("open-in-editor", "Open in Editor", "local-filesystem"),
             action("save-drop", "Save Dropped File", "ignored-runtime-state"),
         ],
     }
@@ -193,6 +202,66 @@ pub fn reveal_project_folder(root: impl AsRef<Path>) -> Result<serde_json::Value
     Ok(serde_json::json!({ "ok": true, "path": root }))
 }
 
+/// Open one project file in the user's IDE at an optional line. Tries known
+/// editor CLIs on PATH (each takes `--goto <file>:<line>`), then falls back to
+/// the OS default. The path is resolved and contained to the project root so a
+/// crafted relative path can't escape it.
+pub fn open_in_editor(
+    root: impl AsRef<Path>,
+    request: OpenFileRequest,
+) -> Result<serde_json::Value, String> {
+    let relative = request.path.trim();
+    if relative.is_empty() {
+        return Err("No file was provided.".to_string());
+    }
+    let root = root
+        .as_ref()
+        .canonicalize()
+        .map_err(|_| "Project folder is unavailable.".to_string())?;
+    let target = root
+        .join(relative)
+        .canonicalize()
+        .map_err(|_| "File is unavailable.".to_string())?;
+    if !target.starts_with(&root) {
+        return Err("File is outside the project.".to_string());
+    }
+
+    let goto = match request.line {
+        Some(line) if line > 0 => format!("{}:{line}", target.display()),
+        _ => target.display().to_string(),
+    };
+    for editor in ["cursor", "code", "code-insiders", "windsurf"] {
+        if !crate::domain::agent_provider::binary_on_path(editor) {
+            continue;
+        }
+        let opened = Command::new(editor)
+            .arg("--goto")
+            .arg(&goto)
+            .output()
+            .is_ok_and(|output| output.status.success());
+        if opened {
+            return Ok(serde_json::json!({ "ok": true, "editor": editor, "path": target }));
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    let result = Command::new("open").arg(&target).output();
+    #[cfg(target_os = "linux")]
+    let result = Command::new("xdg-open").arg(&target).output();
+    #[cfg(target_os = "windows")]
+    let result = Command::new("explorer").arg(&target).output();
+    result
+        .map_err(|error| error.to_string())
+        .and_then(|output| {
+            output
+                .status
+                .success()
+                .then_some(())
+                .ok_or_else(|| String::from_utf8_lossy(&output.stderr).trim().to_string())
+        })?;
+    Ok(serde_json::json!({ "ok": true, "editor": "os-default", "path": target }))
+}
+
 fn action(id: &'static str, label: &'static str, boundary: &'static str) -> AppShellAction {
     AppShellAction {
         id,
@@ -285,6 +354,34 @@ mod tests {
     fn external_open_rejects_non_url_targets_before_shelling_out() {
         let error = open_external_target("/tmp/not-a-url").unwrap_err();
         assert!(error.contains("Only http and https"));
+    }
+
+    #[test]
+    fn open_in_editor_rejects_empty_and_escaping_paths() {
+        let root = temp_root("open-editor");
+        fs::write(root.join("inside.txt"), "x").unwrap();
+
+        let empty = open_in_editor(
+            &root,
+            OpenFileRequest {
+                path: "   ".to_string(),
+                line: None,
+            },
+        )
+        .unwrap_err();
+        assert!(empty.contains("No file"));
+
+        let escaping = open_in_editor(
+            &root,
+            OpenFileRequest {
+                path: "../../etc/hosts".to_string(),
+                line: Some(1),
+            },
+        )
+        .unwrap_err();
+        // Either canonicalization fails (file missing) or the containment guard
+        // trips — both keep the open scoped to the project.
+        assert!(escaping.contains("outside the project") || escaping.contains("unavailable"));
     }
 
     fn temp_root(label: &str) -> PathBuf {

@@ -1,5 +1,6 @@
 use super::DomainSurface;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -46,6 +47,42 @@ pub struct GitContext {
     pub status: Vec<String>,
     pub is_worktree: Option<bool>,
     pub worktree: String,
+}
+
+/// One file in a change set: path plus the +/- line counts. `additions`/
+/// `deletions` are `None` for binary files (Git reports `-` there).
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitFileChange {
+    pub path: String,
+    pub status: String,
+    pub additions: Option<u32>,
+    pub deletions: Option<u32>,
+    pub binary: bool,
+}
+
+/// A diff overview: the working tree against HEAD, or a single commit. Carries
+/// per-file stats only — never the patch text — which is all the viewer needs.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitChangeSet {
+    pub ref_label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    pub is_git: bool,
+    pub files: Vec<GitFileChange>,
+    pub total_additions: u32,
+    pub total_deletions: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct GitCommitSummary {
+    pub hash: String,
+    pub short: String,
+    pub subject: String,
+    pub author: String,
+    pub relative_date: String,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -128,6 +165,201 @@ pub fn repo_context(root: impl AsRef<Path>) -> RepoContext {
             worktree: worktree_slug(root),
         },
     }
+}
+
+/// Uncommitted changes: staged + unstaged tracked edits (vs HEAD) plus
+/// untracked files. Returns `is_git: false` for a non-repo so the UI can
+/// explain instead of erroring.
+pub fn working_tree_changes(root: impl AsRef<Path>) -> GitChangeSet {
+    let root = root.as_ref();
+    if !git(root, &["rev-parse", "--show-toplevel"]).ok {
+        return GitChangeSet {
+            ref_label: "Uncommitted changes".to_string(),
+            subject: None,
+            is_git: false,
+            files: Vec::new(),
+            total_additions: 0,
+            total_deletions: 0,
+        };
+    }
+    // Without any commit yet, "vs HEAD" is invalid — compare the index to the
+    // empty tree (`--cached`) instead; unstaged-but-tracked can't exist there.
+    let head_exists = git(root, &["rev-parse", "--verify", "--quiet", "HEAD"]).ok;
+    let base: &[&str] = if head_exists { &["HEAD"] } else { &["--cached"] };
+    let numstat = git_diff(root, "--numstat", base);
+    let name_status = git_diff(root, "--name-status", base);
+    let (mut files, mut total_additions, mut total_deletions) =
+        collect_changes(&numstat, &name_status);
+
+    // numstat never lists untracked files, so fold them in by counting lines.
+    let untracked = git(root, &["ls-files", "--others", "--exclude-standard", "-z"]);
+    if untracked.ok {
+        for rel in untracked.stdout.split('\0') {
+            if rel.is_empty() {
+                continue;
+            }
+            let (additions, binary) = untracked_line_count(&root.join(rel));
+            total_additions += additions.unwrap_or(0);
+            files.push(GitFileChange {
+                path: rel.to_string(),
+                status: "?".to_string(),
+                additions,
+                deletions: Some(0),
+                binary,
+            });
+        }
+    }
+
+    GitChangeSet {
+        ref_label: "Uncommitted changes".to_string(),
+        subject: None,
+        is_git: true,
+        files,
+        total_additions,
+        total_deletions,
+    }
+}
+
+/// Recent commits, newest first, for the viewer's pager. `limit` is clamped to
+/// a sane range so a stray query value can't ask Git for everything.
+pub fn recent_commits(root: impl AsRef<Path>, limit: usize) -> Vec<GitCommitSummary> {
+    let root = root.as_ref();
+    let limit = limit.clamp(1, 200).to_string();
+    // Unit separator (\x1f) between fields survives commit subjects with tabs.
+    let log = git(
+        root,
+        &[
+            "log",
+            "-n",
+            &limit,
+            "--pretty=format:%H%x1f%h%x1f%s%x1f%an%x1f%ar",
+        ],
+    );
+    if !log.ok {
+        return Vec::new();
+    }
+    log.stdout
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split('\u{1f}');
+            Some(GitCommitSummary {
+                hash: fields.next()?.to_string(),
+                short: fields.next()?.to_string(),
+                subject: fields.next().unwrap_or_default().to_string(),
+                author: fields.next().unwrap_or_default().to_string(),
+                relative_date: fields.next().unwrap_or_default().to_string(),
+            })
+        })
+        .collect()
+}
+
+/// Per-file stats for one commit. `commit_ref` is resolved to a real commit
+/// hash before any further use, so only validated, fully-qualified hashes ever
+/// reach `git show`.
+pub fn commit_changes(root: impl AsRef<Path>, commit_ref: &str) -> Result<GitChangeSet, String> {
+    let root = root.as_ref();
+    let resolved = git(
+        root,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            "--end-of-options",
+            &format!("{commit_ref}^{{commit}}"),
+        ],
+    );
+    if !resolved.ok || resolved.stdout.is_empty() {
+        return Err("Unknown commit reference.".to_string());
+    }
+    let hash = resolved.stdout;
+    let subject = git(root, &["show", "-s", "--format=%s", &hash]);
+    let numstat = git(
+        root,
+        &["show", "--numstat", "--no-renames", "--format=", &hash],
+    );
+    let name_status = git(
+        root,
+        &["show", "--name-status", "--no-renames", "--format=", &hash],
+    );
+    let (files, total_additions, total_deletions) =
+        collect_changes(&numstat.stdout, &name_status.stdout);
+    Ok(GitChangeSet {
+        ref_label: short_hash(&hash),
+        subject: subject.ok.then_some(subject.stdout),
+        is_git: true,
+        files,
+        total_additions,
+        total_deletions,
+    })
+}
+
+// `--no-renames` keeps output deterministic: a rename shows as a delete + add
+// (two clean rows) instead of Git's brace/arrow path syntax we'd have to parse.
+fn git_diff(root: &Path, mode: &str, base: &[&str]) -> String {
+    let mut args = vec!["diff", mode, "--no-renames"];
+    args.extend_from_slice(base);
+    git(root, &args).stdout
+}
+
+// Merge a `--numstat` body (counts) with a `--name-status` body (the
+// authoritative file + status list) into one ordered change set.
+fn collect_changes(numstat: &str, name_status: &str) -> (Vec<GitFileChange>, u32, u32) {
+    let mut counts: HashMap<&str, (Option<u32>, Option<u32>, bool)> = HashMap::new();
+    for line in numstat.lines() {
+        let mut parts = line.splitn(3, '\t');
+        let (Some(add), Some(del), Some(path)) = (parts.next(), parts.next(), parts.next()) else {
+            continue;
+        };
+        let binary = add == "-" && del == "-";
+        counts.insert(
+            path,
+            (
+                if binary { None } else { add.parse().ok() },
+                if binary { None } else { del.parse().ok() },
+                binary,
+            ),
+        );
+    }
+    let mut files = Vec::new();
+    let mut total_additions = 0;
+    let mut total_deletions = 0;
+    for line in name_status.lines() {
+        let mut parts = line.split('\t');
+        let status = parts.next().unwrap_or("M");
+        let Some(path) = parts.next().filter(|value| !value.is_empty()) else {
+            continue;
+        };
+        let (additions, deletions, binary) =
+            counts.get(path).copied().unwrap_or((Some(0), Some(0), false));
+        total_additions += additions.unwrap_or(0);
+        total_deletions += deletions.unwrap_or(0);
+        files.push(GitFileChange {
+            path: path.to_string(),
+            status: status.chars().next().unwrap_or('M').to_string(),
+            additions,
+            deletions,
+            binary,
+        });
+    }
+    (files, total_additions, total_deletions)
+}
+
+// Count added lines for an untracked file by reading it; flag binaries (NUL
+// byte) and leave their count empty, mirroring numstat's `-` for binary diffs.
+fn untracked_line_count(path: &Path) -> (Option<u32>, bool) {
+    match fs::read(path) {
+        Ok(bytes) if bytes.contains(&0) => (None, true),
+        Ok(bytes) => {
+            let newlines = bytes.iter().filter(|byte| **byte == b'\n').count() as u32;
+            let trailing = u32::from(!bytes.is_empty() && bytes.last() != Some(&b'\n'));
+            (Some(newlines + trailing), false)
+        }
+        Err(_) => (Some(0), false),
+    }
+}
+
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(7).collect()
 }
 
 pub fn git_onboarding_status(root: impl AsRef<Path>) -> GitOnboardingStatus {
@@ -625,6 +857,80 @@ mod tests {
 
         assert_eq!(error.0, 409);
         assert!(error.1.contains("Initialize Git") || error.1.contains("main or master"));
+    }
+
+    #[test]
+    fn summarizes_working_tree_and_commit_changes() {
+        let root = temp_root("git-changes");
+        git(&root, &["init"]);
+        fs::write(root.join("tracked.txt"), "one\ntwo\n").unwrap();
+        commit_all(&root, "Add tracked");
+        fs::write(root.join("tracked.txt"), "one\ntwo\nthree\n").unwrap();
+        fs::write(root.join("untracked.txt"), "new\nfile\n").unwrap();
+
+        let changes = working_tree_changes(&root);
+        assert!(changes.is_git);
+        assert_eq!(changes.ref_label, "Uncommitted changes");
+        let tracked = changes
+            .files
+            .iter()
+            .find(|file| file.path == "tracked.txt")
+            .unwrap();
+        assert_eq!(tracked.status, "M");
+        assert_eq!(tracked.additions, Some(1));
+        assert_eq!(tracked.deletions, Some(0));
+        let untracked = changes
+            .files
+            .iter()
+            .find(|file| file.path == "untracked.txt")
+            .unwrap();
+        assert_eq!(untracked.status, "?");
+        assert_eq!(untracked.additions, Some(2));
+        assert!(!untracked.binary);
+        assert_eq!(changes.total_additions, 3);
+
+        let commits = recent_commits(&root, 10);
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].subject, "Add tracked");
+
+        let commit = commit_changes(&root, &commits[0].hash).unwrap();
+        assert_eq!(commit.ref_label.len(), 7);
+        assert!(commits[0].hash.starts_with(&commit.ref_label));
+        assert_eq!(commit.subject.as_deref(), Some("Add tracked"));
+        let added = commit
+            .files
+            .iter()
+            .find(|file| file.path == "tracked.txt")
+            .unwrap();
+        assert_eq!(added.status, "A");
+        assert_eq!(added.additions, Some(2));
+
+        assert!(commit_changes(&root, "not-a-real-ref").is_err());
+    }
+
+    #[test]
+    fn reports_non_git_change_set() {
+        let root = temp_root("git-changes-none");
+        let changes = working_tree_changes(&root);
+        assert!(!changes.is_git);
+        assert!(changes.files.is_empty());
+        assert!(recent_commits(&root, 5).is_empty());
+    }
+
+    fn commit_all(root: &Path, message: &str) {
+        git(root, &["add", "-A"]);
+        git(
+            root,
+            &[
+                "-c",
+                "user.name=hyperwiki Test",
+                "-c",
+                "user.email=hyperwiki-test@localhost",
+                "commit",
+                "-m",
+                message,
+            ],
+        );
     }
 
     fn make_hyperwiki_project(root: &Path) {

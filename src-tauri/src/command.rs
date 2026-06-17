@@ -814,6 +814,41 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             ),
         );
     }
+    if request.method == "GET" && request.path.starts_with("/api/git/changes") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        return json_response(200, &crate::domain::git::working_tree_changes(project_root));
+    }
+    // Order matters: "/api/git/commits" also starts with "/api/git/commit", so
+    // the plural (commit list) must be matched before the singular (one commit).
+    if request.method == "GET" && request.path.starts_with("/api/git/commits") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let limit = query_param(&request.path, "limit")
+            .and_then(|value| value.parse::<usize>().ok())
+            .unwrap_or(30);
+        return json_response(
+            200,
+            &crate::domain::git::recent_commits(project_root, limit),
+        );
+    }
+    if request.method == "GET" && request.path.starts_with("/api/git/commit") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(commit_ref) = query_param(&request.path, "ref") else {
+            return error_response(400, "Missing commit ref.");
+        };
+        return match crate::domain::git::commit_changes(project_root, &commit_ref) {
+            Ok(changes) => json_response(200, &changes),
+            Err(error) => error_response(404, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/workspace") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
@@ -1414,6 +1449,21 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(400, error),
         };
     }
+    if request.method == "POST" && request.path.starts_with("/api/app/open-in-editor") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(body) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::app_shell::OpenFileRequest>(body).ok()
+        }) else {
+            return error_response(400, "Invalid open-in-editor request.");
+        };
+        return match crate::domain::app_shell::open_in_editor(project_root, body) {
+            Ok(result) => json_response(200, &result),
+            Err(error) => error_response(400, error),
+        };
+    }
     if request.method == "POST" && request.path.starts_with("/api/terminal/drop") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)
@@ -1783,6 +1833,56 @@ mod tests {
         assert!(dropped.text.contains(".hyperwiki"));
         assert!(!rejected_open.ok);
         assert_eq!(rejected_open.status, 400);
+    }
+
+    #[test]
+    fn git_diff_endpoints_are_implemented() {
+        let _guard = env_lock();
+        // Empty registry + temp cwd so the routes resolve to our throwaway repo
+        // (via current_dir) instead of the real active project.
+        let previous_home = std::env::var_os("HYPERWIKI_HOME");
+        let previous_projects_dir = std::env::var_os("HYPERWIKI_PROJECTS_DIR");
+        let previous_dir = std::env::current_dir().unwrap();
+        let home = temp_root("command-git-diff-home");
+        let projects_dir = temp_root("command-git-diff-projects");
+        std::env::set_var("HYPERWIKI_HOME", &home);
+        std::env::set_var("HYPERWIKI_PROJECTS_DIR", &projects_dir);
+        let root = temp_root("command-git-diff");
+        crate::domain::git::git(&root, &["init"]);
+        fs::write(root.join("a.txt"), "hello\n").unwrap();
+        std::env::set_current_dir(&root).unwrap();
+
+        let changes = hyperwiki_request(HyperwikiRequest {
+            path: "/api/git/changes".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let commits = hyperwiki_request(HyperwikiRequest {
+            path: "/api/git/commits?limit=5".to_string(),
+            method: "GET".to_string(),
+            body: None,
+        });
+        let bad_open = hyperwiki_request(HyperwikiRequest {
+            path: "/api/app/open-in-editor".to_string(),
+            method: "POST".to_string(),
+            body: Some(serde_json::json!({ "path": "" }).to_string()),
+        });
+
+        std::env::set_current_dir(previous_dir).unwrap();
+        match previous_home {
+            Some(value) => std::env::set_var("HYPERWIKI_HOME", value),
+            None => std::env::remove_var("HYPERWIKI_HOME"),
+        }
+        match previous_projects_dir {
+            Some(value) => std::env::set_var("HYPERWIKI_PROJECTS_DIR", value),
+            None => std::env::remove_var("HYPERWIKI_PROJECTS_DIR"),
+        }
+        assert!(changes.ok);
+        assert!(changes.text.contains("\"isGit\":true"));
+        assert!(changes.text.contains("a.txt"));
+        assert!(commits.ok);
+        assert!(!bad_open.ok);
+        assert_eq!(bad_open.status, 400);
     }
 
     #[test]

@@ -94,7 +94,7 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { FeedbackItem, ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
+import type { FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
@@ -206,5 +206,40 @@ export async function markScreenshotReviewed(unitPath: string, capturedAt: numbe
   await hyperwikiApi.json(withProjectQuery("/api/screenshot-reviews", activeProject), {
     method: "POST",
     body: { unitPath, capturedAt },
+  });
+}
+
+// Uncommitted changes (staged + unstaged + untracked) as per-file +/- stats.
+export async function fetchWorkingTreeChanges(activeProject: ProjectRecord | null): Promise<GitChangeSet | null> {
+  try {
+    return await hyperwikiApi.json<GitChangeSet>(withProjectQuery("/api/git/changes", activeProject));
+  } catch {
+    return null;
+  }
+}
+
+// Recent commits (newest first) for the diff viewer's pager.
+export async function fetchRecentCommits(activeProject: ProjectRecord | null, limit = 30): Promise<GitCommitSummary[]> {
+  try {
+    return (await hyperwikiApi.json<GitCommitSummary[]>(withProjectQuery(`/api/git/commits?limit=${limit}`, activeProject))) || [];
+  } catch {
+    return [];
+  }
+}
+
+// Per-file stats for one commit (resolved server-side from its hash).
+export async function fetchCommitChanges(ref: string, activeProject: ProjectRecord | null): Promise<GitChangeSet | null> {
+  try {
+    return await hyperwikiApi.json<GitChangeSet>(withProjectQuery(`/api/git/commit?ref=${encodeURIComponent(ref)}`, activeProject));
+  } catch {
+    return null;
+  }
+}
+
+// Open one changed file in the user's IDE at an optional line.
+export async function openFileInEditor(path: string, activeProject: ProjectRecord | null, line?: number): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery("/api/app/open-in-editor", activeProject), {
+    method: "POST",
+    body: line ? { path, line } : { path },
   });
 }

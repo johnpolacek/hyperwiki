@@ -56,6 +56,7 @@ import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
+import { DiffViewerDialog } from "@/components/views/DiffViewerDialog";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
 import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/layout/TopBar";
@@ -140,6 +141,7 @@ function App() {
   const [projectEnvEditor, setProjectEnvEditor] = useState<ProjectEnvEditorState>({ open: false });
   const [terminalEnvHint, setTerminalEnvHint] = useState<{ key: string; sessionId: string } | null>(null);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
+  const [diffViewerOpen, setDiffViewerOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
   const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
@@ -2972,6 +2974,7 @@ function App() {
             onToggleWikiTask={toggleWikiTask}
             onAnswerPlanningQuestion={answerPlanningQuestion}
             onToggleExpanded={() => setIsWorkspaceExpanded((value) => !value)}
+            onOpenDiff={() => setDiffViewerOpen(true)}
             onSwitchProject={switchProject}
             planningActivity={planningActivity}
             planningWorkstream={planningWorkstream}
@@ -3062,6 +3065,7 @@ function App() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <DiffViewerDialog activeProject={activeProject} open={diffViewerOpen} onOpenChange={setDiffViewerOpen} />
         <ProjectEnvEditor
           activeProject={activeProject}
           initialKey={projectEnvEditor.initialKey}

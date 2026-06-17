@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Check, Copy, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
+import { BookOpen, Check, CodeXml, Copy, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function WorkspacePane(props: {
   onSendCommandToTerminal: (command: string) => void;
   onToggleWikiTask: (text: string, checked: boolean) => Promise<void>;
   onToggleExpanded: () => void;
+  onOpenDiff: () => void;
   onSwitchProject: (project: ProjectRecord) => void;
   planningActivity: string;
   planningWorkstream: string[];
@@ -168,6 +169,7 @@ export function WorkspacePane(props: {
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+              <ViewChangesButton onOpenDiff={props.onOpenDiff} />
             </div>
           </div>
           <PlansIndexEmptyState onCreatePlan={() => props.onRunCommand("new-plan")} />
@@ -194,6 +196,7 @@ export function WorkspacePane(props: {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+            <ViewChangesButton onOpenDiff={props.onOpenDiff} />
             {pageMarkdown.trim() ? (
               <Button
                 aria-label="Copy page Markdown"
@@ -314,6 +317,16 @@ document.addEventListener("click", function(event) {
 
 export function isMissingFileError(error: string) {
   return error.includes("No such file or directory") || error.includes("os error 2");
+}
+
+// Icon-only `</>` trigger for the diff viewer, sized to match the other
+// unit-pane top-bar icon buttons (expand, copy Markdown).
+function ViewChangesButton({ onOpenDiff }: { onOpenDiff: () => void }) {
+  return (
+    <Button aria-label="View changes" className="size-8" size="icon" title="View changes" variant="outline" onClick={onOpenDiff}>
+      <CodeXml aria-hidden="true" />
+    </Button>
+  );
 }
 
 export function CommandBar({

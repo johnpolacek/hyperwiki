@@ -357,6 +357,31 @@ export interface LayoutResponse {
   };
 }
 
+export interface GitFileChange {
+  path: string;
+  status: string;
+  additions: number | null;
+  deletions: number | null;
+  binary: boolean;
+}
+
+export interface GitChangeSet {
+  refLabel: string;
+  subject?: string;
+  isGit: boolean;
+  files: GitFileChange[];
+  totalAdditions: number;
+  totalDeletions: number;
+}
+
+export interface GitCommitSummary {
+  hash: string;
+  short: string;
+  subject: string;
+  author: string;
+  relativeDate: string;
+}
+
 export interface RepoContextResponse {
   root?: string;
   git?: {
