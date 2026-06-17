@@ -9,7 +9,18 @@ wikiKind: "page"
 <p>It runs as a local app over the developer's own machine, repo files, Git state, terminal sessions, credentials, and environment variables, keeping that local environment as the trust boundary.</p>
 <section>
   <h2>Current Focus</h2>
-<p>The MVP now ships as a Tauri desktop app with a Rust-owned local runtime, Vite React app shell, Tailwind v4 and shadcn/ui components, MDX wiki scaffold, local dev workspace, xterm-backed terminal panels, visible Localhost Tooling guardrails, Rust CLI commands, multi-project switching, direct project import and removal, plan command actions, plan-scoped terminals, in-app worktree creation, global Settings for theme, Soul, Memory, and AGENTS.md sync, and provider-aware local agent terminals. The <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> is complete and merged into local <code>main</code>; pushing still requires approval.</p>
+<p>The MVP now ships as a Tauri desktop app with a Rust-owned local runtime, Vite React app shell, Tailwind v4 and shadcn/ui components, MDX wiki scaffold, local dev workspace, xterm-backed terminal panels, visible Localhost Tooling guardrails, Rust CLI commands, multi-project switching, direct project import and removal, plan command actions, plan-scoped terminals, in-app worktree creation, global Settings for theme, Soul, Memory, and AGENTS.md sync, and provider-aware local agent terminals. Completed feature plans are archived under <code>wiki/plans/zzz_completed/features/</code>; active feature planning now centers on import onboarding, generated-plan theming, multi-document imports, and a small terminal focus fix.</p>
+</section>
+<section>
+  <h2>Active Plan Priorities</h2>
+  <ol>
+    <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a> - highest priority; dogfood a fresh import and verify the backend-owned onboarding/runtime path completes through validated stage and unit artifacts.</li>
+    <li><a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a> - high priority; finish the theme contract audit before more rich generated-plan templates drift from the app theme system.</li>
+    <li><a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a> - medium-high priority; useful user-facing import expansion with a bounded scope and clear verification path.</li>
+    <li><a href="/wiki/plans/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a> - medium priority; small targeted terminal reliability fix that should be closed or archived after confirming whether the current app already satisfies it.</li>
+    <li><a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> - later; promising but blocked on current OpenAI image model/API/cost details and should not distract from core onboarding reliability.</li>
+  </ol>
+  <p>The five import-onboarding candidate architecture pages are retained as reference material while the recommended architecture remains the implementation source of truth.</p>
 </section>
 <section>
   <h2>Core Pages</h2>
@@ -18,72 +29,72 @@ wikiKind: "page"
     <li><a href="/wiki/dev.mdx">Development workflow</a></li>
     <li><a href="/wiki/scaffold-contract.mdx">Scaffold contract</a></li>
     <li><a href="/wiki/plans/index.mdx">Plans</a></li>
-    <li><a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a></li>
     <li><a href="/wiki/plans/tauri-rewrite.mdx">Complete Tauri Rewrite plan</a></li>
     <li><a href="/wiki/plans/tauri-desktop-dogfood-checklist.mdx">Tauri Desktop Dogfood Checklist</a></li>
-    <li><a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a></li>
-    <li><a href="/wiki/plans/features/source-grounded-import-planning.mdx">Source-Grounded Import Planning</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/project-plan-creation.mdx">Project Plan Creation</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/source-grounded-import-planning.mdx">Source-Grounded Import Planning</a></li>
     <li><a href="/wiki/plans/features/theme-aware-generated-plans.mdx">Theme-Aware Generated Plans</a></li>
-    <li><a href="/wiki/plans/features/settings-theme-autosave.mdx">Settings Theme Autosave</a></li>
-    <li><a href="/wiki/plans/features/theme-inter-font-replacement.mdx">Theme Inter Font Replacement</a></li>
-    <li><a href="/wiki/plans/features/design-system-polish-audit.mdx">Design System Polish Audit</a></li>
-    <li><a href="/wiki/plans/features/gridbeam-layout-design.mdx">GridBeam Layout Design</a></li>
-    <li><a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a></li>
-    <li><a href="/wiki/plans/features/shadcn-mdx-plan-components.mdx">shadcn MDX Plan Components</a></li>
-    <li><a href="/wiki/plans/features/plan-generation-component-guidance.mdx">Plan Generation Component Guidance</a></li>
-    <li><a href="/wiki/plans/features/mdx-plan-visual-polish.mdx">MDX Plan Visual Polish</a></li>
-    <li><a href="/wiki/plans/features/holocron-inspired-wiki-exports-and-validation.mdx">Holocron-Inspired Wiki Exports and Validation</a></li>
-    <li><a href="/wiki/plans/features/wiki-markdown-export-completion.mdx">Wiki Markdown Export Completion</a></li>
-    <li><a href="/wiki/plans/features/wiki-document-pipeline.mdx">Wiki Document Pipeline</a></li>
-    <li><a href="/wiki/plans/features/rich-planning-mdx-composition.mdx">Rich Planning MDX Composition</a></li>
-    <li><a href="/wiki/plans/features/import-plan-detail-quality-gate.mdx">Import Plan Detail Quality Gate</a></li>
-    <li><a href="/wiki/plans/features/static-import-plan-richness.mdx">Static Import Plan Richness</a></li>
-    <li><a href="/wiki/plans/features/import-plan-execution-brief-polish.mdx">Import Plan Execution Brief Polish</a></li>
-    <li><a href="/wiki/plans/features/incomplete-import-resume.mdx">Incomplete Import Resume</a></li>
-    <li><a href="/wiki/plans/features/initial-stack-qa-gate.mdx">Initial Stack Q&amp;A Gate</a></li>
-    <li><a href="/wiki/plans/features/open-active-work-on-startup.mdx">Open Active Work On Startup</a></li>
-    <li><a href="/wiki/plans/features/visible-agent-activity-feed.mdx">Visible Agent Activity Feed</a></li>
-    <li><a href="/wiki/plans/features/terminal-first-agent-handoffs.mdx">Terminal-First Agent Handoffs</a></li>
-    <li><a href="/wiki/plans/features/terminal-first-new-plan.mdx">Terminal-First New Plan</a></li>
-    <li><a href="/wiki/plans/features/managed-dev-session-recovery.mdx">Managed Dev Session Recovery</a></li>
-    <li><a href="/wiki/plans/features/dev-preview-portless-runtime-url.mdx">Dev Preview Portless Runtime URL</a></li>
-    <li><a href="/wiki/plans/features/canonical-pnpm-dev-project-command.mdx">Canonical pnpm dev Project Command</a></li>
-    <li><a href="/wiki/plans/features/dev-terminal-reveal-and-collapse.mdx">Dev Terminal Reveal And Collapse</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/settings-theme-autosave.mdx">Settings Theme Autosave</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/theme-inter-font-replacement.mdx">Theme Inter Font Replacement</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/design-system-polish-audit.mdx">Design System Polish Audit</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/gridbeam-layout-design.mdx">GridBeam Layout Design</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/shadcn-mdx-plan-components.mdx">shadcn MDX Plan Components</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/plan-generation-component-guidance.mdx">Plan Generation Component Guidance</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/mdx-plan-visual-polish.mdx">MDX Plan Visual Polish</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/holocron-inspired-wiki-exports-and-validation.mdx">Holocron-Inspired Wiki Exports and Validation</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/wiki-markdown-export-completion.mdx">Wiki Markdown Export Completion</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/wiki-document-pipeline.mdx">Wiki Document Pipeline</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/rich-planning-mdx-composition.mdx">Rich Planning MDX Composition</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/import-plan-detail-quality-gate.mdx">Import Plan Detail Quality Gate</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/static-import-plan-richness.mdx">Static Import Plan Richness</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/import-plan-execution-brief-polish.mdx">Import Plan Execution Brief Polish</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/incomplete-import-resume.mdx">Incomplete Import Resume</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/initial-stack-qa-gate.mdx">Initial Stack Q&amp;A Gate</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/open-active-work-on-startup.mdx">Open Active Work On Startup</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/visible-agent-activity-feed.mdx">Visible Agent Activity Feed</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-first-agent-handoffs.mdx">Terminal-First Agent Handoffs</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-first-new-plan.mdx">Terminal-First New Plan</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/managed-dev-session-recovery.mdx">Managed Dev Session Recovery</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/dev-preview-portless-runtime-url.mdx">Dev Preview Portless Runtime URL</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/canonical-pnpm-dev-project-command.mdx">Canonical pnpm dev Project Command</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/dev-terminal-reveal-and-collapse.mdx">Dev Terminal Reveal And Collapse</a></li>
     <li><a href="/wiki/plans/features/multiple-project-doc-import.mdx">Multiple Project Doc Import</a></li>
-    <li><a href="/wiki/plans/features/stronger-import-qa-protocol.mdx">Stronger Import Q&amp;A Protocol</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/stronger-import-qa-protocol.mdx">Stronger Import Q&amp;A Protocol</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-backend-state-machine.mdx">Import Onboarding Backend State Machine</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-sidecar-service.mdx">Import Onboarding Sidecar Service</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-direct-codex-attachment.mdx">Import Onboarding Direct Codex Attachment</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-engine-first-runtime.mdx">Import Onboarding Engine-First Runtime</a></li>
     <li><a href="/wiki/plans/features/import-onboarding-agent-harness-runtime.mdx">Import Onboarding Agent Harness Runtime</a></li>
-    <li><a href="/wiki/plans/features/prewarmed-modify-codex-sessions.mdx">Prewarmed Modify Codex Sessions</a></li>
-    <li><a href="/wiki/plans/features/execute-current-unit-target.mdx">Execute Current Unit Target</a></li>
-    <li><a href="/wiki/plans/features/execute-existing-agent-confirmation.mdx">Execute Existing Agent Confirmation</a></li>
-    <li><a href="/wiki/plans/features/direct-modify-plan-agent-handoff.mdx">Direct Modify Plan Agent Handoff</a></li>
-    <li><a href="/wiki/plans/features/sidebar-current-work-derivation.mdx">Sidebar Current Work Derivation</a></li>
-    <li><a href="/wiki/plans/features/canonical-plan-status-source.mdx">Canonical Plan Status Source</a></li>
-    <li><a href="/wiki/plans/features/canonical-terminal-current-unit-label.mdx">Canonical Terminal Current Unit Label</a></li>
-    <li><a href="/wiki/plans/features/agent-prompt-clears-starter-text.mdx">Agent Prompt Clears Starter Text</a></li>
-    <li><a href="/wiki/plans/features/agent-prompt-idle-readiness.mdx">Agent Prompt Idle Readiness</a></li>
-    <li><a href="/wiki/plans/features/derived-parent-plan-completion.mdx">Derived Parent Plan Completion</a></li>
-    <li><a href="/wiki/plans/features/default-low-thinking-mode.mdx">Default Low Thinking Mode</a></li>
-    <li><a href="/wiki/plans/features/project-wide-terminal-pane-persistence.mdx">Project-Wide Terminal Pane Persistence</a></li>
-    <li><a href="/wiki/plans/features/terminal-close-and-zsh-status-fix.mdx">Terminal Close and zsh Status Fix</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/prewarmed-modify-codex-sessions.mdx">Prewarmed Modify Codex Sessions</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/execute-current-unit-target.mdx">Execute Current Unit Target</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/execute-existing-agent-confirmation.mdx">Execute Existing Agent Confirmation</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/direct-modify-plan-agent-handoff.mdx">Direct Modify Plan Agent Handoff</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/sidebar-current-work-derivation.mdx">Sidebar Current Work Derivation</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/canonical-plan-status-source.mdx">Canonical Plan Status Source</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/canonical-terminal-current-unit-label.mdx">Canonical Terminal Current Unit Label</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/agent-prompt-clears-starter-text.mdx">Agent Prompt Clears Starter Text</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/agent-prompt-idle-readiness.mdx">Agent Prompt Idle Readiness</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/derived-parent-plan-completion.mdx">Derived Parent Plan Completion</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/default-low-thinking-mode.mdx">Default Low Thinking Mode</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/project-wide-terminal-pane-persistence.mdx">Project-Wide Terminal Pane Persistence</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-close-and-zsh-status-fix.mdx">Terminal Close and zsh Status Fix</a></li>
     <li><a href="/wiki/plans/features/terminal-start-active-focus-race.mdx">Terminal Start Active Focus Race</a></li>
-    <li><a href="/wiki/plans/features/terminal-web-links-open-browser.mdx">Terminal Web Links Open Browser</a></li>
-    <li><a href="/wiki/plans/features/terminal-image-paste.mdx">Terminal Image Paste</a></li>
-    <li><a href="/wiki/plans/features/terminal-completion-notifications.mdx">Terminal Completion Notifications</a></li>
-    <li><a href="/wiki/plans/features/agent-terminal-startup-notice-replay.mdx">Agent Terminal Startup Notice Replay</a></li>
-    <li><a href="/wiki/plans/features/instant-agent-terminal-open.mdx">Instant Agent Terminal Open</a></li>
-    <li><a href="/wiki/plans/features/manual-unit-gate-clarity.mdx">Manual Unit Gate Clarity</a></li>
-    <li><a href="/wiki/plans/features/project-env-var-manager.mdx">Project Env Var Manager</a></li>
-    <li><a href="/wiki/plans/features/project-switch-wiki-hydration.mdx">Project Switch Wiki Hydration</a></li>
-    <li><a href="/wiki/plans/features/terminal-owned-import-qa.mdx">Terminal-Owned Import Q&amp;A</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-web-links-open-browser.mdx">Terminal Web Links Open Browser</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-image-paste.mdx">Terminal Image Paste</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-completion-notifications.mdx">Terminal Completion Notifications</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/agent-terminal-startup-notice-replay.mdx">Agent Terminal Startup Notice Replay</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/instant-agent-terminal-open.mdx">Instant Agent Terminal Open</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/manual-unit-gate-clarity.mdx">Manual Unit Gate Clarity</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/project-env-var-manager.mdx">Project Env Var Manager</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/project-switch-wiki-hydration.mdx">Project Switch Wiki Hydration</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/terminal-owned-import-qa.mdx">Terminal-Owned Import Q&amp;A</a></li>
     <li><a href="/wiki/plans/zzz_completed/features/automatic-agent-skills-init.mdx">Automatic Agent Skills On Init</a></li>
-    <li><a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a></li>
-    <li><a href="/wiki/plans/features/plan-delete-control.mdx">Plan Delete Control</a></li>
-    <li><a href="/wiki/plans/features/staged-plan-artifact-contract.mdx">Staged Plan Artifact Contract</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/new-plan-workflow.mdx">New Plan Workflow</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/plan-delete-control.mdx">Plan Delete Control</a></li>
+    <li><a href="/wiki/plans/zzz_completed/features/staged-plan-artifact-contract.mdx">Staged Plan Artifact Contract</a></li>
     <li><a href="/wiki/plans/mvp/stage-08-settings-soul-memory.mdx">Settings, Soul, and Memory stage</a></li>
     <li><a href="/wiki/log.mdx">Project-context log</a></li>
     <li><a href="/wiki/sources.mdx">Source index</a></li>

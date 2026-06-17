@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-17 maintenance | feature plan archive and priority review</h2>
+  <ul>
+    <li>Archived completed feature plans from <code>wiki/plans/features/</code> into <code>wiki/plans/zzz_completed/features/</code>, including completed child unit pages.</li>
+    <li>Updated wiki links to preserve navigation to archived plans and added an active-priority summary to <a href="/wiki/index.mdx">the wiki home page</a>.</li>
+    <li>Current active priority is <a href="/wiki/plans/features/import-onboarding-recommended-architecture.mdx">Import Onboarding Recommended Architecture</a>, followed by generated-plan theming, multi-document import, and the terminal focus race fix.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-09 fix | dev preview Portless runtime URL</h2>
   <ul>
     <li>Changed dev terminal output handling to detect the exact Portless runtime URL printed by the running dev process, including fallback proxy ports such as <code>:1355</code>.</li>
@@ -239,7 +247,7 @@ wikiKind: "page"
   <ul>
     <li>Adopted Cult UI GridBeam as a structural layout treatment across the React shell, sidebar, wiki viewport, Projects page, New Project flow, import planning panels, Settings surfaces, empty states, and error states.</li>
     <li>Kept terminal panes outside beam overlays so xterm focus, text selection, and agent prompt input remain stable.</li>
-    <li>Recorded GridBeam as durable UI direction in the source index and design brief, with verification captured in <a href="/wiki/plans/features/gridbeam-layout-design.mdx">GridBeam Layout Design</a>.</li>
+    <li>Recorded GridBeam as durable UI direction in the source index and design brief, with verification captured in <a href="/wiki/plans/zzz_completed/features/gridbeam-layout-design.mdx">GridBeam Layout Design</a>.</li>
   </ul>
 </article>
 <article>
@@ -1100,7 +1108,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 06</h2>
   <ul>
-    <li>Completed the Stage 06 Cleanup, Parity, And Handoff batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Completed the Stage 06 Cleanup, Parity, And Handoff batch for the <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
     <li>Removed the obsolete static app shell, duplicate static asset mirrors, root <code>public/wiki.css</code>, and vendored browser xterm files; kept package-served docs assets, theme fallback, favicon, and fonts.</li>
     <li>Moved the API adapter smoke to the React TypeScript adapter and changed the static asset smoke to assert the old shell is absent from <code>dist</code>.</li>
     <li>Verified with <code>pnpm run check:all</code>, <code>pnpm run smoke:tauri-webdriver</code> with the expected macOS WKWebView skip, <code>pnpm run tauri:build</code>, and a packaged app launch check across New Project, Settings, and Projects.</li>
@@ -1109,7 +1117,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 05</h2>
   <ul>
-    <li>Completed the Stage 05 Rust Domain And Scaffold Contract batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Completed the Stage 05 Rust Domain And Scaffold Contract batch for the <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
     <li>Extended wiki page metadata with MDX <code>format</code> and repo-relative <code>sourcePath</code>, and exposed current-plan Markdown through project-contract, MCP, and review prompt surfaces.</li>
     <li>Updated generated scaffold guidance so agents prefer project-contract or <code>/api/wiki/source</code> Markdown derivatives over rendered app HTML.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:review-workflows</code>, and <code>pnpm run smoke:mcp-transport</code>.</li>
@@ -1118,7 +1126,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-25 implementation | react-shadcn-mdx-rewrite stage 04</h2>
   <ul>
-    <li>Completed the Stage 04 MDX Plan Runtime batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Completed the Stage 04 MDX Plan Runtime batch for the <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
     <li>Added React plan-page rendering from exact MDX source, a local trusted component registry, a Rust <code>/api/wiki/source</code> endpoint, and Markdown derivative generation for agent/project-contract follow-up work.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
   </ul>
@@ -1126,7 +1134,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-25 implementation | incomplete import resume</h2>
   <ul>
-    <li>Completed <a href="/wiki/plans/features/incomplete-import-resume.mdx">Incomplete Import Resume</a> so abandoned imported projects remain registered, visibly marked, and resumable from saved Q&amp;A context.</li>
+    <li>Completed <a href="/wiki/plans/zzz_completed/features/incomplete-import-resume.mdx">Incomplete Import Resume</a> so abandoned imported projects remain registered, visibly marked, and resumable from saved Q&amp;A context.</li>
     <li>Added Rust import planning status/progress endpoints, derived project-list import status, repo-visible <code>wiki/sources/import-qna.mdx</code> persistence, React project-card status, and incomplete-import resume routing.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, and <code>pnpm run test:tauri</code>.</li>
   </ul>
@@ -1288,7 +1296,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-22 implementation | react-shadcn-mdx-rewrite batch 1</h2>
   <ul>
-    <li>Completed the frontend foundation batch for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Completed the frontend foundation batch for the <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
     <li>Added Vite, React, TypeScript, Tailwind v4, shadcn configuration, the first <code>Button</code> primitive, a typed React API adapter, and a minimal React shell surface.</li>
     <li>Rewired Tauri to use the Vite dev URL and generated <code>dist</code> bundle, while preserving old static app assets as copied compatibility assets for later app-shell parity work.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, <code>pnpm run smoke:api-adapter</code>, <code>pnpm run smoke:tauri-static-assets</code>, <code>pnpm run check:tauri</code>, <code>pnpm dlx shadcn@latest info --json</code>, and <code>pnpm run tauri:build</code>.</li>
@@ -1297,7 +1305,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-22 execution | react-shadcn-mdx-rewrite batch 0</h2>
   <ul>
-    <li>Completed Stage 00 readiness for the <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
+    <li>Completed Stage 00 readiness for the <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a>.</li>
     <li>Confirmed the current checkout is the <code>frontend-rewrite</code> branch, so no additional rewrite worktree was created.</li>
     <li>Installed repo-local <code>shadcn</code> and <code>tailwind-design-system</code> skills through the approved <code>npx skills add</code> commands, producing <code>.agents/skills/</code> entries and <code>skills-lock.json</code>.</li>
     <li>Updated agent guidance and source briefs so future frontend implementation sessions use those skills before React, Tailwind, shadcn/ui, or MDX code changes.</li>
@@ -1306,7 +1314,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-22 planning | react-shadcn-mdx-rewrite</h2>
   <ul>
-    <li>Added the active <a href="/wiki/plans/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> plan for the full frontend rewrite, not only plan-page rendering.</li>
+    <li>Added the active <a href="/wiki/plans/zzz_completed/features/react-shadcn-mdx-rewrite.mdx">React, shadcn, and MDX Rewrite</a> plan for the full frontend rewrite, not only plan-page rendering.</li>
     <li>Planning direction: hyperwiki should use a dedicated rewrite worktree, keep Tauri/Rust as runtime owner, move the app shell to Vite, React, TypeScript, Tailwind v4, and shadcn/ui, and make new plan pages trusted local MDX with Markdown-first derivatives for LLM/project-contract use.</li>
     <li>Skill readiness is part of Stage 00: future implementation should install or verify <code>shadcn</code> and <code>tailwind-design-system</code> skills for local Codex and Claude agents before frontend work starts.</li>
   </ul>
@@ -1329,7 +1337,7 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 planning | project plan creation</h2>
   <ul>
-    <li>Added the active <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> plan for creating durable wiki plans inside a selected project root.</li>
+    <li>Added the active <a href="/wiki/plans/zzz_completed/features/project-plan-creation.mdx">Project Plan Creation</a> plan for creating durable wiki plans inside a selected project root.</li>
     <li>Planning direction: project plan creation should write to the selected project's <code>wiki/</code> files, preserve hyperwiki scaffold conventions, show scoped path and conflict checks, and navigate to the new plan for review before implementation.</li>
     <li>Next unit: implement the project-scoped create-plan API contract.</li>
   </ul>
@@ -1337,14 +1345,14 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 planning | plan creation Q&amp;A loop</h2>
   <ul>
-    <li>Updated <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> so the first implementation unit is an LLM-led clarification contract.</li>
+    <li>Updated <a href="/wiki/plans/zzz_completed/features/project-plan-creation.mdx">Project Plan Creation</a> so the first implementation unit is an LLM-led clarification contract.</li>
     <li>Planning direction: the LLM should keep asking high-value questions until no blocking unknowns remain and important unknowns are answered or explicitly recorded as assumptions before plan files are written.</li>
   </ul>
 </article>
 <article>
   <h2>2026-05-21 implementation | project plan creation</h2>
   <ul>
-    <li>Implemented the <a href="/wiki/plans/features/project-plan-creation.mdx">Project Plan Creation</a> workflow in branch <code>feature/project-plan-creation</code>.</li>
+    <li>Implemented the <a href="/wiki/plans/zzz_completed/features/project-plan-creation.mdx">Project Plan Creation</a> workflow in branch <code>feature/project-plan-creation</code>.</li>
     <li>Added Rust-backed plan clarification and creation endpoints, generated wiki plan writes, planning dashboard and log updates, slug conflict feedback, and a workspace <code>+ plan</code> Q&amp;A surface.</li>
     <li>Verified with <code>pnpm run check</code>, <code>pnpm run smoke:tauri-static-assets</code>, targeted Rust plan creation tests, and static browser shell inspection.</li>
   </ul>
@@ -1360,7 +1368,7 @@ wikiKind: "page"
   <h2>2026-05-21 fix | plain summary status parsing</h2>
   <ul>
     <li>Extended Rust wiki status extraction to read plain <code>Summary</code> sections, not only sections with <code>class="summary"</code>.</li>
-    <li>This lets completed feature plans such as <a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> group under Completed Plans in the Tauri sidebar.</li>
+    <li>This lets completed feature plans such as <a href="/wiki/plans/zzz_completed/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> group under Completed Plans in the Tauri sidebar.</li>
   </ul>
 </article>
 <article>
@@ -1390,8 +1398,8 @@ wikiKind: "page"
 <article>
   <h2>2026-05-21 planning | close active plans</h2>
   <ul>
-    <li>Marked <a href="/wiki/plans/features/new-plan-workflow.mdx">New Plan Workflow</a> complete.</li>
-    <li>Marked <a href="/wiki/plans/features/multi-agent-provider-support.mdx">Multi-Agent Provider Support</a> complete.</li>
+    <li>Marked <a href="/wiki/plans/zzz_completed/features/new-plan-workflow.mdx">New Plan Workflow</a> complete.</li>
+    <li>Marked <a href="/wiki/plans/zzz_completed/features/multi-agent-provider-support.mdx">Multi-Agent Provider Support</a> complete.</li>
     <li>Updated the planning dashboard and home page so future work starts from no active current plan.</li>
   </ul>
 </article>
@@ -1425,7 +1433,7 @@ wikiKind: "page"
   <h2>2026-05-21 implementation | legacy Node runtime removal</h2>
   <ul>
     <li>Decision: hyperwiki's current runtime contract is Tauri/Rust only. The legacy Node localhost server, npm CLI bin, WebSocket PTY path, browser fetch fallback, and Node worktree shim are no longer active product surfaces.</li>
-    <li>Added the active <a href="/wiki/plans/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> plan and updated current source truth to treat <code>pnpm dev</code> as Tauri desktop startup.</li>
+    <li>Added the active <a href="/wiki/plans/zzz_completed/features/remove-legacy-node-runtime.mdx">Remove Legacy Node Runtime</a> plan and updated current source truth to treat <code>pnpm dev</code> as Tauri desktop startup.</li>
     <li>Preserved <code>package.json</code> as developer tooling for <code>pnpm</code>, Tauri, frontend syntax checks, static asset smoke tests, and Rust-backed worktree command shortcuts.</li>
   </ul>
 </article>
