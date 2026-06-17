@@ -34,6 +34,7 @@ export function WorkspacePane(props: {
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onReviewScreenshots: (unitPath: string) => void;
+  screenshotRefreshKey: number;
   onSendAllFeedback: () => Promise<void> | void;
   onRemoveFeedback: (id: string) => Promise<void> | void;
   onSendCommandToTerminal: (command: string) => void;
@@ -80,7 +81,7 @@ export function WorkspacePane(props: {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitScreenshotPath, screenshotProjectId]);
+  }, [unitScreenshotPath, screenshotProjectId, props.screenshotRefreshKey]);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const pageMarkdown = props.wikiSource?.markdown || "";
   async function copyPageMarkdown() {

@@ -145,6 +145,9 @@ function App() {
   const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
   const [feedbackPendingCount, setFeedbackPendingCount] = useState(0);
   const [awaitingReviewUnits, setAwaitingReviewUnits] = useState<string[]>([]);
+  // Bumped when a unit's screenshots are mutated on disk (e.g. discarded) so the
+  // workspace's inline screenshot card refetches instead of showing stale images.
+  const [screenshotRefreshKey, setScreenshotRefreshKey] = useState(0);
   useEffect(() => {
     let active = true;
     if (!activeProject) {
@@ -2346,6 +2349,7 @@ function App() {
     try {
       await clearUnitScreenshots(review.unitPath, activeProject);
       setStatus("Screenshots discarded");
+      setScreenshotRefreshKey((value) => value + 1);
       void refreshAwaitingReview();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2960,6 +2964,7 @@ function App() {
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
             onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
+            screenshotRefreshKey={screenshotRefreshKey}
             onSendAllFeedback={() => void sendAllFeedback()}
             onRemoveFeedback={removeQueuedFeedback}
             onSendCommandToTerminal={sendCommandToTerminal}

@@ -103,6 +103,12 @@ assert.ok(
   tsSources.includes("Discard screenshots") && tsSources.includes("function discardScreenshotReview"),
   "The review dialog should offer a manual 'Discard screenshots' reset.",
 );
+assert.ok(
+  tsSources.includes("setScreenshotRefreshKey((value) => value + 1)")
+    && tsSources.includes("screenshotRefreshKey: number")
+    && tsSources.includes("props.screenshotRefreshKey]"),
+  "Discarding should bump a refresh key the workspace effect depends on, so the stale inline screenshot card refetches (clears) instead of lingering unclickable.",
+);
 
 // Viewing — fetch helpers, carousel, inline display, gallery route + view, nav.
 assert.ok(
