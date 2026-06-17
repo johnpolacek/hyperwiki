@@ -2288,6 +2288,7 @@ function App() {
       `Append a "## Revisions" section at the end of the unit page (${unitPath}) — create it if absent, otherwise add a new dated entry — listing the feedback you addressed and a short summary of what changed. Preserve the page's existing plan components.`,
       `Regenerate the screenshots: first remove any existing PNGs in \`${unitScreenshotDir(unitPath)}/\`, then capture the current views fresh with the agent-browser skill into that directory so the set fully reflects the new state (no stale shots) and can be reviewed.`,
       "Run relevant checks before summarizing the result.",
+      "When you commit this fix, include the unit's wiki changes — the `## Revisions` entry and any plan/stage/unit status updates — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted. Follow the repo's commit and push policy.",
     ].join("\n");
   }
 
@@ -3926,6 +3927,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
         ]
       : []),
     "- Run relevant checks before summarizing the result.",
+    "- When you commit this unit's work, include the wiki changes it produced — plan/stage/unit status updates and the `wiki/log.mdx` entry — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted or out of sync. Follow the repo's commit and push policy.",
   ].join("\n");
 }
 
@@ -3978,6 +3980,7 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
         ]
       : []),
     "- Run relevant checks before summarizing the result.",
+    "- When you commit this unit's work, include the wiki changes it produced — plan/stage/unit status updates and the `wiki/log.mdx` entry — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted or out of sync. Follow the repo's commit and push policy.",
   ].join("\n");
 }
 

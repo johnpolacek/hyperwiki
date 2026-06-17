@@ -1,6 +1,6 @@
 # AGENTS.md instructions for /Users/johnpolacek/Projects/hyperwiki
 
-Commit work when it is complete. As soon as a unit of work is finished and verified—code is good and there are no open questions about the implementation—commit it before moving on. Do not leave completed changes sitting uncommitted in the working tree, and prefer focused, single-purpose commits over batching unrelated finished work together. Pull whenever confident the code is good.
+Commit work when it is complete. As soon as a unit of work is finished and verified—code is good and there are no open questions about the implementation—commit it before moving on. When a commit completes a unit of work, include the wiki changes it produced—plan/stage/unit status updates and `wiki/log.mdx` entries—in that same commit so the wiki is committed alongside the code and never left dirty or out of sync. Do not leave completed changes sitting uncommitted in the working tree, and prefer focused, single-purpose commits over batching unrelated finished work together. Pull whenever confident the code is good.
 
 Always use `pnpm` for package management and package scripts in this repository.
 
