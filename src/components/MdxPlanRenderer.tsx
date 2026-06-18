@@ -22,6 +22,7 @@ import {
   Play,
   ShieldAlert,
   ShieldCheck,
+  Sparkles,
   Target,
   Terminal,
   X,
@@ -41,6 +42,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { UnitScreenshotImageData } from "@/lib/api";
+import type { UnitExplorationMetadata } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
@@ -59,6 +61,9 @@ interface MdxPlanRendererProps {
   onProposeChange?: (prompt: string) => void;
   unitScreenshots?: UnitScreenshotImageData[];
   onReviewScreenshots?: () => void;
+  unitExplorations?: UnitScreenshotImageData[];
+  unitExplorationMetadata?: UnitExplorationMetadata | null;
+  onExploreDesigns?: () => void;
 }
 
 interface PlanRenderContext {
@@ -141,13 +146,14 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorations = [], unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
   const latestScreenshotAt = unitScreenshots.reduce((max, image) => Math.max(max, image.capturedAt), 0);
+  const latestExplorationAt = unitExplorations.reduce((max, image) => Math.max(max, image.capturedAt), 0);
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -234,6 +240,38 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                 </ul>
               </AlertDescription>
             </Alert>
+          ) : null}
+          {onExploreDesigns ? (
+            <Card className="gap-0 overflow-hidden py-0" data-unit-explorations="true">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm font-semibold">Design explorations{unitExplorations.length > 1 ? ` (${unitExplorations.length})` : ""}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {unitExplorations.length ? `· generated ${formatCapturedAt(latestExplorationAt)}` : "· optional before Execute Unit"}
+                  </span>
+                  {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
+                </div>
+                <Button size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
+                  <Sparkles aria-hidden="true" data-icon="inline-start" />
+                  Explore designs
+                </Button>
+              </div>
+              {unitExplorations.length ? (
+                <button
+                  aria-label="Open design explorations"
+                  className="block w-full"
+                  type="button"
+                  onClick={onExploreDesigns}
+                >
+                  <img
+                    alt="Generated design exploration candidate"
+                    className="block max-h-[26rem] w-full cursor-pointer bg-muted object-contain"
+                    src={unitExplorations[0].dataUrl}
+                  />
+                </button>
+              ) : null}
+            </Card>
           ) : null}
           {unitScreenshots.length ? (
             <Card className="gap-0 overflow-hidden py-0" data-unit-screenshot="true">

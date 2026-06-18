@@ -8,12 +8,12 @@ wikiKind: "plan"
 <section className="summary" aria-labelledby="summary">
   <h2 id="summary">Summary</h2>
   <dl>
-    <dt>Status</dt><dd>planned</dd>
-    <dt>Shape</dt><dd>feature plan refined from product questions on 2026-06-17</dd>
-    <dt>Current unit</dt><dd>Unit 01 - exploration contract and provider capability check</dd>
-    <dt>Next action</dt><dd>verify the current image generation API details, then implement the unit-page exploration contract.</dd>
-    <dt>Blockers</dt><dd>confirm exact model id, endpoint, parameters, cost behavior, and whether any non-Codex provider can generate images inside the same workflow.</dd>
-    <dt>Validation</dt><dd>unit-level static checks, Rust route tests, agent-prompt smoke coverage, and browser screenshots for visible UI states.</dd>
+    <dt>Status</dt><dd>implemented v1; dogfood pending</dd>
+    <dt>Shape</dt><dd>feature plan refined from product questions on 2026-06-17 and implemented through the agent-owned generation contract on 2026-06-18.</dd>
+    <dt>Current unit</dt><dd>Unit 06 - verification and polish completed for v1.</dd>
+    <dt>Next action</dt><dd>dogfood the Explore designs flow on a real visual unit and decide whether app-owned image API calls are worth adding later.</dd>
+    <dt>Blockers</dt><dd>No v1 blocker. Claude remains capability-gated, and Hyperwiki intentionally does not hardcode OpenAI model pricing or own image API keys in the app.</dd>
+    <dt>Validation</dt><dd><code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, <code>pnpm run build:frontend</code>, and an agent-browser shell render check passed.</dd>
   </dl>
 </section>
 
@@ -80,14 +80,24 @@ wikiKind: "plan"
 </section>
 
 <section>
+  <h2>Implementation Update</h2>
+  <ul>
+    <li>Added traversal-guarded runtime storage under <code>.hyperwiki/state/explorations/&lt;unit-path&gt;/</code>, including ordered PNG discovery, metadata read/write, clearing, listing, and selected-candidate persistence.</li>
+    <li>Added unit-page <strong>Explore designs</strong> UI with New and Redesign modes, a 1-4 variant selector, optional source-screenshot selection, a candidate carousel, notes, implementation brief, and <strong>Use direction</strong> selection.</li>
+    <li>Generation stays agent-owned: Hyperwiki sends a structured Image-Gen Design Exploration prompt to the agent, asks it to use the imagegen skill when available, and avoids storing provider secrets or API pricing assumptions in app code.</li>
+    <li>Execute Unit and worktree execution prompts now include the selected candidate image path, text brief, and user notes when a direction has been chosen.</li>
+  </ul>
+</section>
+
+<section>
   <h2>Execution Units</h2>
   <ol>
-    <li><strong>Unit 01 - Exploration contract and provider capability check:</strong> verify current image-generation API/CLI facts, decide how Codex invokes generation/editing, document Claude as unsupported or capability-gated, and define the exploration metadata schema.</li>
-    <li><strong>Unit 02 - Runtime storage and routes:</strong> add exploration folder mapping, metadata read/write, clear/list/fetch/select routes, traversal tests, and parity with screenshot storage conventions.</li>
-    <li><strong>Unit 03 - Unit page exploration UI:</strong> add the Explore designs entry point, mode selection, prompt field, max-four variant picker, source screenshot selector, recommended cue, and exploration carousel/review state.</li>
-    <li><strong>Unit 04 - Agent prompt and generation workflow:</strong> add the structured Codex prompt/action that gathers unit and project context, clears old explorations, generates or edits images, writes ordered PNGs and metadata, and reports failures clearly.</li>
-    <li><strong>Unit 05 - Selection-to-execution handoff:</strong> pass selected image plus text brief into Execute Unit, preserve user notes, and ensure implemented screenshots remain separate from ideation images.</li>
-    <li><strong>Unit 06 - Verification and polish:</strong> add smoke coverage, route tests, visible-state screenshots, empty/error/loading states, and wiki/log updates; then close or archive the plan.</li>
+    <li><strong>Done - Unit 01 - Exploration contract and provider capability check:</strong> v1 uses Codex/imagegen-capable agent generation and keeps Claude capability-gated; metadata schema lives in <code>src-tauri/src/domain/explorations.rs</code>.</li>
+    <li><strong>Done - Unit 02 - Runtime storage and routes:</strong> added exploration folder mapping, metadata read/write, clear/list/fetch/select routes, traversal tests, and parity with screenshot storage conventions.</li>
+    <li><strong>Done - Unit 03 - Unit page exploration UI:</strong> added the Explore designs entry point, mode selection, prompt field, max-four variant picker, source screenshot selector, recommended cue, and exploration carousel/review state.</li>
+    <li><strong>Done - Unit 04 - Agent prompt and generation workflow:</strong> added the structured prompt/action that gathers unit and project context, clears old explorations, asks for imagegen output, writes ordered PNGs and metadata, and reports capability blockers clearly.</li>
+    <li><strong>Done - Unit 05 - Selection-to-execution handoff:</strong> selected image, text brief, and user notes flow into Execute Unit and worktree execution prompts while implemented screenshots remain separate from ideation images.</li>
+    <li><strong>Done - Unit 06 - Verification and polish:</strong> added smoke coverage, Rust route/storage tests, empty/clear/refresh states, browser shell render check, and wiki/log updates.</li>
   </ol>
 </section>
 
@@ -107,9 +117,9 @@ wikiKind: "plan"
 <section>
   <h2>Open Questions</h2>
   <ul>
-    <li>What is the exact current image-generation model id, endpoint, edit endpoint support, parameter shape, and cost profile at implementation time?</li>
-    <li>Can the configured Claude agent path generate or edit images locally in a way that fits this contract, or should Claude users be routed through Codex for explorations?</li>
-    <li>Should the text brief for a selected direction be generated immediately after image generation, only after selection, or by the Execute Unit prompt itself?</li>
+    <li>Should Hyperwiki later add an app-owned OpenAI Image API path, or is agent-owned imagegen generation enough for the product loop?</li>
+    <li>Can the configured Claude agent path generate or edit images locally in a way that fits this contract, or should Claude users continue to be routed through Codex-capable explorations?</li>
+    <li>After dogfooding, should <strong>Use direction</strong> optionally start Execute Unit immediately, or should selection remain a separate step?</li>
     <li>Which existing screenshot should redesign mode default to when several review screenshots exist for the same unit?</li>
   </ul>
 </section>

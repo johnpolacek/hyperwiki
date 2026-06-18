@@ -31,8 +31,54 @@ export interface UnitScreenshotImage {
   bytes: number;
 }
 
+export interface UnitExploration {
+  unitPath: string;
+  count: number;
+  capturedAt: number;
+  bytes: number;
+  selectedCandidate?: string | null;
+}
+
+export interface UnitExplorationImage {
+  unitPath: string;
+  name: string;
+  mediaType: string;
+  base64: string;
+  capturedAt: number;
+  bytes: number;
+}
+
+export interface UnitExplorationMetadata {
+  version: number;
+  unitPath: string;
+  mode: string;
+  prompt: string;
+  sourceScreenshotPath?: string | null;
+  provider: string;
+  modelId?: string | null;
+  imageCount: number;
+  selectedCandidate?: string | null;
+  notes?: string | null;
+  textBrief?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface UnitExplorationMetadataInput {
+  unitPath: string;
+  mode: string;
+  prompt: string;
+  sourceScreenshotPath?: string | null;
+  provider?: string | null;
+  modelId?: string | null;
+  imageCount?: number | null;
+  selectedCandidate?: string | null;
+  notes?: string | null;
+  textBrief?: string | null;
+}
+
 export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
-export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning";
+export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning" | "exploration";
 export type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 export type ThinkingEffort = "low" | "medium" | "high" | "xhigh";
 

@@ -48,13 +48,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { clearUnitScreenshots, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, withProjectQuery } from "@/lib/api";
+import { clearUnitExplorations, clearUnitScreenshots, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, selectUnitExploration, withProjectQuery, writeUnitExplorationMetadata, type UnitScreenshotImageData } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
+import { UnitDesignExplorationDialog, type UnitDesignExplorationGenerateInput } from "@/components/views/UnitDesignExplorationDialog";
 import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
 import { DiffViewerDialog } from "@/components/views/DiffViewerDialog";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
@@ -66,14 +67,14 @@ import { TerminalPane } from "@/components/terminal/TerminalPane";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isLiveTerminalSession, isStandbySession, newestSession, sessionSortMs, fileToBase64, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, listenTerminalCompletion, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, previewDetachedDevSession, saveTerminalDroppedFiles, selectDevTerminalSession, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalCollapsedSummary, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalPaneLabel, terminalPaneStatusLabel, terminalPasteImageFileName, terminalStartupNotice, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, worktreePreviewForSlug, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { isReactRenderedMdxPath } from "@/lib/wiki-pages";
-import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
+import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitExplorationDir, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
 import { clearPendingImportProject, readPendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS, slugify } from "@/lib/utils";
 import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefersReducedMotion } from "@/components/ui/beam-surface";
 import { agentLaunchCommand, agentProviderFromCommand, claudeCommandWithThinkingEffort, codexCommandWithThinkingEffort, defaultAgentCommand, defaultThinkingEffort, importAgentLaunchCommand, layoutAgentProvider, normalizedThinkingEffort, type AgentProviderAvailability, type AgentProviderId } from "@/lib/agent";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
-import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, UnitExplorationMetadata, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
 
 
 const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
@@ -150,6 +151,12 @@ function App() {
   // Bumped when a unit's screenshots are mutated on disk (e.g. discarded) so the
   // workspace's inline screenshot card refetches instead of showing stale images.
   const [screenshotRefreshKey, setScreenshotRefreshKey] = useState(0);
+  const [explorationRefreshKey, setExplorationRefreshKey] = useState(0);
+  const [explorationDialogUnitPath, setExplorationDialogUnitPath] = useState<string | null>(null);
+  const [explorationDialogImages, setExplorationDialogImages] = useState<UnitScreenshotImageData[]>([]);
+  const [explorationDialogScreenshots, setExplorationDialogScreenshots] = useState<UnitScreenshotImageData[]>([]);
+  const [explorationDialogMetadata, setExplorationDialogMetadata] = useState<UnitExplorationMetadata | null>(null);
+  const [isExplorationGenerating, setIsExplorationGenerating] = useState(false);
   useEffect(() => {
     let active = true;
     if (!activeProject) {
@@ -1369,6 +1376,9 @@ function App() {
         if (armedCompletion.kind === "execute" && armedCompletion.planPath) {
           void maybeOpenScreenshotReview(armedCompletion.planPath, sessionId, armedCompletion.armedAt);
         }
+        if (armedCompletion.kind === "exploration" && armedCompletion.planPath) {
+          setExplorationRefreshKey((value) => value + 1);
+        }
       }
     }
     const activity = latestPlanningActivity(next);
@@ -2371,6 +2381,141 @@ function App() {
     setScreenshotReview({ unitPath, sessionId: null, images });
   }
 
+  async function refreshDesignExplorationDialog(unitPath = explorationDialogUnitPath) {
+    if (!unitPath) return;
+    const [images, screenshots, metadata] = await Promise.all([
+      fetchUnitExplorationImages(unitPath, activeProject),
+      fetchUnitScreenshotImages(unitPath, activeProject),
+      fetchUnitExplorationMetadata(unitPath, activeProject),
+    ]);
+    setExplorationDialogImages(images);
+    setExplorationDialogScreenshots(screenshots);
+    setExplorationDialogMetadata(metadata);
+    setExplorationRefreshKey((value) => value + 1);
+  }
+
+  async function openDesignExploration(unitPath: string) {
+    setExplorationDialogUnitPath(unitPath);
+    setExplorationDialogImages([]);
+    setExplorationDialogScreenshots([]);
+    setExplorationDialogMetadata(null);
+    await refreshDesignExplorationDialog(unitPath);
+  }
+
+  async function clearDesignExplorations() {
+    const unitPath = explorationDialogUnitPath;
+    if (!unitPath) return;
+    try {
+      await clearUnitExplorations(unitPath, activeProject);
+      setExplorationDialogImages([]);
+      setExplorationDialogMetadata(null);
+      setExplorationRefreshKey((value) => value + 1);
+      setStatus("Design explorations cleared");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function generateDesignExploration(input: UnitDesignExplorationGenerateInput) {
+    const unitPath = explorationDialogUnitPath;
+    if (!unitPath) return;
+    if (input.mode === "redesign-from-screenshot" && !input.sourceScreenshotPath) {
+      setStatus("Choose a source screenshot before redesigning");
+      return;
+    }
+    const direction = input.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
+    setIsExplorationGenerating(true);
+    try {
+      await clearUnitExplorations(unitPath, activeProject);
+      const metadata = await writeUnitExplorationMetadata({
+        unitPath,
+        mode: input.mode,
+        prompt: direction,
+        sourceScreenshotPath: input.sourceScreenshotPath || null,
+        provider: "codex-imagegen-agent",
+        modelId: "agent-owned",
+        imageCount: input.variantCount,
+      }, activeProject);
+      setExplorationDialogImages([]);
+      setExplorationDialogMetadata(metadata);
+      setExplorationRefreshKey((value) => value + 1);
+      setIsWorkspaceExpanded(false);
+      await sendTrackedAgentPrompt(
+        "exploration",
+        "Explore Designs",
+        designExplorationPrompt(unitPath, input, direction),
+        unitPath,
+        scopeForRoute({ kind: "wiki", path: unitPath }),
+        layout,
+        sessions,
+        undefined,
+        { forceNewSession: true },
+      );
+      setStatus("Design exploration prompt sent");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsExplorationGenerating(false);
+    }
+  }
+
+  function designExplorationPrompt(unitPath: string, input: UnitDesignExplorationGenerateInput, direction: string) {
+    const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
+    const outputDir = unitExplorationDir(unitPath);
+    const unitPageSource = displayWikiPath(currentWikiPath) === displayWikiPath(unitPath)
+      ? (wikiSource?.markdown || wikiSource?.source || "")
+      : "";
+    return [
+      "Mode: Image-Gen Design Exploration.",
+      "",
+      "Task: generate design exploration PNGs for one hyperwiki unit. This is ideation only; do not implement product code and do not edit the unit status.",
+      "",
+      `Project: ${activeProject?.name || "Unknown"}`,
+      `Project root: ${activeProject?.root || "Unknown"}`,
+      `Unit: ${unitTitle}`,
+      `Unit path: ${unitPath}`,
+      `Mode: ${input.mode}`,
+      `Variant count: ${input.variantCount} (maximum 4)`,
+      `Output folder: ${outputDir}`,
+      input.sourceScreenshotPath ? `Source screenshot: ${input.sourceScreenshotPath}` : "Source screenshot: none",
+      "",
+      "User direction:",
+      direction,
+      "",
+      "Workflow:",
+      "- Use the imagegen skill with the built-in image generation path when available.",
+      "- If the active agent cannot generate or edit images in this local workflow, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
+      `- First remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
+      "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
+      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt.",
+      "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
+      "- After generation, report the saved paths and remind the user to click Refresh in Hyperwiki if the candidates are not visible yet.",
+      "",
+      "Design constraints:",
+      "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
+      "- Make candidates realistic enough to implement in React/Tailwind/shadcn, not abstract mood boards.",
+      "- Preserve app/product semantics, route intent, and visible copy unless the user direction explicitly asks to explore copy.",
+      "- Avoid marketing-page composition for operational app surfaces; prioritize scannable workflows, hierarchy, states, and target-user ergonomics.",
+      "",
+      ...(unitPageSource.trim()
+        ? ["Current unit source:", unitPageSource.slice(0, 6000)]
+        : ["Current unit source: read the unit page from disk before prompting image generation."]),
+    ].join("\n");
+  }
+
+  async function chooseDesignExploration(candidateName: string, notes: string, textBrief: string) {
+    const unitPath = explorationDialogUnitPath;
+    if (!unitPath) return;
+    try {
+      const metadata = await selectUnitExploration(unitPath, candidateName, notes, textBrief, activeProject);
+      setExplorationDialogMetadata(metadata);
+      setExplorationRefreshKey((value) => value + 1);
+      setStatus("Design direction selected; Execute Unit will include it");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
     const normalizedCurrentPage = displayWikiPath(currentWikiPath);
     const executionPage = activePlanState.currentPath || normalizedCurrentPage;
@@ -2378,7 +2523,8 @@ function App() {
     if (!(route.kind === "wiki" && displayWikiPath(route.path) === displayWikiPath(executionPage))) {
       navigate({ kind: "wiki", path: executionPage });
     }
-    const prompt = workflowPrompt("execute-main", workspace, wikiPages, executionPage, payload?.prompt || "");
+    const designDirection = await fetchUnitExplorationMetadata(executionPage, activeProject);
+    const prompt = workflowPrompt("execute-main", workspace, wikiPages, executionPage, payload?.prompt || "", designDirection);
     const candidateSession = selectExecuteAgentReuseCandidate(sessions, activeSessionId);
     if (candidateSession) {
       setPendingExecuteAgentConfirmation({
@@ -2460,7 +2606,9 @@ function App() {
           body: { branch },
         });
         await loadBaseData();
-        await sendTrackedAgentPrompt("worktree", "Run Dev Worktree", existingWorktreePrompt(workspace, currentWikiPath, result), currentWikiPath, terminalScope, layout, sessions, runId);
+        const worktreeUnitPath = workspace?.status?.currentPath ? displayWikiPath(workspace.status.currentPath) : "";
+        const designDirection = worktreeUnitPath ? await fetchUnitExplorationMetadata(worktreeUnitPath, activeProject) : null;
+        await sendTrackedAgentPrompt("worktree", "Run Dev Worktree", existingWorktreePrompt(workspace, currentWikiPath, result, designDirection), currentWikiPath, terminalScope, layout, sessions, runId);
         setStatus(`Worktree ready: ${result.branch || branch}`);
       }
       if (action === "review" && payload?.workflowId) {
@@ -2966,7 +3114,9 @@ function App() {
             onRemoveProject={removeProject}
             onDeletePlan={deletePlanPage}
             onRunCommand={runCommandAction}
+            onExploreDesigns={(path) => void openDesignExploration(path)}
             onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
+            explorationRefreshKey={explorationRefreshKey}
             screenshotRefreshKey={screenshotRefreshKey}
             onSendAllFeedback={() => void sendAllFeedback()}
             onRemoveFeedback={removeQueuedFeedback}
@@ -3042,6 +3192,26 @@ function App() {
             onExecuteNext={() => void executeNextUnitFromReview()}
             onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
             onReset={() => void discardScreenshotReview()}
+          />
+        ) : null}
+        {explorationDialogUnitPath ? (
+          <UnitDesignExplorationDialog
+            explorationDir={unitExplorationDir(explorationDialogUnitPath)}
+            images={explorationDialogImages}
+            isGenerating={isExplorationGenerating}
+            metadata={explorationDialogMetadata}
+            open={Boolean(explorationDialogUnitPath)}
+            screenshotDir={unitScreenshotDir(explorationDialogUnitPath)}
+            screenshots={explorationDialogScreenshots}
+            unitPath={explorationDialogUnitPath}
+            unitTitle={titleForPath(explorationDialogUnitPath, wikiPages) || "unit"}
+            onClear={() => void clearDesignExplorations()}
+            onGenerate={(input) => void generateDesignExploration(input)}
+            onOpenChange={(open) => {
+              if (!open) setExplorationDialogUnitPath(null);
+            }}
+            onRefresh={() => void refreshDesignExplorationDialog()}
+            onSelect={(candidateName, notes, textBrief) => void chooseDesignExploration(candidateName, notes, textBrief)}
           />
         ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
@@ -3877,7 +4047,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
   ].join("\n");
 }
 
-function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, userRequest = "") {
+function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, userRequest = "", designDirection: UnitExplorationMetadata | null = null) {
   const context = planningPromptContext(workspace, pages, visiblePath, action === "modify");
   if (action === "modify") {
     const initialRequest = userRequest.trim();
@@ -3906,6 +4076,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
   const unitTitle = context.unitTitle;
   const unitPath = context.unitPath;
   const screenshotDir = unitPath ? unitScreenshotDir(unitPath) : "";
+  const designDirectionLines = selectedDesignDirectionLines(unitPath, designDirection);
   return [
     "Execute exactly one hyperwiki unit on main.",
     "",
@@ -3930,6 +4101,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
           "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
         ]
       : []),
+    ...designDirectionLines,
     "- Run relevant checks before summarizing the result.",
     "- When you commit this unit's work, include the wiki changes it produced — plan/stage/unit status updates and the `wiki/log.mdx` entry — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted or out of sync. Follow the repo's commit and push policy.",
   ].join("\n");
@@ -3953,10 +4125,24 @@ function planningPromptContext(workspace: WorkspaceResponse | null, pages: WikiP
   };
 }
 
-function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }) {
+function selectedDesignDirectionLines(unitPath: string, designDirection: UnitExplorationMetadata | null) {
+  if (!unitPath || !designDirection?.selectedCandidate) return [];
+  const candidatePath = `${unitExplorationDir(unitPath)}/${designDirection.selectedCandidate}`;
+  return [
+    "",
+    "Selected design exploration:",
+    `- Candidate image: ${candidatePath}`,
+    designDirection.textBrief ? `- Implementation brief: ${designDirection.textBrief}` : "- Implementation brief: use the selected candidate as visual direction.",
+    designDirection.notes ? `- User notes: ${designDirection.notes}` : "- User notes: none.",
+    "- Apply this as visual direction for layout, hierarchy, density, and interaction feel while preserving the unit's product requirements.",
+  ];
+}
+
+function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath: string, result: { branch?: string; path?: string; previewUrl?: string; project?: ProjectRecord }, designDirection: UnitExplorationMetadata | null = null) {
   const status = workspace?.status || {};
   const unitPath = status.currentPath ? displayWikiPath(status.currentPath) : "";
   const screenshotDir = unitPath ? unitScreenshotDir(unitPath) : "";
+  const designDirectionLines = selectedDesignDirectionLines(unitPath, designDirection);
   return [
     "Execute exactly one hyperwiki unit in the already-created worktree.",
     "",
@@ -3983,6 +4169,7 @@ function existingWorktreePrompt(workspace: WorkspaceResponse | null, visiblePath
           "- If the view is behind auth or an undeployed backend, reach it first: ensure `pnpm dev` runs the full stack, then follow the `previewCapture` profile in `.hyperwiki/config.json` (and `.env.local` test creds) plus any `## Screenshot capture` notes on the unit page. See AGENTS.md “Reaching gated previews for capture”.",
         ]
       : []),
+    ...designDirectionLines,
     "- Run relevant checks before summarizing the result.",
     "- When you commit this unit's work, include the wiki changes it produced — plan/stage/unit status updates and the `wiki/log.mdx` entry — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted or out of sync. Follow the repo's commit and push policy.",
   ].join("\n");

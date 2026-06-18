@@ -9,9 +9,9 @@ import { SettingsView } from "@/components/views/SettingsView";
 import { FeedbackQueueView } from "@/components/views/FeedbackQueueView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
-import { fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
+import { fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
 import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, titleForPath } from "@/lib/wiki-pages";
-import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, UnitExplorationMetadata, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
@@ -34,7 +34,9 @@ export function WorkspacePane(props: {
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onReviewScreenshots: (unitPath: string) => void;
+  onExploreDesigns: (unitPath: string) => void;
   screenshotRefreshKey: number;
+  explorationRefreshKey: number;
   onSendAllFeedback: () => Promise<void> | void;
   onRemoveFeedback: (id: string) => Promise<void> | void;
   onSendCommandToTerminal: (command: string) => void;
@@ -67,6 +69,8 @@ export function WorkspacePane(props: {
     return page && isUnitPage(page) ? displayWikiPath(page.path) : "";
   })();
   const [unitScreenshots, setUnitScreenshots] = useState<UnitScreenshotImageData[]>([]);
+  const [unitExplorations, setUnitExplorations] = useState<UnitScreenshotImageData[]>([]);
+  const [unitExplorationMetadata, setUnitExplorationMetadata] = useState<UnitExplorationMetadata | null>(null);
   const screenshotProjectId = props.activeProject?.id || "";
   useEffect(() => {
     if (!unitScreenshotPath) {
@@ -83,6 +87,28 @@ export function WorkspacePane(props: {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitScreenshotPath, screenshotProjectId, props.screenshotRefreshKey]);
+  useEffect(() => {
+    if (!unitScreenshotPath) {
+      setUnitExplorations([]);
+      setUnitExplorationMetadata(null);
+      return;
+    }
+    let active = true;
+    setUnitExplorations([]);
+    setUnitExplorationMetadata(null);
+    void Promise.all([
+      fetchUnitExplorationImages(unitScreenshotPath, props.activeProject),
+      fetchUnitExplorationMetadata(unitScreenshotPath, props.activeProject),
+    ]).then(([images, metadata]) => {
+      if (!active) return;
+      setUnitExplorations(images);
+      setUnitExplorationMetadata(metadata);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitScreenshotPath, screenshotProjectId, props.explorationRefreshKey]);
   const [copiedMarkdown, setCopiedMarkdown] = useState(false);
   const pageMarkdown = props.wikiSource?.markdown || "";
   async function copyPageMarkdown() {
@@ -232,8 +258,11 @@ export function WorkspacePane(props: {
               pageStatuses={props.wikiPageStatuses}
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
+              onExploreDesigns={unitScreenshotPath ? () => props.onExploreDesigns(unitScreenshotPath) : undefined}
               onReviewScreenshots={unitScreenshots.length ? () => props.onReviewScreenshots(unitScreenshotPath) : undefined}
               source={props.wikiSource.source}
+              unitExplorationMetadata={unitExplorationMetadata}
+              unitExplorations={unitExplorations}
               unitScreenshots={unitScreenshots}
               validationWarnings={props.wikiSource.validationWarnings}
             />
