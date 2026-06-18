@@ -88,6 +88,7 @@ export function isUnitPage(page: WikiPage) {
 }
 
 export const unitScreenshotsRoot = ".hyperwiki/state/screenshots";
+export const unitExplorationsRoot = ".hyperwiki/state/explorations";
 
 // Map a unit wiki page path to its per-unit screenshot directory, mirroring the
 // unit's wiki-relative path under the gitignored runtime dir (drop the `wiki/`
@@ -100,6 +101,16 @@ export function unitScreenshotDir(unitPath: string) {
     .replace(/^wiki\//, "")
     .replace(/\.mdx$/i, "");
   return `${unitScreenshotsRoot}/${stem}`;
+}
+
+// Map a unit wiki page path to its per-unit design exploration directory,
+// mirroring `exploration_dir_for_unit` in src-tauri/src/domain/explorations.rs.
+export function unitExplorationDir(unitPath: string) {
+  const stem = displayWikiPath(unitPath)
+    .replace(/^\//, "")
+    .replace(/^wiki\//, "")
+    .replace(/\.mdx$/i, "");
+  return `${unitExplorationsRoot}/${stem}`;
 }
 
 export function childPlanPages(parent: WikiPage, pages: WikiPage[]) {

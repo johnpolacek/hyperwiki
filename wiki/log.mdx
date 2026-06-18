@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-18 feature | image-gen design explorations v1</h2>
+  <ul>
+    <li>Implemented <a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> as an agent-owned unit-page workflow.</li>
+    <li>Added ignored runtime storage under <code>.hyperwiki/state/explorations/&lt;unit-path&gt;/</code>, metadata read/write, candidate listing, clear/select routes, frontend fetch helpers, and Rust traversal tests.</li>
+    <li>Added the unit-page <strong>Explore designs</strong> card/dialog with New and Redesign modes, 1-4 variants, source-screenshot selection, candidate carousel, notes, implementation brief, and selected-direction persistence.</li>
+    <li>Execute Unit and worktree execution prompts now include the selected exploration candidate path, text brief, and notes so visual ideation carries into implementation without mixing with implemented-result screenshots.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run test:tauri</code>, <code>pnpm run build:frontend</code>, and an agent-browser shell render check passed. The plain-browser preview logs expected Tauri transport warnings outside the desktop shell.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-18 fix | diff viewer clean working tree</h2>
   <ul>
     <li>Changed the code changes dialog to skip the empty working-tree page when a Git project has no uncommitted changes and at least one recent commit.</li>

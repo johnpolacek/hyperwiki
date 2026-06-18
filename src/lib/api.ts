@@ -94,7 +94,7 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
+import type { FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitExploration, UnitExplorationImage, UnitExplorationMetadata, UnitExplorationMetadataInput, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
@@ -159,6 +159,68 @@ export async function fetchUnitScreenshots(activeProject: ProjectRecord | null):
   } catch {
     return [];
   }
+}
+
+export async function fetchUnitExplorationImages(
+  unitPath: string,
+  activeProject: ProjectRecord | null,
+): Promise<UnitScreenshotImageData[]> {
+  try {
+    const images = await hyperwikiApi.json<UnitExplorationImage[]>(
+      withProjectQuery(`/api/unit-explorations?path=${encodeURIComponent(unitPath)}`, activeProject),
+    );
+    return (images || []).filter((image) => image?.base64).map(toImageData);
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchUnitExplorations(activeProject: ProjectRecord | null): Promise<UnitExploration[]> {
+  try {
+    return (await hyperwikiApi.json<UnitExploration[]>(withProjectQuery("/api/unit-explorations", activeProject))) || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function clearUnitExplorations(unitPath: string, activeProject: ProjectRecord | null): Promise<void> {
+  await hyperwikiApi.json(withProjectQuery(`/api/unit-explorations?path=${encodeURIComponent(unitPath)}`, activeProject), { method: "DELETE" });
+}
+
+export async function fetchUnitExplorationMetadata(
+  unitPath: string,
+  activeProject: ProjectRecord | null,
+): Promise<UnitExplorationMetadata | null> {
+  try {
+    return await hyperwikiApi.json<UnitExplorationMetadata | null>(
+      withProjectQuery(`/api/unit-explorations/metadata?path=${encodeURIComponent(unitPath)}`, activeProject),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function writeUnitExplorationMetadata(
+  input: UnitExplorationMetadataInput,
+  activeProject: ProjectRecord | null,
+): Promise<UnitExplorationMetadata> {
+  return await hyperwikiApi.json<UnitExplorationMetadata>(withProjectQuery("/api/unit-explorations/metadata", activeProject), {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function selectUnitExploration(
+  unitPath: string,
+  candidateName: string,
+  notes: string,
+  textBrief: string,
+  activeProject: ProjectRecord | null,
+): Promise<UnitExplorationMetadata> {
+  return await hyperwikiApi.json<UnitExplorationMetadata>(withProjectQuery("/api/unit-explorations/select", activeProject), {
+    method: "POST",
+    body: { unitPath, candidateName, notes, textBrief },
+  });
 }
 
 // Queue per-screenshot feedback for a unit (no agent dispatch).

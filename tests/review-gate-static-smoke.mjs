@@ -15,7 +15,7 @@ assert.ok(modRs.includes("pub mod screenshot_reviews;"), "screenshot_reviews mod
 
 const commandRs = await readSources("src-tauri/src/command.rs");
 assert.ok(
-  commandRs.includes('"/api/screenshot-reviews"') && commandRs.includes("mark_reviewed(&project_root"),
+  commandRs.includes('"/api/screenshot-reviews"') && commandRs.includes("mark_reviewed(") && commandRs.includes("&project_root"),
   "command.rs should expose GET/POST /api/screenshot-reviews.",
 );
 

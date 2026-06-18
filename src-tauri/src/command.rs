@@ -396,6 +396,94 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(404, error),
         };
     }
+    if request.path.starts_with("/api/unit-explorations/metadata") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if request.method == "GET" {
+            let Some(unit_path) = query_param(&request.path, "path") else {
+                return error_response(400, "Missing unit page path.");
+            };
+            return match crate::domain::explorations::read_unit_exploration_metadata(
+                &project_root,
+                &unit_path,
+            ) {
+                Some(metadata) => json_response(200, &metadata),
+                None => json_response(200, &serde_json::Value::Null),
+            };
+        }
+        if request.method == "POST" {
+            let Some(parsed) = request.body.as_deref().and_then(|body| {
+                serde_json::from_str::<crate::domain::explorations::UnitExplorationMetadataInput>(
+                    body,
+                )
+                .ok()
+            }) else {
+                return error_response(400, "Invalid exploration metadata request.");
+            };
+            return match crate::domain::explorations::write_unit_exploration_metadata(
+                &project_root,
+                parsed,
+            ) {
+                Ok(metadata) => json_response(200, &metadata),
+                Err(error) => error_response(400, error),
+            };
+        }
+    }
+    if request.method == "POST" && request.path.starts_with("/api/unit-explorations/select") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(parsed) = request.body.as_deref().and_then(|body| {
+            serde_json::from_str::<crate::domain::explorations::UnitExplorationSelectionInput>(
+                body,
+            )
+            .ok()
+        }) else {
+            return error_response(400, "Invalid exploration selection request.");
+        };
+        return match crate::domain::explorations::select_unit_exploration(&project_root, parsed) {
+            Ok(metadata) => json_response(200, &metadata),
+            Err(error) => error_response(400, error),
+        };
+    }
+    if request.method == "GET" && request.path.starts_with("/api/unit-explorations") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if let Some(unit_path) = query_param(&request.path, "path") {
+            return json_response(
+                200,
+                &crate::domain::explorations::read_unit_exploration_images(
+                    project_root,
+                    &unit_path,
+                ),
+            );
+        }
+        return json_response(
+            200,
+            &crate::domain::explorations::list_unit_explorations(project_root),
+        );
+    }
+    if request.method == "DELETE" && request.path.starts_with("/api/unit-explorations") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        let Some(unit_path) = query_param(&request.path, "path") else {
+            return error_response(400, "Missing unit page path.");
+        };
+        return match crate::domain::explorations::clear_unit_explorations(
+            &project_root,
+            &unit_path,
+        ) {
+            Ok(()) => json_response(200, &serde_json::json!({ "ok": true })),
+            Err(error) => error_response(500, error),
+        };
+    }
     if request.method == "GET" && request.path.starts_with("/api/unit-screenshots") {
         let registry = crate::domain::projects::ProjectRegistry::from_environment();
         let project_id = query_param(&request.path, "project");
