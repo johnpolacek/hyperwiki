@@ -48,6 +48,16 @@ assert.ok(
   "the dialog should load working-tree and commit change sets.",
 );
 assert.ok(dialog.includes("openFileInEditor"), "the dialog should open files in the editor.");
+assert.ok(
+  dialog.includes("skipCleanWorkingTreePage") &&
+    dialog.includes("workingTree?.isGit && workingTree.files.length === 0 && commits.length > 0") &&
+    dialog.includes("const commitIndex = showWorkingTreePage ? pos - 1 : pos"),
+  "the dialog should open clean Git working trees on the newest commit instead of an empty uncommitted-changes page.",
+);
+assert.ok(
+  dialog.includes("current === undefined"),
+  "the dialog should keep showing a loading state while the first visible commit changes are fetched.",
+);
 
 const workspace = await readFile("src/components/views/WorkspacePane.tsx", "utf8");
 assert.ok(workspace.includes("function ViewChangesButton"), "the unit pane should define the icon-only diff trigger.");

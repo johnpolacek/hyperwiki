@@ -10,9 +10,9 @@ import type { GitChangeSet, GitCommitSummary, GitFileChange, ProjectRecord } fro
 
 const WORKING_KEY = "working";
 
-// The `</>` diff viewer. Position 0 is the working tree (uncommitted changes);
-// positions 1..N step back through recent commits. We fetch only per-file +/-
-// stats — never patch text — and open files in the IDE on click.
+// The `</>` diff viewer. Position 0 is the working tree when it has content;
+// clean working trees with commits start at the newest commit instead. We fetch
+// only per-file +/- stats — never patch text — and open files in the IDE on click.
 export function DiffViewerDialog({ open, onOpenChange, activeProject }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,11 +23,16 @@ export function DiffViewerDialog({ open, onOpenChange, activeProject }: {
   const [cache, setCache] = useState<Record<string, GitChangeSet | null>>({});
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
-  const commit = pos === 0 ? null : commits[pos - 1];
-  const currentKey = pos === 0 ? WORKING_KEY : commit?.hash ?? WORKING_KEY;
+  const workingTree = cache[WORKING_KEY];
+  const skipCleanWorkingTreePage = Boolean(workingTree?.isGit && workingTree.files.length === 0 && commits.length > 0);
+  const showWorkingTreePage = !skipCleanWorkingTreePage;
+  const commitIndex = showWorkingTreePage ? pos - 1 : pos;
+  const commit = commitIndex >= 0 ? commits[commitIndex] : null;
+  const isWorkingTreePage = showWorkingTreePage && pos === 0;
+  const currentKey = isWorkingTreePage ? WORKING_KEY : commit?.hash ?? WORKING_KEY;
   const current = cache[currentKey];
-  const total = 1 + commits.length;
-  const isLoading = loadingKey === currentKey;
+  const total = Math.max(1, (showWorkingTreePage ? 1 : 0) + commits.length);
+  const isLoading = loadingKey === currentKey || current === undefined;
 
   // (Re)load the working tree and commit list whenever the dialog opens for a project.
   useEffect(() => {
@@ -72,8 +77,8 @@ export function DiffViewerDialog({ open, onOpenChange, activeProject }: {
   };
 
   const files = current?.files ?? [];
-  const title = pos === 0 ? "Uncommitted changes" : commit?.subject || commit?.short || "Commit";
-  const subtitle = pos === 0 ? "Working tree vs HEAD" : [commit?.short, commit?.author, commit?.relativeDate].filter(Boolean).join(" · ");
+  const title = isWorkingTreePage ? "Uncommitted changes" : commit?.subject || commit?.short || "Commit";
+  const subtitle = isWorkingTreePage ? "Working tree vs HEAD" : [commit?.short, commit?.author, commit?.relativeDate].filter(Boolean).join(" · ");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,7 +124,7 @@ export function DiffViewerDialog({ open, onOpenChange, activeProject }: {
             ) : !current?.isGit ? (
               <div className="py-12 text-center text-sm text-muted-foreground">This project is not a Git repository.</div>
             ) : files.length === 0 ? (
-              <div className="py-12 text-center text-sm text-muted-foreground">{pos === 0 ? "No uncommitted changes." : "No file changes in this commit."}</div>
+              <div className="py-12 text-center text-sm text-muted-foreground">{isWorkingTreePage ? "No uncommitted changes." : "No file changes in this commit."}</div>
             ) : (
               <ul className="flex flex-col">
                 {files.map((file) => (

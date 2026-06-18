@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-18 fix | diff viewer clean working tree</h2>
+  <ul>
+    <li>Changed the code changes dialog to skip the empty working-tree page when a Git project has no uncommitted changes and at least one recent commit.</li>
+    <li>The dialog now opens on the newest commit in that clean state while preserving the working-tree page for dirty, non-Git, and no-history cases.</li>
+    <li>Verification: <code>node tests/diff-viewer-static-smoke.mjs</code> and <code>pnpm exec tsc -b</code> passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-17 planning | image-gen design explorations refined</h2>
   <ul>
     <li>Refined <a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> from open idea into staged feature units.</li>

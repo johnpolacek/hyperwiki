@@ -1,0 +1,33 @@
+---
+title: "Diff Viewer Clean Working Tree"
+description: "Open the code changes dialog on the latest commit when the working tree has no changes."
+wikiKind: "plan"
+status: "completed"
+currentUnit: "Completed on 2026-06-18."
+---
+
+<PlanHero title="Diff Viewer Clean Working Tree" subtitle="The code changes dialog shows useful history immediately when there are no uncommitted changes." status="completed" />
+
+<PlanSummary>
+  <ul>
+    <li>Status: completed</li>
+    <li>Current unit: Completed on 2026-06-18.</li>
+    <li>Scope: React diff viewer dialog and focused static coverage only.</li>
+    <li>Blockers: none</li>
+  </ul>
+</PlanSummary>
+
+<ImplementationNotes>
+  <ul>
+    <li>Keep the working-tree page first when there are uncommitted files, the project is not a Git repository, or no recent commits are available.</li>
+    <li>When the working tree is clean and commits are available, map the first visible page to the newest commit and lazy-load that commit's file stats.</li>
+    <li>Preserve the existing previous/next pager and open-in-editor behavior.</li>
+  </ul>
+</ImplementationNotes>
+
+<Verification>
+  <ul>
+    <li><code>node tests/diff-viewer-static-smoke.mjs</code> passed.</li>
+    <li><code>pnpm exec tsc -b</code> passed.</li>
+  </ul>
+</Verification>
