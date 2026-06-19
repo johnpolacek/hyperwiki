@@ -57,6 +57,7 @@ export function UnitDesignExplorationDialog({
   const [variantCount, setVariantCount] = useState("3");
   const [prompt, setPrompt] = useState("");
   const [sourceScreenshotNames, setSourceScreenshotNames] = useState<string[]>([]);
+  const [previewSourceScreenshotName, setPreviewSourceScreenshotName] = useState("");
   const [index, setIndex] = useState(0);
   const [notes, setNotes] = useState("");
   const [textBrief, setTextBrief] = useState("");
@@ -75,13 +76,16 @@ export function UnitDesignExplorationDialog({
     setIndex(0);
     const metadataSourceName = metadata?.sourceScreenshotPath?.split("/").pop() || "";
     setSourceScreenshotNames(metadataSourceName ? [metadataSourceName] : screenshots[0]?.name ? [screenshots[0].name] : []);
+    setPreviewSourceScreenshotName(metadataSourceName || screenshots[0]?.name || "");
   }, [open, unitPath, metadata, screenshots]);
 
   useEffect(() => {
     if (mode !== "redesign-from-screenshot") return;
     if (sourceScreenshotNames.length || !screenshots.length) return;
     setSourceScreenshotNames([screenshots[0].name]);
+    setPreviewSourceScreenshotName(screenshots[0].name);
   }, [mode, screenshots, sourceScreenshotNames.length]);
+  const previewSourceScreenshot = screenshots.find((image) => image.name === previewSourceScreenshotName) || screenshots[0] || null;
 
   const submitGenerate = () => {
     const count = Math.min(Math.max(Number.parseInt(variantCount, 10) || 1, 1), 4);
@@ -96,6 +100,7 @@ export function UnitDesignExplorationDialog({
   };
 
   const toggleSourceScreenshot = (name: string) => {
+    setPreviewSourceScreenshotName(name);
     setSourceScreenshotNames((currentNames) => (
       currentNames.includes(name)
         ? currentNames.filter((currentName) => currentName !== name)
@@ -175,32 +180,49 @@ export function UnitDesignExplorationDialog({
                     </div>
                   </div>
                   {screenshots.length ? (
-                    <div className="grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3">
-                      {screenshots.map((image) => {
-                        const selected = sourceScreenshotNames.includes(image.name);
-                        return (
-                          <button
-                            aria-pressed={selected}
-                            className={cn(
-                              "group flex min-w-0 flex-col overflow-hidden rounded-md border bg-card text-left transition-colors hover:bg-muted/35",
-                              selected && "border-primary ring-2 ring-ring/35",
-                            )}
-                            key={image.name}
-                            type="button"
-                            onClick={() => toggleSourceScreenshot(image.name)}
-                          >
-                            <img
-                              alt={`Source screenshot ${image.name}`}
-                              className="aspect-video w-full bg-muted object-contain"
-                              src={image.dataUrl}
-                            />
-                            <span className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
-                              <span className="truncate font-mono">{image.name}</span>
-                              {selected ? <Badge variant="secondary">Selected</Badge> : null}
-                            </span>
-                          </button>
-                        );
-                      })}
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
+                      <div className="overflow-hidden rounded-md border bg-muted/30">
+                        {previewSourceScreenshot ? (
+                          <img
+                            alt={`Large preview of ${previewSourceScreenshot.name}`}
+                            className="max-h-[34rem] min-h-[18rem] w-full object-contain"
+                            src={previewSourceScreenshot.dataUrl}
+                          />
+                        ) : null}
+                        <div className="flex items-center justify-between gap-2 border-t bg-card px-3 py-2 text-xs">
+                          <span className="truncate font-mono">{previewSourceScreenshot?.name || "No preview"}</span>
+                          <span className="shrink-0 text-muted-foreground">Click thumbnails to select</span>
+                        </div>
+                      </div>
+                      <div className="grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-1">
+                        {screenshots.map((image) => {
+                          const selected = sourceScreenshotNames.includes(image.name);
+                          const previewed = previewSourceScreenshot?.name === image.name;
+                          return (
+                            <button
+                              aria-pressed={selected}
+                              className={cn(
+                                "group flex min-w-0 flex-col overflow-hidden rounded-md border bg-card text-left transition-colors hover:bg-muted/35",
+                                previewed && "border-ring",
+                                selected && "border-primary ring-2 ring-ring/35",
+                              )}
+                              key={image.name}
+                              type="button"
+                              onClick={() => toggleSourceScreenshot(image.name)}
+                            >
+                              <img
+                                alt={`Source screenshot ${image.name}`}
+                                className="aspect-video w-full bg-muted object-contain"
+                                src={image.dataUrl}
+                              />
+                              <span className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
+                                <span className="truncate font-mono">{image.name}</span>
+                                {selected ? <Badge variant="secondary">Selected</Badge> : null}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/30 p-8 text-center">
