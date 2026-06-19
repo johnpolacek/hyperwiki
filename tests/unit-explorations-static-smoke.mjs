@@ -63,13 +63,16 @@ assert.ok(
 );
 assert.ok(
   ts.includes('data-unit-visual-evidence="true"')
-    && ts.includes('data-unit-explorations-section="true"')
     && ts.includes("onExploreDesigns")
     && ts.includes("Review Screenshots")
-    && ts.includes("Explore Designs")
+    && ts.includes("Explore Design")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
-    && ts.includes("No candidates yet"),
-  "Unit pages should show design explorations inside the unified design card tabs.",
+    && ts.includes("No screenshots captured yet"),
+  "Unit pages should expose design exploration from the unified design card topbar.",
+);
+assert.ok(
+  !ts.includes('data-unit-explorations-section="true"') && !ts.includes("visualEvidenceSummary"),
+  "Design exploration should open in its dialog, not render as a second inline section or timestamp summary.",
 );
 assert.ok(
   !ts.includes('data-unit-explorations="true"') && !ts.includes('data-unit-screenshot="true"'),

@@ -146,21 +146,13 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorations = [], unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
-  const latestScreenshotAt = unitScreenshots.reduce((max, image) => Math.max(max, image.capturedAt), 0);
-  const latestExplorationAt = unitExplorations.reduce((max, image) => Math.max(max, image.capturedAt), 0);
   const hasUnitScreenshots = unitScreenshots.length > 0;
-  const hasUnitExplorations = unitExplorations.length > 0;
-  const [visualEvidenceTab, setVisualEvidenceTab] = useState("screenshots");
-  const visualEvidenceSummary = [
-    hasUnitExplorations ? `design ${formatCapturedAt(latestExplorationAt)}` : "no designs yet",
-    hasUnitScreenshots ? `screenshots ${formatCapturedAt(latestScreenshotAt)}` : "no screenshots yet",
-  ].join(" · ");
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -178,9 +170,6 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
     setIsDeletingPlan(false);
     setDeleteStatus("");
   }, [path]);
-  useEffect(() => {
-    setVisualEvidenceTab(hasUnitScreenshots ? "screenshots" : "designs");
-  }, [hasUnitScreenshots, path]);
   if (!source.trim()) {
     return <div className="p-8 text-sm text-muted-foreground">No plan source loaded.</div>;
   }
@@ -253,92 +242,46 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
           ) : null}
           {onExploreDesigns ? (
             <Card className="gap-0 overflow-hidden py-0" data-unit-visual-evidence="true">
-              <UiTabs className="gap-0" value={visualEvidenceTab} onValueChange={setVisualEvidenceTab}>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="text-sm font-semibold">Design</span>
-                    </div>
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">{visualEvidenceSummary}</span>
-                    {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Design</span>
                   </div>
-                  <TabsList className="h-auto w-full justify-start sm:w-fit">
-                    <TabsTrigger value="screenshots">Review Screenshots</TabsTrigger>
-                    <TabsTrigger value="designs">Explore Designs</TabsTrigger>
-                  </TabsList>
+                  {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
                 </div>
-                <TabsContent className="m-0" value="screenshots">
-                  <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-screenshots-section="true">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="text-sm font-semibold">Review screenshots</span>
-                      <Badge className="shrink-0" variant="outline">
-                        {unitScreenshots.length === 1 ? "1 screenshot" : `${unitScreenshots.length} screenshots`}
-                      </Badge>
-                      {hasUnitScreenshots ? (
-                        <Button className="ml-auto" size="sm" type="button" variant="outline" onClick={() => onReviewScreenshots?.()}>
-                          <Camera aria-hidden="true" data-icon="inline-start" />
-                          Review
-                        </Button>
-                      ) : null}
-                    </div>
-                    {hasUnitScreenshots ? (
-                      <button
-                        aria-label="Open screenshot review"
-                        className="group block flex-1 overflow-hidden rounded-md border bg-muted/35"
-                        type="button"
-                        onClick={() => onReviewScreenshots?.()}
-                      >
-                        <img
-                          alt="Screenshot of the completed unit's working result"
-                          className="block max-h-[24rem] min-h-[12rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
-                          src={unitScreenshots[0].dataUrl}
-                        />
-                      </button>
-                    ) : (
-                      <div className="flex flex-1 flex-col justify-center gap-1 rounded-md border bg-muted/20 px-3 py-8 text-sm">
-                        <span className="font-medium text-foreground">No screenshots captured yet</span>
-                        <span className="text-muted-foreground">Executed unit screenshots will appear here for review.</span>
-                      </div>
-                    )}
-                  </section>
-                </TabsContent>
-                <TabsContent className="m-0" value="designs">
-                  <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-explorations-section="true">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="text-sm font-semibold">Explore designs</span>
-                      <Badge className="shrink-0" variant="outline">
-                        {unitExplorations.length === 1 ? "1 candidate" : `${unitExplorations.length} candidates`}
-                      </Badge>
-                      <Button className="ml-auto" size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
-                        <Sparkles aria-hidden="true" data-icon="inline-start" />
-                        Explore designs
-                      </Button>
-                    </div>
-                    {hasUnitExplorations ? (
-                      <button
-                        aria-label="Open design explorations"
-                        className="group block flex-1 overflow-hidden rounded-md border bg-muted/35"
-                        type="button"
-                        onClick={onExploreDesigns}
-                      >
-                        <img
-                          alt="Generated design exploration candidate"
-                          className="block max-h-[24rem] min-h-[12rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
-                          src={unitExplorations[0].dataUrl}
-                        />
-                      </button>
-                    ) : (
-                      <div className="flex flex-1 flex-col justify-center gap-1 rounded-md border bg-muted/20 px-3 py-8 text-sm">
-                        <span className="font-medium text-foreground">No candidates yet</span>
-                        <span className="text-muted-foreground">Use Explore designs to generate a direction before implementation.</span>
-                      </div>
-                    )}
-                  </section>
-                </TabsContent>
-              </UiTabs>
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  <Button className="flex-1 sm:flex-none" disabled={!hasUnitScreenshots} size="sm" type="button" variant="outline" onClick={() => onReviewScreenshots?.()}>
+                    <Camera aria-hidden="true" data-icon="inline-start" />
+                    Review Screenshots
+                  </Button>
+                  <Button className="flex-1 sm:flex-none" size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
+                    <Sparkles aria-hidden="true" data-icon="inline-start" />
+                    Explore Design
+                  </Button>
+                </div>
+              </div>
+              <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-screenshots-section="true">
+                {hasUnitScreenshots ? (
+                  <button
+                    aria-label="Open screenshot review"
+                    className="group block flex-1 overflow-hidden rounded-md border bg-muted/35"
+                    type="button"
+                    onClick={() => onReviewScreenshots?.()}
+                  >
+                    <img
+                      alt="Screenshot of the completed unit's working result"
+                      className="block max-h-[24rem] min-h-[12rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
+                      src={unitScreenshots[0].dataUrl}
+                    />
+                  </button>
+                ) : (
+                  <div className="flex flex-1 flex-col justify-center gap-1 rounded-md border bg-muted/20 px-3 py-8 text-sm">
+                    <span className="font-medium text-foreground">No screenshots captured yet</span>
+                    <span className="text-muted-foreground">Run Execute Unit to capture implementation evidence, or explore a design first.</span>
+                  </div>
+                )}
+              </section>
             </Card>
           ) : null}
           {content}
@@ -347,15 +290,6 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
       </TooltipProvider>
     </article>
   );
-}
-
-function formatCapturedAt(capturedAt: number) {
-  if (!capturedAt) return "recently";
-  try {
-    return new Date(capturedAt * 1000).toLocaleString();
-  } catch {
-    return "recently";
-  }
 }
 
 function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string, pageStatus?: string) {

@@ -124,11 +124,15 @@ assert.ok(
   tsSources.includes('data-unit-visual-evidence="true"')
     && tsSources.includes('data-unit-screenshots-section="true"')
     && tsSources.includes("Review Screenshots")
-    && tsSources.includes("Explore Designs")
+    && tsSources.includes("Explore Design")
     && tsSources.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && tsSources.includes("No screenshots captured yet")
     && tsSources.includes("onReviewScreenshots?.()"),
-  "The unified design card should include topbar tabs plus the screenshot review entry and empty state.",
+  "The unified design card should include topbar dialog buttons plus the screenshot preview/empty state.",
+);
+assert.ok(
+  !tsSources.includes("visualEvidenceSummary") && !tsSources.includes("formatCapturedAt"),
+  "The design card should not render timestamp summary copy in the topbar.",
 );
 assert.ok(
   !tsSources.includes('data-unit-screenshot="true"') && !tsSources.includes('data-unit-explorations="true"'),

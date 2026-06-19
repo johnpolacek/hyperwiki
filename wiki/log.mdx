@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | design evidence action bar</h2>
+  <ul>
+    <li>Simplified the unit design evidence card to a <strong>Design</strong> topbar with <strong>Review Screenshots</strong> and <strong>Explore Design</strong> dialog buttons.</li>
+    <li>Removed the timestamp summary and tabbed inline design panel; the card body now shows the latest screenshot preview when available, otherwise a screenshot empty state.</li>
+    <li>Verification: <code>node tests/unit-screenshots-static-smoke.mjs</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness confirmed no tabs, no timestamp summary, no inline design section, and no desktop/mobile overflow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | tabbed unit design evidence</h2>
   <ul>
     <li>Refactored the unit visual-evidence card into a single <strong>Design</strong> topbar with <strong>Review Screenshots</strong> and <strong>Explore Designs</strong> tabs.</li>
