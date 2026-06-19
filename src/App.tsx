@@ -2479,6 +2479,7 @@ function App() {
       `Output folder: ${outputDir}`,
       input.sourceScreenshotPaths.length ? "Source screenshots:" : "Source screenshots: none",
       ...input.sourceScreenshotPaths.map((sourcePath) => `- ${sourcePath}`),
+      input.referenceImagePath ? `Reference image: ${input.referenceImagePath}` : "Reference image: none",
       "",
       "User direction:",
       direction,
@@ -3212,6 +3213,11 @@ function App() {
               if (!open) setExplorationDialogUnitPath(null);
             }}
             onRefresh={() => void refreshDesignExplorationDialog()}
+            onSaveReferenceImage={async (file) => {
+              const [path] = await saveTerminalDroppedFiles(activeProject, [file]);
+              if (!path) throw new Error("Could not save reference image");
+              return path;
+            }}
             onSelect={(candidateName, notes, textBrief) => void chooseDesignExploration(candidateName, notes, textBrief)}
           />
         ) : null}

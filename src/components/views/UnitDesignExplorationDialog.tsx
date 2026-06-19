@@ -4,6 +4,7 @@ import { ScreenshotCarousel } from "@/components/ScreenshotCarousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,7 @@ export interface UnitDesignExplorationGenerateInput {
   variantCount: number;
   sourceScreenshotNames: string[];
   sourceScreenshotPaths: string[];
+  referenceImagePath: string;
 }
 
 export function UnitDesignExplorationDialog({
@@ -34,6 +36,7 @@ export function UnitDesignExplorationDialog({
   isGenerating,
   onOpenChange,
   onGenerate,
+  onSaveReferenceImage,
   onRefresh,
   onClear,
   onSelect,
@@ -49,6 +52,7 @@ export function UnitDesignExplorationDialog({
   isGenerating: boolean;
   onOpenChange: (open: boolean) => void;
   onGenerate: (input: UnitDesignExplorationGenerateInput) => void;
+  onSaveReferenceImage: (file: File) => Promise<string>;
   onRefresh: () => void;
   onClear: () => void;
   onSelect: (candidateName: string, notes: string, textBrief: string) => void;
@@ -58,6 +62,11 @@ export function UnitDesignExplorationDialog({
   const [prompt, setPrompt] = useState("");
   const [sourceScreenshotNames, setSourceScreenshotNames] = useState<string[]>([]);
   const [previewSourceScreenshotName, setPreviewSourceScreenshotName] = useState("");
+  const [referenceImageName, setReferenceImageName] = useState("");
+  const [referenceImagePath, setReferenceImagePath] = useState("");
+  const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
+  const [referenceImageStatus, setReferenceImageStatus] = useState("");
+  const [isSavingReferenceImage, setIsSavingReferenceImage] = useState(false);
   const [index, setIndex] = useState(0);
   const [notes, setNotes] = useState("");
   const [textBrief, setTextBrief] = useState("");
@@ -74,6 +83,10 @@ export function UnitDesignExplorationDialog({
     setNotes(metadata?.notes || "");
     setTextBrief(metadata?.textBrief || "");
     setIndex(0);
+    setReferenceImageName("");
+    setReferenceImagePath("");
+    setReferenceImageDataUrl("");
+    setReferenceImageStatus("");
     const metadataSourceName = metadata?.sourceScreenshotPath?.split("/").pop() || "";
     setSourceScreenshotNames(metadataSourceName ? [metadataSourceName] : screenshots[0]?.name ? [screenshots[0].name] : []);
     setPreviewSourceScreenshotName(metadataSourceName || screenshots[0]?.name || "");
@@ -96,7 +109,35 @@ export function UnitDesignExplorationDialog({
       variantCount: count,
       sourceScreenshotNames: sourceNames,
       sourceScreenshotPaths: sourceNames.map((name) => `${screenshotDir}/${name}`),
+      referenceImagePath,
     });
+  };
+
+  const chooseReferenceImage = async (file: File | undefined) => {
+    if (!file) return;
+    setReferenceImageStatus("Saving reference image");
+    setIsSavingReferenceImage(true);
+    try {
+      const [dataUrl, savedPath] = await Promise.all([
+        imageFileDataUrl(file),
+        onSaveReferenceImage(file),
+      ]);
+      setReferenceImageName(file.name || "reference image");
+      setReferenceImageDataUrl(dataUrl);
+      setReferenceImagePath(savedPath);
+      setReferenceImageStatus("Reference image saved");
+    } catch (error) {
+      setReferenceImageStatus(error instanceof Error ? error.message : "Could not save reference image");
+    } finally {
+      setIsSavingReferenceImage(false);
+    }
+  };
+
+  const clearReferenceImage = () => {
+    setReferenceImageName("");
+    setReferenceImagePath("");
+    setReferenceImageDataUrl("");
+    setReferenceImageStatus("");
   };
 
   const toggleSourceScreenshot = (name: string) => {
@@ -161,6 +202,33 @@ export function UnitDesignExplorationDialog({
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="unit-exploration-reference">Reference image</Label>
+                <Input
+                  accept="image/*"
+                  disabled={isSavingReferenceImage}
+                  id="unit-exploration-reference"
+                  type="file"
+                  onChange={(event) => void chooseReferenceImage(event.target.files?.[0])}
+                />
+                {referenceImageDataUrl ? (
+                  <div className="overflow-hidden rounded-md border bg-muted/30">
+                    <img
+                      alt={`Reference image ${referenceImageName}`}
+                      className="max-h-44 w-full object-contain"
+                      src={referenceImageDataUrl}
+                    />
+                    <div className="flex items-center justify-between gap-2 border-t bg-card px-3 py-2 text-xs">
+                      <span className="min-w-0 truncate font-mono" title={referenceImagePath}>{referenceImagePath || referenceImageName}</span>
+                      <Button size="sm" type="button" variant="outline" onClick={clearReferenceImage}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {referenceImageStatus ? <p className="m-0 text-xs text-muted-foreground">{referenceImageStatus}</p> : null}
               </div>
 
               <Button disabled={isGenerating || (mode === "redesign-from-screenshot" && !sourceScreenshotNames.length)} onClick={submitGenerate}>
@@ -310,4 +378,13 @@ export function UnitDesignExplorationDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function imageFileDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(reader.error || new Error("Could not read reference image"));
+    reader.readAsDataURL(file);
+  });
 }

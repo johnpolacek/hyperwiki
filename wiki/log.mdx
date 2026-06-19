@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | design reference image upload</h2>
+  <ul>
+    <li>Added a reference-image picker to the Explore Design setup view so users can include a visual direction reference alongside selected source screenshots.</li>
+    <li>Reference images are saved through the existing ignored runtime drop storage, previewed in the dialog, and included in the design-generation prompt as a saved local path.</li>
+    <li>Verification: <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness confirmed upload, preview, saved path display, and no dialog overflow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | larger design source previews</h2>
   <ul>
     <li>Added a large source-screenshot preview pane to the Explore Design setup view while keeping thumbnail click selection for multiple redesign sources.</li>
