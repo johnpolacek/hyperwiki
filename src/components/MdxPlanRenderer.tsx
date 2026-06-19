@@ -154,6 +154,12 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
   const [deleteStatus, setDeleteStatus] = useState("");
   const latestScreenshotAt = unitScreenshots.reduce((max, image) => Math.max(max, image.capturedAt), 0);
   const latestExplorationAt = unitExplorations.reduce((max, image) => Math.max(max, image.capturedAt), 0);
+  const hasUnitScreenshots = unitScreenshots.length > 0;
+  const hasUnitExplorations = unitExplorations.length > 0;
+  const visualEvidenceSummary = [
+    hasUnitExplorations ? `design ${formatCapturedAt(latestExplorationAt)}` : "no designs yet",
+    hasUnitScreenshots ? `screenshots ${formatCapturedAt(latestScreenshotAt)}` : "no screenshots yet",
+  ].join(" · ");
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -242,56 +248,89 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             </Alert>
           ) : null}
           {onExploreDesigns ? (
-            <Card className="gap-0 overflow-hidden py-0" data-unit-explorations="true">
+            <Card className="gap-0 overflow-hidden py-0" data-unit-visual-evidence="true">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="text-sm font-semibold">Design explorations{unitExplorations.length > 1 ? ` (${unitExplorations.length})` : ""}</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {unitExplorations.length ? `· generated ${formatCapturedAt(latestExplorationAt)}` : "· optional before Execute Unit"}
-                  </span>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Visual evidence</span>
+                  </div>
+                  <span className="min-w-0 truncate text-xs text-muted-foreground">{visualEvidenceSummary}</span>
                   {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
                 </div>
-                <Button size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
-                  <Sparkles aria-hidden="true" data-icon="inline-start" />
-                  Explore designs
-                </Button>
               </div>
-              {unitExplorations.length ? (
-                <button
-                  aria-label="Open design explorations"
-                  className="block w-full"
-                  type="button"
-                  onClick={onExploreDesigns}
-                >
-                  <img
-                    alt="Generated design exploration candidate"
-                    className="block max-h-[26rem] w-full cursor-pointer bg-muted object-contain"
-                    src={unitExplorations[0].dataUrl}
-                  />
-                </button>
-              ) : null}
-            </Card>
-          ) : null}
-          {unitScreenshots.length ? (
-            <Card className="gap-0 overflow-hidden py-0" data-unit-screenshot="true">
-              <div className="flex items-center gap-2 border-b px-3 py-2">
-                <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm font-semibold">Screenshots{unitScreenshots.length > 1 ? ` (${unitScreenshots.length})` : ""}</span>
-                <span className="truncate text-xs text-muted-foreground">· captured {formatCapturedAt(latestScreenshotAt)} · click to review</span>
+              <div className="grid gap-0 md:grid-cols-2">
+                <section className="flex min-h-[13rem] min-w-0 flex-col border-b md:border-b-0 md:border-r" data-unit-explorations-section="true">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Design explorations</span>
+                      <Badge className="shrink-0" variant="outline">
+                        {unitExplorations.length === 1 ? "1 candidate" : `${unitExplorations.length} candidates`}
+                      </Badge>
+                    </div>
+                    <Button size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
+                      <Sparkles aria-hidden="true" data-icon="inline-start" />
+                      Explore designs
+                    </Button>
+                  </div>
+                  {hasUnitExplorations ? (
+                    <button
+                      aria-label="Open design explorations"
+                      className="group block flex-1 border-t bg-muted/35"
+                      type="button"
+                      onClick={onExploreDesigns}
+                    >
+                      <img
+                        alt="Generated design exploration candidate"
+                        className="block max-h-[20rem] min-h-[11rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
+                        src={unitExplorations[0].dataUrl}
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex flex-1 flex-col justify-center gap-1 border-t px-3 py-8 text-sm">
+                      <span className="font-medium text-foreground">No candidates yet</span>
+                      <span className="text-muted-foreground">Use Explore designs to generate a direction before implementation.</span>
+                    </div>
+                  )}
+                </section>
+                <section className="flex min-h-[13rem] min-w-0 flex-col" data-unit-screenshots-section="true">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Camera aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="text-sm font-semibold">Screenshots</span>
+                      <Badge className="shrink-0" variant="outline">
+                        {unitScreenshots.length === 1 ? "1 screenshot" : `${unitScreenshots.length} screenshots`}
+                      </Badge>
+                    </div>
+                    {hasUnitScreenshots ? (
+                      <Button size="sm" type="button" variant="outline" onClick={() => onReviewScreenshots?.()}>
+                        <Camera aria-hidden="true" data-icon="inline-start" />
+                        Review
+                      </Button>
+                    ) : null}
+                  </div>
+                  {hasUnitScreenshots ? (
+                    <button
+                      aria-label="Open screenshot review"
+                      className="group block flex-1 border-t bg-muted/35"
+                      type="button"
+                      onClick={() => onReviewScreenshots?.()}
+                    >
+                      <img
+                        alt="Screenshot of the completed unit's working result"
+                        className="block max-h-[20rem] min-h-[11rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
+                        src={unitScreenshots[0].dataUrl}
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex flex-1 flex-col justify-center gap-1 border-t px-3 py-8 text-sm">
+                      <span className="font-medium text-foreground">No screenshots captured yet</span>
+                      <span className="text-muted-foreground">Executed unit screenshots will appear here for review.</span>
+                    </div>
+                  )}
+                </section>
               </div>
-              <button
-                aria-label="Open screenshot review"
-                className="block w-full"
-                type="button"
-                onClick={() => onReviewScreenshots?.()}
-              >
-                <img
-                  alt="Screenshot of the completed unit's working result"
-                  className="block max-h-[26rem] w-full cursor-pointer bg-muted object-contain"
-                  src={unitScreenshots[0].dataUrl}
-                />
-              </button>
             </Card>
           ) : null}
           {content}

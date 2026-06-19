@@ -62,10 +62,16 @@ assert.ok(
   "The design exploration dialog should support mode selection and a 1-4 candidate control.",
 );
 assert.ok(
-  ts.includes('data-unit-explorations="true"')
+  ts.includes('data-unit-visual-evidence="true"')
+    && ts.includes('data-unit-explorations-section="true"')
     && ts.includes("onExploreDesigns")
-    && ts.includes("Design explorations"),
-  "Unit pages should show the exploration entry point and candidate preview.",
+    && ts.includes("Visual evidence")
+    && ts.includes("No candidates yet"),
+  "Unit pages should show design explorations inside the unified visual evidence card.",
+);
+assert.ok(
+  !ts.includes('data-unit-explorations="true"') && !ts.includes('data-unit-screenshot="true"'),
+  "Design explorations and screenshots should not render as separate top-level unit cards.",
 );
 assert.ok(
   ts.includes("Mode: Image-Gen Design Exploration.")

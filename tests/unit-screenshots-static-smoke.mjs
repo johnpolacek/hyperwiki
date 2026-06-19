@@ -121,8 +121,15 @@ assert.ok(
   "A shared ScreenshotCarousel should exist and power the review dialog.",
 );
 assert.ok(
-  tsSources.includes('data-unit-screenshot="true"') && tsSources.includes("onReviewScreenshots?.()"),
-  "The inline screenshot card is the single review entry — click it to open the review dialog.",
+  tsSources.includes('data-unit-visual-evidence="true"')
+    && tsSources.includes('data-unit-screenshots-section="true"')
+    && tsSources.includes("No screenshots captured yet")
+    && tsSources.includes("onReviewScreenshots?.()"),
+  "The unified visual evidence card should include the screenshot review entry and empty state.",
+);
+assert.ok(
+  !tsSources.includes('data-unit-screenshot="true"') && !tsSources.includes('data-unit-explorations="true"'),
+  "Screenshots and design explorations should no longer render as separate top-level cards.",
 );
 assert.ok(
   !tsSources.includes('{ kind: "unit-gallery" }') && !tsSources.includes("UnitGalleryView"),

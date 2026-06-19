@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | unified unit visual evidence</h2>
+  <ul>
+    <li>Combined unit-page design explorations and implemented screenshots into one <strong>Visual evidence</strong> card.</li>
+    <li>The card keeps design generation, selected-direction status, screenshot review, previews, and empty states together without changing exploration or screenshot storage contracts.</li>
+    <li>Verification: <code>node tests/unit-screenshots-static-smoke.mjs</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness rendered empty, exploration-only, screenshot-only, and combined states at desktop and mobile widths with no old-card selectors or horizontal overflow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-18 feature | image-gen design explorations v1</h2>
   <ul>
     <li>Implemented <a href="/wiki/plans/features/image-gen-design-explorations.mdx">Image-Gen Design Explorations</a> as an agent-owned unit-page workflow.</li>
