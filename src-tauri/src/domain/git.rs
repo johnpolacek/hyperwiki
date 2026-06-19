@@ -188,7 +188,7 @@ pub fn working_tree_changes(root: impl AsRef<Path>) -> GitChangeSet {
     let base: &[&str] = if head_exists { &["HEAD"] } else { &["--cached"] };
     let numstat = git_diff(root, "--numstat", base);
     let name_status = git_diff(root, "--name-status", base);
-    let (mut files, mut total_additions, mut total_deletions) =
+    let (mut files, mut total_additions, total_deletions) =
         collect_changes(&numstat, &name_status);
 
     // numstat never lists untracked files, so fold them in by counting lines.
