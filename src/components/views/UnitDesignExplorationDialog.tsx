@@ -155,7 +155,6 @@ export function UnitDesignExplorationDialog({
   };
 
   const openLargePreview = (name: string) => {
-    setPreviewSourceScreenshotName(name);
     setLargePreviewImageName(name);
   };
 
@@ -282,13 +281,11 @@ export function UnitDesignExplorationDialog({
                       <div className="grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                         {screenshots.map((image) => {
                           const selected = sourceScreenshotNames.includes(image.name);
-                          const previewed = previewSourceScreenshot?.name === image.name;
                           return (
                             <div
                               className={cn(
-                                "group relative min-w-0 overflow-hidden rounded-md border bg-card transition-colors hover:bg-muted/35",
-                                previewed && "border-ring",
-                                selected && "border-primary ring-2 ring-ring/35",
+                                "group relative min-w-0 overflow-hidden rounded-md border-2 border-transparent bg-card transition-colors hover:bg-muted/35",
+                                selected && "border-primary",
                               )}
                               key={image.name}
                             >
@@ -305,7 +302,6 @@ export function UnitDesignExplorationDialog({
                                 />
                                 <span className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
                                   <span className="truncate font-mono">{image.name}</span>
-                                  {selected ? <Badge variant="secondary">Selected</Badge> : null}
                                 </span>
                               </button>
                               <Tooltip>

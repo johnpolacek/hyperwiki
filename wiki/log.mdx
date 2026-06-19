@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | source thumbnail selection border</h2>
+  <ul>
+    <li>Adjusted Explore Design source thumbnails so selection is indicated only by a stable 2px primary border; unselected thumbnails keep a transparent 2px border to avoid layout shift.</li>
+    <li>The larger-view icon now opens the preview dialog without changing selected or previewed source state.</li>
+    <li>Verification: <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | design reference and source previews</h2>
   <ul>
     <li>Changed the Explore Design reference-image control from a native file input to an app-styled button that opens the hidden image picker and keeps the selected reference filename visible.</li>
