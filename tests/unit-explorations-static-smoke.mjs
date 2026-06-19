@@ -57,9 +57,21 @@ assert.ok(
   ts.includes("export function UnitDesignExplorationDialog")
     && ts.includes("redesign-from-screenshot")
     && ts.includes("ToggleGroup")
-    && ts.includes("1 candidate")
-    && ts.includes("4 candidates"),
-  "The design exploration dialog should support mode selection and a 1-4 candidate control.",
+    && ts.includes("1 design")
+    && ts.includes("4 designs")
+    && ts.includes("sm:max-w-6xl")
+    && ts.includes('const metadataMode = screenshots.length ? "redesign-from-screenshot" : "new-mockups"')
+    && ts.includes("sourceScreenshotNames: string[]")
+    && ts.includes("aria-pressed={selected}")
+    && ts.includes("toggleSourceScreenshot")
+    && ts.includes("View 1: setup")
+    && ts.includes("Candidates ({images.length})")
+    && ts.includes("Start Over"),
+  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views.",
+);
+assert.ok(
+  !ts.includes("No candidates yet"),
+  "The pre-generation exploration dialog should not show a candidates empty state.",
 );
 assert.ok(
   ts.includes('data-unit-visual-evidence="true"')
@@ -82,8 +94,10 @@ assert.ok(
   ts.includes("Mode: Image-Gen Design Exploration.")
     && ts.includes("Use the imagegen skill")
     && ts.includes("do not implement product code")
-    && ts.includes("metadata.json"),
-  "The generation prompt should route image creation through the agent/imagegen path and avoid implementation work.",
+    && ts.includes("metadata.json")
+    && ts.includes("Source screenshots:")
+    && ts.includes("sourceScreenshotPaths"),
+  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots, and avoid implementation work.",
 );
 assert.ok(
   ts.includes("Selected design exploration:")

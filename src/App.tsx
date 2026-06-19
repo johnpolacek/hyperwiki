@@ -2419,8 +2419,8 @@ function App() {
   async function generateDesignExploration(input: UnitDesignExplorationGenerateInput) {
     const unitPath = explorationDialogUnitPath;
     if (!unitPath) return;
-    if (input.mode === "redesign-from-screenshot" && !input.sourceScreenshotPath) {
-      setStatus("Choose a source screenshot before redesigning");
+    if (input.mode === "redesign-from-screenshot" && !input.sourceScreenshotPaths.length) {
+      setStatus("Choose at least one source screenshot before redesigning");
       return;
     }
     const direction = input.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
@@ -2431,7 +2431,7 @@ function App() {
         unitPath,
         mode: input.mode,
         prompt: direction,
-        sourceScreenshotPath: input.sourceScreenshotPath || null,
+        sourceScreenshotPath: input.sourceScreenshotPaths[0] || null,
         provider: "codex-imagegen-agent",
         modelId: "agent-owned",
         imageCount: input.variantCount,
@@ -2477,7 +2477,8 @@ function App() {
       `Mode: ${input.mode}`,
       `Variant count: ${input.variantCount} (maximum 4)`,
       `Output folder: ${outputDir}`,
-      input.sourceScreenshotPath ? `Source screenshot: ${input.sourceScreenshotPath}` : "Source screenshot: none",
+      input.sourceScreenshotPaths.length ? "Source screenshots:" : "Source screenshots: none",
+      ...input.sourceScreenshotPaths.map((sourcePath) => `- ${sourcePath}`),
       "",
       "User direction:",
       direction,
@@ -2487,7 +2488,7 @@ function App() {
       "- If the active agent cannot generate or edit images in this local workflow, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
       `- First remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
-      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt.",
+      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path.",
       "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
       "- After generation, report the saved paths and remind the user to click Refresh in Hyperwiki if the candidates are not visible yet.",
       "",
