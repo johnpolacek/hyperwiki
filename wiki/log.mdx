@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | tabbed unit design evidence</h2>
+  <ul>
+    <li>Refactored the unit visual-evidence card into a single <strong>Design</strong> topbar with <strong>Review Screenshots</strong> and <strong>Explore Designs</strong> tabs.</li>
+    <li>The tabbed card defaults to design exploration before screenshots exist and screenshot review once captured screenshots are available, while preserving the existing dialogs and storage contracts.</li>
+    <li>Verification: <code>node tests/unit-screenshots-static-smoke.mjs</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness rendered empty, exploration-only, screenshot-only, and combined states at desktop and mobile widths with no old-card selectors or horizontal overflow.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | unified unit visual evidence</h2>
   <ul>
     <li>Combined unit-page design explorations and implemented screenshots into one <strong>Visual evidence</strong> card.</li>

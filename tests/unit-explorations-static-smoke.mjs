@@ -65,9 +65,11 @@ assert.ok(
   ts.includes('data-unit-visual-evidence="true"')
     && ts.includes('data-unit-explorations-section="true"')
     && ts.includes("onExploreDesigns")
-    && ts.includes("Visual evidence")
+    && ts.includes("Review Screenshots")
+    && ts.includes("Explore Designs")
+    && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && ts.includes("No candidates yet"),
-  "Unit pages should show design explorations inside the unified visual evidence card.",
+  "Unit pages should show design explorations inside the unified design card tabs.",
 );
 assert.ok(
   !ts.includes('data-unit-explorations="true"') && !ts.includes('data-unit-screenshot="true"'),

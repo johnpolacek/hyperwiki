@@ -123,9 +123,12 @@ assert.ok(
 assert.ok(
   tsSources.includes('data-unit-visual-evidence="true"')
     && tsSources.includes('data-unit-screenshots-section="true"')
+    && tsSources.includes("Review Screenshots")
+    && tsSources.includes("Explore Designs")
+    && tsSources.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && tsSources.includes("No screenshots captured yet")
     && tsSources.includes("onReviewScreenshots?.()"),
-  "The unified visual evidence card should include the screenshot review entry and empty state.",
+  "The unified design card should include topbar tabs plus the screenshot review entry and empty state.",
 );
 assert.ok(
   !tsSources.includes('data-unit-screenshot="true"') && !tsSources.includes('data-unit-explorations="true"'),
