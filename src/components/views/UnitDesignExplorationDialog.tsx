@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ImagePlus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, Maximize2, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { ScreenshotCarousel } from "@/components/ScreenshotCarousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { UnitScreenshotImageData } from "@/lib/api";
 import type { UnitExplorationMetadata } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -57,11 +58,13 @@ export function UnitDesignExplorationDialog({
   onClear: () => void;
   onSelect: (candidateName: string, notes: string, textBrief: string) => void;
 }) {
+  const referenceInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<UnitExplorationMode>("new-mockups");
   const [variantCount, setVariantCount] = useState("3");
   const [prompt, setPrompt] = useState("");
   const [sourceScreenshotNames, setSourceScreenshotNames] = useState<string[]>([]);
   const [previewSourceScreenshotName, setPreviewSourceScreenshotName] = useState("");
+  const [largePreviewImageName, setLargePreviewImageName] = useState("");
   const [referenceImageName, setReferenceImageName] = useState("");
   const [referenceImagePath, setReferenceImagePath] = useState("");
   const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
@@ -87,6 +90,7 @@ export function UnitDesignExplorationDialog({
     setReferenceImagePath("");
     setReferenceImageDataUrl("");
     setReferenceImageStatus("");
+    setLargePreviewImageName("");
     const metadataSourceName = metadata?.sourceScreenshotPath?.split("/").pop() || "";
     setSourceScreenshotNames(metadataSourceName ? [metadataSourceName] : screenshots[0]?.name ? [screenshots[0].name] : []);
     setPreviewSourceScreenshotName(metadataSourceName || screenshots[0]?.name || "");
@@ -99,6 +103,7 @@ export function UnitDesignExplorationDialog({
     setPreviewSourceScreenshotName(screenshots[0].name);
   }, [mode, screenshots, sourceScreenshotNames.length]);
   const previewSourceScreenshot = screenshots.find((image) => image.name === previewSourceScreenshotName) || screenshots[0] || null;
+  const largePreviewImage = screenshots.find((image) => image.name === largePreviewImageName) || null;
 
   const submitGenerate = () => {
     const count = Math.min(Math.max(Number.parseInt(variantCount, 10) || 1, 1), 4);
@@ -149,9 +154,14 @@ export function UnitDesignExplorationDialog({
     ));
   };
 
+  const openLargePreview = (name: string) => {
+    setPreviewSourceScreenshotName(name);
+    setLargePreviewImageName(name);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(calc(100vh-2rem),54rem)] w-[min(calc(100vw-2rem),78rem)] overflow-y-auto sm:max-w-6xl">
+      <DialogContent className="max-h-[min(calc(100vh-2rem),54rem)] w-[min(calc(100vw-2rem),78rem)] overflow-x-hidden overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Explore designs — {unitTitle}</DialogTitle>
           <DialogDescription>
@@ -206,13 +216,33 @@ export function UnitDesignExplorationDialog({
 
               <div className="flex flex-col gap-2">
                 <Label htmlFor="unit-exploration-reference">Reference image</Label>
-                <Input
-                  accept="image/*"
-                  disabled={isSavingReferenceImage}
-                  id="unit-exploration-reference"
-                  type="file"
-                  onChange={(event) => void chooseReferenceImage(event.target.files?.[0])}
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    ref={referenceInputRef}
+                    accept="image/*"
+                    aria-hidden="true"
+                    className="pointer-events-none absolute size-px opacity-0"
+                    disabled={isSavingReferenceImage}
+                    id="unit-exploration-reference"
+                    tabIndex={-1}
+                    type="file"
+                    onChange={(event) => {
+                      void chooseReferenceImage(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                  <Button
+                    className="w-fit"
+                    disabled={isSavingReferenceImage}
+                    type="button"
+                    variant="outline"
+                    onClick={() => referenceInputRef.current?.click()}
+                  >
+                    <Upload aria-hidden="true" data-icon="inline-start" />
+                    {referenceImageName ? "Replace image" : "Choose reference image"}
+                  </Button>
+                  {referenceImageName ? <span className="min-w-0 truncate text-xs text-muted-foreground">{referenceImageName}</span> : null}
+                </div>
                 {referenceImageDataUrl ? (
                   <div className="overflow-hidden rounded-md border bg-muted/30">
                     <img
@@ -248,50 +278,56 @@ export function UnitDesignExplorationDialog({
                     </div>
                   </div>
                   {screenshots.length ? (
-                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]">
-                      <div className="overflow-hidden rounded-md border bg-muted/30">
-                        {previewSourceScreenshot ? (
-                          <img
-                            alt={`Large preview of ${previewSourceScreenshot.name}`}
-                            className="max-h-[34rem] min-h-[18rem] w-full object-contain"
-                            src={previewSourceScreenshot.dataUrl}
-                          />
-                        ) : null}
-                        <div className="flex items-center justify-between gap-2 border-t bg-card px-3 py-2 text-xs">
-                          <span className="truncate font-mono">{previewSourceScreenshot?.name || "No preview"}</span>
-                          <span className="shrink-0 text-muted-foreground">Click thumbnails to select</span>
-                        </div>
-                      </div>
-                      <div className="grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-1">
+                    <TooltipProvider>
+                      <div className="grid max-h-[34rem] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                         {screenshots.map((image) => {
                           const selected = sourceScreenshotNames.includes(image.name);
                           const previewed = previewSourceScreenshot?.name === image.name;
                           return (
-                            <button
-                              aria-pressed={selected}
+                            <div
                               className={cn(
-                                "group flex min-w-0 flex-col overflow-hidden rounded-md border bg-card text-left transition-colors hover:bg-muted/35",
+                                "group relative min-w-0 overflow-hidden rounded-md border bg-card transition-colors hover:bg-muted/35",
                                 previewed && "border-ring",
                                 selected && "border-primary ring-2 ring-ring/35",
                               )}
                               key={image.name}
-                              type="button"
-                              onClick={() => toggleSourceScreenshot(image.name)}
                             >
-                              <img
-                                alt={`Source screenshot ${image.name}`}
-                                className="aspect-video w-full bg-muted object-contain"
-                                src={image.dataUrl}
-                              />
-                              <span className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
-                                <span className="truncate font-mono">{image.name}</span>
-                                {selected ? <Badge variant="secondary">Selected</Badge> : null}
-                              </span>
-                            </button>
+                              <button
+                                aria-pressed={selected}
+                                className="flex w-full min-w-0 flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                type="button"
+                                onClick={() => toggleSourceScreenshot(image.name)}
+                              >
+                                <img
+                                  alt={`Source screenshot thumbnail ${image.name}`}
+                                  className="aspect-video w-full bg-muted object-contain"
+                                  src={image.dataUrl}
+                                />
+                                <span className="flex items-center justify-between gap-2 px-2 py-1.5 text-xs">
+                                  <span className="truncate font-mono">{image.name}</span>
+                                  {selected ? <Badge variant="secondary">Selected</Badge> : null}
+                                </span>
+                              </button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    aria-label={`Open larger view of ${image.name}`}
+                                    className="absolute right-1.5 top-1.5 size-7 rounded-md bg-background/90 opacity-90 shadow-sm transition-opacity hover:bg-background hover:opacity-100"
+                                    size="icon"
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => openLargePreview(image.name)}
+                                  >
+                                    <Maximize2 aria-hidden="true" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Open larger view</TooltipContent>
+                              </Tooltip>
+                            </div>
                           );
                         })}
                       </div>
-                    </div>
+                    </TooltipProvider>
                   ) : (
                     <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/30 p-8 text-center">
                       <ImagePlus aria-hidden="true" className="size-6 text-muted-foreground" />
@@ -375,6 +411,31 @@ export function UnitDesignExplorationDialog({
             </Button>
           ) : null}
         </DialogFooter>
+
+        <Dialog
+          open={Boolean(largePreviewImage)}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setLargePreviewImageName("");
+          }}
+        >
+          <DialogContent className="max-h-[min(calc(100vh-2rem),50rem)] w-[min(calc(100vw-2rem),72rem)] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
+            <DialogHeader>
+              <DialogTitle>Source screenshot preview</DialogTitle>
+              <DialogDescription className="font-mono">
+                {largePreviewImage?.name || "Screenshot"}
+              </DialogDescription>
+            </DialogHeader>
+            {largePreviewImage ? (
+              <div className="overflow-hidden rounded-md bg-muted shadow-sm">
+                <img
+                  alt={`Larger source screenshot preview ${largePreviewImage.name}`}
+                  className="max-h-[min(72vh,42rem)] w-full object-contain"
+                  src={largePreviewImage.dataUrl}
+                />
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
