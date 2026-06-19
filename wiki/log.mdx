@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-19 polish | multiple design reference images</h2>
+  <ul>
+    <li>Extended the Explore Design setup view so users can add multiple reference images at once, append more later, preview each image, and remove individual references before generation.</li>
+    <li>The Image-Gen Design Exploration prompt now passes all saved reference image paths as a <code>Reference images</code> list while keeping the existing ignored runtime storage flow.</li>
+    <li>Verification: <code>pnpm exec tsc -b</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | source thumbnail selection border</h2>
   <ul>
     <li>Adjusted Explore Design source thumbnails so selection is indicated only by a stable 2px primary border; unselected thumbnails keep a transparent 2px border to avoid layout shift.</li>

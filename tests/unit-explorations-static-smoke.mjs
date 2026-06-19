@@ -67,9 +67,12 @@ assert.ok(
     && ts.includes("Open larger view")
     && ts.includes("Source screenshot preview")
     && ts.includes("Larger source screenshot preview")
-    && ts.includes("Choose reference image")
+    && ts.includes("Choose reference images")
+    && ts.includes("Add reference images")
     && ts.includes("Reference image")
-    && ts.includes("referenceImagePath")
+    && ts.includes("referenceImagePaths")
+    && ts.includes("removeReferenceImage")
+    && ts.includes("multiple")
     && ts.includes("onSaveReferenceImage")
     && ts.includes("aria-pressed={selected}")
     && ts.includes("toggleSourceScreenshot")
@@ -105,9 +108,9 @@ assert.ok(
     && ts.includes("do not implement product code")
     && ts.includes("metadata.json")
     && ts.includes("Source screenshots:")
-    && ts.includes("Reference image:")
+    && ts.includes("Reference images:")
     && ts.includes("sourceScreenshotPaths"),
-  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots and a reference image, and avoid implementation work.",
+  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots and reference images, and avoid implementation work.",
 );
 assert.ok(
   ts.includes("Selected design exploration:")

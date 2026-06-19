@@ -22,7 +22,14 @@ export interface UnitDesignExplorationGenerateInput {
   variantCount: number;
   sourceScreenshotNames: string[];
   sourceScreenshotPaths: string[];
-  referenceImagePath: string;
+  referenceImagePaths: string[];
+}
+
+interface ReferenceImage {
+  id: string;
+  name: string;
+  path: string;
+  dataUrl: string;
 }
 
 export function UnitDesignExplorationDialog({
@@ -65,9 +72,7 @@ export function UnitDesignExplorationDialog({
   const [sourceScreenshotNames, setSourceScreenshotNames] = useState<string[]>([]);
   const [previewSourceScreenshotName, setPreviewSourceScreenshotName] = useState("");
   const [largePreviewImageName, setLargePreviewImageName] = useState("");
-  const [referenceImageName, setReferenceImageName] = useState("");
-  const [referenceImagePath, setReferenceImagePath] = useState("");
-  const [referenceImageDataUrl, setReferenceImageDataUrl] = useState("");
+  const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [referenceImageStatus, setReferenceImageStatus] = useState("");
   const [isSavingReferenceImage, setIsSavingReferenceImage] = useState(false);
   const [index, setIndex] = useState(0);
@@ -86,9 +91,7 @@ export function UnitDesignExplorationDialog({
     setNotes(metadata?.notes || "");
     setTextBrief(metadata?.textBrief || "");
     setIndex(0);
-    setReferenceImageName("");
-    setReferenceImagePath("");
-    setReferenceImageDataUrl("");
+    setReferenceImages([]);
     setReferenceImageStatus("");
     setLargePreviewImageName("");
     const metadataSourceName = metadata?.sourceScreenshotPath?.split("/").pop() || "";
@@ -114,35 +117,39 @@ export function UnitDesignExplorationDialog({
       variantCount: count,
       sourceScreenshotNames: sourceNames,
       sourceScreenshotPaths: sourceNames.map((name) => `${screenshotDir}/${name}`),
-      referenceImagePath,
+      referenceImagePaths: referenceImages.map((image) => image.path),
     });
   };
 
-  const chooseReferenceImage = async (file: File | undefined) => {
-    if (!file) return;
-    setReferenceImageStatus("Saving reference image");
+  const chooseReferenceImages = async (files: FileList | null | undefined) => {
+    const imageFiles = Array.from(files || []);
+    if (!imageFiles.length) return;
+    setReferenceImageStatus(`Saving ${imageFiles.length} reference ${imageFiles.length === 1 ? "image" : "images"}`);
     setIsSavingReferenceImage(true);
     try {
-      const [dataUrl, savedPath] = await Promise.all([
-        imageFileDataUrl(file),
-        onSaveReferenceImage(file),
-      ]);
-      setReferenceImageName(file.name || "reference image");
-      setReferenceImageDataUrl(dataUrl);
-      setReferenceImagePath(savedPath);
-      setReferenceImageStatus("Reference image saved");
+      const savedImages = await Promise.all(imageFiles.map(async (file, fileIndex) => {
+        const [dataUrl, savedPath] = await Promise.all([
+          imageFileDataUrl(file),
+          onSaveReferenceImage(file),
+        ]);
+        return {
+          id: `${savedPath}-${Date.now()}-${fileIndex}`,
+          name: file.name || "reference image",
+          path: savedPath,
+          dataUrl,
+        };
+      }));
+      setReferenceImages((currentImages) => [...currentImages, ...savedImages]);
+      setReferenceImageStatus(`${savedImages.length} reference ${savedImages.length === 1 ? "image" : "images"} saved`);
     } catch (error) {
-      setReferenceImageStatus(error instanceof Error ? error.message : "Could not save reference image");
+      setReferenceImageStatus(error instanceof Error ? error.message : "Could not save reference images");
     } finally {
       setIsSavingReferenceImage(false);
     }
   };
 
-  const clearReferenceImage = () => {
-    setReferenceImageName("");
-    setReferenceImagePath("");
-    setReferenceImageDataUrl("");
-    setReferenceImageStatus("");
+  const removeReferenceImage = (id: string) => {
+    setReferenceImages((currentImages) => currentImages.filter((image) => image.id !== id));
   };
 
   const toggleSourceScreenshot = (name: string) => {
@@ -225,8 +232,9 @@ export function UnitDesignExplorationDialog({
                     id="unit-exploration-reference"
                     tabIndex={-1}
                     type="file"
+                    multiple
                     onChange={(event) => {
-                      void chooseReferenceImage(event.target.files?.[0]);
+                      void chooseReferenceImages(event.target.files);
                       event.currentTarget.value = "";
                     }}
                   />
@@ -238,23 +246,27 @@ export function UnitDesignExplorationDialog({
                     onClick={() => referenceInputRef.current?.click()}
                   >
                     <Upload aria-hidden="true" data-icon="inline-start" />
-                    {referenceImageName ? "Replace image" : "Choose reference image"}
+                    {referenceImages.length ? "Add reference images" : "Choose reference images"}
                   </Button>
-                  {referenceImageName ? <span className="min-w-0 truncate text-xs text-muted-foreground">{referenceImageName}</span> : null}
+                  {referenceImages.length ? <Badge variant="outline">{referenceImages.length} added</Badge> : null}
                 </div>
-                {referenceImageDataUrl ? (
-                  <div className="overflow-hidden rounded-md border bg-muted/30">
-                    <img
-                      alt={`Reference image ${referenceImageName}`}
-                      className="max-h-44 w-full object-contain"
-                      src={referenceImageDataUrl}
-                    />
-                    <div className="flex items-center justify-between gap-2 border-t bg-card px-3 py-2 text-xs">
-                      <span className="min-w-0 truncate font-mono" title={referenceImagePath}>{referenceImagePath || referenceImageName}</span>
-                      <Button size="sm" type="button" variant="outline" onClick={clearReferenceImage}>
-                        Clear
-                      </Button>
-                    </div>
+                {referenceImages.length ? (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {referenceImages.map((image) => (
+                      <div className="overflow-hidden rounded-md border bg-muted/30" key={image.id}>
+                        <img
+                          alt={`Reference image ${image.name}`}
+                          className="aspect-video w-full bg-muted object-contain"
+                          src={image.dataUrl}
+                        />
+                        <div className="flex items-center justify-between gap-2 border-t bg-card px-2 py-1.5 text-xs">
+                          <span className="min-w-0 truncate font-mono" title={image.path}>{image.name}</span>
+                          <Button size="sm" type="button" variant="outline" onClick={() => removeReferenceImage(image.id)}>
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
                 {referenceImageStatus ? <p className="m-0 text-xs text-muted-foreground">{referenceImageStatus}</p> : null}
