@@ -146,13 +146,14 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorations = [], unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
   const hasUnitScreenshots = unitScreenshots.length > 0;
+  const hasUnitExplorations = unitExplorations.length > 0;
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -248,6 +249,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                     <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                     <span className="text-sm font-semibold">Design</span>
                   </div>
+                  {hasUnitExplorations ? <Badge variant="outline">{unitExplorations.length} candidate{unitExplorations.length === 1 ? "" : "s"}</Badge> : null}
                   {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
                 </div>
                 <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -257,7 +259,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                   </Button>
                   <Button className="flex-1 sm:flex-none" size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
                     <Sparkles aria-hidden="true" data-icon="inline-start" />
-                    Explore Design
+                    {hasUnitExplorations ? "Review Designs" : "Explore Design"}
                   </Button>
                 </div>
               </div>

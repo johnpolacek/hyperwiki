@@ -90,6 +90,8 @@ assert.ok(
     && ts.includes("onExploreDesigns")
     && ts.includes("Review Screenshots")
     && ts.includes("Explore Design")
+    && ts.includes("Review Designs")
+    && ts.includes("candidate{unitExplorations.length === 1 ? \"\" : \"s\"}")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && ts.includes("No screenshots captured yet"),
   "Unit pages should expose design exploration from the unified design card topbar.",
@@ -105,6 +107,9 @@ assert.ok(
 assert.ok(
   ts.includes("Mode: Image-Gen Design Exploration.")
     && ts.includes("Use the imagegen skill")
+    && ts.includes("real local PNG files")
+    && ts.includes("OPENAI_API_KEY")
+    && ts.includes('find "${outputDir}" -maxdepth 1 -type f -name \'*.png\' | sort')
     && ts.includes("do not implement product code")
     && ts.includes("metadata.json")
     && ts.includes("Source screenshots:")
@@ -119,8 +124,13 @@ assert.ok(
   "Selected candidates should be persisted and included in future Execute Unit prompts.",
 );
 assert.ok(
-  ts.includes('"exploration"') && ts.includes("setExplorationRefreshKey((value) => value + 1)"),
-  "Exploration agent runs should be tracked separately and refresh unit exploration state.",
+  ts.includes('"exploration"')
+    && ts.includes("setExplorationRefreshKey((value) => value + 1)")
+    && ts.includes("setExplorationDialogUnitPath(null)")
+    && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
+    && ts.includes("Design exploration finished without saved candidate PNGs")
+    && ts.includes("Design exploration ready:"),
+  "Exploration agent runs should be tracked separately, close after launch, refresh unit state, and auto-open saved candidates.",
 );
 
 console.log("unit explorations static smoke passed");

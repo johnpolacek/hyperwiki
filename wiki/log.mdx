@@ -7,6 +7,16 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 fix | design exploration handoff review</h2>
+  <ul>
+    <li>Changed Explore Design generation so the setup dialog closes after a successful agent handoff, matching the expectation that the run continues in the terminal.</li>
+    <li>When an exploration agent finishes, Hyperwiki now refreshes exploration state and automatically opens the candidates dialog if saved PNGs exist; otherwise it reports that no candidate PNGs were saved.</li>
+    <li>Updated the exploration prompt to require real local PNG artifacts in the unit exploration folder, verify them before final handoff, and use the file-writing imagegen CLI fallback when the built-in path only produces inline images and <code>OPENAI_API_KEY</code> is available.</li>
+    <li>The unit design card now shows a candidate count and changes the action from <strong>Explore Design</strong> to <strong>Review Designs</strong> once candidates exist.</li>
+    <li>Verification: <code>pnpm exec tsc -b</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-19 polish | multiple design reference images</h2>
   <ul>
     <li>Extended the Explore Design setup view so users can add multiple reference images at once, append more later, preview each image, and remove individual references before generation.</li>

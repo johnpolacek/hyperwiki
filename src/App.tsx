@@ -1378,6 +1378,7 @@ function App() {
         }
         if (armedCompletion.kind === "exploration" && armedCompletion.planPath) {
           setExplorationRefreshKey((value) => value + 1);
+          void maybeOpenDesignExplorationReview(armedCompletion.planPath);
         }
       }
     }
@@ -2394,6 +2395,25 @@ function App() {
     setExplorationRefreshKey((value) => value + 1);
   }
 
+  async function maybeOpenDesignExplorationReview(unitPath: string) {
+    const project = latestActiveProjectRef.current;
+    const [images, screenshots, metadata] = await Promise.all([
+      fetchUnitExplorationImages(unitPath, project),
+      fetchUnitScreenshotImages(unitPath, project),
+      fetchUnitExplorationMetadata(unitPath, project),
+    ]);
+    setExplorationRefreshKey((value) => value + 1);
+    if (!images.length) {
+      setStatus("Design exploration finished without saved candidate PNGs");
+      return;
+    }
+    setExplorationDialogUnitPath(unitPath);
+    setExplorationDialogImages(images);
+    setExplorationDialogScreenshots(screenshots);
+    setExplorationDialogMetadata(metadata);
+    setStatus(`Design exploration ready: ${images.length} candidate${images.length === 1 ? "" : "s"}`);
+  }
+
   async function openDesignExploration(unitPath: string) {
     setExplorationDialogUnitPath(unitPath);
     setExplorationDialogImages([]);
@@ -2451,7 +2471,8 @@ function App() {
         undefined,
         { forceNewSession: true },
       );
-      setStatus("Design exploration prompt sent");
+      setExplorationDialogUnitPath(null);
+      setStatus("Design exploration prompt sent; candidates will open when saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
@@ -2486,13 +2507,15 @@ function App() {
       direction,
       "",
       "Workflow:",
-      "- Use the imagegen skill with the built-in image generation path when available.",
-      "- If the active agent cannot generate or edit images in this local workflow, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
+      "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
+      "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. When `OPENAI_API_KEY` is present, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
+      "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
       `- First remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
       "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path.",
       "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
-      "- After generation, report the saved paths and remind the user to click Refresh in Hyperwiki if the candidates are not visible yet.",
+      `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
+      "- After generation, report the saved paths and remind the user to click Explore Design / Refresh in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
       "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
