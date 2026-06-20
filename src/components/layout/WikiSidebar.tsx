@@ -26,25 +26,21 @@ export function WikiSidebar(props: {
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-background">
       <nav className="flex h-full min-h-0 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
-          <div className="mb-2 grid gap-2 px-1">
+          <div className="mb-2 flex min-h-9 items-center justify-between gap-2 px-1">
             <ToggleGroup
               aria-label="Sidebar work mode"
-              className="grid w-full grid-cols-2"
+              className="min-w-0 gap-1"
               size="sm"
               type="single"
               value={mode}
-              variant="outline"
               onValueChange={(value) => {
                 if (value === "plans") props.onOpenPlans();
                 if (value === "bugs") props.onOpenBugs();
               }}
             >
-              <ToggleGroupItem className="justify-center" value="plans">Plans</ToggleGroupItem>
-              <ToggleGroupItem className="justify-center" value="bugs">Bugs</ToggleGroupItem>
+              <ToggleGroupItem className={sidebarModeClass(mode === "plans")} value="plans">Plans</ToggleGroupItem>
+              <ToggleGroupItem className={sidebarModeClass(mode === "bugs")} value="bugs">Bugs</ToggleGroupItem>
             </ToggleGroup>
-          </div>
-          <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{mode === "bugs" ? "Bugs" : "Plans"}</h2>
             <div className="flex items-center gap-1">
               {mode === "plans" ? (
                 <>
@@ -90,6 +86,15 @@ export function WikiSidebar(props: {
         </details>
       </nav>
     </aside>
+  );
+}
+
+function sidebarModeClass(active: boolean) {
+  return cn(
+    "h-8 rounded-md text-xs transition-colors",
+    active
+      ? "px-0 font-semibold uppercase tracking-wide text-muted-foreground hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-muted-foreground"
+      : "px-2 font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
   );
 }
 
