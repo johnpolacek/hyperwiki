@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 fix | polling design review open</h2>
+  <ul>
+    <li>Added a direct post-generate watcher for Image-Gen Design Exploration runs so Hyperwiki opens the Review Designs dialog as soon as saved candidate PNGs appear.</li>
+    <li>The watcher polls the unit exploration folder independently of terminal prompt-readiness detection and stops once candidates open, the active project changes, or the bounded wait expires.</li>
+    <li>Verification: <code>pnpm exec tsc -b</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-20 fix | imagegen fallback env loading</h2>
   <ul>
     <li>Clarified the Image-Gen Design Exploration prompt so agents load the active project's <code>.env.local</code> before using the file-writing imagegen CLI fallback.</li>

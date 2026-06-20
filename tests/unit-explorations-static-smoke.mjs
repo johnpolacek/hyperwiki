@@ -128,10 +128,13 @@ assert.ok(
   ts.includes('"exploration"')
     && ts.includes("setExplorationRefreshKey((value) => value + 1)")
     && ts.includes("setExplorationDialogUnitPath(null)")
+    && ts.includes("explorationAutoReviewTimers")
+    && ts.includes("scheduleDesignExplorationAutoReview(unitPath)")
     && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
     && ts.includes("Design exploration finished without saved candidate PNGs")
+    && ts.includes("Design exploration has not saved candidate PNGs yet")
     && ts.includes("Design exploration ready:"),
-  "Exploration agent runs should be tracked separately, close after launch, refresh unit state, and auto-open saved candidates.",
+  "Exploration agent runs should be tracked separately, close after launch, poll for saved PNGs, refresh unit state, and auto-open saved candidates.",
 );
 
 console.log("unit explorations static smoke passed");

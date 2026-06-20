@@ -157,6 +157,11 @@ function App() {
   const [explorationDialogScreenshots, setExplorationDialogScreenshots] = useState<UnitScreenshotImageData[]>([]);
   const [explorationDialogMetadata, setExplorationDialogMetadata] = useState<UnitExplorationMetadata | null>(null);
   const [isExplorationGenerating, setIsExplorationGenerating] = useState(false);
+  const explorationAutoReviewTimers = useRef<Map<string, number>>(new Map());
+  useEffect(() => () => {
+    for (const timer of explorationAutoReviewTimers.current.values()) window.clearTimeout(timer);
+    explorationAutoReviewTimers.current.clear();
+  }, []);
   useEffect(() => {
     let active = true;
     if (!activeProject) {
@@ -2395,8 +2400,39 @@ function App() {
     setExplorationRefreshKey((value) => value + 1);
   }
 
-  async function maybeOpenDesignExplorationReview(unitPath: string) {
-    const project = latestActiveProjectRef.current;
+  function explorationAutoReviewKey(unitPath: string, project = latestActiveProjectRef.current) {
+    return `${project?.id || "none"}:${displayWikiPath(unitPath)}`;
+  }
+
+  function clearDesignExplorationAutoReview(unitPath: string, project = latestActiveProjectRef.current) {
+    const key = explorationAutoReviewKey(unitPath, project);
+    const timer = explorationAutoReviewTimers.current.get(key);
+    if (timer) window.clearTimeout(timer);
+    explorationAutoReviewTimers.current.delete(key);
+  }
+
+  function scheduleDesignExplorationAutoReview(unitPath: string, attempt = 0, project = latestActiveProjectRef.current) {
+    const key = explorationAutoReviewKey(unitPath, project);
+    const existing = explorationAutoReviewTimers.current.get(key);
+    if (existing) window.clearTimeout(existing);
+    const timer = window.setTimeout(() => {
+      explorationAutoReviewTimers.current.delete(key);
+      if ((project?.id || "") !== (latestActiveProjectRef.current?.id || "")) return;
+      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project }).then((opened) => {
+        if (opened) return;
+        const nextAttempt = attempt + 1;
+        if (nextAttempt < 180) {
+          scheduleDesignExplorationAutoReview(unitPath, nextAttempt, project);
+          return;
+        }
+        setStatus("Design exploration has not saved candidate PNGs yet; use Review Designs / Refresh after the agent finishes");
+      });
+    }, attempt === 0 ? 1500 : 5000);
+    explorationAutoReviewTimers.current.set(key, timer);
+  }
+
+  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null } = {}) {
+    const project = options.project ?? latestActiveProjectRef.current;
     const [images, screenshots, metadata] = await Promise.all([
       fetchUnitExplorationImages(unitPath, project),
       fetchUnitScreenshotImages(unitPath, project),
@@ -2404,14 +2440,16 @@ function App() {
     ]);
     setExplorationRefreshKey((value) => value + 1);
     if (!images.length) {
-      setStatus("Design exploration finished without saved candidate PNGs");
-      return;
+      if (!options.quiet) setStatus("Design exploration finished without saved candidate PNGs");
+      return false;
     }
+    clearDesignExplorationAutoReview(unitPath, project);
     setExplorationDialogUnitPath(unitPath);
     setExplorationDialogImages(images);
     setExplorationDialogScreenshots(screenshots);
     setExplorationDialogMetadata(metadata);
     setStatus(`Design exploration ready: ${images.length} candidate${images.length === 1 ? "" : "s"}`);
+    return true;
   }
 
   async function openDesignExploration(unitPath: string) {
@@ -2472,6 +2510,7 @@ function App() {
         { forceNewSession: true },
       );
       setExplorationDialogUnitPath(null);
+      scheduleDesignExplorationAutoReview(unitPath);
       setStatus("Design exploration prompt sent; candidates will open when saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
