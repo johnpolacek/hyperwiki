@@ -170,10 +170,6 @@ export function UnitDesignExplorationDialog({
       <DialogContent className="max-h-[min(calc(100vh-2rem),54rem)] w-[min(calc(100vw-2rem),78rem)] overflow-x-hidden overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle>Explore designs — {unitTitle}</DialogTitle>
-          <DialogDescription>
-            Generated designs are stored in <span className="font-mono">{explorationDir}</span>.
-          </DialogDescription>
-          <Badge className="w-fit" variant="outline">{hasCandidates ? "View #2: Candidates" : "View #1: setup"}</Badge>
         </DialogHeader>
 
         {!hasCandidates ? (
@@ -378,11 +374,12 @@ export function UnitDesignExplorationDialog({
 
             <ScreenshotCarousel
               className="h-[min(62vh,38rem)]"
+              getImageLabel={(image) => `${explorationDir}/${image.name}`}
               images={images}
               index={index}
               onIndexChange={setIndex}
             />
-            <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+            <div className="flex flex-col gap-3">
               <Label htmlFor="unit-exploration-message">Message</Label>
               <Textarea
                 className="min-h-24"

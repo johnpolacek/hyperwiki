@@ -6,16 +6,18 @@ import type { UnitScreenshotImageData } from "@/lib/api";
 // Shared step-through viewer for a unit's screenshots. Controlled: the parent
 // owns `index` so it can bind per-image UI (e.g. the review comment field).
 // Reused by the inline unit-page lightbox and the post-run review dialog.
-export function ScreenshotCarousel({ images, index, onIndexChange, className, imageClassName }: {
+export function ScreenshotCarousel({ images, index, onIndexChange, className, imageClassName, getImageLabel }: {
   images: UnitScreenshotImageData[];
   index: number;
   onIndexChange: (next: number) => void;
   className?: string;
   imageClassName?: string;
+  getImageLabel?: (image: UnitScreenshotImageData) => string;
 }) {
   if (!images.length) return null;
   const safeIndex = Math.min(Math.max(index, 0), images.length - 1);
   const current = images[safeIndex];
+  const label = getImageLabel ? getImageLabel(current) : current.name;
   const hasMultiple = images.length > 1;
   const go = (delta: number) => onIndexChange(Math.min(Math.max(safeIndex + delta, 0), images.length - 1));
 
@@ -60,7 +62,7 @@ export function ScreenshotCarousel({ images, index, onIndexChange, className, im
         ) : null}
       </div>
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-        <span className="truncate font-mono">{current.name}</span>
+        <span className="truncate font-mono" title={label}>{label}</span>
         {hasMultiple ? <span className="shrink-0">{safeIndex + 1} of {images.length}</span> : null}
       </div>
     </div>

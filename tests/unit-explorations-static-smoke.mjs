@@ -80,12 +80,18 @@ assert.ok(
     && ts.includes("Candidates ({images.length})")
     && ts.includes("Use Direction")
     && ts.includes("Send Message")
-    && ts.includes("onSendMessage"),
-  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views with header selection and follow-up messaging.",
+    && ts.includes("onSendMessage")
+    && ts.includes("getImageLabel")
+    && ts.includes("`${explorationDir}/${image.name}`"),
+  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views with header selection, full candidate paths, and follow-up messaging.",
 );
 assert.ok(
   !ts.includes("No candidates yet"),
   "The pre-generation exploration dialog should not show a candidates empty state.",
+);
+assert.ok(
+  !ts.includes("Generated designs are stored") && !ts.includes("View #2: Candidates"),
+  "The design exploration dialog should not show storage helper copy or a view badge in the header.",
 );
 assert.ok(
   ts.includes('data-unit-visual-evidence="true"')
