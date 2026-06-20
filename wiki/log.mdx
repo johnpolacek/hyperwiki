@@ -7,6 +7,13 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 polish | Use Design execute handoff</h2>
+  <ul>
+    <li>Renamed the selected-candidate action to <strong>Use Design</strong>.</li>
+    <li>Choosing a design now persists the selected candidate and immediately stages the Execute Unit handoff for that exact unit, with the selected PNG path and generated implementation brief included in the agent prompt.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-20 polish | design review header cleanup</h2>
   <ul>
     <li>Removed the generated-design storage helper text and view badge from the Explore Designs dialog header.</li>
@@ -16,7 +23,7 @@ wikiKind: "page"
 <article>
   <h2>2026-06-20 polish | design candidate message loop</h2>
   <ul>
-    <li>Moved <strong>Use Direction</strong> into the Review Designs candidate header and removed the inline Refresh and Start Over buttons from the dialog.</li>
+    <li>Moved the selected-design action into the Review Designs candidate header and removed the inline Refresh and Start Over buttons from the dialog.</li>
     <li>Replaced the bottom selection-notes and implementation-brief editors with a single message composer that sends revision or start-over requests through the existing Image-Gen Design Exploration agent workflow.</li>
     <li>The follow-up watcher now waits for freshly saved candidate PNGs so older candidates do not immediately reopen the review dialog while a revision run is still in progress.</li>
   </ul>
@@ -92,7 +99,7 @@ wikiKind: "page"
   <ul>
     <li>Expanded the Explore Design dialog and split it into <strong>View #1: setup</strong> before generation and <strong>View #2: Candidates</strong> after images exist.</li>
     <li>Redesign is now the default mode when unit screenshots exist; otherwise New is the default. Redesign sources are selected by clicking screenshot thumbnails and multiple source screenshots can be included in the generation prompt.</li>
-    <li>The setup view no longer shows a candidates empty state. The generated view shows only candidates, with Refresh, Start Over, selection notes, implementation brief, and Use direction actions.</li>
+    <li>The setup view no longer shows a candidates empty state. The generated view shows only candidates, with controls for refreshing, starting over, selection notes, implementation brief, and choosing a direction.</li>
     <li>Verification: <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness verified desktop/mobile dialog sizing, redesign defaults, thumbnail multi-select, candidates-only post-generation view, and Start Over.</li>
   </ul>
 </article>

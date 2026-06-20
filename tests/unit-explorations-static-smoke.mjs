@@ -78,7 +78,7 @@ assert.ok(
     && ts.includes("toggleSourceScreenshot")
     && ts.includes("View 1: setup")
     && ts.includes("Candidates ({images.length})")
-    && ts.includes("Use Direction")
+    && ts.includes("Use Design")
     && ts.includes("Send Message")
     && ts.includes("onSendMessage")
     && ts.includes("getImageLabel")
@@ -129,8 +129,11 @@ assert.ok(
 assert.ok(
   ts.includes("Selected design exploration:")
     && ts.includes("Candidate image:")
-    && ts.includes("Execute Unit will include it"),
-  "Selected candidates should be persisted and included in future Execute Unit prompts.",
+    && ts.includes("stageExecuteUnitPromptForPath(unitPath, undefined, metadata)")
+    && ts.includes("Inspect the selected candidate image before editing")
+    && ts.includes('action === "modify" || action === "execute-main"')
+    && ts.includes("function isUnitPagePath"),
+  "Use Design should persist the selected candidate, execute the exact unit, and include selected image context in the Execute Unit prompt.",
 );
 assert.ok(
   ts.includes('"exploration"')

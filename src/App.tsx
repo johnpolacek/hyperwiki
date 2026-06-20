@@ -2698,20 +2698,25 @@ function App() {
       const metadata = await selectUnitExploration(unitPath, candidateName, notes, textBrief, activeProject);
       setExplorationDialogMetadata(metadata);
       setExplorationRefreshKey((value) => value + 1);
-      setStatus("Design direction selected; Execute Unit will include it");
+      setExplorationDialogUnitPath(null);
+      setStatus("Design selected; preparing Execute Unit");
+      await stageExecuteUnitPromptForPath(unitPath, undefined, metadata);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
   }
 
-  async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
-    const normalizedCurrentPage = displayWikiPath(currentWikiPath);
-    const executionPage = activePlanState.currentPath || normalizedCurrentPage;
+  async function stageExecuteUnitPromptForPath(
+    executionPath: string,
+    payload?: Record<string, string>,
+    selectedDesignDirection?: UnitExplorationMetadata | null,
+  ) {
+    const executionPage = displayWikiPath(executionPath);
     const executionScope = scopeForRoute({ kind: "wiki", path: executionPage });
     if (!(route.kind === "wiki" && displayWikiPath(route.path) === displayWikiPath(executionPage))) {
       navigate({ kind: "wiki", path: executionPage });
     }
-    const designDirection = await fetchUnitExplorationMetadata(executionPage, activeProject);
+    const designDirection = selectedDesignDirection ?? await fetchUnitExplorationMetadata(executionPage, activeProject);
     const prompt = workflowPrompt("execute-main", workspace, wikiPages, executionPage, payload?.prompt || "", designDirection);
     const candidateSession = selectExecuteAgentReuseCandidate(sessions, activeSessionId);
     if (candidateSession) {
@@ -2726,6 +2731,12 @@ function App() {
     }
     await submitExecuteUnitPrompt(prompt, executionPage, executionScope);
     return true;
+  }
+
+  async function stageExecuteUnitPrompt(payload?: Record<string, string>) {
+    const normalizedCurrentPage = displayWikiPath(currentWikiPath);
+    const executionPage = activePlanState.currentPath || normalizedCurrentPage;
+    return stageExecuteUnitPromptForPath(executionPage, payload);
   }
 
   async function confirmExecuteInCurrentAgent() {
@@ -4240,7 +4251,7 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
 }
 
 function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, userRequest = "", designDirection: UnitExplorationMetadata | null = null) {
-  const context = planningPromptContext(workspace, pages, visiblePath, action === "modify");
+  const context = planningPromptContext(workspace, pages, visiblePath, action === "modify" || action === "execute-main");
   if (action === "modify") {
     const initialRequest = userRequest.trim();
     return [
@@ -4309,12 +4320,23 @@ function planningPromptContext(workspace: WorkspaceResponse | null, pages: WikiP
       unitPath: planningPage,
     };
   }
+  if (preferVisibleUnit && isUnitPagePath(planningPage)) {
+    return {
+      planningPage,
+      unitTitle: titleForPath(planningPage, pages) || cleanPageTitle({ title: planningPage, path: planningPage }),
+      unitPath: planningPage,
+    };
+  }
   const status = workspace?.status || {};
   return {
     planningPage,
     unitTitle: status.current || "No current unit resolved",
     unitPath: status.currentPath ? displayWikiPath(status.currentPath) : "",
   };
+}
+
+function isUnitPagePath(path: string) {
+  return /\/unit-\d+-[^/]+\.mdx$/.test(path) || (path.includes("/units/") && /\/\d+-[^/]+\.mdx$/.test(path));
 }
 
 function selectedDesignDirectionLines(unitPath: string, designDirection: UnitExplorationMetadata | null) {
@@ -4326,6 +4348,7 @@ function selectedDesignDirectionLines(unitPath: string, designDirection: UnitExp
     `- Candidate image: ${candidatePath}`,
     designDirection.textBrief ? `- Implementation brief: ${designDirection.textBrief}` : "- Implementation brief: use the selected candidate as visual direction.",
     designDirection.notes ? `- User notes: ${designDirection.notes}` : "- User notes: none.",
+    "- Inspect the selected candidate image before editing, then use it as the visual target for this unit.",
     "- Apply this as visual direction for layout, hierarchy, density, and interaction feel while preserving the unit's product requirements.",
   ];
 }

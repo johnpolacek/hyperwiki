@@ -367,7 +367,7 @@ export function UnitDesignExplorationDialog({
                     if (current) onSelect(current.name, notes.trim(), textBrief.trim());
                   }}
                 >
-                  Use Direction
+                  Use Design
                 </Button>
               </div>
             </div>
