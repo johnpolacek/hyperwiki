@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Check, CodeXml, Copy, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
+import { BookOpen, Bug, Check, CodeXml, Copy, FolderOpen, Loader2, Maximize2, Minimize2, Play, Plus } from "lucide-react";
 import { MdxPlanRenderer } from "@/components/MdxPlanRenderer";
+import { Badge } from "@/components/ui/badge";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
 import { NewProjectView } from "@/components/views/NewProjectView";
@@ -10,8 +11,8 @@ import { FeedbackQueueView } from "@/components/views/FeedbackQueueView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
-import { defaultWikiPath, displayWikiPath, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, titleForPath } from "@/lib/wiki-pages";
-import type { AdoptInspectResponse, AdoptProjectResponse, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, UnitExplorationMetadata, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
+import { bugSortKey, cleanPageTitle, defaultWikiPath, displayWikiPath, isBugIndexPath, isBugPath, isBugReportPage, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, pageStatus, titleForPath } from "@/lib/wiki-pages";
+import type { AdoptInspectResponse, AdoptProjectResponse, BugStatus, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, UnitExplorationMetadata, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
@@ -31,6 +32,9 @@ export function WorkspacePane(props: {
   onResumeImportPlanning: () => void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
   onDeletePlan: (path: string) => Promise<void>;
+  onCreateBug: () => void;
+  onFixBug: (path: string) => void;
+  onUpdateBugStatus: (path: string, status: BugStatus) => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
   onReviewScreenshots: (unitPath: string) => void;
@@ -203,6 +207,45 @@ export function WorkspacePane(props: {
       </section>
     );
   }
+  if (isBugIndexPath(props.wikiPath)) {
+    const bugPages = props.wikiPages.filter(isBugReportPage).sort((left, right) => bugSortKey(left).localeCompare(bugSortKey(right)));
+    return (
+      <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="flex min-h-12 shrink-0 items-center justify-between border-b bg-background px-3">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
+              <Button
+                aria-label={props.isExpanded ? "Restore sidebars" : "Expand document"}
+                className="size-8"
+                size="icon"
+                title={props.isExpanded ? "Restore sidebars" : "Expand document"}
+                variant="outline"
+                onClick={props.onToggleExpanded}
+              >
+                {props.isExpanded ? <Minimize2 aria-hidden="true" data-icon="inline-start" /> : <Maximize2 aria-hidden="true" data-icon="inline-start" />}
+              </Button>
+              <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bugs</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" onClick={props.onCreateBug}>
+                <Plus aria-hidden="true" data-icon="inline-start" />
+                Report Bug
+              </Button>
+              <ViewChangesButton onOpenDiff={props.onOpenDiff} />
+            </div>
+          </div>
+          {bugPages.length ? (
+            <BugsIndexList pages={bugPages} onCreateBug={props.onCreateBug} onNavigate={(path) => props.onNavigate({ kind: "wiki", path })} />
+          ) : (
+            <BugsIndexEmptyState onCreateBug={props.onCreateBug} />
+          )}
+        </div>
+      </section>
+    );
+  }
+  const isBugPage = isBugPath(props.wikiPath);
+  const bugPage = props.wikiPages.find((candidate) => displayWikiPath(candidate.path) === displayWikiPath(props.wikiPath));
+  const bugStatus = (pageStatus(bugPage || { title: "", path: props.wikiPath }) || "open") as BugStatus;
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background">
       <div className="flex h-full min-h-0 flex-col">
@@ -221,7 +264,11 @@ export function WorkspacePane(props: {
             <span className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titleForPath(props.wikiPath, props.wikiPages).replace(/\.[^.]+$/, "")}</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+            {isBugPage ? (
+              <BugActionBar path={props.wikiPath} status={bugStatus} onFixBug={props.onFixBug} onUpdateStatus={props.onUpdateBugStatus} />
+            ) : (
+              <CommandBar activePlanState={props.activePlanState} canResumeImportPlanning={props.canResumeImportPlanning} onResumeImportPlanning={props.onResumeImportPlanning} onRunCommand={props.onRunCommand} />
+            )}
             <ViewChangesButton onOpenDiff={props.onOpenDiff} />
             {pageMarkdown.trim() ? (
               <Button
@@ -291,6 +338,96 @@ export function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => voi
           New Plan
         </Button>
       </BeamSurface>
+    </div>
+  );
+}
+
+export function BugsIndexEmptyState({ onCreateBug }: { onCreateBug: () => void }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
+      <BeamSurface className="flex max-w-lg flex-col items-center gap-5 rounded-md border bg-card/90 p-8 text-center shadow-sm" colorVariant="mono" cols={3} rows={3} strength={0.2}>
+        <div className="grid size-14 place-items-center rounded-md border bg-card">
+          <Bug aria-hidden="true" className="size-6 text-muted-foreground" />
+        </div>
+        <div className="grid gap-2">
+          <h1 className="font-ui m-0 text-3xl font-semibold tracking-tight">No bugs reported</h1>
+          <p className="m-0 text-base leading-7 text-muted-foreground">Capture a defect as durable project context.</p>
+        </div>
+        <Button className="min-h-12 px-6 text-base" onClick={onCreateBug}>
+          <Plus aria-hidden="true" data-icon="inline-start" />
+          Report Bug
+        </Button>
+      </BeamSurface>
+    </div>
+  );
+}
+
+export function BugsIndexList({ onCreateBug, onNavigate, pages }: { onCreateBug: () => void; onNavigate: (path: string) => void; pages: WikiPage[] }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto p-6">
+      <div className="mx-auto grid max-w-3xl gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-ui m-0 text-2xl font-semibold tracking-tight">Bugs</h1>
+            <p className="m-0 mt-1 text-sm text-muted-foreground">Open reports stay first; fixed, verified, and closed reports remain available below.</p>
+          </div>
+          <Button size="sm" onClick={onCreateBug}>
+            <Plus aria-hidden="true" data-icon="inline-start" />
+            Report Bug
+          </Button>
+        </div>
+        <div className="grid gap-2">
+          {pages.map((page) => {
+            const status = pageStatus(page) || "open";
+            const severity = String(page.frontmatter?.severity || "medium");
+            return (
+              <button
+                className="grid gap-2 rounded-md border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/50"
+                key={page.path}
+                type="button"
+                onClick={() => onNavigate(page.path)}
+              >
+                <span className="font-ui text-base font-semibold">{cleanPageTitle(page)}</span>
+                <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <Badge variant={status === "open" || status === "fixing" ? "default" : "secondary"}>{status}</Badge>
+                  <span>{severity}</span>
+                  <span className="truncate">{displayWikiPath(page.path)}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function BugActionBar({
+  onFixBug,
+  onUpdateStatus,
+  path,
+  status,
+}: {
+  onFixBug: (path: string) => void;
+  onUpdateStatus: (path: string, status: BugStatus) => Promise<void>;
+  path: string;
+  status: BugStatus;
+}) {
+  const isClosed = status === "closed";
+  return (
+    <div className="flex items-center gap-2">
+      <Badge className="hidden sm:inline-flex" variant={status === "open" || status === "fixing" ? "default" : "secondary"}>{status}</Badge>
+      {isClosed ? (
+        <Button size="sm" variant="outline" onClick={() => void onUpdateStatus(path, "open")}>Reopen</Button>
+      ) : (
+        <>
+          <Button size="sm" variant="outline" onClick={() => onFixBug(path)}>
+            {status === "fixing" ? "Fixing" : "Fix Bug"}
+          </Button>
+          {status === "fixed" ? <Button size="sm" variant="outline" onClick={() => void onUpdateStatus(path, "verified")}>Mark Verified</Button> : null}
+          <Button size="sm" variant="outline" onClick={() => void onUpdateStatus(path, "closed")}>Close</Button>
+        </>
+      )}
     </div>
   );
 }

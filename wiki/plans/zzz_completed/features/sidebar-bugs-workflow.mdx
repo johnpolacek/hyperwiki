@@ -1,0 +1,54 @@
+---
+title: "Sidebar Bugs Workflow"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Sidebar Bugs Workflow" status="complete" description="Add a first-class Bugs mode beside Plans, backed by durable wiki bug reports and direct bug-scoped agent fixes." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: focused feature plan</li>
+    <li>Completed: 2026-06-20</li>
+    <li>Implemented unit: Unit 01 - bug domain, sidebar, creation, and fix workflow</li>
+    <li>Result: Bugs mode now sits beside Plans, writes durable <code>wiki/bugs/</code> reports, and can launch a bug-scoped agent fix directly from a bug page.</li>
+    <li>Validation: Rust bug tests, frontend/static smoke coverage, app checks, project contract/MCP smokes, production frontend build, and agent-browser screenshots.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Intent</h2>
+  <p>Users should be able to switch the sidebar from Plans to Bugs, report product defects quickly, and ask an agent to fix a specific bug without converting it into a plan first. Bugs are durable project knowledge, not transient screenshot feedback.</p>
+</section>
+
+<section>
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Storage:</strong> bug reports are repo-visible MDX files under <code>wiki/bugs/</code> with <code>wikiKind: "bug"</code>.</li>
+    <li><strong>Creation:</strong> <code>+ Bug</code> opens a compact form for title, severity, repro context, expected/actual behavior, current wiki route, active checkout context, and optional linked plan or unit.</li>
+    <li><strong>Lifecycle:</strong> v1 statuses are <code>open</code>, <code>fixing</code>, <code>fixed</code>, <code>verified</code>, and <code>closed</code>.</li>
+    <li><strong>Fixing:</strong> bug pages can run a direct bug-scoped agent fix using <code>scopeKind: "bug"</code>, separate from plan-scoped terminals and screenshot review gates.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ol>
+    <li>Add a Rust bug domain with list, create, and status-update endpoints that read and write guarded <code>wiki/bugs/**/*.mdx</code> paths.</li>
+    <li>Extend wiki metadata/status parsing so bug statuses are recognized without changing plan completion derivation.</li>
+    <li>Add frontend bug types, API helpers, sidebar mode switching, bug list rendering, empty state, and quick report dialog.</li>
+    <li>Add bug route behavior: header actions for Fix Bug, mark verified, close, and reopen; bug pages use bug-specific terminal scope.</li>
+    <li>Add open bug summaries to project contract and MCP resource context so agents can see outstanding defects.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li>Rust: <code>cargo test --manifest-path src-tauri/Cargo.toml bug</code> covers slug creation, index creation, listing order, status updates, and path traversal guards.</li>
+    <li>Frontend/static: <code>node tests/sidebar-bugs-workflow-static-smoke.mjs</code> covers sidebar mode switching, bug form payload, bug route detection, and bug-scoped prompt generation.</li>
+    <li>App checks: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:mcp-transport</code>, and <code>pnpm run build:frontend</code> passed.</li>
+    <li>Visual: agent-browser screenshots captured Plans mode, empty Bugs mode, bug list, bug page action header, and bug form at desktop plus mobile dialog/sidebar states under <code>.hyperwiki/state/screenshots/sidebar-bugs-workflow/</code>.</li>
+  </ul>
+</section>

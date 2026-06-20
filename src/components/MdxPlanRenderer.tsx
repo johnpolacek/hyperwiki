@@ -1588,8 +1588,8 @@ function renderVerificationChecks(node: Element, key: string, onNavigate: (path:
 function statusBadgeVariant(value: string): "default" | "secondary" | "destructive" | "outline" {
   const normalized = value.toLowerCase();
   if (normalized.includes("blocked") || normalized.includes("danger") || normalized.includes("deprecated")) return "destructive";
-  if (normalized.includes("active") || normalized.includes("current")) return "default";
-  if (normalized.includes("complete")) return "secondary";
+  if (normalized.includes("active") || normalized.includes("current") || normalized === "open" || normalized === "fixing") return "default";
+  if (normalized.includes("complete") || normalized === "fixed" || normalized === "verified" || normalized === "closed") return "secondary";
   if (normalized.includes("planned") || normalized.includes("draft")) return "secondary";
   return "outline";
 }

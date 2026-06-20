@@ -1,6 +1,7 @@
 pub mod adopt;
 pub mod agent_provider;
 pub mod app_shell;
+pub mod bugs;
 pub mod claude_agent;
 pub mod codex_app_server;
 pub mod explorations;
@@ -39,6 +40,7 @@ pub fn surfaces() -> Vec<DomainSurface> {
         wiki::surface(),
         settings::surface(),
         git::surface(),
+        bugs::surface(),
         // Import onboarding is part of the import-planning surface and is
         // intentionally not listed as a separate user-facing domain.
         import_planning::surface(),
@@ -71,6 +73,7 @@ mod tests {
                 "wiki",
                 "settings",
                 "git",
+                "bugs",
                 "import-planning",
                 "sessions",
                 "terminals",
@@ -86,7 +89,7 @@ mod tests {
     #[test]
     fn surface_contract_is_serializable() {
         let value = serde_json::to_value(surfaces()).expect("surfaces should serialize");
-        assert_eq!(value.as_array().expect("array").len(), 13);
+        assert_eq!(value.as_array().expect("array").len(), 14);
         assert_eq!(value[0]["id"], "app-shell");
         assert_eq!(value[0]["runtimeOwner"], "rust-tauri");
     }

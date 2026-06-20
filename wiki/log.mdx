@@ -7,6 +7,15 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 feature | sidebar Bugs workflow</h2>
+  <ul>
+    <li>Implemented <a href="/wiki/plans/zzz_completed/features/sidebar-bugs-workflow.mdx">Sidebar Bugs Workflow</a> with a Plans/Bugs sidebar switch, <strong>+ Bug</strong> dialog, wiki-backed reports under <code>wiki/bugs/</code>, and bug page actions for fixing, verifying, closing, and reopening.</li>
+    <li>Added Rust bug endpoints for list/create/status updates, bug status parsing, safe report context, open bug summaries in the project contract, and <code>hyperwiki://bugs</code>/<code>list_bugs</code> MCP discovery.</li>
+    <li>Bug fixes now launch a terminal prompt scoped as <code>bug:/wiki/bugs/&lt;slug&gt;.mdx</code> so agents can reproduce, fix, verify, and update the bug page to <code>fixed</code> without converting the report into a plan.</li>
+    <li>Verification: <code>pnpm run check</code>, <code>pnpm run check:tauri</code>, <code>cargo test --manifest-path src-tauri/Cargo.toml bug</code>, <code>pnpm run smoke:project-contract</code>, <code>pnpm run smoke:mcp-transport</code>, and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser harness captured desktop and mobile screenshots for the sidebar modes, bug form, list, and action header.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-20 polish | latest visual evidence preview</h2>
   <ul>
     <li>The unit Design card now previews the newest available image across implemented screenshots and design exploration candidates instead of showing screenshots only.</li>

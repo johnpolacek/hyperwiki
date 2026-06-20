@@ -135,6 +135,7 @@ pub struct ProjectContract {
     pub repo: crate::domain::git::RepoContext,
     pub plan: ContractPlan,
     pub sources: ContractSources,
+    pub bugs: ContractBugs,
     pub verification: VerificationSummary,
     pub guardrails: GuardrailSummary,
     pub layout: crate::domain::previews::LayoutConfig,
@@ -171,6 +172,13 @@ pub struct ContractPlan {
 pub struct ContractSources {
     pub index_path: String,
     pub briefs: Vec<SourceBrief>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractBugs {
+    pub index_path: String,
+    pub open: Vec<crate::domain::bugs::BugRecord>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -401,6 +409,10 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         sources: ContractSources {
             index_path: "/wiki/sources.mdx".to_string(),
             briefs: workspace.sources.briefs.clone(),
+        },
+        bugs: ContractBugs {
+            index_path: "/wiki/bugs/index.mdx".to_string(),
+            open: crate::domain::bugs::open_bug_summaries(root),
         },
         verification,
         guardrails: guardrail_summary(root),
@@ -1196,6 +1208,23 @@ fn agent_context_from_contract(contract: &ProjectContract) -> String {
             "- Not available".to_string()
         } else {
             contract.plan.markdown.clone()
+        },
+        "Open bugs:".to_string(),
+        if contract.bugs.open.is_empty() {
+            "- None".to_string()
+        } else {
+            contract
+                .bugs
+                .open
+                .iter()
+                .map(|bug| {
+                    format!(
+                        "- {} [{}; {}] {}",
+                        bug.title, bug.status, bug.severity, bug.path
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
         },
         format!(
             "Boundary: {}; canonical truth lives in {}.",

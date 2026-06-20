@@ -6,6 +6,7 @@ export const defaultWikiPath = "/wiki/plans/index.mdx";
 
 export interface SidebarModel {
   plans: WikiPage[];
+  bugs: WikiPage[];
   projectPages: WikiPage[];
 }
 
@@ -13,6 +14,7 @@ export function buildSidebarModel(pages: WikiPage[]): SidebarModel {
   const all = pages.length ? pages : [{ title: "Home", path: defaultWikiPath }];
   return {
     plans: all.filter((page) => page.path.includes("/wiki/plans/")),
+    bugs: all.filter((page) => isBugWikiPage(page)),
     projectPages: all.filter((page) => isProjectWikiPage(page)),
   };
 }
@@ -33,11 +35,51 @@ export function cleanPageTitle(page: WikiPage) {
   if (path.endsWith("/wiki/plans/index.mdx")) return "Plans";
   if (path.endsWith("/wiki/plans/mvp/index.mdx")) return "MVP Plan";
   if (path.endsWith("/wiki/plans/zzz_completed/index.mdx")) return "Completed Plans";
+  if (path.endsWith("/wiki/bugs/index.mdx")) return "Bugs";
   if (isUnitPage(page)) return normalizePlanDisplayTitle(page.title);
   if (path.includes("/stage-")) return normalizePlanDisplayTitle(page.title);
   if (page.title.toLowerCase() === "prd") return "PRD";
   if (path.includes("/wiki/plans/")) return page.title.replace(/\s+Plan$/, "");
   return page.title;
+}
+
+export function isBugWikiPage(page: WikiPage) {
+  const path = displayWikiPath(page.path);
+  return path.startsWith("/wiki/bugs/") && path.endsWith(".mdx");
+}
+
+export function isBugIndexPage(page: WikiPage) {
+  return displayWikiPath(page.path).endsWith("/wiki/bugs/index.mdx");
+}
+
+export function isBugReportPage(page: WikiPage) {
+  return isBugWikiPage(page) && !isBugIndexPage(page) && page.frontmatter?.wikiKind === "bug";
+}
+
+export function isBugPath(path: string) {
+  const displayPath = displayWikiPath(path);
+  return displayPath.startsWith("/wiki/bugs/") && displayPath.endsWith(".mdx");
+}
+
+export function isBugIndexPath(path: string) {
+  return displayWikiPath(path).endsWith("/wiki/bugs/index.mdx");
+}
+
+export function isClosedBugPage(page: WikiPage) {
+  return ["fixed", "verified", "closed"].includes(pageStatus(page));
+}
+
+export function bugSortKey(page: WikiPage) {
+  const status = pageStatus(page);
+  const statusRank = status === "fixing" ? "00" : status === "open" ? "01" : status === "fixed" ? "02" : status === "verified" ? "03" : status === "closed" ? "04" : "05";
+  const severity = String(page.frontmatter?.severity || "medium").toLowerCase();
+  const severityRank = severity === "critical" ? "00" : severity === "high" ? "01" : severity === "medium" ? "02" : severity === "low" ? "03" : "04";
+  return `${statusRank}-${severityRank}-${displayWikiPath(page.path)}`;
+}
+
+export function bugLandingPath(pages: WikiPage[]) {
+  const sorted = pages.filter(isBugReportPage).sort((a, b) => bugSortKey(a).localeCompare(bugSortKey(b)));
+  return sorted.find((page) => !isClosedBugPage(page))?.path || sorted[0]?.path || "/wiki/bugs/index.mdx";
 }
 
 export function displayWikiPath(path: string) {

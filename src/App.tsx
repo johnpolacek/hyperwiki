@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { clearUnitExplorations, clearUnitScreenshots, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, selectUnitExploration, withProjectQuery, writeUnitExplorationMetadata, type UnitScreenshotImageData } from "@/lib/api";
+import { clearUnitExplorations, clearUnitScreenshots, createBug, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, selectUnitExploration, updateBugStatus, withProjectQuery, writeUnitExplorationMetadata, type UnitScreenshotImageData } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
@@ -57,6 +57,7 @@ import { SettingsView } from "@/components/views/SettingsView";
 import { UnitDesignExplorationDialog, type UnitDesignExplorationGenerateInput } from "@/components/views/UnitDesignExplorationDialog";
 import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
 import { DiffViewerDialog } from "@/components/views/DiffViewerDialog";
+import { BugReportDialog } from "@/components/views/BugReportDialog";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
 import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/layout/TopBar";
@@ -66,14 +67,14 @@ import { TerminalPane } from "@/components/terminal/TerminalPane";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isLiveTerminalSession, isStandbySession, newestSession, sessionSortMs, fileToBase64, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, listenTerminalCompletion, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, previewDetachedDevSession, saveTerminalDroppedFiles, selectDevTerminalSession, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalCollapsedSummary, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalPaneLabel, terminalPaneStatusLabel, terminalPasteImageFileName, terminalStartupNotice, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, worktreePreviewForSlug, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { isReactRenderedMdxPath } from "@/lib/wiki-pages";
-import { buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitExplorationDir, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
+import { bugLandingPath, buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isBugIndexPath, isBugPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitExplorationDir, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
 import { clearPendingImportProject, readPendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS, slugify } from "@/lib/utils";
 import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefersReducedMotion } from "@/components/ui/beam-surface";
 import { agentLaunchCommand, agentProviderFromCommand, claudeCommandWithThinkingEffort, codexCommandWithThinkingEffort, defaultAgentCommand, defaultThinkingEffort, importAgentLaunchCommand, layoutAgentProvider, normalizedThinkingEffort, type AgentProviderAvailability, type AgentProviderId } from "@/lib/agent";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
-import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, UnitExplorationMetadata, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, BugCreateInput, BugStatus, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, UnitExplorationMetadata, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
 
 
 const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
@@ -142,6 +143,7 @@ function App() {
   const [terminalEnvHint, setTerminalEnvHint] = useState<{ key: string; sessionId: string } | null>(null);
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [diffViewerOpen, setDiffViewerOpen] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
   const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
@@ -694,7 +696,7 @@ function App() {
       if (route.kind === "wiki") {
         const displayPath = displayWikiPath(route.path);
         const visiblePageExists = nextPages.some((page) => displayWikiPath(page.path) === displayPath);
-        if (!visiblePageExists && displayPath !== defaultWikiPath) {
+        if (!visiblePageExists && displayPath !== defaultWikiPath && !isBugIndexPath(displayPath)) {
           const landingPath = planLandingPath(nextPages);
           const nextRoute: ViewRoute = { kind: "wiki", path: landingPath };
           setRoute(nextRoute);
@@ -710,6 +712,12 @@ function App() {
   }
 
   async function reloadVisibleWikiPage(path: string) {
+    if (isBugIndexPath(path) && !latestWikiPagesRef.current.some((page) => displayWikiPath(page.path) === displayWikiPath(path))) {
+      setWikiHtml("");
+      setWikiSource(null);
+      setWikiError("");
+      return;
+    }
     if (!isReactRenderedMdxPath(path)) {
       const html = await hyperwikiApi.text(wikiRequestPath(path, activeProject));
       setWikiHtml(html);
@@ -2345,6 +2353,49 @@ function App() {
     }
   }
 
+  async function createBugReport(input: BugCreateInput) {
+    const bug = await createBug(input, activeProject);
+    setBugReportOpen(false);
+    await loadBaseData();
+    navigate({ kind: "wiki", path: bug.path });
+    setStatus(`Bug reported: ${bug.title}`);
+  }
+
+  async function updateBugPageStatus(path: string, status: BugStatus) {
+    try {
+      const bug = await updateBugStatus({ path, status }, activeProject);
+      await loadBaseData();
+      if (route.kind === "wiki" && displayWikiPath(route.path) === displayWikiPath(path)) {
+        await reloadVisibleWikiPage(path);
+      }
+      setStatus(`Bug marked ${bug.status}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function fixBugPage(path: string) {
+    const bugPath = displayWikiPath(path);
+    try {
+      await updateBugStatus({ path: bugPath, status: "fixing" }, activeProject);
+      const source = await hyperwikiApi.json<WikiSourceResponse>(withProjectQuery(`/api/wiki/source?path=${encodeURIComponent(bugPath)}`, activeProject));
+      await loadBaseData();
+      const routeForBug: ViewRoute = { kind: "wiki", path: bugPath };
+      const scope = scopeForRoute(routeForBug);
+      await openVisibleAgentPromptSession({
+        kind: "bug",
+        label: "Fix Bug",
+        prompt: bugFixPrompt(bugPath, source.markdown || source.source, activeProject),
+        currentPage: bugPath,
+        scope,
+        targetRoute: routeForBug,
+      });
+      setStatus("Bug fix prompt sent");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function executeNextUnitFromReview() {
     const review = screenshotReview;
     setScreenshotReview(null);
@@ -3289,8 +3340,11 @@ function App() {
               exportStatus={wikiExportStatus}
               isExporting={isWikiExporting}
               model={sidebarModel}
+              onCreateBug={() => setBugReportOpen(true)}
               onCreatePlan={() => runCommandAction("new-plan")}
               onDownloadWikiMarkdownZip={downloadWikiMarkdownZip}
+              onOpenBugs={() => navigate({ kind: "wiki", path: bugLandingPath(wikiPages) })}
+              onOpenPlans={() => navigate({ kind: "wiki", path: planLandingPath(wikiPages) })}
               onNavigate={(path) => navigate({ kind: "wiki", path })}
               route={route}
               workspace={workspace}
@@ -3312,6 +3366,9 @@ function App() {
             onResumeImportPlanning={resumeImportPlanning}
             onRemoveProject={removeProject}
             onDeletePlan={deletePlanPage}
+            onCreateBug={() => setBugReportOpen(true)}
+            onFixBug={(path) => void fixBugPage(path)}
+            onUpdateBugStatus={updateBugPageStatus}
             onRunCommand={runCommandAction}
             onExploreDesigns={(path) => void openDesignExploration(path)}
             onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
@@ -3438,6 +3495,13 @@ function App() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        <BugReportDialog
+          activeProject={activeProject}
+          currentPath={currentWikiPath}
+          onCreate={createBugReport}
+          onOpenChange={setBugReportOpen}
+          open={bugReportOpen}
+        />
         <DiffViewerDialog activeProject={activeProject} open={diffViewerOpen} onOpenChange={setDiffViewerOpen} />
         <ProjectEnvEditor
           activeProject={activeProject}
@@ -4250,6 +4314,28 @@ function planCreationPrompt(project: ProjectRecord | null, intent = "") {
   ].join("\n");
 }
 
+function bugFixPrompt(bugPath: string, bugMarkdown: string, project: ProjectRecord | null) {
+  return [
+    "Mode: Fix Bug.",
+    "",
+    `Bug page: ${bugPath}`,
+    project ? `Checkout: ${project.projectSlug}/${project.worktreeSlug}` : "Checkout: current project",
+    "",
+    "Bug report Markdown:",
+    bugMarkdown.trim() || "- Bug source unavailable; inspect the bug page directly.",
+    "",
+    "Instructions:",
+    "- Work in the current checkout and keep the fix grounded in this bug report.",
+    "- Reproduce or inspect the reported behavior before editing when possible.",
+    "- Make the smallest durable product, code, or docs change that fixes the bug.",
+    "- Run relevant checks before summarizing the result.",
+    "- Update the bug page in place when the fix is verified: set frontmatter `status`, `PlanHero status`, and the summary Status item to `fixed`.",
+    "- Replace or append the Fix Notes section with what changed, how it was verified, and any remaining follow-up.",
+    "- If you cannot fix it, leave the bug status as `fixing`, add the blocker details to Fix Notes, and include a `Manual step required` section in your final handoff.",
+    "- Commit completed code and bug wiki changes together when verification passes. Follow the repo's commit and push policy.",
+  ].join("\n");
+}
+
 function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceResponse | null, pages: WikiPage[], visiblePath: string, userRequest = "", designDirection: UnitExplorationMetadata | null = null) {
   const context = planningPromptContext(workspace, pages, visiblePath, action === "modify" || action === "execute-main");
   if (action === "modify") {
@@ -4399,6 +4485,9 @@ function scopeForRoute(route: ViewRoute) {
     return { scope: route.kind, scopeKind: "app", planPath: null };
   }
   const wikiPath = displayWikiPath(route.path);
+  if (isBugPath(wikiPath)) {
+    return { scope: `bug:${wikiPath}`, scopeKind: "bug", planPath: null };
+  }
   if (wikiPath.includes("/plans/")) {
     const planPath = terminalPlanRootPath(wikiPath);
     return { scope: planPath, scopeKind: "plan", planPath };
@@ -4417,6 +4506,10 @@ function normalizeTerminalScope(scope: TerminalScope): TerminalScope {
   if (scope.scopeKind === "plan") {
     const planPath = terminalPlanRootPath(scope.planPath || scope.scope);
     return { ...scope, scope: planPath, planPath };
+  }
+  if (scope.scopeKind === "bug") {
+    const bugPath = canonicalTerminalScopePath(scope.scope.replace(/^bug:/, ""));
+    return { ...scope, scope: `bug:${bugPath}`, planPath: null };
   }
   if (scope.scopeKind === "wiki") {
     const wikiPath = canonicalTerminalScopePath(scope.scope);

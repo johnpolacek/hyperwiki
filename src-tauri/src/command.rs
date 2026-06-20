@@ -396,6 +396,37 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             Err(error) => error_response(404, error),
         };
     }
+    if request.path.starts_with("/api/bugs") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if request.method == "GET" {
+            return json_response(200, &crate::domain::bugs::list(&project_root));
+        }
+        if request.method == "POST" {
+            let Some(parsed) = request.body.as_deref().and_then(|body| {
+                serde_json::from_str::<crate::domain::bugs::BugCreateInput>(body).ok()
+            }) else {
+                return error_response(400, "Invalid bug report request.");
+            };
+            return match crate::domain::bugs::create(&project_root, parsed) {
+                Ok(bug) => json_response(200, &bug),
+                Err(error) => error_response(400, error),
+            };
+        }
+        if request.method == "PATCH" && request.path.starts_with("/api/bugs/status") {
+            let Some(parsed) = request.body.as_deref().and_then(|body| {
+                serde_json::from_str::<crate::domain::bugs::BugStatusUpdateInput>(body).ok()
+            }) else {
+                return error_response(400, "Invalid bug status request.");
+            };
+            return match crate::domain::bugs::update_status(&project_root, parsed) {
+                Ok(bug) => json_response(200, &bug),
+                Err(error) => error_response(400, error),
+            };
+        }
+    }
     if request.path.starts_with("/api/unit-explorations/metadata") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)

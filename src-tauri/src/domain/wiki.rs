@@ -2299,6 +2299,11 @@ fn normalize_page_status(status: &str) -> Option<String> {
         "draft",
         "blocked",
         "deferred",
+        "open",
+        "fixing",
+        "fixed",
+        "verified",
+        "closed",
     ]
     .contains(&normalized.as_str())
     .then_some(normalized)

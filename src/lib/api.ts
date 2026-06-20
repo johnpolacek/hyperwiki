@@ -94,7 +94,7 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitExploration, UnitExplorationImage, UnitExplorationMetadata, UnitExplorationMetadataInput, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
+import type { BugCreateInput, BugRecord, BugStatusUpdateInput, FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitExploration, UnitExplorationImage, UnitExplorationMetadata, UnitExplorationMetadataInput, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
@@ -252,6 +252,28 @@ export async function dispatchFeedback(ids: string[], activeProject: ProjectReco
 // Remove a single queued feedback item.
 export async function deleteFeedbackItem(id: string, activeProject: ProjectRecord | null): Promise<void> {
   await hyperwikiApi.json(withProjectQuery(`/api/feedback?id=${encodeURIComponent(id)}`, activeProject), { method: "DELETE" });
+}
+
+export async function fetchBugs(activeProject: ProjectRecord | null): Promise<BugRecord[]> {
+  try {
+    return (await hyperwikiApi.json<BugRecord[]>(withProjectQuery("/api/bugs", activeProject))) || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function createBug(input: BugCreateInput, activeProject: ProjectRecord | null): Promise<BugRecord> {
+  return await hyperwikiApi.json<BugRecord>(withProjectQuery("/api/bugs", activeProject), {
+    method: "POST",
+    body: input,
+  });
+}
+
+export async function updateBugStatus(input: BugStatusUpdateInput, activeProject: ProjectRecord | null): Promise<BugRecord> {
+  return await hyperwikiApi.json<BugRecord>(withProjectQuery("/api/bugs/status", activeProject), {
+    method: "PATCH",
+    body: input,
+  });
 }
 
 // Map of unit path -> reviewed screenshot capturedAt (the gate's source of truth).

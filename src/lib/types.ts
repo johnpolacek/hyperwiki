@@ -15,6 +15,41 @@ export interface FeedbackItem {
   dispatchedAt?: number;
 }
 
+export type BugStatus = "open" | "fixing" | "fixed" | "verified" | "closed";
+export type BugSeverity = "low" | "medium" | "high" | "critical";
+
+export interface BugRecord {
+  title: string;
+  path: string;
+  sourcePath: string;
+  status: BugStatus;
+  severity: BugSeverity;
+  summary: string[];
+  reportedAt: string;
+  currentRoute: string;
+  linkedPlan: string;
+  projectSlug: string;
+  worktreeSlug: string;
+}
+
+export interface BugCreateInput {
+  title: string;
+  description: string;
+  observed: string;
+  expected: string;
+  steps: string;
+  severity: BugSeverity;
+  currentRoute: string;
+  linkedPlan: string;
+  projectSlug: string;
+  worktreeSlug: string;
+}
+
+export interface BugStatusUpdateInput {
+  path: string;
+  status: BugStatus;
+}
+
 export interface UnitScreenshot {
   unitPath: string;
   count: number;
@@ -78,7 +113,7 @@ export interface UnitExplorationMetadataInput {
 }
 
 export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
-export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning" | "exploration";
+export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning" | "exploration" | "bug";
 export type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 export type ThinkingEffort = "low" | "medium" | "high" | "xhigh";
 

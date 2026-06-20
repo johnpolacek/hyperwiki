@@ -1,7 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Check, ChevronDown, Download, Loader2, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { childPlanPages, cleanPageTitle, currentPlanWorkPath, isCompletedPage, isCompletedTopLevelPlanPage, isPlansIndexPage, isTopLevelPlanPage, pathContainsSelectedPage, planSortKey, type SidebarModel } from "@/lib/wiki-pages";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { bugSortKey, childPlanPages, cleanPageTitle, currentPlanWorkPath, isBugPath, isBugReportPage, isClosedBugPage, isCompletedPage, isCompletedTopLevelPlanPage, isPlansIndexPage, isTopLevelPlanPage, pageStatus, pathContainsSelectedPage, planSortKey, type SidebarModel } from "@/lib/wiki-pages";
 import { cn } from "@/lib/utils";
 import type { ViewRoute, WikiPage, WorkspaceResponse } from "@/lib/types";
 
@@ -10,39 +12,73 @@ export function WikiSidebar(props: {
   exportStatus: string;
   isExporting: boolean;
   model: SidebarModel;
+  onCreateBug: () => void;
   onCreatePlan: () => void;
   onDownloadWikiMarkdownZip: () => Promise<void>;
+  onOpenBugs: () => void;
+  onOpenPlans: () => void;
   onNavigate: (path: string) => void;
   route: ViewRoute;
   workspace: WorkspaceResponse | null;
 }) {
+  const mode = isBugPath(props.currentPath) ? "bugs" : "plans";
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-background">
       <nav className="flex h-full min-h-0 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
+          <div className="mb-2 grid gap-2 px-1">
+            <ToggleGroup
+              aria-label="Sidebar work mode"
+              className="grid w-full grid-cols-2"
+              size="sm"
+              type="single"
+              value={mode}
+              variant="outline"
+              onValueChange={(value) => {
+                if (value === "plans") props.onOpenPlans();
+                if (value === "bugs") props.onOpenBugs();
+              }}
+            >
+              <ToggleGroupItem className="justify-center" value="plans">Plans</ToggleGroupItem>
+              <ToggleGroupItem className="justify-center" value="bugs">Bugs</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
           <div className="mb-2 flex min-h-8 items-center justify-between gap-2 px-1">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plans</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{mode === "bugs" ? "Bugs" : "Plans"}</h2>
             <div className="flex items-center gap-1">
-              <Button
-                aria-label="Download wiki Markdown zip"
-                className="size-8"
-                disabled={props.isExporting}
-                size="icon"
-                title="Download wiki Markdown zip"
-                type="button"
-                variant="ghost"
-                onClick={() => void props.onDownloadWikiMarkdownZip()}
-              >
-                {props.isExporting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Download aria-hidden="true" data-icon="inline-start" />}
-              </Button>
-              <Button size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
-                <Plus aria-hidden="true" data-icon="inline-start" />
-                plan
-              </Button>
+              {mode === "plans" ? (
+                <>
+                  <Button
+                    aria-label="Download wiki Markdown zip"
+                    className="size-8"
+                    disabled={props.isExporting}
+                    size="icon"
+                    title="Download wiki Markdown zip"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => void props.onDownloadWikiMarkdownZip()}
+                  >
+                    {props.isExporting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Download aria-hidden="true" data-icon="inline-start" />}
+                  </Button>
+                  <Button size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
+                    <Plus aria-hidden="true" data-icon="inline-start" />
+                    plan
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" type="button" variant="outline" onClick={props.onCreateBug}>
+                  <Plus aria-hidden="true" data-icon="inline-start" />
+                  Bug
+                </Button>
+              )}
             </div>
           </div>
-          {props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
-          <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} />
+          {mode === "plans" && props.exportStatus ? <p className="m-0 mb-2 px-1 text-xs text-muted-foreground" role="status">{props.exportStatus}</p> : null}
+          {mode === "bugs" ? (
+            <BugTree pages={props.model.bugs} currentPath={props.currentPath} onNavigate={props.onNavigate} />
+          ) : (
+            <PlanTree pages={props.model.plans} currentPath={props.currentPath} onNavigate={props.onNavigate} />
+          )}
         </section>
         <details className="shrink-0 border-t bg-background p-3">
           <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-wide text-muted-foreground">Project</summary>
@@ -80,6 +116,54 @@ export function PlanTree({ pages, currentPath, onNavigate }: { pages: WikiPage[]
         </details>
       ) : null}
     </div>
+  );
+}
+
+export function BugTree({ pages, currentPath, onNavigate }: { pages: WikiPage[]; currentPath: string; onNavigate: (path: string) => void }) {
+  const sorted = pages.filter(isBugReportPage).sort((a, b) => bugSortKey(a).localeCompare(bugSortKey(b)));
+  const active = sorted.filter((page) => !isClosedBugPage(page));
+  const completed = sorted.filter(isClosedBugPage);
+  if (!active.length && !completed.length) return <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">No bugs reported.</div>;
+  return (
+    <div className="grid gap-1">
+      {active.map((page) => (
+        <BugNode currentPath={currentPath} key={page.path} onNavigate={onNavigate} page={page} />
+      ))}
+      {completed.length ? (
+        <details className="mt-2 grid gap-1" open={completed.some((page) => page.path === currentPath)}>
+          <summary className="cursor-pointer list-none px-2 py-1 text-[11px] font-bold uppercase text-muted-foreground">Fixed Bugs</summary>
+          <div className="mt-1 grid gap-1">
+            {completed.map((page) => (
+              <BugNode currentPath={currentPath} key={page.path} onNavigate={onNavigate} page={page} />
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+function BugNode({ page, currentPath, onNavigate }: { page: WikiPage; currentPath: string; onNavigate: (path: string) => void }) {
+  const selected = currentPath === page.path;
+  const status = pageStatus(page) || "open";
+  const severity = String(page.frontmatter?.severity || "medium");
+  return (
+    <button
+      className={cn(
+        "grid min-w-0 gap-1 rounded-md px-2 py-2 text-left transition-colors duration-150",
+        selected
+          ? "bg-muted text-foreground"
+          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+      )}
+      type="button"
+      onClick={() => onNavigate(page.path)}
+    >
+      <span className="truncate text-[13px] font-medium">{cleanPageTitle(page)}</span>
+      <span className="flex min-w-0 items-center gap-1.5">
+        <Badge className="h-5 px-1.5 text-[10px]" variant={status === "open" || status === "fixing" ? "default" : "secondary"}>{status}</Badge>
+        <span className="truncate text-[11px] text-muted-foreground">{severity}</span>
+      </span>
+    </button>
   );
 }
 

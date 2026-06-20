@@ -263,6 +263,10 @@ fn dispatch_mcp(root: &Path, method: &str, params: Value) -> Result<Value, (i32,
                     serde_json::to_value(crate::domain::verification::project_contract(root).plan)
                         .unwrap()
                 }
+                "list_bugs" => {
+                    serde_json::to_value(crate::domain::verification::project_contract(root).bugs)
+                        .unwrap()
+                }
                 "list_verification_loops" => {
                     serde_json::to_value(crate::domain::verification::verification_summary(root))
                         .unwrap()
@@ -303,6 +307,10 @@ fn resource_payload(root: &Path, uri: &str) -> Result<Value, (i32, String)> {
             crate::domain::verification::project_contract(root).sources,
         )
         .unwrap()),
+        "hyperwiki://bugs" => Ok(serde_json::to_value(
+            crate::domain::verification::project_contract(root).bugs,
+        )
+        .unwrap()),
         "hyperwiki://verification-loops" => Ok(serde_json::to_value(
             crate::domain::verification::verification_summary(root),
         )
@@ -326,6 +334,7 @@ fn mcp_resources() -> Vec<McpResource> {
         resource("hyperwiki://project-contract", "Project Contract", "Machine-readable project facts, current plan state, source briefs, guardrails, verification loops, layout, wiki pages, and runtime boundaries.", "localhost-tooling", "/api/project-contract", "$"),
         resource("hyperwiki://current-plan", "Current Plan", "Current plans index status, source path, and Markdown derivative derived from repo-visible MDX.", "canonical-wiki", "/api/project-contract", "$.plan"),
         resource("hyperwiki://source-index", "Source Index", "Source index and generated source briefs that define durable product and technical context.", "canonical-wiki", "/api/project-contract", "$.sources"),
+        resource("hyperwiki://bugs", "Bugs", "Open repo-visible bug reports derived from wiki bug pages.", "canonical-wiki", "/api/project-contract", "$.bugs"),
         resource("hyperwiki://verification-loops", "Verification Loops", "Configured or inferred verification loops plus latest local runtime evidence.", "runtime-evidence", "/api/verification", "$"),
         resource("hyperwiki://guardrails", "Guardrails", "Localhost Tooling trust boundary, canonical truth, runtime state, and terminal/session action boundaries.", "localhost-tooling", "/api/guardrails", "$"),
         resource("hyperwiki://review-workflows", "Review Workflows", "Named agent review workflows for diff, architecture consistency, security, and test-gap review.", "runtime-only-until-recorded", "/api/review-workflows", "$"),
@@ -337,6 +346,7 @@ fn mcp_tools(contract: &crate::domain::verification::ProjectContract) -> Vec<Mcp
     vec![
         tool("get_project_contract", "Get Project Contract", "Return the complete machine-readable project contract.", true, true, false, "localhost-tooling", None, json!({ "method": "GET", "endpoint": "/api/project-contract" }), object_schema(json!({}), vec![]), contract),
         tool("get_current_plan", "Get Current Plan", "Return the active plan, current unit, source path, and Markdown derivative derived from the wiki.", true, true, false, "canonical-wiki", None, json!({ "method": "GET", "endpoint": "/api/project-contract", "responsePath": "$.plan" }), object_schema(json!({}), vec![]), contract),
+        tool("list_bugs", "List Bugs", "Return open wiki-backed bug reports for the current project.", true, true, false, "canonical-wiki", None, json!({ "method": "GET", "endpoint": "/api/project-contract", "responsePath": "$.bugs" }), object_schema(json!({}), vec![]), contract),
         tool("list_verification_loops", "List Verification Loops", "Return verification loops and latest local runtime evidence.", true, true, false, "runtime-evidence", None, json!({ "method": "GET", "endpoint": "/api/verification" }), object_schema(json!({}), vec![]), contract),
         tool("list_review_workflows", "List Review Workflows", "Return available named agent review workflows.", true, true, false, "runtime-only-until-recorded", None, json!({ "method": "GET", "endpoint": "/api/review-workflows" }), object_schema(json!({}), vec![]), contract),
         tool("prepare_review_workflow", "Prepare Review Workflow", "Build a project-contract-aware review prompt without sending it to a terminal session.", false, true, false, "runtime-evidence", None, json!({ "method": "POST", "endpoint": "/api/review-workflows/run", "fixedBody": { "dryRun": true } }), object_schema(json!({
