@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Maximize2, RefreshCw, Sparkles, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Maximize2, RefreshCw, Send, Sparkles, Upload } from "lucide-react";
 import { ScreenshotCarousel } from "@/components/ScreenshotCarousel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,8 +45,7 @@ export function UnitDesignExplorationDialog({
   onOpenChange,
   onGenerate,
   onSaveReferenceImage,
-  onRefresh,
-  onClear,
+  onSendMessage,
   onSelect,
 }: {
   open: boolean;
@@ -61,8 +60,7 @@ export function UnitDesignExplorationDialog({
   onOpenChange: (open: boolean) => void;
   onGenerate: (input: UnitDesignExplorationGenerateInput) => void;
   onSaveReferenceImage: (file: File) => Promise<string>;
-  onRefresh: () => void;
-  onClear: () => void;
+  onSendMessage: (message: string, candidateName: string | null) => void;
   onSelect: (candidateName: string, notes: string, textBrief: string) => void;
 }) {
   const referenceInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +76,7 @@ export function UnitDesignExplorationDialog({
   const [index, setIndex] = useState(0);
   const [notes, setNotes] = useState("");
   const [textBrief, setTextBrief] = useState("");
+  const [message, setMessage] = useState("");
   const current = images[Math.min(index, images.length - 1)];
   const selectedName = metadata?.selectedCandidate || "";
   const hasCandidates = images.length > 0;
@@ -90,6 +89,7 @@ export function UnitDesignExplorationDialog({
     setPrompt(metadata?.prompt || "");
     setNotes(metadata?.notes || "");
     setTextBrief(metadata?.textBrief || "");
+    setMessage("");
     setIndex(0);
     setReferenceImages([]);
     setReferenceImageStatus("");
@@ -364,13 +364,14 @@ export function UnitDesignExplorationDialog({
                 {selectedName ? <Badge variant="secondary">Selected {selectedName}</Badge> : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Button size="sm" variant="outline" onClick={onRefresh}>
-                  <RefreshCw aria-hidden="true" data-icon="inline-start" />
-                  Refresh
-                </Button>
-                <Button size="sm" variant="outline" onClick={onClear}>
-                  <Trash2 aria-hidden="true" data-icon="inline-start" />
-                  Start Over
+                <Button
+                  disabled={!current}
+                  size="sm"
+                  onClick={() => {
+                    if (current) onSelect(current.name, notes.trim(), textBrief.trim());
+                  }}
+                >
+                  Use Direction
                 </Button>
               </div>
             </div>
@@ -381,26 +382,28 @@ export function UnitDesignExplorationDialog({
               index={index}
               onIndexChange={setIndex}
             />
-            <div className="grid gap-3 md:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="unit-exploration-notes">Selection notes</Label>
-                <Textarea
-                  className="min-h-24"
-                  id="unit-exploration-notes"
-                  placeholder="Keep the thread rail and calmer message rhythm."
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="unit-exploration-brief">Implementation brief</Label>
-                <Textarea
-                  className="min-h-24"
-                  id="unit-exploration-brief"
-                  placeholder="Use this visual direction when executing the unit."
-                  value={textBrief}
-                  onChange={(event) => setTextBrief(event.target.value)}
-                />
+            <div className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+              <Label htmlFor="unit-exploration-message">Message</Label>
+              <Textarea
+                className="min-h-24"
+                id="unit-exploration-message"
+                placeholder="Make this feel closer to the reference images, or start over with a denser layout."
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+              />
+              <div className="flex justify-end">
+                <Button
+                  disabled={isGenerating || !message.trim()}
+                  onClick={() => {
+                    const trimmedMessage = message.trim();
+                    if (!trimmedMessage) return;
+                    onSendMessage(trimmedMessage, current?.name || null);
+                    setMessage("");
+                  }}
+                >
+                  <Send aria-hidden="true" data-icon="inline-start" />
+                  Send Message
+                </Button>
               </div>
             </div>
           </div>
@@ -408,16 +411,6 @@ export function UnitDesignExplorationDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-          {hasCandidates ? (
-            <Button
-              disabled={!current}
-              onClick={() => {
-                if (current) onSelect(current.name, notes.trim(), textBrief.trim());
-              }}
-            >
-              Use direction
-            </Button>
-          ) : null}
         </DialogFooter>
 
         <Dialog

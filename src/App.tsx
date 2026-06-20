@@ -27,7 +27,6 @@ import {
   Search,
   Settings,
   Square,
-  Trash2,
   Upload,
   X,
 } from "lucide-react";
@@ -2411,27 +2410,32 @@ function App() {
     explorationAutoReviewTimers.current.delete(key);
   }
 
-  function scheduleDesignExplorationAutoReview(unitPath: string, attempt = 0, project = latestActiveProjectRef.current) {
+  function scheduleDesignExplorationAutoReview(
+    unitPath: string,
+    attempt = 0,
+    project = latestActiveProjectRef.current,
+    options: { freshAfterCapturedAt?: number } = {},
+  ) {
     const key = explorationAutoReviewKey(unitPath, project);
     const existing = explorationAutoReviewTimers.current.get(key);
     if (existing) window.clearTimeout(existing);
     const timer = window.setTimeout(() => {
       explorationAutoReviewTimers.current.delete(key);
       if ((project?.id || "") !== (latestActiveProjectRef.current?.id || "")) return;
-      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project }).then((opened) => {
+      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project, freshAfterCapturedAt: options.freshAfterCapturedAt }).then((opened) => {
         if (opened) return;
         const nextAttempt = attempt + 1;
         if (nextAttempt < 180) {
-          scheduleDesignExplorationAutoReview(unitPath, nextAttempt, project);
+          scheduleDesignExplorationAutoReview(unitPath, nextAttempt, project, options);
           return;
         }
-        setStatus("Design exploration has not saved candidate PNGs yet; use Review Designs / Refresh after the agent finishes");
+        setStatus("Design exploration has not saved fresh candidate PNGs yet; use Review Designs after the agent finishes");
       });
     }, attempt === 0 ? 1500 : 5000);
     explorationAutoReviewTimers.current.set(key, timer);
   }
 
-  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null } = {}) {
+  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null; freshAfterCapturedAt?: number } = {}) {
     const project = options.project ?? latestActiveProjectRef.current;
     const [images, screenshots, metadata] = await Promise.all([
       fetchUnitExplorationImages(unitPath, project),
@@ -2439,16 +2443,20 @@ function App() {
       fetchUnitExplorationMetadata(unitPath, project),
     ]);
     setExplorationRefreshKey((value) => value + 1);
-    if (!images.length) {
+    const freshAfterCapturedAt = options.freshAfterCapturedAt;
+    const candidateImages = typeof freshAfterCapturedAt === "number"
+      ? images.filter((image) => image.capturedAt > freshAfterCapturedAt)
+      : images;
+    if (!candidateImages.length) {
       if (!options.quiet) setStatus("Design exploration finished without saved candidate PNGs");
       return false;
     }
     clearDesignExplorationAutoReview(unitPath, project);
     setExplorationDialogUnitPath(unitPath);
-    setExplorationDialogImages(images);
+    setExplorationDialogImages(candidateImages);
     setExplorationDialogScreenshots(screenshots);
     setExplorationDialogMetadata(metadata);
-    setStatus(`Design exploration ready: ${images.length} candidate${images.length === 1 ? "" : "s"}`);
+    setStatus(`Design exploration ready: ${candidateImages.length} candidate${candidateImages.length === 1 ? "" : "s"}`);
     return true;
   }
 
@@ -2519,6 +2527,61 @@ function App() {
     }
   }
 
+  async function sendDesignExplorationMessage(message: string, currentCandidateName: string | null) {
+    const unitPath = explorationDialogUnitPath;
+    const trimmedMessage = message.trim();
+    if (!unitPath || !trimmedMessage) return;
+    const outputDir = unitExplorationDir(unitPath);
+    const currentImages = explorationDialogImages;
+    const previousCapturedAt = currentImages.reduce((max, image) => Math.max(max, image.capturedAt), 0);
+    const metadata = explorationDialogMetadata;
+    const mode = metadata?.mode || (explorationDialogScreenshots.length ? "redesign-from-screenshot" : "new-mockups");
+    const imageCount = Math.min(Math.max(metadata?.imageCount || currentImages.length || 3, 1), 4);
+    const priorDirection = metadata?.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
+    setIsExplorationGenerating(true);
+    try {
+      const nextMetadata = await writeUnitExplorationMetadata({
+        unitPath,
+        mode,
+        prompt: `${priorDirection}\n\nFollow-up request:\n${trimmedMessage}`,
+        sourceScreenshotPath: metadata?.sourceScreenshotPath || null,
+        provider: "codex-imagegen-agent",
+        modelId: "agent-owned",
+        imageCount,
+        selectedCandidate: null,
+        notes: null,
+        textBrief: metadata?.textBrief || null,
+      }, activeProject);
+      setExplorationDialogMetadata(nextMetadata);
+      setExplorationRefreshKey((value) => value + 1);
+      setIsWorkspaceExpanded(false);
+      await sendTrackedAgentPrompt(
+        "exploration",
+        "Explore Designs",
+        designExplorationMessagePrompt(
+          unitPath,
+          trimmedMessage,
+          currentCandidateName,
+          currentImages.map((image) => `${outputDir}/${image.name}`),
+          { ...nextMetadata, prompt: priorDirection },
+        ),
+        unitPath,
+        scopeForRoute({ kind: "wiki", path: unitPath }),
+        layout,
+        sessions,
+        undefined,
+        { forceNewSession: true },
+      );
+      setExplorationDialogUnitPath(null);
+      scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt });
+      setStatus("Design message sent; updated candidates will open when saved");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsExplorationGenerating(false);
+    }
+  }
+
   function designExplorationPrompt(unitPath: string, input: UnitDesignExplorationGenerateInput, direction: string) {
     const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
     const outputDir = unitExplorationDir(unitPath);
@@ -2554,12 +2617,72 @@ function App() {
       "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path.",
       "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
       `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
-      "- After generation, report the saved paths and remind the user to click Explore Design / Refresh in Hyperwiki if the candidates are not visible yet.",
+      "- After generation, report the saved paths and remind the user to click Review Designs in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
       "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
       "- Make candidates realistic enough to implement in React/Tailwind/shadcn, not abstract mood boards.",
       "- Preserve app/product semantics, route intent, and visible copy unless the user direction explicitly asks to explore copy.",
+      "- Avoid marketing-page composition for operational app surfaces; prioritize scannable workflows, hierarchy, states, and target-user ergonomics.",
+      "",
+      ...(unitPageSource.trim()
+        ? ["Current unit source:", unitPageSource.slice(0, 6000)]
+        : ["Current unit source: read the unit page from disk before prompting image generation."]),
+    ].join("\n");
+  }
+
+  function designExplorationMessagePrompt(
+    unitPath: string,
+    message: string,
+    currentCandidateName: string | null,
+    candidatePaths: string[],
+    metadata: UnitExplorationMetadata,
+  ) {
+    const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
+    const outputDir = unitExplorationDir(unitPath);
+    const unitPageSource = displayWikiPath(currentWikiPath) === displayWikiPath(unitPath)
+      ? (wikiSource?.markdown || wikiSource?.source || "")
+      : "";
+    return [
+      "Mode: Image-Gen Design Exploration Revision.",
+      "",
+      "Task: revise or replace the current design exploration PNGs for one hyperwiki unit. This is ideation only; do not implement product code and do not edit the unit status.",
+      "",
+      `Project: ${activeProject?.name || "Unknown"}`,
+      `Project root: ${activeProject?.root || "Unknown"}`,
+      `Unit: ${unitTitle}`,
+      `Unit path: ${unitPath}`,
+      `Mode: ${metadata.mode}`,
+      `Variant count: ${metadata.imageCount} (maximum 4)`,
+      `Output folder: ${outputDir}`,
+      `Current candidate: ${currentCandidateName || "none"}`,
+      metadata.sourceScreenshotPath ? `Original source screenshot: ${metadata.sourceScreenshotPath}` : "Original source screenshot: none",
+      candidatePaths.length ? "Existing candidate PNGs to inspect before replacing:" : "Existing candidate PNGs to inspect before replacing: none",
+      ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
+      "",
+      "Original direction:",
+      metadata.prompt,
+      "",
+      "User message:",
+      message,
+      "",
+      "Workflow:",
+      "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
+      "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. Load the active project's `.env.local` into the command environment when present (for example `set -a; source .env.local; set +a`) and, when `OPENAI_API_KEY` is then available, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
+      "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
+      "- Inspect the existing candidate PNGs first when the message asks for changes to the current designs.",
+      "- If the message asks to start over, use the existing candidates only as old context and generate fresh alternatives.",
+      `- After inspecting any current candidates, remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
+      "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
+      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt.",
+      "- The `textBrief` should summarize the updated visual direction for Execute Unit handoff.",
+      `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
+      "- After generation, report the saved paths and remind the user to click Review Designs in Hyperwiki if the candidates are not visible yet.",
+      "",
+      "Design constraints:",
+      "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
+      "- Make candidates realistic enough to implement in React/Tailwind/shadcn, not abstract mood boards.",
+      "- Preserve app/product semantics, route intent, and visible copy unless the user message explicitly asks to explore copy.",
       "- Avoid marketing-page composition for operational app surfaces; prioritize scannable workflows, hierarchy, states, and target-user ergonomics.",
       "",
       ...(unitPageSource.trim()
@@ -3270,17 +3393,16 @@ function App() {
             screenshots={explorationDialogScreenshots}
             unitPath={explorationDialogUnitPath}
             unitTitle={titleForPath(explorationDialogUnitPath, wikiPages) || "unit"}
-            onClear={() => void clearDesignExplorations()}
             onGenerate={(input) => void generateDesignExploration(input)}
             onOpenChange={(open) => {
               if (!open) setExplorationDialogUnitPath(null);
             }}
-            onRefresh={() => void refreshDesignExplorationDialog()}
             onSaveReferenceImage={async (file) => {
               const [path] = await saveTerminalDroppedFiles(activeProject, [file]);
               if (!path) throw new Error("Could not save reference image");
               return path;
             }}
+            onSendMessage={(message, candidateName) => void sendDesignExplorationMessage(message, candidateName)}
             onSelect={(candidateName, notes, textBrief) => void chooseDesignExploration(candidateName, notes, textBrief)}
           />
         ) : null}

@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 polish | design candidate message loop</h2>
+  <ul>
+    <li>Moved <strong>Use Direction</strong> into the Review Designs candidate header and removed the inline Refresh and Start Over buttons from the dialog.</li>
+    <li>Replaced the bottom selection-notes and implementation-brief editors with a single message composer that sends revision or start-over requests through the existing Image-Gen Design Exploration agent workflow.</li>
+    <li>The follow-up watcher now waits for freshly saved candidate PNGs so older candidates do not immediately reopen the review dialog while a revision run is still in progress.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-20 fix | polling design review open</h2>
   <ul>
     <li>Added a direct post-generate watcher for Image-Gen Design Exploration runs so Hyperwiki opens the Review Designs dialog as soon as saved candidate PNGs appear.</li>

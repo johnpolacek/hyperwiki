@@ -78,8 +78,10 @@ assert.ok(
     && ts.includes("toggleSourceScreenshot")
     && ts.includes("View 1: setup")
     && ts.includes("Candidates ({images.length})")
-    && ts.includes("Start Over"),
-  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views.",
+    && ts.includes("Use Direction")
+    && ts.includes("Send Message")
+    && ts.includes("onSendMessage"),
+  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views with header selection and follow-up messaging.",
 );
 assert.ok(
   !ts.includes("No candidates yet"),
@@ -130,9 +132,10 @@ assert.ok(
     && ts.includes("setExplorationDialogUnitPath(null)")
     && ts.includes("explorationAutoReviewTimers")
     && ts.includes("scheduleDesignExplorationAutoReview(unitPath)")
+    && ts.includes("freshAfterCapturedAt")
     && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
     && ts.includes("Design exploration finished without saved candidate PNGs")
-    && ts.includes("Design exploration has not saved candidate PNGs yet")
+    && ts.includes("Design exploration has not saved fresh candidate PNGs yet")
     && ts.includes("Design exploration ready:"),
   "Exploration agent runs should be tracked separately, close after launch, poll for saved PNGs, refresh unit state, and auto-open saved candidates.",
 );
