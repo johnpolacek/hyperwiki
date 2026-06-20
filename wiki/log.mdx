@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-20 fix | imagegen fallback env loading</h2>
+  <ul>
+    <li>Clarified the Image-Gen Design Exploration prompt so agents load the active project's <code>.env.local</code> before using the file-writing imagegen CLI fallback.</li>
+    <li>This lets a project-local <code>OPENAI_API_KEY</code> unlock saved PNG generation even when the terminal shell does not automatically export <code>.env.local</code>.</li>
+    <li>Verification: <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-20 fix | design exploration handoff review</h2>
   <ul>
     <li>Changed Explore Design generation so the setup dialog closes after a successful agent handoff, matching the expectation that the run continues in the terminal.</li>

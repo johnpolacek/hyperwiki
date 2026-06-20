@@ -2508,7 +2508,7 @@ function App() {
       "",
       "Workflow:",
       "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
-      "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. When `OPENAI_API_KEY` is present, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
+      "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. Load the active project's `.env.local` into the command environment when present (for example `set -a; source .env.local; set +a`) and, when `OPENAI_API_KEY` is then available, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
       "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
       `- First remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",

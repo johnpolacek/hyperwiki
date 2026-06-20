@@ -108,6 +108,7 @@ assert.ok(
   ts.includes("Mode: Image-Gen Design Exploration.")
     && ts.includes("Use the imagegen skill")
     && ts.includes("real local PNG files")
+    && ts.includes("set -a; source .env.local; set +a")
     && ts.includes("OPENAI_API_KEY")
     && ts.includes('find "${outputDir}" -maxdepth 1 -type f -name \'*.png\' | sort')
     && ts.includes("do not implement product code")
