@@ -154,6 +154,14 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
   const [deleteStatus, setDeleteStatus] = useState("");
   const hasUnitScreenshots = unitScreenshots.length > 0;
   const hasUnitExplorations = unitExplorations.length > 0;
+  const latestScreenshot = latestUnitImage(unitScreenshots);
+  const latestExploration = latestUnitImage(unitExplorations);
+  const latestVisualEvidence = latestScreenshot && (!latestExploration || latestScreenshot.capturedAt >= latestExploration.capturedAt)
+    ? { kind: "screenshot" as const, image: latestScreenshot }
+    : latestExploration
+      ? { kind: "exploration" as const, image: latestExploration }
+      : null;
+  const latestVisualAction = latestVisualEvidence?.kind === "screenshot" ? onReviewScreenshots : onExploreDesigns;
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -263,23 +271,23 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                   </Button>
                 </div>
               </div>
-              <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-screenshots-section="true">
-                {hasUnitScreenshots ? (
+              <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-visual-preview="true">
+                {latestVisualEvidence ? (
                   <button
-                    aria-label="Open screenshot review"
+                    aria-label={latestVisualEvidence.kind === "screenshot" ? "Open screenshot review" : "Open design review"}
                     className="group block flex-1 overflow-hidden rounded-md border bg-muted/35"
                     type="button"
-                    onClick={() => onReviewScreenshots?.()}
+                    onClick={() => latestVisualAction?.()}
                   >
                     <img
-                      alt="Screenshot of the completed unit's working result"
+                      alt={latestVisualEvidence.kind === "screenshot" ? "Latest screenshot for the unit" : "Latest design candidate for the unit"}
                       className="block max-h-[24rem] min-h-[12rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
-                      src={unitScreenshots[0].dataUrl}
+                      src={latestVisualEvidence.image.dataUrl}
                     />
                   </button>
                 ) : (
                   <div className="flex flex-1 flex-col justify-center gap-1 rounded-md border bg-muted/20 px-3 py-8 text-sm">
-                    <span className="font-medium text-foreground">No screenshots captured yet</span>
+                    <span className="font-medium text-foreground">No visual evidence yet</span>
                     <span className="text-muted-foreground">Run Execute Unit to capture implementation evidence, or explore a design first.</span>
                   </div>
                 )}
@@ -292,6 +300,12 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
       </TooltipProvider>
     </article>
   );
+}
+
+function latestUnitImage(images: UnitScreenshotImageData[]) {
+  return images.reduce<UnitScreenshotImageData | null>((latest, image) => (
+    !latest || image.capturedAt > latest.capturedAt ? image : latest
+  ), null);
 }
 
 function renderTrustedMdx(source: string, onNavigate: (path: string) => void, path?: string, pageStatus?: string) {

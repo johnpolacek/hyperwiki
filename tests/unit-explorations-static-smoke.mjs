@@ -101,8 +101,11 @@ assert.ok(
     && ts.includes("Review Designs")
     && ts.includes("candidate{unitExplorations.length === 1 ? \"\" : \"s\"}")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
-    && ts.includes("No screenshots captured yet"),
-  "Unit pages should expose design exploration from the unified design card topbar.",
+    && ts.includes('data-unit-visual-preview="true"')
+    && ts.includes("latestUnitImage(unitExplorations)")
+    && ts.includes("Open design review")
+    && ts.includes("No visual evidence yet"),
+  "Unit pages should expose design exploration from the unified design card topbar and show the latest screenshot or design preview.",
 );
 assert.ok(
   !ts.includes('data-unit-explorations-section="true"') && !ts.includes("visualEvidenceSummary"),

@@ -122,13 +122,16 @@ assert.ok(
 );
 assert.ok(
   tsSources.includes('data-unit-visual-evidence="true"')
-    && tsSources.includes('data-unit-screenshots-section="true"')
+    && tsSources.includes('data-unit-visual-preview="true"')
+    && tsSources.includes("latestVisualEvidence")
+    && tsSources.includes("latestUnitImage(unitScreenshots)")
+    && tsSources.includes("latestUnitImage(unitExplorations)")
     && tsSources.includes("Review Screenshots")
     && tsSources.includes("Explore Design")
     && tsSources.includes("<span className=\"text-sm font-semibold\">Design</span>")
-    && tsSources.includes("No screenshots captured yet")
+    && tsSources.includes("No visual evidence yet")
     && tsSources.includes("onReviewScreenshots?.()"),
-  "The unified design card should include topbar dialog buttons plus the screenshot preview/empty state.",
+  "The unified design card should include topbar dialog buttons plus the newest screenshot/design preview or empty state.",
 );
 assert.ok(
   !tsSources.includes("visualEvidenceSummary") && !tsSources.includes("formatCapturedAt"),
