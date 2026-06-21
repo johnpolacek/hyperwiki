@@ -345,7 +345,7 @@ export function PlansIndexEmptyState({ onCreatePlan }: { onCreatePlan: () => voi
 export function BugsIndexEmptyState({ onCreateBug }: { onCreateBug: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-8">
-      <BeamSurface className="flex max-w-lg flex-col items-center gap-5 rounded-md border bg-card/90 p-8 text-center shadow-sm" colorVariant="mono" cols={3} rows={3} strength={0.2}>
+      <div className="flex max-w-lg flex-col items-center gap-5 rounded-md border bg-card p-8 text-center shadow-sm">
         <div className="grid size-14 place-items-center rounded-md border bg-card">
           <Bug aria-hidden="true" className="size-6 text-muted-foreground" />
         </div>
@@ -357,7 +357,7 @@ export function BugsIndexEmptyState({ onCreateBug }: { onCreateBug: () => void }
           <Plus aria-hidden="true" data-icon="inline-start" />
           Report Bug
         </Button>
-      </BeamSurface>
+      </div>
     </div>
   );
 }
