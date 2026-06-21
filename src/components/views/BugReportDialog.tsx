@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { displayWikiPath } from "@/lib/wiki-pages";
-import type { BugCreateInput, BugSeverity, ProjectRecord } from "@/lib/types";
-
-const severities: BugSeverity[] = ["low", "medium", "high", "critical"];
+import type { BugCreateInput, ProjectRecord } from "@/lib/types";
 
 export function BugReportDialog({
   activeProject,
@@ -25,51 +21,35 @@ export function BugReportDialog({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
-  const defaultLinkedPlan = useMemo(() => {
-    const path = displayWikiPath(currentPath);
-    return path.startsWith("/wiki/plans/") ? path : "";
-  }, [currentPath]);
-  const [title, setTitle] = useState("");
-  const [severity, setSeverity] = useState<BugSeverity>("medium");
-  const [description, setDescription] = useState("");
-  const [observed, setObserved] = useState("");
-  const [expected, setExpected] = useState("");
-  const [steps, setSteps] = useState("");
-  const [linkedPlan, setLinkedPlan] = useState(defaultLinkedPlan);
+  const [prompt, setPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
-    setTitle("");
-    setSeverity("medium");
-    setDescription("");
-    setObserved("");
-    setExpected("");
-    setSteps("");
-    setLinkedPlan(defaultLinkedPlan);
+    setPrompt("");
     setError("");
-  }, [defaultLinkedPlan, open]);
+  }, [open]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setError("Title is required.");
+    const report = prompt.trim();
+    if (!report) {
+      setError("Describe the bug first.");
       return;
     }
     setIsSaving(true);
     setError("");
     try {
       await onCreate({
-        title: trimmedTitle,
-        description: description.trim(),
-        observed: observed.trim(),
-        expected: expected.trim(),
-        steps: steps.trim(),
-        severity,
+        title: titleFromPrompt(report),
+        description: report,
+        observed: "",
+        expected: "",
+        steps: "",
+        severity: "medium",
         currentRoute: displayWikiPath(currentPath),
-        linkedPlan: linkedPlan.trim(),
+        linkedPlan: linkedPlanFromPath(currentPath),
         projectSlug: activeProject?.projectSlug || "",
         worktreeSlug: activeProject?.worktreeSlug || "",
       });
@@ -82,96 +62,44 @@ export function BugReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!isSaving) onOpenChange(nextOpen); }}>
-      <DialogContent className="w-[min(calc(100vw-2rem),42rem)] sm:max-w-2xl">
+      <DialogContent className="w-[min(calc(100vw-2rem),38rem)] sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Report Bug</DialogTitle>
-          <DialogDescription>Create a wiki-backed bug report for this project.</DialogDescription>
+          <DialogDescription>Describe what is wrong. Hyperwiki will save it as a wiki-backed bug.</DialogDescription>
         </DialogHeader>
-        <form className="grid max-h-[70vh] gap-4 overflow-auto pr-1" onSubmit={submit}>
+        <form className="grid gap-4" onSubmit={submit}>
           <div className="grid gap-2">
-            <Label htmlFor="bug-title">Title</Label>
-            <Input
+            <Label htmlFor="bug-prompt">Bug</Label>
+            <Textarea
               {...DISABLE_TEXT_CORRECTION_PROPS}
               autoFocus
-              id="bug-title"
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Sidebar does not remember Bugs mode"
-              value={title}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="bug-severity">Severity</Label>
-            <Select id="bug-severity" onChange={(event) => setSeverity(event.target.value as BugSeverity)} value={severity}>
-              {severities.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="bug-description">Description</Label>
-            <Textarea
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              id="bug-description"
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="What broke?"
-              value={description}
-            />
-          </div>
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="bug-observed">Observed</Label>
-              <Textarea
-                {...DISABLE_TEXT_CORRECTION_PROPS}
-                className="min-h-24"
-                id="bug-observed"
-                onChange={(event) => setObserved(event.target.value)}
-                placeholder="What happened"
-                value={observed}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="bug-expected">Expected</Label>
-              <Textarea
-                {...DISABLE_TEXT_CORRECTION_PROPS}
-                className="min-h-24"
-                id="bug-expected"
-                onChange={(event) => setExpected(event.target.value)}
-                placeholder="What should happen"
-                value={expected}
-              />
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="bug-steps">Steps</Label>
-            <Textarea
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              className="min-h-24"
-              id="bug-steps"
-              onChange={(event) => setSteps(event.target.value)}
-              placeholder="1. Open..."
-              value={steps}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="bug-linked-plan">Linked plan or unit</Label>
-            <Input
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              id="bug-linked-plan"
-              onChange={(event) => setLinkedPlan(event.target.value)}
-              placeholder="/wiki/plans/features/example.mdx"
-              value={linkedPlan}
+              className="min-h-40 resize-y"
+              id="bug-prompt"
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="The Bugs sidebar takes me to New Project when there are no bugs yet."
+              value={prompt}
             />
           </div>
           {error ? <p className="m-0 text-sm text-destructive" role="alert">{error}</p> : null}
           <DialogFooter>
             <Button disabled={isSaving} type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button disabled={isSaving || !title.trim()} type="submit">
+            <Button disabled={isSaving || !prompt.trim()} type="submit">
               {isSaving ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : null}
-              Save Bug
+              Report Bug
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
+}
+
+function titleFromPrompt(prompt: string) {
+  const firstLine = prompt.split(/\r?\n/).find((line) => line.trim())?.trim() || "Bug report";
+  return firstLine.length > 72 ? `${firstLine.slice(0, 69).trimEnd()}...` : firstLine;
+}
+
+function linkedPlanFromPath(path: string) {
+  const displayPath = displayWikiPath(path);
+  return displayPath.startsWith("/wiki/plans/") ? displayPath : "";
 }

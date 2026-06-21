@@ -96,10 +96,12 @@ assert.ok(
 );
 assert.ok(
   ts.includes("export function BugReportDialog")
-    && ts.includes("Save Bug")
+    && ts.includes("Report Bug")
     && ts.includes("currentRoute: displayWikiPath(currentPath)")
-    && ts.includes("linkedPlan: linkedPlan.trim()"),
-  "bug dialog should build the quick bug creation payload from the current wiki route.",
+    && ts.includes("title: titleFromPrompt(report)")
+    && ts.includes("description: report")
+    && ts.includes("linkedPlan: linkedPlanFromPath(currentPath)"),
+  "bug dialog should build a prompt-first bug creation payload from the current wiki route.",
 );
 assert.ok(
   ts.includes("BugActionBar")
