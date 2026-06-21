@@ -145,9 +145,12 @@ assert.ok(
     && ts.includes("Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this`")
     && ts.includes("Secondary existing candidate PNGs:")
     && ts.includes("Inspect the primary visual reference first")
+    && ts.includes("Preservation rule: do not delete, overwrite, rename, resize, or modify this primary visual reference file")
+    && ts.includes("verify the primary visual reference still exists and has the same checksum")
+    && ts.includes("filenames that do not collide with the preserved primary file")
     && ts.includes("function normalizeExplorationMode")
     && ts.includes('mode === "new-mockups" || mode === "redesign-from-screenshot"'),
-  "Follow-up design messages should promote the displayed carousel image as the primary visual reference and normalize stale mode metadata.",
+  "Follow-up design messages should promote and preserve the displayed carousel image as the primary visual reference and normalize stale mode metadata.",
 );
 assert.ok(
   ts.includes('"exploration"')
@@ -156,6 +159,7 @@ assert.ok(
     && ts.includes("explorationAutoReviewTimers")
     && ts.includes("scheduleDesignExplorationAutoReview(unitPath)")
     && ts.includes("freshAfterCapturedAt")
+    && ts.includes("preservedCandidateName")
     && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
     && ts.includes("Design exploration finished without saved candidate PNGs")
     && ts.includes("Design exploration has not saved fresh candidate PNGs yet")

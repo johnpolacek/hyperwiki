@@ -11,6 +11,7 @@ wikiKind: "page"
   <ul>
     <li>Follow-up messages sent from the Review Designs carousel now identify the displayed candidate PNG as the primary visual reference in the agent prompt.</li>
     <li>The prompt explicitly resolves phrases such as "this image" or "above" to that primary reference and separates secondary existing candidates for optional context.</li>
+    <li>The primary reference is now protected during follow-up runs: agents must preserve the file, verify its checksum is unchanged, and save new candidates with non-colliding filenames.</li>
   </ul>
 </article>
 <article>

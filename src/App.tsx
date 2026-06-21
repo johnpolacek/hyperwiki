@@ -2473,7 +2473,7 @@ function App() {
     unitPath: string,
     attempt = 0,
     project = latestActiveProjectRef.current,
-    options: { freshAfterCapturedAt?: number } = {},
+    options: { freshAfterCapturedAt?: number; preservedCandidateName?: string | null } = {},
   ) {
     const key = explorationAutoReviewKey(unitPath, project);
     const existing = explorationAutoReviewTimers.current.get(key);
@@ -2481,7 +2481,7 @@ function App() {
     const timer = window.setTimeout(() => {
       explorationAutoReviewTimers.current.delete(key);
       if ((project?.id || "") !== (latestActiveProjectRef.current?.id || "")) return;
-      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project, freshAfterCapturedAt: options.freshAfterCapturedAt }).then((opened) => {
+      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project, freshAfterCapturedAt: options.freshAfterCapturedAt, preservedCandidateName: options.preservedCandidateName }).then((opened) => {
         if (opened) return;
         const nextAttempt = attempt + 1;
         if (nextAttempt < 180) {
@@ -2494,7 +2494,7 @@ function App() {
     explorationAutoReviewTimers.current.set(key, timer);
   }
 
-  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null; freshAfterCapturedAt?: number } = {}) {
+  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null; freshAfterCapturedAt?: number; preservedCandidateName?: string | null } = {}) {
     const project = options.project ?? latestActiveProjectRef.current;
     const [images, screenshots, metadata] = await Promise.all([
       fetchUnitExplorationImages(unitPath, project),
@@ -2503,13 +2503,16 @@ function App() {
     ]);
     setExplorationRefreshKey((value) => value + 1);
     const freshAfterCapturedAt = options.freshAfterCapturedAt;
-    const candidateImages = typeof freshAfterCapturedAt === "number"
+    const freshImages = typeof freshAfterCapturedAt === "number"
       ? images.filter((image) => image.capturedAt > freshAfterCapturedAt)
       : images;
-    if (!candidateImages.length) {
+    if (!freshImages.length) {
       if (!options.quiet) setStatus("Design exploration finished without saved candidate PNGs");
       return false;
     }
+    const candidateImages = typeof freshAfterCapturedAt === "number"
+      ? images.filter((image) => image.capturedAt > freshAfterCapturedAt || image.name === options.preservedCandidateName)
+      : images;
     clearDesignExplorationAutoReview(unitPath, project);
     setExplorationDialogUnitPath(unitPath);
     setExplorationDialogImages(candidateImages);
@@ -2638,7 +2641,7 @@ function App() {
         { forceNewSession: true },
       );
       setExplorationDialogUnitPath(null);
-      scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt });
+      scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt, preservedCandidateName: primaryCandidateName });
       setStatus("Design message sent; updated candidates will open when saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2734,6 +2737,8 @@ function App() {
             "- The user sent this message from the design review composer directly below this displayed image.",
             "- Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this` in the user message as references to this primary visual reference.",
             "- Inspect this primary visual reference before generating replacements.",
+            "- Preservation rule: do not delete, overwrite, rename, resize, or modify this primary visual reference file. It is a protected reference and remains a visible candidate.",
+            "- Before changing files, compute and record this primary visual reference file's checksum; before final handoff, verify the checksum is unchanged.",
           ]
         : []),
       metadata.sourceScreenshotPath ? `Original source screenshot: ${metadata.sourceScreenshotPath}` : "Original source screenshot: none",
@@ -2752,11 +2757,12 @@ function App() {
       "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
       "- Inspect the primary visual reference first, then inspect any secondary existing candidates if they help preserve useful alternatives.",
       "- If the message asks to start over, use the existing candidates only as old context and generate fresh alternatives.",
-      `- After inspecting any current candidates, remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
+      "- Treat the preserved primary visual reference as one of the visible candidate PNGs. Generate enough new replacement PNGs for the folder to contain the requested variant count without overwriting the primary.",
+      `- After inspecting current candidates, preserve the primary visual reference exactly. Remove only secondary existing PNGs if replacing them, then save fresh ordered PNGs in \`${outputDir}/\` using filenames that do not collide with the preserved primary file (for example, use the next available \`NN-*.png\` ordinals).`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
-      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt.",
+      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. Set imageCount to the visible top-level PNG candidate count, including the preserved primary file.",
       "- The `textBrief` should summarize the updated visual direction for Execute Unit handoff.",
-      `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
+      `- Before final handoff, verify the primary visual reference still exists and has the same checksum, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the preserved primary plus saved candidate PNGs, and verify \`${outputDir}/metadata.json\` exists.`,
       "- After generation, report the saved paths and remind the user to click Review Designs in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
