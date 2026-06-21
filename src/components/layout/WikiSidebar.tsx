@@ -26,10 +26,10 @@ export function WikiSidebar(props: {
     <aside className="flex h-full min-h-0 flex-col overflow-hidden border-r bg-background">
       <nav className="flex h-full min-h-0 flex-col overflow-hidden">
         <section className="min-h-0 flex-1 overflow-auto p-3">
-          <div className="mb-2 flex min-h-9 items-center justify-between gap-2 px-1">
+          <div className="-m-3 mb-3 flex h-11 items-center justify-between gap-2 border-b bg-muted/20 px-3">
             <ToggleGroup
               aria-label="Sidebar work mode"
-              className="min-w-0 rounded-md border bg-muted/40 p-0.5"
+              className="h-full min-w-0 items-stretch gap-0"
               size="sm"
               type="single"
               value={mode}
@@ -46,7 +46,7 @@ export function WikiSidebar(props: {
                 <>
                   <Button
                     aria-label="Download wiki Markdown zip"
-                    className="size-8"
+                    className="size-7"
                     disabled={props.isExporting}
                     size="icon"
                     title="Download wiki Markdown zip"
@@ -56,15 +56,15 @@ export function WikiSidebar(props: {
                   >
                     {props.isExporting ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Download aria-hidden="true" data-icon="inline-start" />}
                   </Button>
-                  <Button size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
+                  <Button className="h-7 px-2 text-xs" size="sm" type="button" variant="outline" onClick={props.onCreatePlan}>
                     <Plus aria-hidden="true" data-icon="inline-start" />
                     plan
                   </Button>
                 </>
               ) : (
-                <Button size="sm" type="button" variant="outline" onClick={props.onCreateBug}>
+                <Button className="h-7 px-2 text-xs" size="sm" type="button" variant="outline" onClick={props.onCreateBug}>
                   <Plus aria-hidden="true" data-icon="inline-start" />
-                  Bug
+                  bug
                 </Button>
               )}
             </div>
@@ -91,10 +91,10 @@ export function WikiSidebar(props: {
 
 function sidebarModeClass(active: boolean) {
   return cn(
-    "h-7 rounded-[calc(var(--radius)-2px)] px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+    "h-full rounded-none border-b-2 border-transparent px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors",
     active
-      ? "bg-background text-foreground shadow-xs hover:bg-background data-[state=on]:bg-background data-[state=on]:text-foreground"
-      : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
+      ? "border-primary bg-transparent text-foreground hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-foreground"
+      : "text-muted-foreground hover:bg-transparent hover:text-foreground",
   );
 }
 
