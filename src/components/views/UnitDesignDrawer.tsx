@@ -156,7 +156,7 @@ export function UnitDesignDrawer({
   return (
     <section
       aria-label={`Design workspace for ${unitTitle}`}
-      className="flex h-full min-h-0 flex-col overflow-hidden border-l bg-background text-foreground shadow-2xl"
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-background text-foreground"
       data-unit-design-drawer="true"
       role="dialog"
     >
@@ -180,7 +180,7 @@ export function UnitDesignDrawer({
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col border-b bg-muted/20 lg:border-b-0 lg:border-r" data-unit-design-image-selector="true">
+        <aside className="flex min-h-0 flex-col border-b bg-background lg:border-b-0 lg:border-r" data-unit-design-image-selector="true">
           <div className="flex items-center justify-between gap-2 border-b bg-background px-3 py-2">
             <div className="min-w-0">
               <p className="m-0 text-sm font-semibold">Images</p>
@@ -239,7 +239,7 @@ export function UnitDesignDrawer({
 
         <main className="flex min-h-0 flex-col" data-unit-design-chat="true">
           {reviewMode && screenshots.length ? (
-            <section className="shrink-0 border-b bg-card/60 p-3" data-unit-design-review="true">
+            <section className="shrink-0 border-b bg-background p-3" data-unit-design-review="true">
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
                 <ScreenshotCarousel
                   className="h-[min(38vh,22rem)]"
@@ -286,7 +286,7 @@ export function UnitDesignDrawer({
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             {messages.length ? (
-              <div className="mx-auto flex max-w-3xl flex-col gap-3">
+              <div className="mx-auto flex max-w-4xl flex-col gap-3">
                 {messages.map((entry) => (
                   <article className="rounded-md border bg-card p-3 shadow-sm" key={entry.id}>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -312,7 +312,7 @@ export function UnitDesignDrawer({
               </div>
             ) : (
               <div className="flex h-full min-h-[18rem] items-center justify-center">
-                <div className="grid max-w-md gap-2 text-center">
+                <div className="grid max-w-lg gap-2 text-center">
                   <MessageSquare aria-hidden="true" className="mx-auto size-7 text-muted-foreground" />
                   <h3 className="m-0 text-base font-semibold">Iterate on this unit</h3>
                   <p className="m-0 text-sm text-muted-foreground">Attach screenshots, design images, or references, then ask for new design options or ask the agent to update the unit UI.</p>
@@ -322,7 +322,7 @@ export function UnitDesignDrawer({
           </div>
 
           <footer className="shrink-0 border-t bg-background p-3">
-            <div className="mx-auto grid max-w-3xl gap-2">
+            <div className="mx-auto grid max-w-4xl gap-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Badge variant={detectedIntent === "implement-ui" ? "secondary" : "outline"}>
                   {detectedIntent === "implement-ui" ? <Code2 aria-hidden="true" data-icon="inline-start" /> : <Sparkles aria-hidden="true" data-icon="inline-start" />}

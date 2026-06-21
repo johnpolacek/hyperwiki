@@ -3310,7 +3310,7 @@ function App() {
         />
         <section
           className={cn(
-            "grid h-full min-h-0 flex-1 overflow-hidden",
+            "relative grid h-full min-h-0 flex-1 overflow-hidden",
             isMainPaneExpanded || isUtilityRoute
               ? "grid-cols-1"
               : isImportPlanningView
@@ -3421,7 +3421,7 @@ function App() {
             </div>
           )}
           {designDrawerUnitPath && !isMainPaneExpanded && !isUtilityRoute ? (
-            <div className="col-start-2 col-end-[-1] row-start-1 z-40 h-full min-h-0 overflow-hidden" data-unit-design-drawer-overlay="true">
+            <div className="absolute inset-y-0 right-0 left-[300px] z-40 min-h-0 overflow-hidden bg-background max-xl:left-[260px]" data-unit-design-drawer-overlay="true">
               <UnitDesignDrawer
                 designImages={designDrawerImages}
                 explorationDir={unitExplorationDir(designDrawerUnitPath)}
