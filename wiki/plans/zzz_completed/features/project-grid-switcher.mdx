@@ -1,0 +1,45 @@
+---
+title: "Project Grid Switcher"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Project Grid Switcher" status="complete" description="Make the topbar Projects button open the project grid, then let project cards switch workspaces directly." />
+
+<PlanSummary>
+  <ul>
+    <li>Status: complete</li>
+    <li>Shape: compact feature plan</li>
+    <li>Completed: 2026-06-21</li>
+    <li>Implemented unit: Unit 01 - grid route and card switch behavior</li>
+    <li>Result: the topbar Projects action opens <code>/projects</code>, and project cards switch workspaces directly while preserving removal controls.</li>
+    <li>Validation: targeted static smoke, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and agent-browser screenshots.</li>
+  </ul>
+</PlanSummary>
+
+<section>
+  <h2>Intent</h2>
+  <p>The topbar <strong>Projects</strong> action should open the full Projects grid instead of a small popover. The grid remains the compact, work-focused management surface, and clicking a project card switches to that project through the existing project hydration flow.</p>
+</section>
+
+<section>
+  <h2>Implementation</h2>
+  <ul>
+    <li>Changed the topbar Projects button to navigate directly to <code>/projects</code>.</li>
+    <li>Removed the topbar project-switch popover and its now-unused state/props.</li>
+    <li>Made each project card a keyboard-accessible switch target using the existing <code>onOpenProject</code> flow.</li>
+    <li>Stopped propagation from open, remove, cancel, confirm, and delete-files controls so nested management actions do not double-trigger or switch unexpectedly.</li>
+    <li>Added static coverage for the route trigger, card-level switch affordance, keyboard activation, and removal controls.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Verification</h2>
+  <ul>
+    <li><code>node tests/project-grid-switcher-static-smoke.mjs</code> passed.</li>
+    <li><code>pnpm exec tsc -b</code> passed.</li>
+    <li><code>pnpm run check</code> passed.</li>
+    <li><code>pnpm run build:frontend</code> passed with the existing Vite large-chunk warning.</li>
+    <li>agent-browser captured the Projects grid and a card-switch result through the worktree Portless URL with a temporary Tauri transport mock: <code>.hyperwiki/state/screenshots/project-grid-switcher/01-projects-grid.png</code> and <code>02-card-switch.png</code>.</li>
+  </ul>
+</section>

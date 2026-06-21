@@ -15,6 +15,14 @@ wikiKind: "page"
   </ul>
 </article>
 <article>
+  <h2>2026-06-21 polish | project grid switcher</h2>
+  <ul>
+    <li>Implemented <a href="/wiki/plans/zzz_completed/features/project-grid-switcher.mdx">Project Grid Switcher</a> so the topbar <strong>Projects</strong> button opens the full Projects grid instead of a popover.</li>
+    <li>Project cards now act as direct click and keyboard switch targets while open/remove/confirm/delete-files controls remain separate card actions.</li>
+    <li>Verification: <code>node tests/project-grid-switcher-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Portless/agent-browser harness captured the grid and post-card-switch states under <code>.hyperwiki/state/screenshots/project-grid-switcher/</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-21 polish | additive design explorations</h2>
   <ul>
     <li>The unit Design card action now always says <strong>Explore Design</strong>, whether or not candidates already exist.</li>
