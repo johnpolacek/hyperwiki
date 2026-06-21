@@ -54,7 +54,7 @@ import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
-import { UnitDesignExplorationDialog, type UnitDesignExplorationGenerateInput } from "@/components/views/UnitDesignExplorationDialog";
+import { UnitDesignExplorationDialog, type UnitDesignExplorationGenerateInput, type UnitExplorationMode } from "@/components/views/UnitDesignExplorationDialog";
 import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
 import { DiffViewerDialog } from "@/components/views/DiffViewerDialog";
 import { BugReportDialog } from "@/components/views/BugReportDialog";
@@ -2592,9 +2592,14 @@ function App() {
     if (!unitPath || !trimmedMessage) return;
     const outputDir = unitExplorationDir(unitPath);
     const currentImages = explorationDialogImages;
+    const candidatePaths = currentImages.map((image) => `${outputDir}/${image.name}`);
+    const primaryCandidateName = currentCandidateName || currentImages[0]?.name || null;
+    const primaryCandidatePath = primaryCandidateName
+      ? `${outputDir}/${primaryCandidateName}`
+      : candidatePaths[0] || "";
     const previousCapturedAt = currentImages.reduce((max, image) => Math.max(max, image.capturedAt), 0);
     const metadata = explorationDialogMetadata;
-    const mode = metadata?.mode || (explorationDialogScreenshots.length ? "redesign-from-screenshot" : "new-mockups");
+    const mode = normalizeExplorationMode(metadata?.mode, explorationDialogScreenshots.length > 0);
     const imageCount = Math.min(Math.max(metadata?.imageCount || currentImages.length || 3, 1), 4);
     const priorDirection = metadata?.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
     setIsExplorationGenerating(true);
@@ -2620,8 +2625,9 @@ function App() {
         designExplorationMessagePrompt(
           unitPath,
           trimmedMessage,
-          currentCandidateName,
-          currentImages.map((image) => `${outputDir}/${image.name}`),
+          primaryCandidateName,
+          primaryCandidatePath,
+          candidatePaths,
           { ...nextMetadata, prompt: priorDirection },
         ),
         unitPath,
@@ -2690,10 +2696,16 @@ function App() {
     ].join("\n");
   }
 
+  function normalizeExplorationMode(mode: string | null | undefined, hasScreenshots: boolean): UnitExplorationMode {
+    if (mode === "new-mockups" || mode === "redesign-from-screenshot") return mode;
+    return hasScreenshots ? "redesign-from-screenshot" : "new-mockups";
+  }
+
   function designExplorationMessagePrompt(
     unitPath: string,
     message: string,
     currentCandidateName: string | null,
+    primaryCandidatePath: string,
     candidatePaths: string[],
     metadata: UnitExplorationMetadata,
   ) {
@@ -2715,9 +2727,18 @@ function App() {
       `Variant count: ${metadata.imageCount} (maximum 4)`,
       `Output folder: ${outputDir}`,
       `Current candidate: ${currentCandidateName || "none"}`,
+      primaryCandidatePath ? "Primary visual reference:" : "Primary visual reference: none",
+      ...(primaryCandidatePath
+        ? [
+            `- ${primaryCandidatePath}`,
+            "- The user sent this message from the design review composer directly below this displayed image.",
+            "- Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this` in the user message as references to this primary visual reference.",
+            "- Inspect this primary visual reference before generating replacements.",
+          ]
+        : []),
       metadata.sourceScreenshotPath ? `Original source screenshot: ${metadata.sourceScreenshotPath}` : "Original source screenshot: none",
-      candidatePaths.length ? "Existing candidate PNGs to inspect before replacing:" : "Existing candidate PNGs to inspect before replacing: none",
-      ...candidatePaths.map((candidatePath) => `- ${candidatePath}`),
+      candidatePaths.filter((candidatePath) => candidatePath !== primaryCandidatePath).length ? "Secondary existing candidate PNGs:" : "Secondary existing candidate PNGs: none",
+      ...candidatePaths.filter((candidatePath) => candidatePath !== primaryCandidatePath).map((candidatePath) => `- ${candidatePath}`),
       "",
       "Original direction:",
       metadata.prompt,
@@ -2729,7 +2750,7 @@ function App() {
       "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
       "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. Load the active project's `.env.local` into the command environment when present (for example `set -a; source .env.local; set +a`) and, when `OPENAI_API_KEY` is then available, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
       "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
-      "- Inspect the existing candidate PNGs first when the message asks for changes to the current designs.",
+      "- Inspect the primary visual reference first, then inspect any secondary existing candidates if they help preserve useful alternatives.",
       "- If the message asks to start over, use the existing candidates only as old context and generate fresh alternatives.",
       `- After inspecting any current candidates, remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",

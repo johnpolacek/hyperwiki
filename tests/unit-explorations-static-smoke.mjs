@@ -139,6 +139,17 @@ assert.ok(
   "Use Design should persist the selected candidate, execute the exact unit, and include selected image context in the Execute Unit prompt.",
 );
 assert.ok(
+  ts.includes("Primary visual reference:")
+    && ts.includes("primaryCandidatePath")
+    && ts.includes("The user sent this message from the design review composer directly below this displayed image.")
+    && ts.includes("Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this`")
+    && ts.includes("Secondary existing candidate PNGs:")
+    && ts.includes("Inspect the primary visual reference first")
+    && ts.includes("function normalizeExplorationMode")
+    && ts.includes('mode === "new-mockups" || mode === "redesign-from-screenshot"'),
+  "Follow-up design messages should promote the displayed carousel image as the primary visual reference and normalize stale mode metadata.",
+);
+assert.ok(
   ts.includes('"exploration"')
     && ts.includes("setExplorationRefreshKey((value) => value + 1)")
     && ts.includes("setExplorationDialogUnitPath(null)")
