@@ -116,5 +116,10 @@ assert.ok(
     && ts.includes("set frontmatter `status`, `PlanHero status`, and the summary Status item to `fixed`"),
   "Fix Bug should start a bug-scoped agent prompt with bug-page update instructions.",
 );
+assert.ok(
+  ts.includes("isBugIndexPath(route.path) && !latestWikiPagesRef.current.some")
+    && ts.includes('if (route.kind === "wiki" && isBugIndexPath(route.path)) return;'),
+  "The empty Bugs landing route should not fetch a missing MDX page or mark the project unavailable.",
+);
 
 console.log("sidebar bugs workflow static smoke passed");

@@ -453,6 +453,13 @@ function App() {
     if (route.kind !== "wiki") return;
     if (hasLoadedProjects && !hasRegisteredProjects && !activeProject) return;
     if (hasLoadedProjects && !activeProject) return;
+    if (isBugIndexPath(route.path) && !latestWikiPagesRef.current.some((page) => displayWikiPath(page.path) === displayWikiPath(route.path))) {
+      setWikiHtml("");
+      setWikiSource(null);
+      setWikiError("");
+      setIsWikiLoading(false);
+      return;
+    }
     let cancelled = false;
     setIsWikiLoading(true);
     setWikiError("");
@@ -519,6 +526,7 @@ function App() {
 
   useEffect(() => {
     if (!wikiError || !activeProject || !isMissingFileError(wikiError)) return;
+    if (route.kind === "wiki" && isBugIndexPath(route.path)) return;
     setStatus("Active project is unavailable");
     setUnavailableProjectIds((current) => new Set(current).add(activeProject.id));
     setActiveProject(null);
