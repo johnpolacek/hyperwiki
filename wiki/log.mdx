@@ -7,9 +7,17 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-21 polish | additive design explorations</h2>
+  <ul>
+    <li>The unit Design card action now always says <strong>Explore Design</strong>, whether or not candidates already exist.</li>
+    <li>The design review dialog now offers <strong>New Exploration</strong> while preserving existing candidate PNGs, with a <strong>View Existing</strong> path back to the saved set for comparison.</li>
+    <li>New exploration prompts tell agents to keep prior candidates untouched and save new candidates with non-colliding filenames.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-21 polish | design message primary image context</h2>
   <ul>
-    <li>Follow-up messages sent from the Review Designs carousel now identify the displayed candidate PNG as the primary visual reference in the agent prompt.</li>
+    <li>Follow-up messages sent from the design review carousel now identify the displayed candidate PNG as the primary visual reference in the agent prompt.</li>
     <li>The prompt explicitly resolves phrases such as "this image" or "above" to that primary reference and separates secondary existing candidates for optional context.</li>
     <li>The primary reference is now protected during follow-up runs: agents must preserve the file, verify its checksum is unchanged, and save new candidates with non-colliding filenames.</li>
   </ul>
@@ -47,7 +55,7 @@ wikiKind: "page"
 <article>
   <h2>2026-06-20 polish | design candidate message loop</h2>
   <ul>
-    <li>Moved the selected-design action into the Review Designs candidate header and removed the inline Refresh and Start Over buttons from the dialog.</li>
+    <li>Moved the selected-design action into the design review candidate header and removed the inline Refresh and Start Over buttons from the dialog.</li>
     <li>Replaced the bottom selection-notes and implementation-brief editors with a single message composer that sends revision or start-over requests through the existing Image-Gen Design Exploration agent workflow.</li>
     <li>The follow-up watcher now waits for freshly saved candidate PNGs so older candidates do not immediately reopen the review dialog while a revision run is still in progress.</li>
   </ul>
@@ -55,7 +63,7 @@ wikiKind: "page"
 <article>
   <h2>2026-06-20 fix | polling design review open</h2>
   <ul>
-    <li>Added a direct post-generate watcher for Image-Gen Design Exploration runs so Hyperwiki opens the Review Designs dialog as soon as saved candidate PNGs appear.</li>
+    <li>Added a direct post-generate watcher for Image-Gen Design Exploration runs so Hyperwiki opens the design review dialog as soon as saved candidate PNGs appear.</li>
     <li>The watcher polls the unit exploration folder independently of terminal prompt-readiness detection and stops once candidates open, the active project changes, or the bounded wait expires.</li>
     <li>Verification: <code>pnpm exec tsc -b</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
   </ul>
@@ -74,7 +82,7 @@ wikiKind: "page"
     <li>Changed Explore Design generation so the setup dialog closes after a successful agent handoff, matching the expectation that the run continues in the terminal.</li>
     <li>When an exploration agent finishes, Hyperwiki now refreshes exploration state and automatically opens the candidates dialog if saved PNGs exist; otherwise it reports that no candidate PNGs were saved.</li>
     <li>Updated the exploration prompt to require real local PNG artifacts in the unit exploration folder, verify them before final handoff, and use the file-writing imagegen CLI fallback when the built-in path only produces inline images and <code>OPENAI_API_KEY</code> is available.</li>
-    <li>The unit design card now shows a candidate count and changes the action from <strong>Explore Design</strong> to <strong>Review Designs</strong> once candidates exist.</li>
+    <li>The unit design card now shows a candidate count once candidates exist.</li>
     <li>Verification: <code>pnpm exec tsc -b</code>, <code>node tests/unit-explorations-static-smoke.mjs</code>, <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and whitespace checks passed.</li>
   </ul>
 </article>

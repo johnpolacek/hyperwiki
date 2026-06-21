@@ -77,9 +77,11 @@ export function UnitDesignExplorationDialog({
   const [notes, setNotes] = useState("");
   const [textBrief, setTextBrief] = useState("");
   const [message, setMessage] = useState("");
+  const [isSetupView, setIsSetupView] = useState(false);
   const current = images[Math.min(index, images.length - 1)];
   const selectedName = metadata?.selectedCandidate || "";
   const hasCandidates = images.length > 0;
+  const showSetupView = !hasCandidates || isSetupView;
 
   useEffect(() => {
     if (!open) return;
@@ -90,6 +92,7 @@ export function UnitDesignExplorationDialog({
     setNotes(metadata?.notes || "");
     setTextBrief(metadata?.textBrief || "");
     setMessage("");
+    setIsSetupView(false);
     setIndex(0);
     setReferenceImages([]);
     setReferenceImageStatus("");
@@ -111,6 +114,7 @@ export function UnitDesignExplorationDialog({
   const submitGenerate = () => {
     const count = Math.min(Math.max(Number.parseInt(variantCount, 10) || 1, 1), 4);
     const sourceNames = mode === "redesign-from-screenshot" ? sourceScreenshotNames : [];
+    setIsSetupView(false);
     onGenerate({
       mode,
       prompt: prompt.trim(),
@@ -165,6 +169,19 @@ export function UnitDesignExplorationDialog({
     setLargePreviewImageName(name);
   };
 
+  const startNewExploration = () => {
+    setIsSetupView(true);
+    setPrompt("");
+    setVariantCount("3");
+    setMode(screenshots.length ? "redesign-from-screenshot" : "new-mockups");
+    setReferenceImages([]);
+    setReferenceImageStatus("");
+    setMessage("");
+    const firstScreenshotName = screenshots[0]?.name || "";
+    setSourceScreenshotNames(firstScreenshotName ? [firstScreenshotName] : []);
+    setPreviewSourceScreenshotName(firstScreenshotName);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(calc(100vh-2rem),54rem)] w-[min(calc(100vw-2rem),78rem)] overflow-x-hidden overflow-y-auto sm:max-w-6xl">
@@ -172,9 +189,18 @@ export function UnitDesignExplorationDialog({
           <DialogTitle>Explore designs — {unitTitle}</DialogTitle>
         </DialogHeader>
 
-        {!hasCandidates ? (
+        {showSetupView ? (
           <div className="grid gap-5 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]">
             <div className="flex flex-col gap-4">
+              {hasCandidates ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Badge variant="outline">{images.length} existing preserved</Badge>
+                  <Button size="sm" type="button" variant="outline" onClick={() => setIsSetupView(false)}>
+                    <ImagePlus aria-hidden="true" data-icon="inline-start" />
+                    View Existing
+                  </Button>
+                </div>
+              ) : null}
               <div className="flex flex-col gap-2">
                 <Label>Mode</Label>
                 <ToggleGroup
@@ -360,6 +386,10 @@ export function UnitDesignExplorationDialog({
                 {selectedName ? <Badge variant="secondary">Selected {selectedName}</Badge> : null}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                <Button size="sm" type="button" variant="outline" onClick={startNewExploration}>
+                  <Sparkles aria-hidden="true" data-icon="inline-start" />
+                  New Exploration
+                </Button>
                 <Button
                   disabled={!current}
                   size="sm"

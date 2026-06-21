@@ -2473,7 +2473,7 @@ function App() {
     unitPath: string,
     attempt = 0,
     project = latestActiveProjectRef.current,
-    options: { freshAfterCapturedAt?: number; preservedCandidateName?: string | null } = {},
+    options: { freshAfterCapturedAt?: number; preservedCandidateName?: string | null; preservedCandidateNames?: string[] } = {},
   ) {
     const key = explorationAutoReviewKey(unitPath, project);
     const existing = explorationAutoReviewTimers.current.get(key);
@@ -2481,20 +2481,20 @@ function App() {
     const timer = window.setTimeout(() => {
       explorationAutoReviewTimers.current.delete(key);
       if ((project?.id || "") !== (latestActiveProjectRef.current?.id || "")) return;
-      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project, freshAfterCapturedAt: options.freshAfterCapturedAt, preservedCandidateName: options.preservedCandidateName }).then((opened) => {
+      void maybeOpenDesignExplorationReview(unitPath, { quiet: true, project, freshAfterCapturedAt: options.freshAfterCapturedAt, preservedCandidateName: options.preservedCandidateName, preservedCandidateNames: options.preservedCandidateNames }).then((opened) => {
         if (opened) return;
         const nextAttempt = attempt + 1;
         if (nextAttempt < 180) {
           scheduleDesignExplorationAutoReview(unitPath, nextAttempt, project, options);
           return;
         }
-        setStatus("Design exploration has not saved fresh candidate PNGs yet; use Review Designs after the agent finishes");
+        setStatus("Design exploration has not saved fresh candidate PNGs yet; use Explore Design after the agent finishes");
       });
     }, attempt === 0 ? 1500 : 5000);
     explorationAutoReviewTimers.current.set(key, timer);
   }
 
-  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null; freshAfterCapturedAt?: number; preservedCandidateName?: string | null } = {}) {
+  async function maybeOpenDesignExplorationReview(unitPath: string, options: { quiet?: boolean; project?: ProjectRecord | null; freshAfterCapturedAt?: number; preservedCandidateName?: string | null; preservedCandidateNames?: string[] } = {}) {
     const project = options.project ?? latestActiveProjectRef.current;
     const [images, screenshots, metadata] = await Promise.all([
       fetchUnitExplorationImages(unitPath, project),
@@ -2510,8 +2510,16 @@ function App() {
       if (!options.quiet) setStatus("Design exploration finished without saved candidate PNGs");
       return false;
     }
+    const preservedNames = new Set([
+      options.preservedCandidateName || "",
+      ...(options.preservedCandidateNames || []),
+    ].filter(Boolean));
+    const freshNames = new Set(freshImages.map((image) => image.name));
     const candidateImages = typeof freshAfterCapturedAt === "number"
-      ? images.filter((image) => image.capturedAt > freshAfterCapturedAt || image.name === options.preservedCandidateName)
+      ? [
+          ...freshImages,
+          ...images.filter((image) => preservedNames.has(image.name) && !freshNames.has(image.name)),
+        ]
       : images;
     clearDesignExplorationAutoReview(unitPath, project);
     setExplorationDialogUnitPath(unitPath);
@@ -2552,9 +2560,13 @@ function App() {
       return;
     }
     const direction = input.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
+    const outputDir = unitExplorationDir(unitPath);
+    const existingImages = explorationDialogImages;
+    const existingCandidateNames = existingImages.map((image) => image.name);
+    const existingCandidatePaths = existingCandidateNames.map((name) => `${outputDir}/${name}`);
+    const previousCapturedAt = existingImages.reduce((max, image) => Math.max(max, image.capturedAt), 0);
     setIsExplorationGenerating(true);
     try {
-      await clearUnitExplorations(unitPath, activeProject);
       const metadata = await writeUnitExplorationMetadata({
         unitPath,
         mode: input.mode,
@@ -2571,7 +2583,7 @@ function App() {
       await sendTrackedAgentPrompt(
         "exploration",
         "Explore Designs",
-        designExplorationPrompt(unitPath, input, direction),
+        designExplorationPrompt(unitPath, input, direction, existingCandidatePaths),
         unitPath,
         scopeForRoute({ kind: "wiki", path: unitPath }),
         layout,
@@ -2580,7 +2592,7 @@ function App() {
         { forceNewSession: true },
       );
       setExplorationDialogUnitPath(null);
-      scheduleDesignExplorationAutoReview(unitPath);
+      scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt, preservedCandidateNames: existingCandidateNames });
       setStatus("Design exploration prompt sent; candidates will open when saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
@@ -2650,7 +2662,7 @@ function App() {
     }
   }
 
-  function designExplorationPrompt(unitPath: string, input: UnitDesignExplorationGenerateInput, direction: string) {
+  function designExplorationPrompt(unitPath: string, input: UnitDesignExplorationGenerateInput, direction: string, existingCandidatePaths: string[] = []) {
     const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
     const outputDir = unitExplorationDir(unitPath);
     const unitPageSource = displayWikiPath(currentWikiPath) === displayWikiPath(unitPath)
@@ -2672,6 +2684,8 @@ function App() {
       ...input.sourceScreenshotPaths.map((sourcePath) => `- ${sourcePath}`),
       input.referenceImagePaths.length ? "Reference images:" : "Reference images: none",
       ...input.referenceImagePaths.map((referencePath) => `- ${referencePath}`),
+      existingCandidatePaths.length ? "Existing design candidates to preserve:" : "Existing design candidates to preserve: none",
+      ...existingCandidatePaths.map((candidatePath) => `- ${candidatePath}`),
       "",
       "User direction:",
       direction,
@@ -2680,12 +2694,17 @@ function App() {
       "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
       "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. Load the active project's `.env.local` into the command environment when present (for example `set -a; source .env.local; set +a`) and, when `OPENAI_API_KEY` is then available, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
       "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
-      `- First remove existing PNGs in \`${outputDir}/\`, then save fresh ordered PNGs there: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
+      existingCandidatePaths.length
+        ? "- Preserve every existing design candidate listed above exactly. Do not delete, overwrite, rename, resize, or modify those files; keep them visible for comparison."
+        : "- No prior design candidates exist, so create a fresh candidate set.",
+      existingCandidatePaths.length
+        ? `- Save ${input.variantCount} new PNGs in \`${outputDir}/\` using filenames that do not collide with preserved files. Use the next available \`NN-*.png\` ordinals.`
+        : `- Save fresh ordered PNGs in \`${outputDir}/\`: \`01-*.png\`, \`02-*.png\`, up to the requested count.`,
       "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
-      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path.",
+      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path. Set imageCount to the visible top-level PNG candidate count, including preserved existing candidates.",
       "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
       `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
-      "- After generation, report the saved paths and remind the user to click Review Designs in Hyperwiki if the candidates are not visible yet.",
+      "- After generation, report the saved paths and remind the user to click Explore Design in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
       "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
@@ -2763,7 +2782,7 @@ function App() {
       "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. Set imageCount to the visible top-level PNG candidate count, including the preserved primary file.",
       "- The `textBrief` should summarize the updated visual direction for Execute Unit handoff.",
       `- Before final handoff, verify the primary visual reference still exists and has the same checksum, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the preserved primary plus saved candidate PNGs, and verify \`${outputDir}/metadata.json\` exists.`,
-      "- After generation, report the saved paths and remind the user to click Review Designs in Hyperwiki if the candidates are not visible yet.",
+      "- After generation, report the saved paths and remind the user to click Explore Design in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
       "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",

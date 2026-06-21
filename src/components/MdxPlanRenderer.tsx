@@ -267,7 +267,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
                   </Button>
                   <Button className="flex-1 sm:flex-none" size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
                     <Sparkles aria-hidden="true" data-icon="inline-start" />
-                    {hasUnitExplorations ? "Review Designs" : "Explore Design"}
+                    Explore Design
                   </Button>
                 </div>
               </div>

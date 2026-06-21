@@ -79,6 +79,9 @@ assert.ok(
     && ts.includes("View 1: setup")
     && ts.includes("Candidates ({images.length})")
     && ts.includes("Use Design")
+    && ts.includes("New Exploration")
+    && ts.includes("View Existing")
+    && ts.includes("existing preserved")
     && ts.includes("Send Message")
     && ts.includes("onSendMessage")
     && ts.includes("getImageLabel")
@@ -98,7 +101,6 @@ assert.ok(
     && ts.includes("onExploreDesigns")
     && ts.includes("Review Screenshots")
     && ts.includes("Explore Design")
-    && ts.includes("Review Designs")
     && ts.includes("candidate{unitExplorations.length === 1 ? \"\" : \"s\"}")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && ts.includes('data-unit-visual-preview="true"')
@@ -126,8 +128,15 @@ assert.ok(
     && ts.includes("metadata.json")
     && ts.includes("Source screenshots:")
     && ts.includes("Reference images:")
-    && ts.includes("sourceScreenshotPaths"),
-  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots and reference images, and avoid implementation work.",
+    && ts.includes("sourceScreenshotPaths")
+    && ts.includes("Existing design candidates to preserve:")
+    && ts.includes("Preserve every existing design candidate listed above exactly")
+    && ts.includes("filenames that do not collide with preserved files"),
+  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots/reference images, preserve existing candidates, and avoid implementation work.",
+);
+assert.ok(
+  !ts.includes("First remove existing PNGs"),
+  "New explorations should add candidates without deleting previous design candidates.",
 );
 assert.ok(
   ts.includes("Selected design exploration:")
@@ -157,9 +166,10 @@ assert.ok(
     && ts.includes("setExplorationRefreshKey((value) => value + 1)")
     && ts.includes("setExplorationDialogUnitPath(null)")
     && ts.includes("explorationAutoReviewTimers")
-    && ts.includes("scheduleDesignExplorationAutoReview(unitPath)")
+    && ts.includes("scheduleDesignExplorationAutoReview")
     && ts.includes("freshAfterCapturedAt")
     && ts.includes("preservedCandidateName")
+    && ts.includes("preservedCandidateNames")
     && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
     && ts.includes("Design exploration finished without saved candidate PNGs")
     && ts.includes("Design exploration has not saved fresh candidate PNGs yet")
