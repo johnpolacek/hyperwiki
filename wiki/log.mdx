@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-21 polish | project grid switching feedback</h2>
+  <ul>
+    <li>Removed the grid-beam background treatment from the Projects grid so the view uses a calm plain app background.</li>
+    <li>Project cards now enter an immediate <strong>Opening</strong> state on click or keyboard activation, with busy semantics, primary card feedback, a spinner label, and disabled nested controls while project data hydrates.</li>
+    <li>Verification: <code>node tests/project-grid-switcher-static-smoke.mjs</code>, <code>pnpm exec tsc -b</code>, <code>pnpm run check</code>, and <code>pnpm run build:frontend</code> passed. A temporary Portless/agent-browser harness captured <code>.hyperwiki/state/screenshots/project-grid-polish/01-projects-grid.png</code> and <code>02-opening-feedback.png</code>.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-21 feature | design drawer unit iteration</h2>
   <ul>
     <li>Refactored unit Design into a drawer-based unit iteration workspace with image counts, newest visual preview, persistent per-unit chat, screenshot/design/upload attachments, and auto-detected Generate Designs vs Implement UI routing.</li>

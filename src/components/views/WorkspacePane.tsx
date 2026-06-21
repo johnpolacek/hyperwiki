@@ -46,7 +46,7 @@ export function WorkspacePane(props: {
   onToggleWikiTask: (text: string, checked: boolean) => Promise<void>;
   onToggleExpanded: () => void;
   onOpenDiff: () => void;
-  onSwitchProject: (project: ProjectRecord) => void;
+  onSwitchProject: (project: ProjectRecord) => Promise<void> | void;
   planningActivity: string;
   planningWorkstream: string[];
   lastPlanningAnswer: string;

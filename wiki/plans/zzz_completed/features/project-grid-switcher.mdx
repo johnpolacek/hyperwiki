@@ -29,6 +29,7 @@ wikiKind: "plan"
     <li>Removed the topbar project-switch popover and its now-unused state/props.</li>
     <li>Made each project card a keyboard-accessible switch target using the existing <code>onOpenProject</code> flow.</li>
     <li>Stopped propagation from open, remove, cancel, confirm, and delete-files controls so nested management actions do not double-trigger or switch unexpectedly.</li>
+    <li>Follow-up polish removed the page-level grid-beam background from the Projects grid and added immediate card opening feedback with a busy state, primary ring, spinner label, and disabled nested controls while project data hydrates.</li>
     <li>Added static coverage for the route trigger, card-level switch affordance, keyboard activation, and removal controls.</li>
   </ul>
 </section>
@@ -41,5 +42,6 @@ wikiKind: "plan"
     <li><code>pnpm run check</code> passed.</li>
     <li><code>pnpm run build:frontend</code> passed with the existing Vite large-chunk warning.</li>
     <li>agent-browser captured the Projects grid and a card-switch result through the worktree Portless URL with a temporary Tauri transport mock: <code>.hyperwiki/state/screenshots/project-grid-switcher/01-projects-grid.png</code> and <code>02-card-switch.png</code>.</li>
+    <li>Follow-up polish verification captured the no-grid Projects page and delayed opening feedback state through a temporary Portless/agent-browser harness: <code>.hyperwiki/state/screenshots/project-grid-polish/01-projects-grid.png</code> and <code>02-opening-feedback.png</code>.</li>
   </ul>
 </section>

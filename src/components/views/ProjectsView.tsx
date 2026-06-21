@@ -14,12 +14,12 @@ export function ProjectsView({
 }: {
   groups: ProjectGroup[];
   onNewProject: () => void;
-  onOpenProject: (project: ProjectRecord) => void;
+  onOpenProject: (project: ProjectRecord) => Promise<void> | void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
 }) {
   return (
     <section className="min-h-0 overflow-auto bg-background">
-      <BeamSurface className="min-h-full bg-background/85" colorVariant="mono" cols={6} contentClassName="min-h-full" duration={7} rows={4} strength={0.18}>
+      <div className="min-h-full bg-background">
         <header className="flex min-h-40 items-center justify-between px-10">
           <div>
             <h1 className="m-0 text-3xl font-semibold leading-none tracking-tight">Projects</h1>
@@ -34,17 +34,17 @@ export function ProjectsView({
           {groups.length ? (
             groups.map((group) => <ProjectCard group={group} key={group.projectSlug} onOpenProject={onOpenProject} onRemoveProject={onRemoveProject} />)
           ) : (
-            <BeamSurface className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-md border bg-card/92 p-8 shadow-sm" colorVariant="ocean" cols={4} rows={3} strength={0.26}>
+            <div className="col-span-full flex min-h-[22rem] max-w-2xl flex-col justify-center rounded-lg border bg-card p-8 shadow-xs">
               <h2 className="m-0 text-2xl font-semibold tracking-tight">No projects yet</h2>
               <p className="m-0 mt-3 text-sm text-muted-foreground">Create a fresh hyperwiki project from a brief to start the workspace.</p>
               <Button className="mt-6 w-fit min-h-11 px-5" onClick={onNewProject}>
                 <Plus aria-hidden="true" data-icon="inline-start" />
                 New Project
               </Button>
-            </BeamSurface>
+            </div>
           )}
         </div>
-      </BeamSurface>
+      </div>
     </section>
   );
 }
@@ -55,13 +55,14 @@ export function ProjectCard({
   onRemoveProject,
 }: {
   group: ProjectGroup;
-  onOpenProject: (project: ProjectRecord) => void;
+  onOpenProject: (project: ProjectRecord) => Promise<void> | void;
   onRemoveProject: (project: ProjectRecord, deleteFiles: boolean) => Promise<void>;
 }) {
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [removeStatus, setRemoveStatus] = useState("");
   const [isRemoving, setIsRemoving] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const selected = group.checkouts.find((checkout) => checkout.active) || group.checkouts.find((checkout) => checkout.worktreeSlug === "main") || group.checkouts[0];
   const isActive = group.checkouts.some((checkout) => checkout.active);
   const available = group.checkouts.some((checkout) => checkout.available !== false);
@@ -71,14 +72,20 @@ export function ProjectCard({
   const checkoutCount = group.checkouts.length;
   const title = group.name || selected?.name || group.projectSlug;
 
-  function openSelectedProject() {
-    if (selected) onOpenProject(selected);
+  async function openSelectedProject() {
+    if (!selected || isOpening) return;
+    setIsOpening(true);
+    try {
+      await onOpenProject(selected);
+    } catch {
+      setIsOpening(false);
+    }
   }
 
   function handleCardKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
-    openSelectedProject();
+    void openSelectedProject();
   }
 
   function stopCardActivation(event: SyntheticEvent) {
@@ -102,14 +109,17 @@ export function ProjectCard({
   return (
     <article
       aria-current={isActive ? "page" : undefined}
-      aria-disabled={!selected}
-      aria-label={`Switch to ${title}`}
+      aria-busy={isOpening || undefined}
+      aria-disabled={!selected || isOpening || undefined}
+      aria-label={isOpening ? `Opening ${title}` : `Switch to ${title}`}
       className={cn(
-        "flex min-h-[23rem] cursor-pointer flex-col rounded-lg border bg-card p-5 shadow-xs transition-colors duration-150 hover:border-input hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        "flex min-h-[23rem] cursor-pointer flex-col rounded-lg border bg-card p-5 shadow-xs transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out hover:border-input hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         isActive && "ring-1 ring-primary/40",
+        selected && !isOpening && "active:scale-[0.96]",
+        isOpening && "cursor-wait border-primary bg-primary/5 shadow-sm ring-2 ring-primary/25",
         !selected && "cursor-default opacity-70",
       )}
-      onClick={openSelectedProject}
+      onClick={() => void openSelectedProject()}
       onKeyDown={handleCardKeyDown}
       role="button"
       tabIndex={selected ? 0 : -1}
@@ -140,18 +150,19 @@ export function ProjectCard({
         <Button
           onClick={(event) => {
             stopCardActivation(event);
-            openSelectedProject();
+            void openSelectedProject();
           }}
           onKeyDown={stopCardActivation}
-          disabled={!selected}
+          disabled={!selected || isOpening}
         >
-          <ExternalLink aria-hidden="true" data-icon="inline-start" />
-          Open Project
+          {isOpening ? <Loader2 aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <ExternalLink aria-hidden="true" data-icon="inline-start" />}
+          {isOpening ? "Opening" : "Open Project"}
         </Button>
         <button
-          className="rounded-md p-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-destructive"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
           type="button"
           aria-label={`Remove ${title}`}
+          disabled={isOpening}
           onClick={(event) => {
             stopCardActivation(event);
             setIsConfirmingRemoval(true);

@@ -16,19 +16,34 @@ assert.ok(!app.includes("isProjectsOpen") && !app.includes("setIsProjectsOpen"),
 assert.ok(app.includes("onSwitchProject={switchProject}"), "WorkspacePane should keep project switching wired through switchProject.");
 
 const projectsView = await readSources("src/components/views/ProjectsView.tsx");
+const projectsRouteView = projectsView.slice(
+  projectsView.indexOf("export function ProjectsView"),
+  projectsView.indexOf("export function ProjectCard"),
+);
+assert.ok(!projectsRouteView.includes("<BeamSurface"), "Projects grid should use a calm plain background, not the BeamSurface grid treatment.");
 assert.ok(
   projectsView.includes('role="button"')
     && projectsView.includes("tabIndex={selected ? 0 : -1}")
-    && projectsView.includes("aria-label={`Switch to ${title}`}"),
+    && projectsView.includes("`Switch to ${title}`"),
   "Project cards should expose an accessible card-level switch target.",
 );
 assert.ok(
-  projectsView.includes("function openSelectedProject()")
+  projectsView.includes("async function openSelectedProject()")
     && projectsView.includes("function handleCardKeyDown")
     && projectsView.includes('event.key !== "Enter" && event.key !== " "')
-    && projectsView.includes("onClick={openSelectedProject}")
+    && projectsView.includes("onClick={() => void openSelectedProject()}")
     && projectsView.includes("onKeyDown={handleCardKeyDown}"),
   "Project cards should switch on click, Enter, and Space.",
+);
+assert.ok(
+  projectsView.includes("const [isOpening, setIsOpening] = useState(false)")
+    && projectsView.includes("setIsOpening(true)")
+    && projectsView.includes("await onOpenProject(selected)")
+    && projectsView.includes("setIsOpening(false)")
+    && projectsView.includes("aria-busy={isOpening || undefined}")
+    && projectsView.includes('isOpening ? "Opening" : "Open Project"')
+    && projectsView.includes("cursor-wait border-primary bg-primary/5"),
+  "Project cards should show immediate opening feedback while project data hydrates.",
 );
 assert.ok(
   projectsView.includes("function stopCardActivation")
