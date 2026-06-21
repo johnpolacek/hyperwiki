@@ -94,7 +94,7 @@ function parseJson<T>(text: string) {
   }
 }
 
-import type { BugCreateInput, BugRecord, BugStatusUpdateInput, FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitExploration, UnitExplorationImage, UnitExplorationMetadata, UnitExplorationMetadataInput, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
+import type { BugCreateInput, BugRecord, BugStatusUpdateInput, FeedbackItem, GitChangeSet, GitCommitSummary, ProjectRecord, UnitDesignChatMessage, UnitDesignChatMessageInput, UnitExploration, UnitExplorationImage, UnitExplorationMetadata, UnitExplorationMetadataInput, UnitScreenshot, UnitScreenshotImage } from "@/lib/types";
 
 export function withProjectQuery(path: string, activeProject: ProjectRecord | null) {
   if (!activeProject) return path;
@@ -220,6 +220,29 @@ export async function selectUnitExploration(
   return await hyperwikiApi.json<UnitExplorationMetadata>(withProjectQuery("/api/unit-explorations/select", activeProject), {
     method: "POST",
     body: { unitPath, candidateName, notes, textBrief },
+  });
+}
+
+export async function fetchUnitDesignMessages(
+  unitPath: string,
+  activeProject: ProjectRecord | null,
+): Promise<UnitDesignChatMessage[]> {
+  try {
+    return (await hyperwikiApi.json<UnitDesignChatMessage[]>(
+      withProjectQuery(`/api/unit-design-messages?path=${encodeURIComponent(unitPath)}`, activeProject),
+    )) || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function appendUnitDesignMessage(
+  input: UnitDesignChatMessageInput,
+  activeProject: ProjectRecord | null,
+): Promise<UnitDesignChatMessage> {
+  return await hyperwikiApi.json<UnitDesignChatMessage>(withProjectQuery("/api/unit-design-messages", activeProject), {
+    method: "POST",
+    body: input,
   });
 }
 

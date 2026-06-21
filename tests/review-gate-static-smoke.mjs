@@ -23,7 +23,7 @@ assert.ok(
 const ts = await readSources(
   "src/lib/api.ts",
   "src/App.tsx",
-  "src/components/views/UnitScreenshotReviewDialog.tsx",
+  "src/components/views/UnitDesignDrawer.tsx",
 );
 
 assert.ok(
@@ -36,15 +36,15 @@ assert.ok(
 );
 assert.ok(
   ts.includes("skipReviewGate") && ts.includes("await openScreenshotReviewManual(awaitingReviewUnits[0])"),
-  "execute-main should gate on awaiting review and auto-open the review dialog when blocked.",
+  "execute-main should gate on awaiting review and auto-open screenshot review when blocked.",
 );
 assert.ok(
   ts.includes("function markReviewed") && ts.includes("function reviewScreenshotsReviewed"),
   "App should mark a unit reviewed on approve/close.",
 );
 assert.ok(
-  ts.includes("Looks good") && ts.includes("onClick={onApprove}"),
-  "The review dialog should offer 'Looks good' (approve → marks reviewed).",
+  ts.includes("Looks good") && ts.includes("onApproveScreenshots"),
+  "The design drawer review state should offer 'Looks good' (approve → marks reviewed).",
 );
 
 console.log("review gate static smoke passed");

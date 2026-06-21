@@ -462,6 +462,41 @@ pub fn hyperwiki_request(request: HyperwikiRequest) -> HyperwikiResponse {
             };
         }
     }
+    if request.path.starts_with("/api/unit-design-messages") {
+        let project_root = resolve_request_project(&request.path)
+            .map(|project| project.root)
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| ".".into());
+        if request.method == "GET" {
+            let Some(unit_path) = query_param(&request.path, "path") else {
+                return error_response(400, "Missing unit page path.");
+            };
+            return json_response(
+                200,
+                &crate::domain::explorations::read_unit_design_messages(
+                    &project_root,
+                    &unit_path,
+                ),
+            );
+        }
+        if request.method == "POST" {
+            let Some(parsed) = request.body.as_deref().and_then(|body| {
+                serde_json::from_str::<crate::domain::explorations::UnitDesignChatMessageInput>(
+                    body,
+                )
+                .ok()
+            }) else {
+                return error_response(400, "Invalid unit design message request.");
+            };
+            return match crate::domain::explorations::append_unit_design_message(
+                &project_root,
+                parsed,
+            ) {
+                Ok(message) => json_response(200, &message),
+                Err(error) => error_response(400, error),
+            };
+        }
+    }
     if request.method == "POST" && request.path.starts_with("/api/unit-explorations/select") {
         let project_root = resolve_request_project(&request.path)
             .map(|project| project.root)

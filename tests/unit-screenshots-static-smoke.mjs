@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readSources } from "./lib/read-sources.mjs";
 
-// Bundling — the agent-browser skill ships so `hyperwiki init` installs it.
 const buildRs = await readSources("src-tauri/build.rs");
 assert.ok(
   buildRs.includes('name: "agent-browser"'),
@@ -14,7 +13,6 @@ assert.ok(
   "Vendored agent-browser SKILL.md should be the discovery stub.",
 );
 
-// Guarded, non-fatal CLI install during project init.
 const projectsRs = await readSources("src-tauri/src/domain/projects.rs");
 assert.ok(
   projectsRs.includes("fn ensure_agent_browser_cli()") && projectsRs.includes("ensure_agent_browser_cli();"),
@@ -29,14 +27,12 @@ assert.ok(
   "CLI install must stay hermetic under tests / when a harness opts out.",
 );
 
-// Agent guidance documents the per-unit screenshot directory.
 const agentsMd = await readSources("AGENTS.md");
 assert.ok(
   agentsMd.includes(".hyperwiki/state/screenshots/<unit-path>/"),
   "AGENTS.md should document the per-unit screenshot directory.",
 );
 
-// Backend — per-unit folder storage + listing live in one authoritative module.
 const screenshotsRs = await readSources("src-tauri/src/domain/screenshots.rs");
 assert.ok(
   screenshotsRs.includes('".hyperwiki/state/screenshots"')
@@ -69,7 +65,6 @@ assert.ok(
   "A redesign can clear a unit's screenshots (clear_unit_screenshots + DELETE route).",
 );
 
-// Capture — the shared dir mapping + multi-screenshot prompt instruction.
 const tsSources = await readSources(
   "src/lib/wiki-pages.ts",
   "src/lib/api.ts",
@@ -78,7 +73,7 @@ const tsSources = await readSources(
   "src/components/ScreenshotCarousel.tsx",
   "src/components/MdxPlanRenderer.tsx",
   "src/components/views/WorkspacePane.tsx",
-  "src/components/views/UnitScreenshotReviewDialog.tsx",
+  "src/components/views/UnitDesignDrawer.tsx",
   "src/components/layout/TopBar.tsx",
 );
 
@@ -100,17 +95,16 @@ assert.ok(
   "Capture should clear the unit folder first (clean replace) and expose a clear helper.",
 );
 assert.ok(
-  tsSources.includes("Discard screenshots") && tsSources.includes("function discardScreenshotReview"),
-  "The review dialog should offer a manual 'Discard screenshots' reset.",
+  tsSources.includes("Discard") && tsSources.includes("function discardScreenshotReview"),
+  "The design drawer should offer a manual screenshot discard reset.",
 );
 assert.ok(
   tsSources.includes("setScreenshotRefreshKey((value) => value + 1)")
     && tsSources.includes("screenshotRefreshKey: number")
     && tsSources.includes("props.screenshotRefreshKey]"),
-  "Discarding should bump a refresh key the workspace effect depends on, so the stale inline screenshot card refetches (clears) instead of lingering unclickable.",
+  "Discarding should bump a refresh key the workspace effect depends on, so stale inline previews refetch.",
 );
 
-// Viewing — fetch helpers, carousel, inline display, gallery route + view, nav.
 assert.ok(
   tsSources.includes("export async function fetchUnitScreenshotImages")
     && tsSources.includes("export async function fetchUnitScreenshots"),
@@ -118,7 +112,7 @@ assert.ok(
 );
 assert.ok(
   tsSources.includes("export function ScreenshotCarousel") && tsSources.includes("<ScreenshotCarousel"),
-  "A shared ScreenshotCarousel should exist and power the review dialog.",
+  "A shared ScreenshotCarousel should exist and power drawer screenshot review.",
 );
 assert.ok(
   tsSources.includes('data-unit-visual-evidence="true"')
@@ -126,12 +120,12 @@ assert.ok(
     && tsSources.includes("latestVisualEvidence")
     && tsSources.includes("latestUnitImage(unitScreenshots)")
     && tsSources.includes("latestUnitImage(unitExplorations)")
-    && tsSources.includes("Review Screenshots")
-    && tsSources.includes("Explore Design")
+    && tsSources.includes("Open Design")
     && tsSources.includes("<span className=\"text-sm font-semibold\">Design</span>")
-    && tsSources.includes("No visual evidence yet")
-    && tsSources.includes("onReviewScreenshots?.()"),
-  "The unified design card should include topbar dialog buttons plus the newest screenshot/design preview or empty state.",
+    && tsSources.includes("No images created yet")
+    && !tsSources.includes("Review Screenshots")
+    && !tsSources.includes("Explore Design"),
+  "The unified design card should include one Open Design entry point plus the newest screenshot/design preview or empty state.",
 );
 assert.ok(
   !tsSources.includes("visualEvidenceSummary") && !tsSources.includes("formatCapturedAt"),
@@ -146,36 +140,38 @@ assert.ok(
   "The Screenshots gallery view/route should be removed.",
 );
 
-// Review gate — auto-open on execute completion, per-screenshot comments,
-// report-issue back to the same agent, execute-next.
 assert.ok(
   tsSources.includes("function maybeOpenScreenshotReview")
-    && tsSources.includes('armedCompletion.kind === "execute"'),
-  "App should open the review gate when an execute run finishes with fresh screenshots.",
+    && tsSources.includes('armedCompletion.kind === "execute"')
+    && tsSources.includes("await openDesignDrawer(unitPath, { review: true"),
+  "App should open the design drawer review state when an execute run finishes with fresh screenshots.",
 );
 assert.ok(
-  tsSources.includes("function queueScreenshotFeedback") && tsSources.includes("onQueueFeedback"),
-  "Reviewing should queue feedback (enqueue-only) rather than dispatch immediately.",
+  tsSources.includes('data-unit-design-review="true"')
+    && tsSources.includes("function queueScreenshotFeedback")
+    && tsSources.includes("onQueueScreenshotFeedback")
+    && tsSources.includes("Queue feedback"),
+  "Screenshot review should live inside the design drawer and queue feedback.",
 );
 assert.ok(
-  tsSources.includes("export function UnitScreenshotReviewDialog")
-    && tsSources.includes("<UnitScreenshotReviewDialog"),
-  "The review dialog should exist and be rendered.",
+  !tsSources.includes("export function UnitScreenshotReviewDialog")
+    && !tsSources.includes("<UnitScreenshotReviewDialog"),
+  "The separate screenshot review dialog should be removed.",
 );
 assert.ok(
   tsSources.includes("function executeNextUnitFromReview"),
-  "The review gate should be able to launch the next unit.",
+  "The drawer review gate should be able to launch the next unit.",
 );
 assert.ok(
-  tsSources.includes("function openScreenshotReviewManual") && tsSources.includes("onReviewScreenshots"),
-  "A manual Review button should open the review dialog on demand for a unit with screenshots.",
+  tsSources.includes("function openScreenshotReviewManual")
+    && tsSources.includes("await openDesignDrawer(unitPath, { review: true"),
+  "Manual review should open the design drawer review state for a unit with screenshots.",
 );
 assert.ok(
   tsSources.includes('aria-label="Copy page Markdown"') && tsSources.includes("copyPageMarkdown"),
   "Copy Markdown should be an icon-only button in the unit page header, not a floating overlay.",
 );
 
-// Gated previews — per-project previewCapture profile, env hints, guidance, prompt pointer.
 assert.ok(
   projectsRs.includes('"previewCapture"') && projectsRs.includes('"authMode"') && projectsRs.includes('"authEmailEnv"'),
   "Init should scaffold a previewCapture profile in .hyperwiki/config.json.",
@@ -191,7 +187,7 @@ assert.ok(
 );
 assert.ok(
   agentsMd.includes("Cloudflare Turnstile") && agentsMd.includes("backend API"),
-  "AGENTS.md should cover the bot-challenge sign-up workaround (provision via backend API).",
+  "AGENTS.md should cover the bot-challenge sign-up workaround.",
 );
 assert.ok(
   tsSources.includes("previewCapture` profile in `.hyperwiki/config.json"),

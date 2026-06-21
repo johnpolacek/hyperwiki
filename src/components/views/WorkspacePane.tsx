@@ -10,9 +10,9 @@ import { SettingsView } from "@/components/views/SettingsView";
 import { FeedbackQueueView } from "@/components/views/FeedbackQueueView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
-import { fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
+import { fetchUnitExplorationImages, fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
 import { bugSortKey, cleanPageTitle, defaultWikiPath, displayWikiPath, isBugIndexPath, isBugPath, isBugReportPage, isDeletablePlanRootPage, isReactRenderedMdxPath, isUnitPage, pageStatus, titleForPath } from "@/lib/wiki-pages";
-import type { AdoptInspectResponse, AdoptProjectResponse, BugStatus, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, UnitExplorationMetadata, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
+import type { AdoptInspectResponse, AdoptProjectResponse, BugStatus, CommandAction, ImportOnboardingRunRecord, PlanPageActionState, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, ProjectGroup, ProjectRecord, ReviewWorkflow, SettingsResponse, SourceDocumentInput, ViewRoute, WikiPage, WikiSourceResponse } from "@/lib/types";
 
 export function WorkspacePane(props: {
   activePlanState: PlanPageActionState;
@@ -37,7 +37,6 @@ export function WorkspacePane(props: {
   onUpdateBugStatus: (path: string, status: BugStatus) => Promise<void>;
   onOpenProjectEnv: (initialKey?: string, reason?: string) => void;
   onRunCommand: (action: CommandAction, payload?: Record<string, string>) => void;
-  onReviewScreenshots: (unitPath: string) => void;
   onExploreDesigns: (unitPath: string) => void;
   screenshotRefreshKey: number;
   explorationRefreshKey: number;
@@ -74,7 +73,6 @@ export function WorkspacePane(props: {
   })();
   const [unitScreenshots, setUnitScreenshots] = useState<UnitScreenshotImageData[]>([]);
   const [unitExplorations, setUnitExplorations] = useState<UnitScreenshotImageData[]>([]);
-  const [unitExplorationMetadata, setUnitExplorationMetadata] = useState<UnitExplorationMetadata | null>(null);
   const screenshotProjectId = props.activeProject?.id || "";
   useEffect(() => {
     if (!unitScreenshotPath) {
@@ -94,19 +92,13 @@ export function WorkspacePane(props: {
   useEffect(() => {
     if (!unitScreenshotPath) {
       setUnitExplorations([]);
-      setUnitExplorationMetadata(null);
       return;
     }
     let active = true;
     setUnitExplorations([]);
-    setUnitExplorationMetadata(null);
-    void Promise.all([
-      fetchUnitExplorationImages(unitScreenshotPath, props.activeProject),
-      fetchUnitExplorationMetadata(unitScreenshotPath, props.activeProject),
-    ]).then(([images, metadata]) => {
+    void fetchUnitExplorationImages(unitScreenshotPath, props.activeProject).then((images) => {
       if (!active) return;
       setUnitExplorations(images);
-      setUnitExplorationMetadata(metadata);
     });
     return () => {
       active = false;
@@ -306,9 +298,7 @@ export function WorkspacePane(props: {
               path={props.wikiPath}
               status={isActivePlanPage ? "active" : props.wikiSource.status}
               onExploreDesigns={unitScreenshotPath ? () => props.onExploreDesigns(unitScreenshotPath) : undefined}
-              onReviewScreenshots={unitScreenshots.length ? () => props.onReviewScreenshots(unitScreenshotPath) : undefined}
               source={props.wikiSource.source}
-              unitExplorationMetadata={unitExplorationMetadata}
               unitExplorations={unitExplorations}
               unitScreenshots={unitScreenshots}
               validationWarnings={props.wikiSource.validationWarnings}

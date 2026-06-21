@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-21 feature | design drawer unit iteration</h2>
+  <ul>
+    <li>Refactored unit Design into a drawer-based unit iteration workspace with image counts, newest visual preview, persistent per-unit chat, screenshot/design/upload attachments, and auto-detected Generate Designs vs Implement UI routing.</li>
+    <li>Moved screenshot review into the Design drawer while preserving approve, discard, queue feedback, and execute-next behavior.</li>
+    <li>Added ignored runtime <code>messages.json</code> chat history beside exploration metadata and kept design generation additive so existing candidate PNGs stay visible.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-21 polish | additive design explorations</h2>
   <ul>
     <li>The unit Design card action now always says <strong>Explore Design</strong>, whether or not candidates already exist.</li>

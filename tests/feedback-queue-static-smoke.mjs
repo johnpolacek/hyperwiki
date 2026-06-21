@@ -30,7 +30,7 @@ const ts = await readSources(
   "src/lib/types.ts",
   "src/lib/api.ts",
   "src/App.tsx",
-  "src/components/views/UnitScreenshotReviewDialog.tsx",
+  "src/components/views/UnitDesignDrawer.tsx",
   "src/components/views/FeedbackQueueView.tsx",
   "src/components/views/WorkspacePane.tsx",
   "src/components/layout/TopBar.tsx",
@@ -48,8 +48,8 @@ assert.ok(
   "api.ts should expose the feedback queue helpers.",
 );
 assert.ok(
-  ts.includes("onQueueFeedback") && ts.includes("Add feedback (") && !ts.includes("onSendFeedback"),
-  "The review dialog should only enqueue via 'Add feedback' — no immediate send-now path.",
+  ts.includes("onQueueScreenshotFeedback") && ts.includes("Queue feedback") && !ts.includes("onSendFeedback"),
+  "The design drawer review state should only enqueue feedback — no immediate send-now path.",
 );
 assert.ok(
   ts.includes("function dispatchUnitFeedback") && ts.includes("dispatchFeedback(items.map"),

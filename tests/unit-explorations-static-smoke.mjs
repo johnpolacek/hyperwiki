@@ -11,8 +11,12 @@ assert.ok(
   "explorations.rs should own the per-unit design exploration storage, listing, metadata, and selection contract.",
 );
 assert.ok(
-  explorationsRs.includes("metadata.json") && explorationsRs.includes("strip_prefix(\"unit-\").unwrap_or(leaf)"),
-  "Exploration metadata and imported NN-slug unit folders should be supported.",
+  explorationsRs.includes("metadata.json")
+    && explorationsRs.includes("messages.json")
+    && explorationsRs.includes("pub fn read_unit_design_messages")
+    && explorationsRs.includes("pub fn append_unit_design_message")
+    && explorationsRs.includes("design_messages_reject_traversal_paths"),
+  "Exploration metadata and per-unit design chat messages should live beside candidate PNGs with traversal-safe helpers.",
 );
 
 const modRs = await readSources("src-tauri/src/domain/mod.rs");
@@ -22,8 +26,9 @@ const commandRs = await readSources("src-tauri/src/command.rs");
 assert.ok(
   commandRs.includes('"/api/unit-explorations/metadata"')
     && commandRs.includes('"/api/unit-explorations/select"')
-    && commandRs.includes('"/api/unit-explorations"'),
-  "command.rs should expose exploration metadata, selection, and image list routes.",
+    && commandRs.includes('"/api/unit-explorations"')
+    && commandRs.includes('"/api/unit-design-messages"'),
+  "command.rs should expose exploration metadata, selection, image list, and design-chat message routes.",
 );
 assert.ok(
   commandRs.indexOf('"/api/unit-explorations/metadata"') < commandRs.indexOf('"/api/unit-explorations"')
@@ -35,10 +40,11 @@ const ts = await readSources(
   "src/lib/types.ts",
   "src/lib/api.ts",
   "src/lib/wiki-pages.ts",
+  "src/lib/design-chat.ts",
   "src/App.tsx",
   "src/components/MdxPlanRenderer.tsx",
   "src/components/views/WorkspacePane.tsx",
-  "src/components/views/UnitDesignExplorationDialog.tsx",
+  "src/components/views/UnitDesignDrawer.tsx",
 );
 
 assert.ok(
@@ -48,70 +54,54 @@ assert.ok(
 );
 assert.ok(
   ts.includes("export interface UnitExplorationMetadata")
+    && ts.includes("export interface UnitDesignChatMessage")
     && ts.includes("export async function fetchUnitExplorationImages")
     && ts.includes("export async function writeUnitExplorationMetadata")
-    && ts.includes("export async function selectUnitExploration"),
-  "Frontend should expose typed exploration metadata, image fetch, metadata write, and selection helpers.",
+    && ts.includes("export async function fetchUnitDesignMessages")
+    && ts.includes("export async function appendUnitDesignMessage"),
+  "Frontend should expose typed exploration metadata, image fetch, metadata write, and persistent design-chat helpers.",
 );
 assert.ok(
-  ts.includes("export function UnitDesignExplorationDialog")
-    && ts.includes("redesign-from-screenshot")
-    && ts.includes("ToggleGroup")
-    && ts.includes("1 design")
-    && ts.includes("4 designs")
-    && ts.includes("sm:max-w-6xl")
-    && ts.includes('const metadataMode = screenshots.length ? "redesign-from-screenshot" : "new-mockups"')
-    && ts.includes("sourceScreenshotNames: string[]")
-    && ts.includes("previewSourceScreenshotName")
-    && ts.includes("largePreviewImageName")
-    && ts.includes("Open larger view")
-    && ts.includes("Source screenshot preview")
-    && ts.includes("Larger source screenshot preview")
-    && ts.includes("Choose reference images")
-    && ts.includes("Add reference images")
-    && ts.includes("Reference image")
-    && ts.includes("referenceImagePaths")
-    && ts.includes("removeReferenceImage")
-    && ts.includes("multiple")
+  ts.includes("export function UnitDesignDrawer")
+    && ts.includes('data-unit-design-drawer="true"')
+    && ts.includes('data-unit-design-image-selector="true"')
+    && ts.includes('data-unit-design-chat="true"')
+    && ts.includes("Detected:")
+    && ts.includes("Unit iteration request from the Design drawer")
+    && ts.includes("Attached current-state screenshots:")
+    && ts.includes("Attached design targets/references:")
+    && ts.includes("Attached uploaded reference images:")
     && ts.includes("onSaveReferenceImage")
     && ts.includes("aria-pressed={selected}")
-    && ts.includes("toggleSourceScreenshot")
-    && ts.includes("View 1: setup")
-    && ts.includes("Candidates ({images.length})")
-    && ts.includes("Use Design")
-    && ts.includes("New Exploration")
-    && ts.includes("View Existing")
-    && ts.includes("existing preserved")
-    && ts.includes("Send Message")
-    && ts.includes("onSendMessage")
-    && ts.includes("getImageLabel")
-    && ts.includes("`${explorationDir}/${image.name}`"),
-  "The design exploration dialog should be larger, default from screenshots, support thumbnail multi-source selection, and split setup/candidate views with header selection, full candidate paths, and follow-up messaging.",
+    && ts.includes("Open larger view")
+    && ts.includes("Queue feedback")
+    && ts.includes("Looks good")
+    && ts.includes("Execute next unit"),
+  "The design drawer should combine image selection, persistent chat, auto-detected send mode, upload references, and screenshot review actions.",
 );
 assert.ok(
-  !ts.includes("No candidates yet"),
-  "The pre-generation exploration dialog should not show a candidates empty state.",
-);
-assert.ok(
-  !ts.includes("Generated designs are stored") && !ts.includes("View #2: Candidates"),
-  "The design exploration dialog should not show storage helper copy or a view badge in the header.",
+  ts.includes("detectUnitDesignChatIntent")
+    && ts.includes("parseDesignVariantCount")
+    && ts.includes('"implement-ui"')
+    && ts.includes('"generate-designs"')
+    && ts.includes("Ambiguous prompts") === false,
+  "The auto-detect helpers should route drawer messages to generate-designs or implement-ui without embedding prose-only plan text.",
 );
 assert.ok(
   ts.includes('data-unit-visual-evidence="true"')
-    && ts.includes("onExploreDesigns")
-    && ts.includes("Review Screenshots")
-    && ts.includes("Explore Design")
-    && ts.includes("candidate{unitExplorations.length === 1 ? \"\" : \"s\"}")
+    && ts.includes("visualImageSummary")
+    && ts.includes("No images created yet")
+    && ts.includes("Open Design")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && ts.includes('data-unit-visual-preview="true"')
     && ts.includes("latestUnitImage(unitExplorations)")
-    && ts.includes("Open design review")
-    && ts.includes("No visual evidence yet"),
-  "Unit pages should expose design exploration from the unified design card topbar and show the latest screenshot or design preview.",
+    && !ts.includes("Review Screenshots")
+    && !ts.includes("Explore Design"),
+  "Unit pages should expose one Design card entry point with counts, Open Design, and latest screenshot/design preview.",
 );
 assert.ok(
   !ts.includes('data-unit-explorations-section="true"') && !ts.includes("visualEvidenceSummary"),
-  "Design exploration should open in its dialog, not render as a second inline section or timestamp summary.",
+  "Design exploration should open in the drawer, not render as a second inline section or timestamp summary.",
 );
 assert.ok(
   !ts.includes('data-unit-explorations="true"') && !ts.includes('data-unit-screenshot="true"'),
@@ -131,50 +121,37 @@ assert.ok(
     && ts.includes("sourceScreenshotPaths")
     && ts.includes("Existing design candidates to preserve:")
     && ts.includes("Preserve every existing design candidate listed above exactly")
-    && ts.includes("filenames that do not collide with preserved files"),
-  "The generation prompt should route image creation through the agent/imagegen path, include multiple source screenshots/reference images, preserve existing candidates, and avoid implementation work.",
+    && ts.includes("filenames that do not collide with preserved files")
+    && ts.includes("click Open Design"),
+  "The generation prompt should route image creation through the agent/imagegen path, include selected image context, preserve existing candidates, and avoid implementation work.",
 );
 assert.ok(
   !ts.includes("First remove existing PNGs"),
   "New explorations should add candidates without deleting previous design candidates.",
 );
 assert.ok(
-  ts.includes("Selected design exploration:")
-    && ts.includes("Candidate image:")
-    && ts.includes("stageExecuteUnitPromptForPath(unitPath, undefined, metadata)")
-    && ts.includes("Inspect the selected candidate image before editing")
-    && ts.includes('action === "modify" || action === "execute-main"')
-    && ts.includes("function isUnitPagePath"),
-  "Use Design should persist the selected candidate, execute the exact unit, and include selected image context in the Execute Unit prompt.",
-);
-assert.ok(
-  ts.includes("Primary visual reference:")
-    && ts.includes("primaryCandidatePath")
-    && ts.includes("The user sent this message from the design review composer directly below this displayed image.")
-    && ts.includes("Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this`")
-    && ts.includes("Secondary existing candidate PNGs:")
-    && ts.includes("Inspect the primary visual reference first")
-    && ts.includes("Preservation rule: do not delete, overwrite, rename, resize, or modify this primary visual reference file")
-    && ts.includes("verify the primary visual reference still exists and has the same checksum")
-    && ts.includes("filenames that do not collide with the preserved primary file")
-    && ts.includes("function normalizeExplorationMode")
-    && ts.includes('mode === "new-mockups" || mode === "redesign-from-screenshot"'),
-  "Follow-up design messages should promote and preserve the displayed carousel image as the primary visual reference and normalize stale mode metadata.",
+  ts.includes("appendUnitDesignMessage")
+    && ts.includes("sendDesignDrawerMessage")
+    && ts.includes("sendDesignGenerationMessage")
+    && ts.includes("sendDesignImplementationMessage")
+    && ts.includes("stageExecuteUnitPromptForPath(unitPath, { prompt })")
+    && ts.includes("User unit-iteration request:")
+    && ts.includes("Inspect every attached image path before editing"),
+  "Drawer chat messages should persist, then either generate additive designs or launch Execute Unit with attached image context.",
 );
 assert.ok(
   ts.includes('"exploration"')
     && ts.includes("setExplorationRefreshKey((value) => value + 1)")
-    && ts.includes("setExplorationDialogUnitPath(null)")
+    && ts.includes("setDesignDrawerUnitPath(unitPath)")
     && ts.includes("explorationAutoReviewTimers")
     && ts.includes("scheduleDesignExplorationAutoReview")
     && ts.includes("freshAfterCapturedAt")
-    && ts.includes("preservedCandidateName")
     && ts.includes("preservedCandidateNames")
     && ts.includes("maybeOpenDesignExplorationReview(armedCompletion.planPath)")
     && ts.includes("Design exploration finished without saved candidate PNGs")
     && ts.includes("Design exploration has not saved fresh candidate PNGs yet")
     && ts.includes("Design exploration ready:"),
-  "Exploration agent runs should be tracked separately, close after launch, poll for saved PNGs, refresh unit state, and auto-open saved candidates.",
+  "Exploration agent runs should be tracked separately, poll for saved PNGs, refresh unit state, and open saved candidates in the design drawer.",
 );
 
 console.log("unit explorations static smoke passed");

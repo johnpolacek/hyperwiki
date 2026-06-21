@@ -20,6 +20,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const EXPLORATIONS_SUBDIR: &str = ".hyperwiki/state/explorations";
 const METADATA_FILE: &str = "metadata.json";
+const MESSAGES_FILE: &str = "messages.json";
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -89,6 +90,36 @@ pub struct UnitExplorationSelectionInput {
     pub text_brief: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitDesignChatAttachment {
+    pub kind: String,
+    pub name: String,
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitDesignChatMessage {
+    pub id: String,
+    pub unit_path: String,
+    pub text: String,
+    pub intent: String,
+    pub status: String,
+    pub attachments: Vec<UnitDesignChatAttachment>,
+    pub created_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitDesignChatMessageInput {
+    pub unit_path: String,
+    pub text: String,
+    pub intent: String,
+    pub status: Option<String>,
+    pub attachments: Vec<UnitDesignChatAttachment>,
+}
+
 /// Wiki-relative portion of a unit page path (the part after `wiki/`), or `None`
 /// when the path does not point inside the wiki or escapes via `.`/`..`.
 fn wiki_relative(unit_path: &str) -> Option<String> {
@@ -128,6 +159,10 @@ pub fn exploration_dir_for_unit(root: impl AsRef<Path>, unit_path: &str) -> Opti
 
 fn metadata_path_for_unit(root: impl AsRef<Path>, unit_path: &str) -> Option<PathBuf> {
     Some(exploration_dir_for_unit(root, unit_path)?.join(METADATA_FILE))
+}
+
+fn messages_path_for_unit(root: impl AsRef<Path>, unit_path: &str) -> Option<PathBuf> {
+    Some(exploration_dir_for_unit(root, unit_path)?.join(MESSAGES_FILE))
 }
 
 fn unit_path_for_stem(stem: &str) -> String {
@@ -301,8 +336,54 @@ pub fn select_unit_exploration(
     Ok(metadata)
 }
 
+pub fn read_unit_design_messages(
+    root: impl AsRef<Path>,
+    unit_path: &str,
+) -> Vec<UnitDesignChatMessage> {
+    let Some(path) = messages_path_for_unit(root, unit_path) else {
+        return Vec::new();
+    };
+    let Ok(text) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+    serde_json::from_str::<Vec<UnitDesignChatMessage>>(&text).unwrap_or_default()
+}
+
+pub fn append_unit_design_message(
+    root: impl AsRef<Path>,
+    input: UnitDesignChatMessageInput,
+) -> Result<UnitDesignChatMessage, String> {
+    let Some(unit_relative) = wiki_relative(&input.unit_path) else {
+        return Err("Invalid unit page path.".to_string());
+    };
+    let display_unit_path = format!("/wiki/{unit_relative}");
+    let dir = exploration_dir_for_unit(&root, &display_unit_path)
+        .ok_or_else(|| "Invalid unit page path.".to_string())?;
+    fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+
+    let mut messages = read_unit_design_messages(&root, &display_unit_path);
+    let now = now_secs();
+    let message = UnitDesignChatMessage {
+        id: format!("design-chat-{now}-{}", messages.len() + 1),
+        unit_path: display_unit_path,
+        text: input.text,
+        intent: input.intent,
+        status: input.status.unwrap_or_else(|| "sent".to_string()),
+        attachments: input.attachments,
+        created_at: now,
+    };
+    messages.push(message.clone());
+    write_messages_file(dir.join(MESSAGES_FILE), &messages)?;
+    Ok(message)
+}
+
 fn write_metadata_file(path: PathBuf, metadata: &UnitExplorationMetadata) -> Result<(), String> {
     let json = serde_json::to_string_pretty(metadata).map_err(|error| error.to_string())?;
+    fs::write(path, format!("{json}\n")).map_err(|error| error.to_string())
+}
+
+fn write_messages_file(path: PathBuf, messages: &[UnitDesignChatMessage]) -> Result<(), String> {
+    let json = serde_json::to_string_pretty(messages).map_err(|error| error.to_string())?;
     fs::write(path, format!("{json}\n")).map_err(|error| error.to_string())
 }
 
@@ -486,6 +567,62 @@ mod tests {
                 .as_deref(),
             Some("Use a calm split-pane layout.")
         );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn appends_and_reads_unit_design_messages() {
+        let dir = std::env::temp_dir().join(format!(
+            "hyperwiki-explorations-messages-{}",
+            std::process::id()
+        ));
+        let unit = "/wiki/plans/mvp/unit-1-init.mdx";
+        let message = append_unit_design_message(
+            &dir,
+            UnitDesignChatMessageInput {
+                unit_path: unit.to_string(),
+                text: "Give me 3 more versions of this design.".to_string(),
+                intent: "generate-designs".to_string(),
+                status: Some("sent".to_string()),
+                attachments: vec![UnitDesignChatAttachment {
+                    kind: "design".to_string(),
+                    name: "01-dashboard.png".to_string(),
+                    path: ".hyperwiki/state/explorations/plans/mvp/unit-1-init/01-dashboard.png"
+                        .to_string(),
+                }],
+            },
+        )
+        .unwrap();
+        assert_eq!(message.unit_path, unit);
+        assert_eq!(message.attachments.len(), 1);
+
+        let messages = read_unit_design_messages(&dir, unit);
+        assert_eq!(messages.len(), 1);
+        assert_eq!(messages[0].intent, "generate-designs");
+        assert!(messages[0].id.starts_with("design-chat-"));
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn design_messages_reject_traversal_paths() {
+        let dir = std::env::temp_dir().join(format!(
+            "hyperwiki-explorations-messages-traversal-{}",
+            std::process::id()
+        ));
+        let result = append_unit_design_message(
+            &dir,
+            UnitDesignChatMessageInput {
+                unit_path: "/wiki/../../etc/passwd.mdx".to_string(),
+                text: "Nope".to_string(),
+                intent: "generate-designs".to_string(),
+                status: None,
+                attachments: Vec::new(),
+            },
+        );
+        assert!(result.is_err());
+        assert!(read_unit_design_messages(&dir, "/wiki/../../etc/passwd.mdx").is_empty());
 
         fs::remove_dir_all(&dir).ok();
     }

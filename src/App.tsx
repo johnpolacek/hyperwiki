@@ -47,15 +47,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { GridBeam, type GridBeamColorScheme, type GridBeamPaletteKey } from "@/components/ui/grid-beam";
-import { clearUnitExplorations, clearUnitScreenshots, createBug, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, selectUnitExploration, updateBugStatus, withProjectQuery, writeUnitExplorationMetadata, type UnitScreenshotImageData } from "@/lib/api";
+import { appendUnitDesignMessage, clearUnitScreenshots, createBug, deleteFeedbackItem, dispatchFeedback, fetchFeedback, fetchScreenshotReviews, fetchUnitDesignMessages, fetchUnitExplorationImages, fetchUnitExplorationMetadata, fetchUnitScreenshotImages, fetchUnitScreenshots, hyperwikiApi, markScreenshotReviewed, queueFeedback, updateBugStatus, withProjectQuery, writeUnitExplorationMetadata, type UnitScreenshotImageData } from "@/lib/api";
 import { terminalCompletionNotificationSettings } from "@/lib/terminal-notifications";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 import { PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { documentSummary, NewProjectView } from "@/components/views/NewProjectView";
 import { SettingsView } from "@/components/views/SettingsView";
-import { UnitDesignExplorationDialog, type UnitDesignExplorationGenerateInput, type UnitExplorationMode } from "@/components/views/UnitDesignExplorationDialog";
-import { UnitScreenshotReviewDialog, type ScreenshotReview } from "@/components/views/UnitScreenshotReviewDialog";
+import { UnitDesignDrawer } from "@/components/views/UnitDesignDrawer";
 import { DiffViewerDialog } from "@/components/views/DiffViewerDialog";
 import { BugReportDialog } from "@/components/views/BugReportDialog";
 import { ProjectEnvEditor } from "@/components/settings/ProjectEnvEditor";
@@ -74,10 +73,22 @@ import { BeamSurface, GridBeamRuntimeContext, useDocumentGridBeamTheme, usePrefe
 import { agentLaunchCommand, agentProviderFromCommand, claudeCommandWithThinkingEffort, codexCommandWithThinkingEffort, defaultAgentCommand, defaultThinkingEffort, importAgentLaunchCommand, layoutAgentProvider, normalizedThinkingEffort, type AgentProviderAvailability, type AgentProviderId } from "@/lib/agent";
 import { appendImportLog, clearImportLog, readImportLog } from "@/lib/import-log";
 import { applyAppTheme, contrastRatio, effectiveTheme, fontLabel, fontStyle, hasThemeOverrides, mergePreset, mixHex, normalizeColor, normalizePreset, readableTextOn, selectThemePreset, themeJson, updateThemeMode, updateThemeToken, type NormalizedTheme } from "@/lib/theme";
-import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, BugCreateInput, BugStatus, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, UnitExplorationMetadata, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
+import { parseDesignVariantCount } from "@/lib/design-chat";
+import type { AdoptInspectResponse, AdoptProjectResponse, AgentRunKind, AgentRunPhase, AgentRunState, AppPreviewResponse, BugCreateInput, BugStatus, CodexAdapterMetrics, CodexImportTurnResponse, CodexImportTurnSnapshot, CodexImportTurnStartResponse, CodexImportTurnStatusResponse, CommandAction, DevLifecycleResponse, DroppedFilesResponse, FeedbackItem, ImportOnboardingEventRecord, ImportOnboardingPrewarmResponse, ImportOnboardingRunRecord, ImportOnboardingSessionRecord, ImportOnboardingStatusResponse, ImportPlanningAnswer, ImportPlanningArtifactValidation, ImportPlanningProtocolPhase, ImportPlanningQuestion, ImportPlanningReadyToPlan, ImportPlanningResponse, ImportPlanningStatus, LayoutPanel, LayoutResponse, MemoryEntry, PendingExecuteAgentConfirmation, PlanningInterviewStatus, PlanningQuestion, PlanningQuestionAnswer, PlanningQuestionOption, PlanPageActionState, ProjectCreateResponse, ProjectEnvEditorState, ProjectEnvKey, ProjectEnvResponse, ProjectEnvStatusTone, ProjectGroup, ProjectListResponse, ProjectRecord, ProjectRemoveResponse, RepoContextResponse, ReviewWorkflow, ReviewWorkflowResponse, SessionRecord, SessionResponse, SessionsResponse, SettingsResponse, SourceDocumentInput, StagedArtifactRecord, TerminalCompletionEventPayload, TerminalCompletionNotificationSettings, TerminalCompletionReason, TerminalOutputEventPayload, TerminalReplayResponse, TerminalScope, TerminalStartResponse, ThemePreset, ThinkingEffort, UnitDesignChatAttachment, UnitDesignChatIntent, UnitDesignChatMessage, UnitExplorationMetadata, ViewRoute, WikiComponentRef, WikiFingerprintResponse, WikiHeading, WikiLink, WikiListResponse, WikiMarkdownZipDownloadResponse, WikiPage, WikiPlanDeletionResponse, WikiSourceResponse, WikiValidationWarning, WorkspaceResponse, WorktreeCreateResponse } from "@/lib/types";
 
 
 const RUNTIME_ENV_KEY_HINT_DENYLIST = new Set(["PORTLESS_URL"]);
+
+type UnitExplorationMode = "new-mockups" | "redesign-from-screenshot";
+
+interface UnitDesignExplorationGenerateInput {
+  mode: UnitExplorationMode;
+  prompt: string;
+  variantCount: number;
+  sourceScreenshotNames: string[];
+  sourceScreenshotPaths: string[];
+  referenceImagePaths: string[];
+}
 
 class ImportPlanningProtocolError extends Error {
   phase: "schema_mismatch" | "stalled" | "failed";
@@ -146,17 +157,18 @@ function App() {
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
   const [pendingExecuteAgentConfirmation, setPendingExecuteAgentConfirmation] = useState<PendingExecuteAgentConfirmation | null>(null);
-  const [screenshotReview, setScreenshotReview] = useState<ScreenshotReview | null>(null);
   const [feedbackPendingCount, setFeedbackPendingCount] = useState(0);
   const [awaitingReviewUnits, setAwaitingReviewUnits] = useState<string[]>([]);
   // Bumped when a unit's screenshots are mutated on disk (e.g. discarded) so the
   // workspace's inline screenshot card refetches instead of showing stale images.
   const [screenshotRefreshKey, setScreenshotRefreshKey] = useState(0);
   const [explorationRefreshKey, setExplorationRefreshKey] = useState(0);
-  const [explorationDialogUnitPath, setExplorationDialogUnitPath] = useState<string | null>(null);
-  const [explorationDialogImages, setExplorationDialogImages] = useState<UnitScreenshotImageData[]>([]);
-  const [explorationDialogScreenshots, setExplorationDialogScreenshots] = useState<UnitScreenshotImageData[]>([]);
-  const [explorationDialogMetadata, setExplorationDialogMetadata] = useState<UnitExplorationMetadata | null>(null);
+  const [designDrawerUnitPath, setDesignDrawerUnitPath] = useState<string | null>(null);
+  const [designDrawerImages, setDesignDrawerImages] = useState<UnitScreenshotImageData[]>([]);
+  const [designDrawerScreenshots, setDesignDrawerScreenshots] = useState<UnitScreenshotImageData[]>([]);
+  const [designDrawerMessages, setDesignDrawerMessages] = useState<UnitDesignChatMessage[]>([]);
+  const [designDrawerMetadata, setDesignDrawerMetadata] = useState<UnitExplorationMetadata | null>(null);
+  const [isDesignDrawerReviewMode, setIsDesignDrawerReviewMode] = useState(false);
   const [isExplorationGenerating, setIsExplorationGenerating] = useState(false);
   const explorationAutoReviewTimers = useRef<Map<string, number>>(new Map());
   useEffect(() => () => {
@@ -2244,7 +2256,8 @@ function App() {
     if (!fresh.length) return;
     void refreshWikiStateFromDisk("screenshot-review");
     setAwaitingReviewUnits((prev) => (prev.includes(unitPath) ? prev : [...prev, unitPath]));
-    setScreenshotReview({ unitPath, sessionId, images: fresh });
+    void sessionId;
+    await openDesignDrawer(unitPath, { review: true, screenshots: fresh });
   }
 
   async function refreshAwaitingReview() {
@@ -2276,12 +2289,11 @@ function App() {
   // Reviewing queues feedback instead of dispatching it. Drain happens later
   // from the Feedback view, batched per unit.
   async function queueScreenshotFeedback(comments: { name: string; comment: string }[]) {
-    const review = screenshotReview;
-    setScreenshotReview(null);
-    if (!review || !comments.length) return;
+    const unitPath = designDrawerUnitPath;
+    if (!unitPath || !comments.length) return;
     try {
       await queueFeedback(
-        review.unitPath,
+        unitPath,
         comments.map((entry) => ({ screenshot: entry.name, comment: entry.comment })),
         activeProject,
       );
@@ -2405,26 +2417,29 @@ function App() {
   }
 
   async function executeNextUnitFromReview() {
-    const review = screenshotReview;
-    setScreenshotReview(null);
-    if (review) await markReviewed(review.unitPath, latestCapturedAt(review.images));
+    const unitPath = designDrawerUnitPath;
+    const screenshots = designDrawerScreenshots;
+    closeDesignDrawer();
+    if (unitPath) await markReviewed(unitPath, latestCapturedAt(screenshots));
     await runCommandAction("execute-main", undefined, { skipReviewGate: true });
   }
 
   // Approve/close marks the unit's current screenshots reviewed (clears the gate).
   async function reviewScreenshotsReviewed() {
-    const review = screenshotReview;
-    setScreenshotReview(null);
-    if (review) await markReviewed(review.unitPath, latestCapturedAt(review.images));
+    const unitPath = designDrawerUnitPath;
+    const screenshots = designDrawerScreenshots;
+    closeDesignDrawer();
+    if (unitPath) await markReviewed(unitPath, latestCapturedAt(screenshots));
   }
 
   // "Discard screenshots": wipe the unit's folder so a redesign starts clean.
   async function discardScreenshotReview() {
-    const review = screenshotReview;
-    setScreenshotReview(null);
-    if (!review) return;
+    const unitPath = designDrawerUnitPath;
+    if (!unitPath) return;
     try {
-      await clearUnitScreenshots(review.unitPath, activeProject);
+      await clearUnitScreenshots(unitPath, activeProject);
+      setDesignDrawerScreenshots([]);
+      setIsDesignDrawerReviewMode(false);
       setStatus("Screenshots discarded");
       setScreenshotRefreshKey((value) => value + 1);
       void refreshAwaitingReview();
@@ -2442,20 +2457,45 @@ function App() {
       setStatus("No screenshots captured for this unit yet");
       return;
     }
-    setScreenshotReview({ unitPath, sessionId: null, images });
+    await openDesignDrawer(unitPath, { review: true, screenshots: images });
   }
 
-  async function refreshDesignExplorationDialog(unitPath = explorationDialogUnitPath) {
+  async function refreshDesignDrawer(unitPath = designDrawerUnitPath) {
     if (!unitPath) return;
-    const [images, screenshots, metadata] = await Promise.all([
+    const [images, screenshots, metadata, messages] = await Promise.all([
       fetchUnitExplorationImages(unitPath, activeProject),
       fetchUnitScreenshotImages(unitPath, activeProject),
       fetchUnitExplorationMetadata(unitPath, activeProject),
+      fetchUnitDesignMessages(unitPath, activeProject),
     ]);
-    setExplorationDialogImages(images);
-    setExplorationDialogScreenshots(screenshots);
-    setExplorationDialogMetadata(metadata);
+    setDesignDrawerImages(images);
+    setDesignDrawerScreenshots(screenshots);
+    setDesignDrawerMetadata(metadata);
+    setDesignDrawerMessages(messages);
     setExplorationRefreshKey((value) => value + 1);
+  }
+
+  async function openDesignDrawer(unitPath: string, options: { review?: boolean; screenshots?: UnitScreenshotImageData[] } = {}) {
+    setIsWorkspaceExpanded(false);
+    setDesignDrawerUnitPath(unitPath);
+    setDesignDrawerImages([]);
+    setDesignDrawerScreenshots(options.screenshots || []);
+    setDesignDrawerMessages([]);
+    setDesignDrawerMetadata(null);
+    setIsDesignDrawerReviewMode(Boolean(options.review));
+    await refreshDesignDrawer(unitPath);
+    if (options.screenshots?.length) {
+      setDesignDrawerScreenshots(options.screenshots);
+    }
+  }
+
+  function closeDesignDrawer() {
+    setDesignDrawerUnitPath(null);
+    setDesignDrawerImages([]);
+    setDesignDrawerScreenshots([]);
+    setDesignDrawerMessages([]);
+    setDesignDrawerMetadata(null);
+    setIsDesignDrawerReviewMode(false);
   }
 
   function explorationAutoReviewKey(unitPath: string, project = latestActiveProjectRef.current) {
@@ -2488,7 +2528,7 @@ function App() {
           scheduleDesignExplorationAutoReview(unitPath, nextAttempt, project, options);
           return;
         }
-        setStatus("Design exploration has not saved fresh candidate PNGs yet; use Explore Design after the agent finishes");
+        setStatus("Design exploration has not saved fresh candidate PNGs yet; use Open Design after the agent finishes");
       });
     }, attempt === 0 ? 1500 : 5000);
     explorationAutoReviewTimers.current.set(key, timer);
@@ -2522,38 +2562,23 @@ function App() {
         ]
       : images;
     clearDesignExplorationAutoReview(unitPath, project);
-    setExplorationDialogUnitPath(unitPath);
-    setExplorationDialogImages(candidateImages);
-    setExplorationDialogScreenshots(screenshots);
-    setExplorationDialogMetadata(metadata);
+    setIsWorkspaceExpanded(false);
+    setDesignDrawerUnitPath(unitPath);
+    setDesignDrawerImages(candidateImages);
+    setDesignDrawerScreenshots(screenshots);
+    setDesignDrawerMetadata(metadata);
+    setDesignDrawerMessages(await fetchUnitDesignMessages(unitPath, project));
+    setIsDesignDrawerReviewMode(false);
     setStatus(`Design exploration ready: ${candidateImages.length} candidate${candidateImages.length === 1 ? "" : "s"}`);
     return true;
   }
 
   async function openDesignExploration(unitPath: string) {
-    setExplorationDialogUnitPath(unitPath);
-    setExplorationDialogImages([]);
-    setExplorationDialogScreenshots([]);
-    setExplorationDialogMetadata(null);
-    await refreshDesignExplorationDialog(unitPath);
-  }
-
-  async function clearDesignExplorations() {
-    const unitPath = explorationDialogUnitPath;
-    if (!unitPath) return;
-    try {
-      await clearUnitExplorations(unitPath, activeProject);
-      setExplorationDialogImages([]);
-      setExplorationDialogMetadata(null);
-      setExplorationRefreshKey((value) => value + 1);
-      setStatus("Design explorations cleared");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    }
+    await openDesignDrawer(unitPath);
   }
 
   async function generateDesignExploration(input: UnitDesignExplorationGenerateInput) {
-    const unitPath = explorationDialogUnitPath;
+    const unitPath = designDrawerUnitPath;
     if (!unitPath) return;
     if (input.mode === "redesign-from-screenshot" && !input.sourceScreenshotPaths.length) {
       setStatus("Choose at least one source screenshot before redesigning");
@@ -2561,7 +2586,7 @@ function App() {
     }
     const direction = input.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
     const outputDir = unitExplorationDir(unitPath);
-    const existingImages = explorationDialogImages;
+    const existingImages = designDrawerImages;
     const existingCandidateNames = existingImages.map((image) => image.name);
     const existingCandidatePaths = existingCandidateNames.map((name) => `${outputDir}/${name}`);
     const previousCapturedAt = existingImages.reduce((max, image) => Math.max(max, image.capturedAt), 0);
@@ -2576,13 +2601,12 @@ function App() {
         modelId: "agent-owned",
         imageCount: input.variantCount,
       }, activeProject);
-      setExplorationDialogImages([]);
-      setExplorationDialogMetadata(metadata);
+      setDesignDrawerMetadata(metadata);
       setExplorationRefreshKey((value) => value + 1);
       setIsWorkspaceExpanded(false);
       await sendTrackedAgentPrompt(
         "exploration",
-        "Explore Designs",
+        "Generate Designs",
         designExplorationPrompt(unitPath, input, direction, existingCandidatePaths),
         unitPath,
         scopeForRoute({ kind: "wiki", path: unitPath }),
@@ -2591,9 +2615,8 @@ function App() {
         undefined,
         { forceNewSession: true },
       );
-      setExplorationDialogUnitPath(null);
       scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt, preservedCandidateNames: existingCandidateNames });
-      setStatus("Design exploration prompt sent; candidates will open when saved");
+      setStatus("Design exploration prompt sent; candidates will refresh when saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     } finally {
@@ -2601,65 +2624,65 @@ function App() {
     }
   }
 
-  async function sendDesignExplorationMessage(message: string, currentCandidateName: string | null) {
-    const unitPath = explorationDialogUnitPath;
+  async function sendDesignDrawerMessage(message: string, attachments: UnitDesignChatAttachment[], intent: UnitDesignChatIntent) {
+    const unitPath = designDrawerUnitPath;
     const trimmedMessage = message.trim();
     if (!unitPath || !trimmedMessage) return;
-    const outputDir = unitExplorationDir(unitPath);
-    const currentImages = explorationDialogImages;
-    const candidatePaths = currentImages.map((image) => `${outputDir}/${image.name}`);
-    const primaryCandidateName = currentCandidateName || currentImages[0]?.name || null;
-    const primaryCandidatePath = primaryCandidateName
-      ? `${outputDir}/${primaryCandidateName}`
-      : candidatePaths[0] || "";
-    const previousCapturedAt = currentImages.reduce((max, image) => Math.max(max, image.capturedAt), 0);
-    const metadata = explorationDialogMetadata;
-    const mode = normalizeExplorationMode(metadata?.mode, explorationDialogScreenshots.length > 0);
-    const imageCount = Math.min(Math.max(metadata?.imageCount || currentImages.length || 3, 1), 4);
-    const priorDirection = metadata?.prompt || "Explore a polished, implementation-ready UI direction for this unit.";
-    setIsExplorationGenerating(true);
     try {
-      const nextMetadata = await writeUnitExplorationMetadata({
+      const savedMessage = await appendUnitDesignMessage({
         unitPath,
-        mode,
-        prompt: `${priorDirection}\n\nFollow-up request:\n${trimmedMessage}`,
-        sourceScreenshotPath: metadata?.sourceScreenshotPath || null,
-        provider: "codex-imagegen-agent",
-        modelId: "agent-owned",
-        imageCount,
-        selectedCandidate: null,
-        notes: null,
-        textBrief: metadata?.textBrief || null,
+        text: trimmedMessage,
+        intent,
+        status: "sent",
+        attachments,
       }, activeProject);
-      setExplorationDialogMetadata(nextMetadata);
-      setExplorationRefreshKey((value) => value + 1);
-      setIsWorkspaceExpanded(false);
-      await sendTrackedAgentPrompt(
-        "exploration",
-        "Explore Designs",
-        designExplorationMessagePrompt(
-          unitPath,
-          trimmedMessage,
-          primaryCandidateName,
-          primaryCandidatePath,
-          candidatePaths,
-          { ...nextMetadata, prompt: priorDirection },
-        ),
-        unitPath,
-        scopeForRoute({ kind: "wiki", path: unitPath }),
-        layout,
-        sessions,
-        undefined,
-        { forceNewSession: true },
-      );
-      setExplorationDialogUnitPath(null);
-      scheduleDesignExplorationAutoReview(unitPath, 0, activeProject, { freshAfterCapturedAt: previousCapturedAt, preservedCandidateName: primaryCandidateName });
-      setStatus("Design message sent; updated candidates will open when saved");
+      setDesignDrawerMessages((current) => [...current, savedMessage]);
+      if (intent === "implement-ui") {
+        await sendDesignImplementationMessage(unitPath, trimmedMessage, attachments);
+      } else {
+        await sendDesignGenerationMessage(unitPath, trimmedMessage, attachments);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsExplorationGenerating(false);
     }
+  }
+
+  async function sendDesignGenerationMessage(unitPath: string, message: string, attachments: UnitDesignChatAttachment[]) {
+    const screenshotAttachments = attachments.filter((attachment) => attachment.kind === "screenshot");
+    const referenceAttachments = attachments.filter((attachment) => attachment.kind === "design" || attachment.kind === "upload");
+    await generateDesignExploration({
+      mode: screenshotAttachments.length ? "redesign-from-screenshot" : "new-mockups",
+      prompt: message,
+      variantCount: parseDesignVariantCount(message),
+      sourceScreenshotNames: screenshotAttachments.map((attachment) => attachment.name),
+      sourceScreenshotPaths: screenshotAttachments.map((attachment) => attachment.path),
+      referenceImagePaths: referenceAttachments.map((attachment) => attachment.path),
+    });
+  }
+
+  async function sendDesignImplementationMessage(unitPath: string, message: string, attachments: UnitDesignChatAttachment[]) {
+    setStatus("Preparing design implementation prompt");
+    const prompt = unitDesignImplementationPrompt(message, attachments);
+    await stageExecuteUnitPromptForPath(unitPath, { prompt });
+  }
+
+  function unitDesignImplementationPrompt(message: string, attachments: UnitDesignChatAttachment[]) {
+    const grouped = (kind: UnitDesignChatAttachment["kind"]) => attachments.filter((attachment) => attachment.kind === kind);
+    const lines = [
+      "Unit iteration request from the Design drawer:",
+      message,
+      "",
+      grouped("screenshot").length ? "Attached current-state screenshots:" : "Attached current-state screenshots: none",
+      ...grouped("screenshot").map((attachment) => `- ${attachment.path}`),
+      grouped("design").length ? "Attached design targets/references:" : "Attached design targets/references: none",
+      ...grouped("design").map((attachment) => `- ${attachment.path}`),
+      grouped("upload").length ? "Attached uploaded reference images:" : "Attached uploaded reference images: none",
+      ...grouped("upload").map((attachment) => `- ${attachment.path}`),
+      "",
+      "Use the attached images as visual context for this exact unit. Treat screenshots as current implementation evidence and design/upload images as target or reference direction unless the request says otherwise.",
+      "Inspect every attached image path before editing.",
+    ];
+    return lines.join("\n");
   }
 
   function designExplorationPrompt(unitPath: string, input: UnitDesignExplorationGenerateInput, direction: string, existingCandidatePaths: string[] = []) {
@@ -2704,7 +2727,7 @@ function App() {
       "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. For sourceScreenshotPath, use the first selected source screenshot path. Set imageCount to the visible top-level PNG candidate count, including preserved existing candidates.",
       "- The `textBrief` should be a concise implementation handoff for the chosen visual direction family, even before the user picks a single candidate.",
       `- Before final handoff, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the saved candidate PNGs and verify \`${outputDir}/metadata.json\` exists.`,
-      "- After generation, report the saved paths and remind the user to click Explore Design in Hyperwiki if the candidates are not visible yet.",
+      "- After generation, report the saved paths and remind the user to click Open Design in Hyperwiki if the candidates are not visible yet.",
       "",
       "Design constraints:",
       "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
@@ -2716,99 +2739,6 @@ function App() {
         ? ["Current unit source:", unitPageSource.slice(0, 6000)]
         : ["Current unit source: read the unit page from disk before prompting image generation."]),
     ].join("\n");
-  }
-
-  function normalizeExplorationMode(mode: string | null | undefined, hasScreenshots: boolean): UnitExplorationMode {
-    if (mode === "new-mockups" || mode === "redesign-from-screenshot") return mode;
-    return hasScreenshots ? "redesign-from-screenshot" : "new-mockups";
-  }
-
-  function designExplorationMessagePrompt(
-    unitPath: string,
-    message: string,
-    currentCandidateName: string | null,
-    primaryCandidatePath: string,
-    candidatePaths: string[],
-    metadata: UnitExplorationMetadata,
-  ) {
-    const unitTitle = titleForPath(unitPath, wikiPages) || unitPath;
-    const outputDir = unitExplorationDir(unitPath);
-    const unitPageSource = displayWikiPath(currentWikiPath) === displayWikiPath(unitPath)
-      ? (wikiSource?.markdown || wikiSource?.source || "")
-      : "";
-    return [
-      "Mode: Image-Gen Design Exploration Revision.",
-      "",
-      "Task: revise or replace the current design exploration PNGs for one hyperwiki unit. This is ideation only; do not implement product code and do not edit the unit status.",
-      "",
-      `Project: ${activeProject?.name || "Unknown"}`,
-      `Project root: ${activeProject?.root || "Unknown"}`,
-      `Unit: ${unitTitle}`,
-      `Unit path: ${unitPath}`,
-      `Mode: ${metadata.mode}`,
-      `Variant count: ${metadata.imageCount} (maximum 4)`,
-      `Output folder: ${outputDir}`,
-      `Current candidate: ${currentCandidateName || "none"}`,
-      primaryCandidatePath ? "Primary visual reference:" : "Primary visual reference: none",
-      ...(primaryCandidatePath
-        ? [
-            `- ${primaryCandidatePath}`,
-            "- The user sent this message from the design review composer directly below this displayed image.",
-            "- Treat words like `this`, `this image`, `the image`, `above`, or `exactly like this` in the user message as references to this primary visual reference.",
-            "- Inspect this primary visual reference before generating replacements.",
-            "- Preservation rule: do not delete, overwrite, rename, resize, or modify this primary visual reference file. It is a protected reference and remains a visible candidate.",
-            "- Before changing files, compute and record this primary visual reference file's checksum; before final handoff, verify the checksum is unchanged.",
-          ]
-        : []),
-      metadata.sourceScreenshotPath ? `Original source screenshot: ${metadata.sourceScreenshotPath}` : "Original source screenshot: none",
-      candidatePaths.filter((candidatePath) => candidatePath !== primaryCandidatePath).length ? "Secondary existing candidate PNGs:" : "Secondary existing candidate PNGs: none",
-      ...candidatePaths.filter((candidatePath) => candidatePath !== primaryCandidatePath).map((candidatePath) => `- ${candidatePath}`),
-      "",
-      "Original direction:",
-      metadata.prompt,
-      "",
-      "User message:",
-      message,
-      "",
-      "Workflow:",
-      "- Use the imagegen skill to produce real local PNG files for this project-bound workflow. Built-in image_gen is acceptable only when it exposes generated files you can move/copy from `$CODEX_HOME/generated_images` or another concrete local path.",
-      "- If built-in image_gen only renders inline images and no local file can be found, do not treat the run as complete. Load the active project's `.env.local` into the command environment when present (for example `set -a; source .env.local; set +a`) and, when `OPENAI_API_KEY` is then available, use the imagegen CLI fallback (`$CODEX_HOME/skills/.system/imagegen/scripts/image_gen.py`) so outputs can be written directly to the requested folder.",
-      "- If no file-persisting image generation path is available, stop with a clearly titled `Manual step required` section that names the capability blocker. Do not fake image files.",
-      "- Inspect the primary visual reference first, then inspect any secondary existing candidates if they help preserve useful alternatives.",
-      "- If the message asks to start over, use the existing candidates only as old context and generate fresh alternatives.",
-      "- Treat the preserved primary visual reference as one of the visible candidate PNGs. Generate enough new replacement PNGs for the folder to contain the requested variant count without overwriting the primary.",
-      `- After inspecting current candidates, preserve the primary visual reference exactly. Remove only secondary existing PNGs if replacing them, then save fresh ordered PNGs in \`${outputDir}/\` using filenames that do not collide with the preserved primary file (for example, use the next available \`NN-*.png\` ordinals).`,
-      "- Keep generated PNGs in ignored runtime state only. Do not commit exploration images.",
-      "- Write or update `metadata.json` beside the images with: version, unitPath, mode, prompt, sourceScreenshotPath, provider, modelId, imageCount, selectedCandidate null, notes null, textBrief, createdAt, updatedAt. Set imageCount to the visible top-level PNG candidate count, including the preserved primary file.",
-      "- The `textBrief` should summarize the updated visual direction for Execute Unit handoff.",
-      `- Before final handoff, verify the primary visual reference still exists and has the same checksum, verify \`find "${outputDir}" -maxdepth 1 -type f -name '*.png' | sort\` returns the preserved primary plus saved candidate PNGs, and verify \`${outputDir}/metadata.json\` exists.`,
-      "- After generation, report the saved paths and remind the user to click Explore Design in Hyperwiki if the candidates are not visible yet.",
-      "",
-      "Design constraints:",
-      "- Treat the unit page, project wiki, and any Screenshot capture notes as stronger than generic visual taste.",
-      "- Make candidates realistic enough to implement in React/Tailwind/shadcn, not abstract mood boards.",
-      "- Preserve app/product semantics, route intent, and visible copy unless the user message explicitly asks to explore copy.",
-      "- Avoid marketing-page composition for operational app surfaces; prioritize scannable workflows, hierarchy, states, and target-user ergonomics.",
-      "",
-      ...(unitPageSource.trim()
-        ? ["Current unit source:", unitPageSource.slice(0, 6000)]
-        : ["Current unit source: read the unit page from disk before prompting image generation."]),
-    ].join("\n");
-  }
-
-  async function chooseDesignExploration(candidateName: string, notes: string, textBrief: string) {
-    const unitPath = explorationDialogUnitPath;
-    if (!unitPath) return;
-    try {
-      const metadata = await selectUnitExploration(unitPath, candidateName, notes, textBrief, activeProject);
-      setExplorationDialogMetadata(metadata);
-      setExplorationRefreshKey((value) => value + 1);
-      setExplorationDialogUnitPath(null);
-      setStatus("Design selected; preparing Execute Unit");
-      await stageExecuteUnitPromptForPath(unitPath, undefined, metadata);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : String(error));
-    }
   }
 
   async function stageExecuteUnitPromptForPath(
@@ -3425,7 +3355,6 @@ function App() {
             onUpdateBugStatus={updateBugPageStatus}
             onRunCommand={runCommandAction}
             onExploreDesigns={(path) => void openDesignExploration(path)}
-            onReviewScreenshots={(path) => void openScreenshotReviewManual(path)}
             explorationRefreshKey={explorationRefreshKey}
             screenshotRefreshKey={screenshotRefreshKey}
             onSendAllFeedback={() => void sendAllFeedback()}
@@ -3491,43 +3420,34 @@ function App() {
               />
             </div>
           )}
+          {designDrawerUnitPath && !isMainPaneExpanded && !isUtilityRoute ? (
+            <div className="col-start-2 col-end-[-1] row-start-1 z-40 h-full min-h-0 overflow-hidden" data-unit-design-drawer-overlay="true">
+              <UnitDesignDrawer
+                designImages={designDrawerImages}
+                explorationDir={unitExplorationDir(designDrawerUnitPath)}
+                hasNextUnit={activePlanState.canExecute && displayWikiPath(activePlanState.currentPath) !== displayWikiPath(designDrawerUnitPath)}
+                isGenerating={isExplorationGenerating}
+                messages={designDrawerMessages}
+                reviewMode={isDesignDrawerReviewMode}
+                screenshotDir={unitScreenshotDir(designDrawerUnitPath)}
+                screenshots={designDrawerScreenshots}
+                unitPath={designDrawerUnitPath}
+                unitTitle={titleForPath(designDrawerUnitPath, wikiPages) || "unit"}
+                onApproveScreenshots={() => void reviewScreenshotsReviewed()}
+                onClose={closeDesignDrawer}
+                onDiscardScreenshots={() => void discardScreenshotReview()}
+                onExecuteNextUnit={() => void executeNextUnitFromReview()}
+                onQueueScreenshotFeedback={(comments) => void queueScreenshotFeedback(comments)}
+                onSaveReferenceImage={async (file) => {
+                  const [path] = await saveTerminalDroppedFiles(activeProject, [file]);
+                  if (!path) throw new Error("Could not save reference image");
+                  return path;
+                }}
+                onSendMessage={(message, attachments, intent) => void sendDesignDrawerMessage(message, attachments, intent)}
+              />
+            </div>
+          ) : null}
         </section>
-        {screenshotReview ? (
-          <UnitScreenshotReviewDialog
-            hasNextUnit={activePlanState.canExecute && displayWikiPath(activePlanState.currentPath) !== displayWikiPath(screenshotReview.unitPath)}
-            review={screenshotReview}
-            unitTitle={titleForPath(screenshotReview.unitPath, wikiPages) || "unit"}
-            onApprove={() => void reviewScreenshotsReviewed()}
-            onDismiss={() => setScreenshotReview(null)}
-            onExecuteNext={() => void executeNextUnitFromReview()}
-            onQueueFeedback={(comments) => void queueScreenshotFeedback(comments)}
-            onReset={() => void discardScreenshotReview()}
-          />
-        ) : null}
-        {explorationDialogUnitPath ? (
-          <UnitDesignExplorationDialog
-            explorationDir={unitExplorationDir(explorationDialogUnitPath)}
-            images={explorationDialogImages}
-            isGenerating={isExplorationGenerating}
-            metadata={explorationDialogMetadata}
-            open={Boolean(explorationDialogUnitPath)}
-            screenshotDir={unitScreenshotDir(explorationDialogUnitPath)}
-            screenshots={explorationDialogScreenshots}
-            unitPath={explorationDialogUnitPath}
-            unitTitle={titleForPath(explorationDialogUnitPath, wikiPages) || "unit"}
-            onGenerate={(input) => void generateDesignExploration(input)}
-            onOpenChange={(open) => {
-              if (!open) setExplorationDialogUnitPath(null);
-            }}
-            onSaveReferenceImage={async (file) => {
-              const [path] = await saveTerminalDroppedFiles(activeProject, [file]);
-              if (!path) throw new Error("Could not save reference image");
-              return path;
-            }}
-            onSendMessage={(message, candidateName) => void sendDesignExplorationMessage(message, candidateName)}
-            onSelect={(candidateName, notes, textBrief) => void chooseDesignExploration(candidateName, notes, textBrief)}
-          />
-        ) : null}
         <AlertDialog open={Boolean(pendingExecuteAgentConfirmation)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -4420,6 +4340,7 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
   const unitPath = context.unitPath;
   const screenshotDir = unitPath ? unitScreenshotDir(unitPath) : "";
   const designDirectionLines = selectedDesignDirectionLines(unitPath, designDirection);
+  const iterationRequest = userRequest.trim();
   return [
     "Execute exactly one hyperwiki unit on main.",
     "",
@@ -4445,6 +4366,13 @@ function workflowPrompt(action: "execute-main" | "modify", workspace: WorkspaceR
         ]
       : []),
     ...designDirectionLines,
+    ...(iterationRequest
+      ? [
+          "",
+          "User unit-iteration request:",
+          iterationRequest,
+        ]
+      : []),
     "- Run relevant checks before summarizing the result.",
     "- When you commit this unit's work, include the wiki changes it produced — plan/stage/unit status updates and the `wiki/log.mdx` entry — in the same commit as the code so the wiki is committed alongside the work, never left uncommitted or out of sync. Follow the repo's commit and push policy.",
   ].join("\n");

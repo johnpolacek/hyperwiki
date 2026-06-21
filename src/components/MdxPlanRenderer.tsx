@@ -2,7 +2,6 @@ import { createElement, Fragment, useEffect, useMemo, useState, type ReactNode }
 import {
   AlertCircle,
   AppWindow,
-  Camera,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -42,7 +41,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs as UiTabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { UnitScreenshotImageData } from "@/lib/api";
-import type { UnitExplorationMetadata } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { normalizePlanDisplayTitle } from "@/lib/wiki-title";
 
@@ -60,9 +58,7 @@ interface MdxPlanRendererProps {
   onToggleTask?: (text: string, checked: boolean) => Promise<void> | void;
   onProposeChange?: (prompt: string) => void;
   unitScreenshots?: UnitScreenshotImageData[];
-  onReviewScreenshots?: () => void;
   unitExplorations?: UnitScreenshotImageData[];
-  unitExplorationMetadata?: UnitExplorationMetadata | null;
   onExploreDesigns?: () => void;
 }
 
@@ -146,14 +142,12 @@ const componentTags = [
 const inlineCodeClassName =
   "rounded border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground";
 
-export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], onReviewScreenshots, unitExplorations = [], unitExplorationMetadata = null, onExploreDesigns }: MdxPlanRendererProps) {
+export function MdxPlanRenderer({ source, markdown, status, validationWarnings = [], onNavigate, canDeletePlan = false, onDeletePlan, path, pageStatuses, onSendCommand, onToggleTask, onProposeChange, unitScreenshots = [], unitExplorations = [], onExploreDesigns }: MdxPlanRendererProps) {
   planRenderContext = { path, pageStatuses, onSendCommand, onToggleTask, onProposeChange };
   const content = useMemo(() => renderTrustedMdx(source, onNavigate, path, status), [source, onNavigate, path, status, pageStatuses]);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
   const [deleteStatus, setDeleteStatus] = useState("");
-  const hasUnitScreenshots = unitScreenshots.length > 0;
-  const hasUnitExplorations = unitExplorations.length > 0;
   const latestScreenshot = latestUnitImage(unitScreenshots);
   const latestExploration = latestUnitImage(unitExplorations);
   const latestVisualEvidence = latestScreenshot && (!latestExploration || latestScreenshot.capturedAt >= latestExploration.capturedAt)
@@ -161,7 +155,12 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
     : latestExploration
       ? { kind: "exploration" as const, image: latestExploration }
       : null;
-  const latestVisualAction = latestVisualEvidence?.kind === "screenshot" ? onReviewScreenshots : onExploreDesigns;
+  const visualImageSummary = unitScreenshots.length || unitExplorations.length
+    ? [
+        unitScreenshots.length ? `${unitScreenshots.length} screenshot${unitScreenshots.length === 1 ? "" : "s"}` : "",
+        unitExplorations.length ? `${unitExplorations.length} design image${unitExplorations.length === 1 ? "" : "s"}` : "",
+      ].filter(Boolean).join(" · ")
+    : "No images created yet";
   const deletePlan = async () => {
     if (!onDeletePlan || isDeletingPlan) return;
     setIsDeletingPlan(true);
@@ -250,45 +249,42 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
             </Alert>
           ) : null}
           {onExploreDesigns ? (
-            <Card className="gap-0 overflow-hidden py-0" data-unit-visual-evidence="true">
+            <Card
+              className="gap-0 overflow-hidden py-0 transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              data-unit-visual-evidence="true"
+              role="button"
+              tabIndex={0}
+              onClick={onExploreDesigns}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onExploreDesigns();
+                }
+              }}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <div className="flex min-w-0 items-center gap-2">
                     <Sparkles aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                     <span className="text-sm font-semibold">Design</span>
                   </div>
-                  {hasUnitExplorations ? <Badge variant="outline">{unitExplorations.length} candidate{unitExplorations.length === 1 ? "" : "s"}</Badge> : null}
-                  {unitExplorationMetadata?.selectedCandidate ? <Badge variant="secondary">Selected</Badge> : null}
+                  <span className="text-xs text-muted-foreground">{visualImageSummary}</span>
                 </div>
-                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                  <Button className="flex-1 sm:flex-none" disabled={!hasUnitScreenshots} size="sm" type="button" variant="outline" onClick={() => onReviewScreenshots?.()}>
-                    <Camera aria-hidden="true" data-icon="inline-start" />
-                    Review Screenshots
-                  </Button>
-                  <Button className="flex-1 sm:flex-none" size="sm" type="button" variant="outline" onClick={onExploreDesigns}>
-                    <Sparkles aria-hidden="true" data-icon="inline-start" />
-                    Explore Design
-                  </Button>
-                </div>
+                <span className="inline-flex min-h-9 items-center rounded-md border bg-background px-3 text-sm font-medium shadow-sm">Open Design</span>
               </div>
               <section className="flex min-h-[14rem] min-w-0 flex-col gap-3 p-3" data-unit-visual-preview="true">
                 {latestVisualEvidence ? (
-                  <button
-                    aria-label={latestVisualEvidence.kind === "screenshot" ? "Open screenshot review" : "Open design review"}
-                    className="group block flex-1 overflow-hidden rounded-md border bg-muted/35"
-                    type="button"
-                    onClick={() => latestVisualAction?.()}
-                  >
+                  <div className="group block flex-1 overflow-hidden rounded-md border bg-muted/35">
                     <img
                       alt={latestVisualEvidence.kind === "screenshot" ? "Latest screenshot for the unit" : "Latest design candidate for the unit"}
                       className="block max-h-[24rem] min-h-[12rem] w-full cursor-pointer bg-muted object-contain transition-opacity group-hover:opacity-95"
                       src={latestVisualEvidence.image.dataUrl}
                     />
-                  </button>
+                  </div>
                 ) : (
                   <div className="flex flex-1 flex-col justify-center gap-1 rounded-md border bg-muted/20 px-3 py-8 text-sm">
-                    <span className="font-medium text-foreground">No visual evidence yet</span>
-                    <span className="text-muted-foreground">Run Execute Unit to capture implementation evidence, or explore a design first.</span>
+                    <span className="font-medium text-foreground">No images created yet</span>
+                    <span className="text-muted-foreground">Open Design to iterate on this unit with chat and visual context.</span>
                   </div>
                 )}
               </section>

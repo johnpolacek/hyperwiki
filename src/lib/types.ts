@@ -112,6 +112,33 @@ export interface UnitExplorationMetadataInput {
   textBrief?: string | null;
 }
 
+export type UnitDesignChatIntent = "generate-designs" | "implement-ui";
+export type UnitDesignAttachmentKind = "screenshot" | "design" | "upload";
+
+export interface UnitDesignChatAttachment {
+  kind: UnitDesignAttachmentKind;
+  name: string;
+  path: string;
+}
+
+export interface UnitDesignChatMessage {
+  id: string;
+  unitPath: string;
+  text: string;
+  intent: UnitDesignChatIntent;
+  status: string;
+  attachments: UnitDesignChatAttachment[];
+  createdAt: number;
+}
+
+export interface UnitDesignChatMessageInput {
+  unitPath: string;
+  text: string;
+  intent: UnitDesignChatIntent;
+  status?: string;
+  attachments: UnitDesignChatAttachment[];
+}
+
 export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
 export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning" | "exploration" | "bug";
 export type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
