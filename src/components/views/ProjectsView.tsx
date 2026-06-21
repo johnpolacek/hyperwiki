@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent, type SyntheticEvent } from "react";
 import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
 import { BeamSurface } from "@/components/ui/beam-surface";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,21 @@ export function ProjectCard({
   const importIncomplete = importPlanning?.status === "incomplete";
   const appUrl = `https://${group.projectSlug}.localhost`;
   const checkoutCount = group.checkouts.length;
+  const title = group.name || selected?.name || group.projectSlug;
+
+  function openSelectedProject() {
+    if (selected) onOpenProject(selected);
+  }
+
+  function handleCardKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openSelectedProject();
+  }
+
+  function stopCardActivation(event: SyntheticEvent) {
+    event.stopPropagation();
+  }
 
   async function confirmRemoval() {
     if (!selected) return;
@@ -85,9 +100,22 @@ export function ProjectCard({
   }
 
   return (
-    <article className={cn("flex min-h-[23rem] flex-col rounded-lg border bg-card p-5 shadow-xs transition-colors duration-150 hover:border-input", isActive && "ring-1 ring-primary/40")}>
+    <article
+      aria-current={isActive ? "page" : undefined}
+      aria-disabled={!selected}
+      aria-label={`Switch to ${title}`}
+      className={cn(
+        "flex min-h-[23rem] cursor-pointer flex-col rounded-lg border bg-card p-5 shadow-xs transition-colors duration-150 hover:border-input hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        isActive && "ring-1 ring-primary/40",
+        !selected && "cursor-default opacity-70",
+      )}
+      onClick={openSelectedProject}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={selected ? 0 : -1}
+    >
       <div className="mb-7 flex items-start justify-between gap-4">
-        <h2 className="m-0 min-w-0 truncate text-lg font-semibold tracking-tight">{group.name || selected?.name || group.projectSlug}</h2>
+        <h2 className="m-0 min-w-0 truncate text-lg font-semibold tracking-tight">{title}</h2>
         <StatusBadge tone={importIncomplete ? "warn" : isActive ? "running" : available ? "idle" : "error"}>
           {importIncomplete ? "Import incomplete" : isActive ? "Active" : available ? "Available" : "Missing"}
         </StatusBadge>
@@ -109,16 +137,32 @@ export function ProjectCard({
         <ProjectDetail label="Last opened" value={formatProjectDate(selected?.lastOpenedAt)} />
       </div>
       <div className="mt-auto flex items-end justify-between pt-5">
-        <Button onClick={() => selected && onOpenProject(selected)} disabled={!selected}>
+        <Button
+          onClick={(event) => {
+            stopCardActivation(event);
+            openSelectedProject();
+          }}
+          onKeyDown={stopCardActivation}
+          disabled={!selected}
+        >
           <ExternalLink aria-hidden="true" data-icon="inline-start" />
           Open Project
         </Button>
-        <button className="rounded-md p-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-destructive" type="button" aria-label={`Remove ${group.name}`} onClick={() => setIsConfirmingRemoval(true)}>
+        <button
+          className="rounded-md p-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-destructive"
+          type="button"
+          aria-label={`Remove ${title}`}
+          onClick={(event) => {
+            stopCardActivation(event);
+            setIsConfirmingRemoval(true);
+          }}
+          onKeyDown={stopCardActivation}
+        >
           <Trash2 aria-hidden="true" className="size-4" />
         </button>
       </div>
       {isConfirmingRemoval ? (
-        <div className="mt-4 rounded-md border bg-background p-3">
+        <div className="mt-4 rounded-md border bg-background p-3" onClick={stopCardActivation} onKeyDown={stopCardActivation}>
           <div className="grid gap-1 text-sm">
             <strong>{checkoutCount > 1 ? `Remove checkout: ${selected?.worktreeSlug || "main"}` : "Destructive option"}</strong>
             <span className="text-muted-foreground">

@@ -141,7 +141,6 @@ function App() {
   const [status, setStatus] = useState("Ready");
   const [projectEnvEditor, setProjectEnvEditor] = useState<ProjectEnvEditorState>({ open: false });
   const [terminalEnvHint, setTerminalEnvHint] = useState<{ key: string; sessionId: string } | null>(null);
-  const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const [diffViewerOpen, setDiffViewerOpen] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [agentRun, setAgentRun] = useState<AgentRunState | null>(null);
@@ -771,7 +770,6 @@ function App() {
     appendImportLog(`Switch project ${project.id} ${project.projectSlug}/${project.worktreeSlug}`);
     latestTerminalContext.current = { projectId: project.id, scope: latestTerminalContext.current.scope };
     setActiveProject(project);
-    setIsProjectsOpen(false);
     setSessions([]);
     setActiveSessionId(null);
     setIsSessionsLoading(true);
@@ -2209,7 +2207,6 @@ function App() {
 
   function openImportedPlanningWorkspace(project: ProjectRecord, route: ViewRoute = { kind: "wiki", path: "/wiki/plans/index.mdx" }) {
     setActiveProject(project);
-    setIsProjectsOpen(false);
     setRoute(route);
     window.history.pushState(null, "", urlForRoute(route, project));
   }
@@ -3367,16 +3364,8 @@ function App() {
         <TopBar
           activeProject={activeProject}
           homePath={planLandingPath(wikiPages)}
-          isProjectsOpen={isProjectsOpen}
-          onRefresh={loadBaseData}
           onNavigate={navigate}
-          onSwitchProject={switchProject}
-          preview={preview}
-          projectGroups={projectGroups}
-          setIsProjectsOpen={setIsProjectsOpen}
-          status={status}
           feedbackCount={feedbackPendingCount}
-          workspace={workspace}
         />
         <section
           className={cn(
