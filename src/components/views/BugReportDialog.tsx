@@ -1,8 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { displayWikiPath } from "@/lib/wiki-pages";
@@ -65,21 +64,18 @@ export function BugReportDialog({
       <DialogContent className="w-[min(calc(100vw-2rem),38rem)] sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Report Bug</DialogTitle>
-          <DialogDescription>Describe what is wrong. Hyperwiki will save it as a wiki-backed bug.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={submit}>
-          <div className="grid gap-2">
-            <Label htmlFor="bug-prompt">Bug</Label>
-            <Textarea
-              {...DISABLE_TEXT_CORRECTION_PROPS}
-              autoFocus
-              className="min-h-40 resize-y"
-              id="bug-prompt"
-              onChange={(event) => setPrompt(event.target.value)}
-              placeholder="The Bugs sidebar takes me to New Project when there are no bugs yet."
-              value={prompt}
-            />
-          </div>
+          <Textarea
+            {...DISABLE_TEXT_CORRECTION_PROPS}
+            aria-label="Bug report"
+            autoFocus
+            className="min-h-40 resize-y"
+            id="bug-prompt"
+            onChange={(event) => setPrompt(event.target.value)}
+            placeholder="The Bugs sidebar takes me to New Project when there are no bugs yet."
+            value={prompt}
+          />
           {error ? <p className="m-0 text-sm text-destructive" role="alert">{error}</p> : null}
           <DialogFooter>
             <Button disabled={isSaving} type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
