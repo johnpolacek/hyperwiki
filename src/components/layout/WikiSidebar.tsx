@@ -29,7 +29,7 @@ export function WikiSidebar(props: {
           <div className="mb-2 flex min-h-9 items-center justify-between gap-2 px-1">
             <ToggleGroup
               aria-label="Sidebar work mode"
-              className="min-w-0 gap-1"
+              className="min-w-0 rounded-md border bg-muted/40 p-0.5"
               size="sm"
               type="single"
               value={mode}
@@ -38,8 +38,8 @@ export function WikiSidebar(props: {
                 if (value === "bugs") props.onOpenBugs();
               }}
             >
-              <ToggleGroupItem className={sidebarModeClass(mode === "plans")} value="plans">Plans</ToggleGroupItem>
-              <ToggleGroupItem className={sidebarModeClass(mode === "bugs")} value="bugs">Bugs</ToggleGroupItem>
+              <ToggleGroupItem className={sidebarModeClass(mode === "plans")} value="plans">PLANS</ToggleGroupItem>
+              <ToggleGroupItem className={sidebarModeClass(mode === "bugs")} value="bugs">BUGS</ToggleGroupItem>
             </ToggleGroup>
             <div className="flex items-center gap-1">
               {mode === "plans" ? (
@@ -91,10 +91,10 @@ export function WikiSidebar(props: {
 
 function sidebarModeClass(active: boolean) {
   return cn(
-    "h-8 rounded-md text-xs transition-colors",
+    "h-7 rounded-[calc(var(--radius)-2px)] px-2 text-[11px] font-semibold uppercase tracking-wide transition-colors",
     active
-      ? "px-0 font-semibold uppercase tracking-wide text-muted-foreground hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-muted-foreground"
-      : "px-2 font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+      ? "bg-background text-foreground shadow-xs hover:bg-background data-[state=on]:bg-background data-[state=on]:text-foreground"
+      : "text-muted-foreground hover:bg-background/70 hover:text-foreground",
   );
 }
 

@@ -91,8 +91,10 @@ assert.ok(
   ts.includes("ToggleGroup")
     && ts.includes("BugTree")
     && ts.includes("onOpenBugs")
-    && ts.includes("Fixed Bugs"),
-  "sidebar should switch between Plans and Bugs with an active/completed bug list.",
+    && ts.includes("Fixed Bugs")
+    && ts.includes('value="plans">PLANS</ToggleGroupItem>')
+    && ts.includes('value="bugs">BUGS</ToggleGroupItem>'),
+  "sidebar should switch between uppercase Plans and Bugs tabs with an active/completed bug list.",
 );
 assert.ok(
   ts.includes("export function BugReportDialog")
