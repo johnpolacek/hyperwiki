@@ -250,7 +250,7 @@ export function MdxPlanRenderer({ source, markdown, status, validationWarnings =
           ) : null}
           {onExploreDesigns ? (
             <Card
-              className="gap-0 overflow-hidden py-0 transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              className="cursor-pointer gap-0 overflow-hidden py-0 transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               data-unit-visual-evidence="true"
               role="button"
               tabIndex={0}

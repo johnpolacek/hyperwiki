@@ -92,6 +92,7 @@ assert.ok(
     && ts.includes("visualImageSummary")
     && ts.includes("No images created yet")
     && ts.includes("Open Design")
+    && ts.includes("cursor-pointer gap-0 overflow-hidden")
     && ts.includes("<span className=\"text-sm font-semibold\">Design</span>")
     && ts.includes('data-unit-visual-preview="true"')
     && ts.includes("latestUnitImage(unitExplorations)")
