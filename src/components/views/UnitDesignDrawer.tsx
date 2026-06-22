@@ -251,7 +251,7 @@ export function UnitDesignDrawer({
                 <div className="flex min-w-0 flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="m-0 text-sm font-semibold">Review screenshots</p>
+                      <p className="m-0 text-sm font-semibold">Review required before executing</p>
                       <p className="m-0 truncate font-mono text-xs text-muted-foreground">{currentReviewImage ? `${screenshotDir}/${currentReviewImage.name}` : "No screenshot selected"}</p>
                     </div>
                     <Button className="text-muted-foreground hover:text-destructive" size="sm" type="button" variant="ghost" onClick={onDiscardScreenshots}>
@@ -259,6 +259,7 @@ export function UnitDesignDrawer({
                       Discard
                     </Button>
                   </div>
+                  <p className="m-0 text-sm text-muted-foreground">Execute is paused until these screenshots are approved, discarded, or queued as feedback.</p>
                   <Label htmlFor="design-drawer-review-comment">Issue or feedback</Label>
                   <Textarea
                     {...DISABLE_TEXT_CORRECTION_PROPS}

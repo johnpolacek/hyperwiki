@@ -150,7 +150,9 @@ assert.ok(
   tsSources.includes('data-unit-design-review="true"')
     && tsSources.includes("function queueScreenshotFeedback")
     && tsSources.includes("onQueueScreenshotFeedback")
-    && tsSources.includes("Queue feedback"),
+    && tsSources.includes("Queue feedback")
+    && tsSources.includes("Review required before executing")
+    && tsSources.includes("Execute is paused until these screenshots are approved"),
   "Screenshot review should live inside the design drawer and queue feedback.",
 );
 assert.ok(
