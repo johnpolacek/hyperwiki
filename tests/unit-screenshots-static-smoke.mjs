@@ -104,6 +104,13 @@ assert.ok(
     && tsSources.includes("props.screenshotRefreshKey]"),
   "Discarding should bump a refresh key the workspace effect depends on, so stale inline previews refetch.",
 );
+assert.ok(
+  tsSources.includes("Execute agents may write screenshots directly to ignored runtime")
+    && tsSources.includes('armedCompletion.kind === "execute"')
+    && tsSources.includes("setScreenshotRefreshKey((value) => value + 1)")
+    && tsSources.includes("void maybeOpenScreenshotReview(armedCompletion.planPath"),
+  "Execute completion should bump screenshotRefreshKey so the inline Design card sees newly saved screenshots.",
+);
 
 assert.ok(
   tsSources.includes("export async function fetchUnitScreenshotImages")

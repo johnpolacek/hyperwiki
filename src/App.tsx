@@ -1404,6 +1404,10 @@ function App() {
           completedAt: new Date().toISOString(),
         });
         if (armedCompletion.kind === "execute" && armedCompletion.planPath) {
+          // Execute agents may write screenshots directly to ignored runtime
+          // state. Refresh the inline Design card even when no review drawer is
+          // opened, so newly saved screenshots are visible immediately.
+          setScreenshotRefreshKey((value) => value + 1);
           void maybeOpenScreenshotReview(armedCompletion.planPath, sessionId, armedCompletion.armedAt);
         }
         if (armedCompletion.kind === "exploration" && armedCompletion.planPath) {
