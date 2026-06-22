@@ -7,6 +7,14 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-22 polish | design drawer larger preview cycling</h2>
+  <ul>
+    <li>The Design drawer's larger image preview now shows previous/next chevron icon buttons when the current unit has multiple images, cycling across screenshots, design candidates, and uploaded references.</li>
+    <li>The preview hides the chevron controls when only one image is available.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser fixture verified multi-image cycling and the single-image hidden-controls state.</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-21 polish | project grid switching feedback</h2>
   <ul>
     <li>Removed the grid-beam background treatment from the Projects grid so the view uses a calm plain app background.</li>
