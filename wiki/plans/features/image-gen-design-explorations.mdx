@@ -85,7 +85,7 @@ wikiKind: "plan"
     <li>Added unit-page <strong>Open Design</strong> UI with a drawer-based unit iteration workspace: image library, persistent chat, auto-detected generation/implementation routing, additive candidate generation, and in-drawer screenshot review.</li>
     <li>Generation stays agent-owned: Hyperwiki sends a structured Image-Gen Design Exploration prompt to the agent, asks it to use the imagegen skill when available, and avoids storing provider secrets or API pricing assumptions in app code.</li>
     <li>Execute Unit and worktree execution prompts now include the selected candidate image path, text brief, and user notes when a direction has been chosen.</li>
-    <li>The drawer's larger image preview now includes previous/next chevron icon buttons when a unit has multiple images, cycling across screenshots, design candidates, and uploaded references while hiding the controls for a single image.</li>
+    <li>The drawer's larger image preview now puts the image path and previous/next chevron icon buttons in a footer below the image, cycling across screenshots, design candidates, and uploaded references while hiding the controls for a single image.</li>
   </ul>
 </section>
 
@@ -98,7 +98,7 @@ wikiKind: "plan"
     <li><strong>Done - Unit 04 - Agent prompt and generation workflow:</strong> added the structured prompt/action that gathers unit and project context, clears old explorations, asks for imagegen output, writes ordered PNGs and metadata, and reports capability blockers clearly.</li>
     <li><strong>Done - Unit 05 - Selection-to-execution handoff:</strong> selected image, text brief, and user notes flow into Execute Unit and worktree execution prompts while implemented screenshots remain separate from ideation images.</li>
     <li><strong>Done - Unit 06 - Verification and polish:</strong> added smoke coverage, Rust route/storage tests, empty/clear/refresh states, browser shell render check, and wiki/log updates.</li>
-    <li><strong>Done - Follow-up - Larger preview image cycling:</strong> added chevron icon buttons to the larger image preview so users can cycle through every screenshot, design candidate, and uploaded reference image for the current unit; controls hide when there is only one image. Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and a temporary Vite/agent-browser fixture for multi-image and single-image preview states.</li>
+    <li><strong>Done - Follow-up - Larger preview image cycling:</strong> added chevron icon buttons and the image path to a footer below the larger image preview so users can cycle through every screenshot, design candidate, and uploaded reference image for the current unit; controls hide when there is only one image. Verified with <code>pnpm run check</code>, <code>pnpm run build:frontend</code>, and a temporary Vite/agent-browser fixture for footer placement and cycling.</li>
   </ol>
 </section>
 

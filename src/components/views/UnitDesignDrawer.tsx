@@ -368,45 +368,55 @@ export function UnitDesignDrawer({
         <DialogContent className="max-h-[min(calc(100vh-2rem),50rem)] w-[min(calc(100vw-2rem),72rem)] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Image preview</DialogTitle>
-            <DialogDescription className="font-mono">{largePreviewImage?.path || "Image"}</DialogDescription>
           </DialogHeader>
           {largePreviewImage ? (
-            <div className="relative overflow-hidden rounded-md bg-muted shadow-sm">
-              <img alt={`Preview ${largePreviewImage.name}`} className="max-h-[min(72vh,42rem)] w-full object-contain" src={largePreviewImage.dataUrl} />
-              {showLargePreviewControls ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        aria-label="Show previous image"
-                        className="absolute left-2 top-1/2 size-9 -translate-y-1/2 bg-background/90 shadow-sm hover:bg-background"
-                        size="icon"
-                        type="button"
-                        variant="outline"
-                        onClick={() => cycleLargePreview(-1)}
-                      >
-                        <ChevronLeft aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Previous image</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        aria-label="Show next image"
-                        className="absolute right-2 top-1/2 size-9 -translate-y-1/2 bg-background/90 shadow-sm hover:bg-background"
-                        size="icon"
-                        type="button"
-                        variant="outline"
-                        onClick={() => cycleLargePreview(1)}
-                      >
-                        <ChevronRight aria-hidden="true" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Next image</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : null}
+            <div className="grid gap-3">
+              <div className="overflow-hidden rounded-md bg-muted shadow-sm">
+                <img alt={`Preview ${largePreviewImage.name}`} className="max-h-[min(72vh,42rem)] w-full object-contain" src={largePreviewImage.dataUrl} />
+              </div>
+              <div className={cn("flex min-w-0 items-center gap-2", showLargePreviewControls ? "justify-between" : "justify-start")}>
+                {showLargePreviewControls ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          aria-label="Show previous image"
+                          className="size-8"
+                          size="icon"
+                          type="button"
+                          variant="outline"
+                          onClick={() => cycleLargePreview(-1)}
+                        >
+                          <ChevronLeft aria-hidden="true" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Previous image</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+                <DialogDescription className={cn("min-w-0 flex-1 truncate font-mono text-xs", showLargePreviewControls ? "text-center" : "text-left")}>
+                  {largePreviewImage.path || "Image"}
+                </DialogDescription>
+                {showLargePreviewControls ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          aria-label="Show next image"
+                          className="size-8"
+                          size="icon"
+                          type="button"
+                          variant="outline"
+                          onClick={() => cycleLargePreview(1)}
+                        >
+                          <ChevronRight aria-hidden="true" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Next image</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </DialogContent>
