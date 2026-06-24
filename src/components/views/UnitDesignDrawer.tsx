@@ -371,17 +371,15 @@ export function UnitDesignDrawer({
           </DialogHeader>
           {largePreviewImage ? (
             <div className="grid gap-3">
-              <div className="overflow-hidden rounded-md bg-muted shadow-sm">
+              <div className="relative overflow-hidden rounded-md bg-muted shadow-sm">
                 <img alt={`Preview ${largePreviewImage.name}`} className="max-h-[min(72vh,42rem)] w-full object-contain" src={largePreviewImage.dataUrl} />
-              </div>
-              <div className={cn("flex min-w-0 items-center gap-2", showLargePreviewControls ? "justify-between" : "justify-start")}>
                 {showLargePreviewControls ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           aria-label="Show previous image"
-                          className="size-8"
+                          className="absolute bottom-2 left-2 size-8 bg-background/90 shadow-sm hover:bg-background"
                           size="icon"
                           type="button"
                           variant="outline"
@@ -394,16 +392,13 @@ export function UnitDesignDrawer({
                     </Tooltip>
                   </TooltipProvider>
                 ) : null}
-                <DialogDescription className={cn("min-w-0 flex-1 truncate font-mono text-xs", showLargePreviewControls ? "text-center" : "text-left")}>
-                  {largePreviewImage.path || "Image"}
-                </DialogDescription>
                 {showLargePreviewControls ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           aria-label="Show next image"
-                          className="size-8"
+                          className="absolute bottom-2 right-2 size-8 bg-background/90 shadow-sm hover:bg-background"
                           size="icon"
                           type="button"
                           variant="outline"
@@ -417,6 +412,9 @@ export function UnitDesignDrawer({
                   </TooltipProvider>
                 ) : null}
               </div>
+              <DialogDescription className="min-w-0 truncate text-center font-mono text-xs">
+                {largePreviewImage.path || "Image"}
+              </DialogDescription>
             </div>
           ) : null}
         </DialogContent>

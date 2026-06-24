@@ -9,9 +9,10 @@ wikiKind: "page"
 <article>
   <h2>2026-06-22 polish | design drawer larger preview cycling</h2>
   <ul>
-    <li>The Design drawer's larger image preview now shows the image path and previous/next chevron icon buttons in a footer below the image, cycling across screenshots, design candidates, and uploaded references.</li>
+    <li>The Design drawer's larger image preview now shows previous/next chevron icon buttons on the bottom-left and bottom-right corners of the image, cycling across screenshots, design candidates, and uploaded references.</li>
+    <li>The preview keeps the image path label below the image.</li>
     <li>The preview hides the chevron controls when only one image is available.</li>
-    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser fixture verified footer placement below the image and multi-image cycling.</li>
+    <li>Verification: <code>pnpm run check</code> and <code>pnpm run build:frontend</code> passed. A temporary Vite/agent-browser fixture verified bottom-corner button placement, the below-image label, and multi-image cycling.</li>
   </ul>
 </article>
 <article>
