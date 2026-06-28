@@ -1,0 +1,70 @@
+---
+title: "Stage 03 — Plan/Phase-Scoped Learnings"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 03 — Plan/Phase-Scoped Learnings" status="planned" description="Tie captured learnings to the active plan or lifecycle phase and surface them in the plan UI and lifecycle dashboard — the capability the raw plugin can't do." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Reflections](./index.mdx)
+  - Current unit: Unit 01 — scope learnings to context
+  - Next action: stamp each learning with the session's plan / lifecycle phase at capture time
+  - Blockers: Stage 02 approval loop must work end-to-end
+  - Validation: a learning captured during a plan-scoped session is filterable by that plan and shown on the relevant surface
+</PlanSummary>
+
+## Stage Goal
+
+Make learnings contextual. A correction made while working a specific plan or lifecycle phase is most useful when it resurfaces in that context. The plumbing already exists: `SessionRecord` carries `scope`/`planPath`, and `src/lib/lifecycle.ts` derives the active phase. This stage joins learnings to that context and surfaces them where the work happens — the differentiator over a context-free CLI plugin.
+
+<Dependencies>
+
+- Stage 02: a working capture → approve → write loop with `LearningRecord`.
+- Existing context sources: `SessionRecord` scope/planPath fields; `activeLifecyclePhase()` in `src/lib/lifecycle.ts`.
+
+</Dependencies>
+
+### Unit 01 — Scope learnings to plan / phase at capture
+
+<Scope>
+
+- Extend `LearningRecord` and the Stage 02 capture step; no transcript-layer changes.
+
+</Scope>
+
+<ImplementationNotes>
+
+- At capture, read the source session's `scope`/`planPath` and the active lifecycle phase, and stamp them onto the `LearningRecord`.
+- Sessions with no plan scope record a `global` learning — still valid, just unscoped.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: a correction made in a plan-scoped terminal yields a learning tagged with that plan path; an unscoped session yields a `global` learning.
+</Verification>
+
+### Unit 02 — Surface scoped learnings in the UI
+
+<Scope>
+
+- Read-only surfacing in plan pages and the lifecycle dashboard; no writes.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Show a plan's approved learnings on its plan page, and phase-scoped learnings in `src/components/views/LifecycleDashboardView.tsx`, consistent with the orchestrator's "report and recommend" posture (`lifecycle-contract.md`).
+- Learnings are presented as context/recommendations — never auto-applied to files from these surfaces.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm dev:frontend</CommandBlock>
+  - Manual: open a plan with at least one approved scoped learning and confirm it renders under that plan; confirm phase-scoped learnings appear on the lifecycle dashboard for the active phase.
+</Verification>
+
+<CompletionGate title="Completion gate">
+  Learnings carry plan/phase scope and render on the matching plan page and lifecycle dashboard, read-only. `pnpm check` green. Record the scoping behavior in `wiki/log.mdx`.
+</CompletionGate>

@@ -1,0 +1,72 @@
+---
+title: "Stage 04 — Skill Generation"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 04 — Skill Generation" status="planned" description="Mine repeated task patterns across sessions and propose new repo-local .agents/skills entries — the most speculative capability, deferred until capture and approval are trusted." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Reflections](./index.mdx)
+  - Current unit: Unit 01 — pattern mining
+  - Next action: cluster recurring task shapes across transcripts into candidate skills
+  - Blockers: Stages 02–03 must be proven; this stage is intentionally last
+  - Validation: a genuinely repeated workflow is proposed as a skill draft and only created on human approval
+</PlanSummary>
+
+## Stage Goal
+
+Turn repetition into reusable tooling. claude-reflect's `/reflect-skills` mines session history for task shapes that recur and proposes new slash commands. hyperwiki's equivalent proposes `.agents/skills/` entries. Pattern-mining precision is hard, so this stage is the most speculative and ships strictly as **proposals** — never auto-created skills.
+
+<Dependencies>
+
+- Stages 02–03: the transcript seam, capture/approval loop, and scoping all in place.
+- Existing repo-local skills live under `.agents/skills/`; new skills follow the same `SKILL.md` shape.
+
+</Dependencies>
+
+### Unit 01 — Pattern mining
+
+<Scope>
+
+- An analysis pass over multiple sessions' transcripts; output is candidate patterns, not files.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Cluster recurring task shapes (same sequence of asks/edits across sessions) using the user's own agent for the semantic grouping — local, no telemetry.
+- Rank candidates by frequency and confidence; discard one-off sequences.
+- Route a correction made *while using an existing skill* back as a proposed update to that skill, not a brand-new one (claude-reflect's skill-improvement routing).
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: across several sessions that repeat one workflow, the miner surfaces that workflow as a single high-confidence candidate.
+</Verification>
+
+### Unit 02 — Propose skill drafts (approval-gated)
+
+<Scope>
+
+- Reuse the Stage 02 approval surface to present skill drafts; the writer creates `.agents/skills/<slug>/SKILL.md` only on approval.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Generate a `SKILL.md` draft (name, description, body) for an approved candidate, matching existing repo-local skill structure.
+- Human reviews/edits the draft before anything is written; skipped candidates create nothing.
+- Never overwrite an existing skill — updates go through the same review with a visible diff.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm dev:frontend</CommandBlock>
+  - Manual: approve a proposed skill and confirm a new `.agents/skills/<slug>/SKILL.md` is created with the edited content; skip another and confirm no file is written.
+</Verification>
+
+<CompletionGate title="Completion gate">
+  A real repeated workflow is mined, proposed, human-approved, and written as a new repo-local skill; an existing-skill correction is proposed as an update with a diff, not a duplicate. `pnpm check` green. Record the outcome (and any precision limits found) in `wiki/log.mdx`.
+</CompletionGate>

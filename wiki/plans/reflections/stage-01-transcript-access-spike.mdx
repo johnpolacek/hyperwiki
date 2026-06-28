@@ -1,0 +1,111 @@
+---
+title: "Stage 01 — Transcript-Access Spike"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 01 — Transcript-Access Spike" status="planned" description="Prove hyperwiki can read agent session transcripts for both Codex and Claude Code and extract corrections from real data — a go/no-go gate before any feature work." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Reflections](./index.mdx)
+  - Current unit: Unit 01 — locate Codex transcripts
+  - Next action: find where Codex stores per-session transcripts on disk
+  - Blockers: none (this stage exists to remove the project's biggest unknown)
+  - Validation: a throwaway script reads both providers' transcripts and prints extracted corrections from a real session
+</PlanSummary>
+
+## Stage Goal
+
+De-risk the whole feature. hyperwiki persists session *metadata only* (`SessionRecord`); reflection needs the actual conversation. Before building any capture pipeline, prove — on real local data — that both providers' transcripts are readable behind a single abstraction, and that plausible corrections can be pulled out of them. This stage writes no product code; it produces a spike and an explicit **go/no-go** decision.
+
+<Dependencies>
+
+- None. This is the first stage and gates every later one.
+- Reference the provider split in `src-tauri/src/domain/agent_provider.rs` and the canonical launch commands it selects between.
+
+</Dependencies>
+
+### Unit 01 — Locate and parse Codex session logs
+
+<Scope>
+
+- Spike only (a script under `.tmp/` or a scratch Rust/TS helper). No production code.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Find where the Codex CLI writes per-session transcripts on disk (home-dir state directory) and confirm the on-disk format (JSON lines vs single doc).
+- Map a hyperwiki `SessionRecord` (id, cwd, created_at) to its Codex transcript file, so a session can later be joined to its conversation.
+- Note any gaps: sessions launched outside hyperwiki, rotated/truncated logs, missing turns.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: run a short Codex session in a hyperwiki terminal, then point the spike at its transcript file and confirm the user/assistant turns are recoverable.
+</Verification>
+
+### Unit 02 — Locate and parse Claude Code transcripts
+
+<Scope>
+
+- Spike only. No production code.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Read Claude Code's own transcripts (per-project JSONL under `~/.claude/projects/<encoded-cwd>/`).
+- Confirm the schema fields needed downstream: role, text, timestamp, and a stable session/run id to join back to `SessionRecord`.
+- Cross-check against the existing stream-json protocol expectations in `tests/claude-stream-json-protocol-smoke.mjs` so the spike parses the same shape the runtime already understands.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: run a short Claude Code session, then confirm the spike recovers its turns from `~/.claude/projects/...`.
+</Verification>
+
+### Unit 03 — Provider abstraction over transcript source
+
+<Scope>
+
+- Spike only — a single interface with two implementations, mirroring how `agent_provider.rs` already branches Codex vs Claude.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Define one read seam: `transcript_for(session) -> [{ role, text, ts }]`, resolved by the session's provider.
+- Keep provider-specific path/format logic isolated behind that seam so Stage 02 capture is provider-agnostic.
+- Decide the join key (session id vs cwd + time window) that reliably maps `SessionRecord` → transcript for each provider.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: the same spike entry point returns normalized turns for a Codex session and a Claude Code session without caller-side branching.
+</Verification>
+
+### Unit 04 — Correction-extraction proof on real data
+
+<Scope>
+
+- Spike only. No production code, no file writes to `AGENTS.md`/`wiki/`.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Run a first-pass extractor (regex for "no, use X not Y" / "don't use Y" / "remember:") over real transcripts from Units 01–02.
+- Print candidate learnings with the surrounding turn for context; eyeball precision/recall on a handful of real sessions.
+- Record whether semantic validation (Stage 02) is clearly needed to make the signal usable — it almost certainly is.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: on at least one real Codex session and one real Claude session that contained a correction, the spike surfaces that correction as a candidate.
+</Verification>
+
+<CompletionGate title="Completion gate — go / no-go">
+  Decision recorded in `wiki/log.mdx`: **GO** if both providers' transcripts are readable behind the Unit 03 seam *and* Unit 04 surfaces real corrections at usable precision — Stage 02 may begin. **NO-GO** if either provider's transcripts are inaccessible or unjoined to sessions — document the specific blocker and stop; do not start Stage 02.
+</CompletionGate>

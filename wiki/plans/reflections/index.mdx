@@ -1,0 +1,69 @@
+---
+title: "Reflections"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Reflections" status="planned" description="Capture corrections and repeated patterns from agent terminal sessions and turn them into durable, human-approved AGENTS.md / wiki / skill updates." />
+
+<PlanSummary>
+  - Status: planned
+  - Shape: staged plan, 4 stages
+  - Current stage: stage 01 — transcript-access spike
+  - Next action: run the Stage 01 spike to prove transcript access across both providers
+  - Blockers: transcript access across Codex + Claude Code is unproven (Stage 01 go/no-go)
+  - Validation: per-stage completion gates below; `pnpm check` stays green for any code that lands
+</PlanSummary>
+
+## Reader Goal
+
+In two minutes: understand why hyperwiki should grow a claude-reflect-style learning loop, why it belongs *inside* hyperwiki rather than as a Claude-only CLI plugin, and the four staged steps — gated on a transcript-access spike — that get there for both Codex and Claude Code.
+
+## Why
+
+Today, when a developer corrects an agent mid-session ("no, use X not Y") or repeats the same task shape across runs, that signal evaporates when the terminal closes. hyperwiki sessions persist *metadata only* (`.hyperwiki/sessions/*.json`, see `SessionRecord` in `src/lib/types.ts`); terminal output is a short-lived in-memory buffer. The durable context an agent reads next time — `AGENTS.md`, the `wiki/`, repo-local `.agents/skills/` — never learns from what just happened.
+
+[claude-reflect](https://github.com/BayramAnnakov/claude-reflect) closes exactly this gap for Claude Code via hooks + slash commands. Its outputs target the same files hyperwiki is built around. hyperwiki is arguably a *better* home for the idea:
+
+- **It has a UI.** The approve/edit/skip review step can be a real surface (mirroring the existing design-exploration and Bugs approval flows) instead of a terminal table.
+- **It has plan + lifecycle context.** Learnings can be scoped to the active plan or lifecycle phase — context already on `SessionRecord` and `src/lib/lifecycle.ts` — which the raw plugin cannot do.
+- **Local-first trust boundary already matches.** Semantic validation runs through the user's own agent; no telemetry, no cloud sync.
+
+<Flow title="Reflect pipeline">
+  <FlowStep label="Capture" detail="detect corrections in session transcript" status="planned" />
+  <FlowStep label="Queue" detail="buffer candidate learnings" status="planned" />
+  <FlowStep label="Semantic validate" detail="agent filters false positives" status="planned" />
+  <FlowStep label="Approve" detail="human review/edit/skip in UI" status="planned" />
+  <FlowStep label="Write" detail="AGENTS.md managed block / wiki / skill" status="planned" />
+</Flow>
+
+<StageTrack title="Stages">
+  <StageItem label="Stage 01 — Transcript-access spike" status="current" detail="prove Codex + Claude Code transcript reads; go/no-go" href="./stage-01-transcript-access-spike.mdx" />
+  <StageItem label="Stage 02 — Correction capture + approval UI" status="planned" detail="detect → queue → validate → approve → write" href="./stage-02-correction-capture.mdx" />
+  <StageItem label="Stage 03 — Plan/phase-scoped learnings" status="planned" detail="scope to active plan / lifecycle phase; surface in UI" href="./stage-03-scoped-learnings.mdx" />
+  <StageItem label="Stage 04 — Skill generation" status="planned" detail="mine repeated patterns → propose .agents/skills entries" href="./stage-04-skill-generation.mdx" />
+</StageTrack>
+
+<Decision title="Orchestrator-aligned, not a 7th lifecycle phase">
+  The 6-phase lifecycle is a load-bearing contract: `validation-checklist.md` requires *exactly six* phase pages matching the descriptor in `src/lib/lifecycle.ts` / `src-tauri/src/domain/lifecycle.rs`, locked by a backward-compat regression fixture. Reflections must **not** become a 7th phase. Instead it adopts the **orchestrator posture** from `src-tauri/agent-skills/hyperwiki/references/lifecycle-contract.md`: it *reports and recommends, never executes, never edits files without a human handoff*. The natural future surface is the lifecycle dashboard (`src/components/views/LifecycleDashboardView.tsx`); a later phase `childPlan` is possible but deferred to keep the six-phase contract intact.
+</Decision>
+
+## Non-goals
+
+- No auto-apply: every learning requires explicit human approval before it touches a file.
+- No telemetry or cloud sync — local machine stays the trust boundary.
+- Not a replacement for `wiki/log.mdx` (durable project context stays human-authored).
+- Not a 7th lifecycle phase, and no edits to the six-phase descriptor or its fixture.
+
+## Risks
+
+| Risk | Severity | Mitigation |
+| --- | --- | --- |
+| Provider transcript divergence (Codex vs Claude Code store/locate sessions differently) | high | Stage 01 spike proves both behind one provider abstraction before any feature work; on no-go, stop and document |
+| Regex correction-detection false positives | medium | mandatory semantic-validation pass + human approval gate (Stage 02); never write unreviewed |
+| Clobbering user-authored `AGENTS.md` / `CLAUDE.md` content | high | write only inside `HYPERWIKI-SKILL` managed-block markers; preserve everything outside (validation-checklist "Managed Blocks") |
+| Pattern-mining precision for skill generation | medium | Stage 04 is deferred until capture + approval are proven; ships as *proposals*, never auto-created skills |
+
+## Sequencing
+
+Strict gate first: **01 (go/no-go) → 02 → 03**. Stage 02 is the core; Stage 03 is hyperwiki's differentiator (cheap once capture exists, since plan/phase context already lives on `SessionRecord` + `lifecycle.ts`). **04** is the most speculative and lands last, only after the approval loop is trusted.

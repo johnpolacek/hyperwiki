@@ -1,0 +1,111 @@
+---
+title: "Stage 02 — Correction Capture + Approval UI"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 02 — Correction Capture + Approval UI" status="planned" description="Detect corrections in session transcripts, queue them, validate semantically, and route human-approved learnings into AGENTS.md managed blocks or a wiki page." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Reflections](./index.mdx)
+  - Current unit: Unit 01 — capture + queue
+  - Next action: build the detector + learnings queue on top of the Stage 01 transcript seam
+  - Blockers: Stage 01 must close GO
+  - Validation: a real correction flows capture → queue → approve and lands in an `AGENTS.md` managed block without touching surrounding content
+</PlanSummary>
+
+## Stage Goal
+
+The core loop. Using the transcript seam proven in Stage 01, detect corrections, hold them in a reviewable queue, run a semantic pass to drop false positives, and — only on explicit human approval — write each learning into the durable context. Approval is mandatory; nothing is auto-applied.
+
+<Dependencies>
+
+- Stage 01 GO: the provider-agnostic `transcript_for(session)` seam exists.
+- Reuse existing approval-surface patterns: the design-exploration and Bugs review flows already model "agent proposes, human accepts" in the app.
+
+</Dependencies>
+
+### Unit 01 — Capture and queue
+
+<Scope>
+
+- Detector + a persisted learnings queue (alongside `.hyperwiki/sessions/`, ignored by Git like the rest of `.hyperwiki/`).
+
+</Scope>
+
+<ImplementationNotes>
+
+- Run the Stage 01 extractor over a session's transcript on close (or on demand), producing candidate learnings with: source session id, provider, surrounding turn, confidence.
+- Persist the queue as JSON next to session metadata; add a `LearningRecord` type near `SessionRecord`/`ImportOnboardingEventRecord` in `src/lib/types.ts`.
+- Capture only — no validation, no writes yet.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: after a session containing a correction, the queue file gains a candidate entry with its source turn.
+</Verification>
+
+### Unit 02 — Semantic validation pass
+
+<Scope>
+
+- A validation step that filters the raw queue before it reaches the human.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Send queued candidates through the user's own agent to drop questions, one-off instructions, and non-corrections — the same human-local, no-telemetry path the rest of hyperwiki uses.
+- Attach a confidence/keep signal to each candidate; never discard silently — mark filtered items so the UI can show "hidden by validation".
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: a queue containing one genuine correction and one question retains the correction and flags the question as filtered.
+</Verification>
+
+### Unit 03 — Approval UI
+
+<Scope>
+
+- A review surface listing validated candidates with approve / edit / skip per row.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Mirror the existing design-exploration / Bugs review components rather than inventing a new pattern.
+- Each row shows the proposed learning, its source session, and the destination (AGENTS.md / wiki / skill); the human can edit the text before approving.
+- Nothing is written until the human approves a row.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm dev:frontend</CommandBlock>
+  - Manual: open the review surface, edit a candidate, skip another, and confirm only the approved one proceeds to write.
+</Verification>
+
+### Unit 04 — Write to durable context (managed blocks)
+
+<Scope>
+
+- The writer that lands an approved learning in `AGENTS.md` / `CLAUDE.md` or a `wiki/` page.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Write **only inside `HYPERWIKI-SKILL` managed-block markers**; replace marker content, never user-authored text outside it (validation-checklist "Managed Blocks").
+- If no managed block exists, insert one safely; if a generated-looking file lacks a safe boundary, report `present_but_not_upgraded` rather than overwriting.
+- Keep any `CLAUDE.md` managed block consistent with `AGENTS.md` and `wiki/AGENTS.mdx`, matching the existing Settings → AGENTS.md sync behavior.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  - Manual: approve a learning targeting `AGENTS.md`; confirm it appears inside the managed block and that text above/below the markers is byte-for-byte unchanged.
+</Verification>
+
+<CompletionGate title="Completion gate">
+  A real correction flows capture → validate → human-approve → write into an `AGENTS.md` managed block with surrounding content preserved; skipped/filtered candidates never write. `pnpm check` stays green. Record the end-to-end run in `wiki/log.mdx`.
+</CompletionGate>
