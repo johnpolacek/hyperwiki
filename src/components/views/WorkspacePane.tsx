@@ -8,6 +8,7 @@ import { NewProjectView } from "@/components/views/NewProjectView";
 import { AdoptingView, PendingImportView, ProjectsView } from "@/components/views/ProjectsView";
 import { SettingsView } from "@/components/views/SettingsView";
 import { FeedbackQueueView } from "@/components/views/FeedbackQueueView";
+import { LifecycleDashboardView } from "@/components/views/LifecycleDashboardView";
 import { appendImportLog } from "@/lib/import-log";
 import { cn, DISABLE_TEXT_CORRECTION_PROPS } from "@/lib/utils";
 import { fetchUnitExplorationImages, fetchUnitScreenshotImages, type UnitScreenshotImageData } from "@/lib/api";
@@ -134,6 +135,16 @@ export function WorkspacePane(props: {
         onRemoveItem={props.onRemoveFeedback}
         onSendAll={props.onSendAllFeedback}
         wikiPages={props.wikiPages}
+      />
+    );
+  }
+  if (props.route.kind === "lifecycle") {
+    return (
+      <LifecycleDashboardView
+        wikiPages={props.wikiPages}
+        activeProject={props.activeProject}
+        onRunCommand={props.onRunCommand}
+        onNavigate={props.onNavigate}
       />
     );
   }

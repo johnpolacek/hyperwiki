@@ -272,3 +272,81 @@ Add the optional `## Screenshot capture` section only to units with a browser-ob
   <text x="505" y="62" text-anchor="middle" fill="currentColor" font-size="14">Subs</text>
 </svg>
 ```
+
+## 6. Lifecycle Root (`wiki/plans/lifecycle/index.mdx`)
+
+The canonical 6-phase product lifecycle spine. Seeded by the runtime; see `references/lifecycle-contract.md`. The root is a `StageTrack` of the six phases linking to phase pages.
+
+```mdx
+---
+title: "Product Lifecycle"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "active"
+---
+
+<PlanHero title="Product Lifecycle" status="active" description="The canonical 6-phase path from purpose to shipped MVP views." />
+
+<PlanSummary>
+  - Status: active
+  - Shape: lifecycle plan, 6 phases
+  - Current phase: Phase 1 — Purpose & User Stories
+  - Next action: hand off to the Purpose agent (or Ask the Orchestrator)
+  - Blockers: none
+  - Validation: each phase clears its gate before the next begins
+</PlanSummary>
+
+<StageTrack title="Phases">
+  <StageItem label="Phase 1 — Purpose & User Stories" status="current" href="./phase-01-purpose.mdx" />
+  <StageItem label="Phase 2 — Design System" status="planned" href="./phase-02-design-system.mdx" />
+  <StageItem label="Phase 3 — UI Mocks" status="planned" href="./phase-03-ui-mocks.mdx" />
+  <StageItem label="Phase 4 — Backend Architecture" status="planned" href="./phase-04-backend-arch.mdx" />
+  <StageItem label="Phase 5 — Onboarding" status="planned" href="./phase-05-onboarding.mdx" />
+  <StageItem label="Phase 6 — MVP Views" status="planned" href="./phase-06-mvp-views.mdx" />
+</StageTrack>
+```
+
+## 7. Lifecycle Phase (`wiki/plans/lifecycle/phase-NN-<id>.mdx`)
+
+One stage page per phase. The frontmatter contract (`phaseId`/`phaseOrder`/`childPlan`/`gate`) is load-bearing — keep it in lockstep with the descriptor in `src/lib/lifecycle.ts`.
+
+```mdx
+---
+title: "Phase 2 — Design System"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "planned"
+phaseId: "design-system"
+phaseOrder: 2
+childPlan: "/wiki/plans/design-system/index.mdx"
+gate: "childPlan"
+---
+
+<PlanHero title="Phase 2 — Design System" status="planned" description="Establish design tokens, then a customized shadcn/ui layer built on them." />
+
+<PlanSummary>
+  - Status: planned
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: Design System (execute archetype)
+  - Skills: tailwind-design-system, shadcn
+  - Sub-plan: /wiki/plans/design-system/
+  - Gate: childPlan
+</PlanSummary>
+
+## Phase goal
+
+Tokens first (color, spacing, type, radius, dark mode), then a customized shadcn/ui component set consuming them.
+
+## Entry gate
+
+Phase 1 cleared.
+
+## Sub-agent contract
+
+- Skills: load tailwind-design-system then shadcn before changing tokens or components.
+- Produces: design tokens, a customized shadcn/ui layer, and the `/wiki/plans/design-system/` sub-plan.
+
+<CompletionGate title="Completion gate">
+  The phase page is `complete` and `/wiki/plans/design-system/index.mdx` is `complete`. Then the next phase activates.
+</CompletionGate>
+```

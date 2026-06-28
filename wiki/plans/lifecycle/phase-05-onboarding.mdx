@@ -1,0 +1,45 @@
+---
+title: "Phase 5 — Onboarding"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "planned"
+phaseId: "onboarding"
+phaseOrder: 5
+childPlan: "/wiki/plans/onboarding/index.mdx"
+gate: "childPlan"
+---
+
+<PlanHero title="Phase 5 — Onboarding" status="planned" description="Build the onboarding flow that brings a new user into the product." />
+
+<PlanSummary>
+  - Status: planned
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: Onboarding (execute archetype)
+  - Skills: frontend-design
+  - Sub-plan: /wiki/plans/onboarding/
+  - Gate: childPlan
+</PlanSummary>
+
+## Phase goal
+
+A working onboarding flow — sign-up/sign-in, first-run setup, and whatever first-value step the user stories define — built on the design system and the chosen backend.
+
+## Entry gate
+
+Phase 4 cleared (backend architecture decided, so auth and data wiring are known).
+
+## Sub-agent contract
+
+- **Skills**: `frontend-design`.
+- **Produces**: the onboarding views and their wiring to the backend, tracked in `/wiki/plans/onboarding/` with `Screen`-level specs and screenshot capture for each step.
+
+<Verification>
+
+- A new user can complete onboarding end-to-end against the chosen backend.
+- Onboarding screens captured per the sub-plan.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  The phase page is `complete` and `/wiki/plans/onboarding/index.mdx` is `complete`. Then the MVP Views phase activates.
+</CompletionGate>

@@ -7,6 +7,18 @@ wikiKind: "page"
 <h1>Project Log</h1>
 <p>Git owns routine implementation history. This log owns durable project-context history.</p>
 <article>
+  <h2>2026-06-28 feature | 6-phase product lifecycle + orchestrator</h2>
+  <ul>
+    <li>Reshaped hyperwiki's methodology around a canonical 6-phase product lifecycle (Purpose → Design System → UI Mocks → Backend Architecture → Onboarding → MVP Views), driven by a master orchestrator and surfaced through a new lifecycle dashboard. Implemented the <a href="/wiki/plans/lifecycle-refactor/index.mdx">Lifecycle Refactor</a> plan (7 stages).</li>
+    <li>Tier model: the lifecycle is a plan root at <code>wiki/plans/lifecycle/</code>; each phase is a stage page that links its own <code>childPlan</code> sub-plan. Derivation lives in new pure modules <code>src/lib/lifecycle.ts</code> (frontend) and <code>src-tauri/src/domain/lifecycle.rs</code> (contract), kept behaviorally equivalent. The active phase is the first whose gate is not cleared (gate kinds: <code>childPlan</code>, <code>manual</code>, <code>import-validated</code>).</li>
+    <li>Decisions: the lifecycle reuses the existing plan engine (no parallel system); the orchestrator and phase handoffs reuse the existing <code>planning</code>/<code>execute</code> agent-run archetypes (only two new <code>CommandAction</code> values + one <code>ViewRoute</code>, no new <code>AgentRunKind</code>, no Rust orchestrator runtime); the orchestrator reports and recommends but never executes. Phase 1 owns the PRD/user-stories; Phase 6 owns the <code>wiki/plans/mvp/</code> build sub-plan. <code>wiki/plans/mvp/</code> semantics left intact.</li>
+    <li>Backend: <code>write_project_scaffold</code> seeds <code>wiki/plans/lifecycle/</code> for every new and imported project via compile-time <code>include_str!</code> of the canonical pages (no drift); <code>project_contract</code> (and its MCP surface) now reports a <code>lifecycle</code> block (active phase, per-phase gate status) so agents read phase state instead of scraping MDX. Phase 1 reuses the existing import-planning interview (no new interview) and its <code>validate_import_plan_artifacts</code> result feeds the <code>import-validated</code> gate.</li>
+    <li>Additive guard: lifecycle pages are excluded from the legacy current-work/Execute-Unit derivation (<code>isLifecyclePlanPath</code> in <code>wiki-pages.ts</code>) so they render in the sidebar tree without hijacking the active-plan path; no existing exported derivation function changed behavior.</li>
+    <li>Methodology encoding: added the <code>lifecycle_orchestrate</code> skill mode, <code>references/lifecycle-contract.md</code>, lifecycle skeletons + validation checks, and Product Lifecycle guidance in <code>AGENTS.md</code> and <code>wiki/AGENTS.mdx</code>.</li>
+    <li>Verification: <code>pnpm check:all</code> green (tsc, all frontend static smokes, 4 new lifecycle frontend tests via a node <code>@/</code> alias loader, <code>cargo check</code>, all cargo tests incl. 3 new <code>lifecycle.rs</code> tests + lifecycle seeding assertions in the dashboard-creation test, and all integration smokes). A backward-compat fixture locks existing plan derivation. The dashboard was visually verified in the Vite preview (active Phase 1 with a Hand off control; phases 2–6 locked).</li>
+  </ul>
+</article>
+<article>
   <h2>2026-06-22 polish | design drawer larger preview cycling</h2>
   <ul>
     <li>The Design drawer's larger image preview now shows previous/next chevron icon buttons on the bottom-left and bottom-right corners of the image, cycling across screenshots, design candidates, and uploaded references.</li>

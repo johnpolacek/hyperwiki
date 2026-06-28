@@ -1,0 +1,43 @@
+---
+title: "Phase 4 — Backend Architecture"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "planned"
+phaseId: "backend-arch"
+phaseOrder: 4
+gate: "manual"
+---
+
+<PlanHero title="Phase 4 — Backend Architecture" status="planned" description="Decide the backend architecture once the UI shape is known, and record the decision." />
+
+<PlanSummary>
+  - Status: planned
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: Backend Architecture (planning archetype)
+  - Skills: grill-with-docs
+  - Output: wiki/architecture.mdx decision record
+  - Gate: manual
+</PlanSummary>
+
+## Phase goal
+
+Choose the backend architecture (data model, auth, hosting, realtime/sync as needed) now that the UI mocks reveal the real data and interaction requirements — and record it as a durable decision.
+
+## Entry gate
+
+Phase 3 cleared (UI mocks exist, so the data requirements are concrete).
+
+## Sub-agent contract
+
+- **Skills**: `grill-with-docs` to stress-test options against the user stories and mocks.
+- **Produces**: `wiki/architecture.mdx` with `Decision`/`DecisionOption` records for the chosen architecture and the alternatives considered.
+
+<Verification>
+
+- `wiki/architecture.mdx` records the selected architecture and why, grounded in the mocks' requirements.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  This is a decision phase with no sub-plan: mark the phase page `complete` once the architecture decision is recorded. Then the Onboarding phase activates.
+</CompletionGate>

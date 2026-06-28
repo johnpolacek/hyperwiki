@@ -141,6 +141,7 @@ pub struct ProjectContract {
     pub layout: crate::domain::previews::LayoutConfig,
     pub wiki: ContractWiki,
     pub agent: ContractAgent,
+    pub lifecycle: crate::domain::lifecycle::LifecycleState,
     pub canonical_truth: Vec<String>,
     pub runtime_truth: Vec<String>,
     pub agent_context: String,
@@ -398,6 +399,11 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         project.sessions.clone(),
         verification.state_path.clone(),
     ];
+    let wiki_pages = contract_wiki_pages(root);
+    let import_validated =
+        crate::domain::import_planning::import_planning_status(root).status == "complete";
+    let lifecycle =
+        crate::domain::lifecycle::lifecycle_state_from_pages(&wiki_pages, import_validated);
     let mut contract = ProjectContract {
         version: 1,
         kind: "hyperwiki.project-contract".to_string(),
@@ -419,9 +425,10 @@ pub fn project_contract(root: impl AsRef<Path>) -> ProjectContract {
         layout: workspace.layout,
         wiki: ContractWiki {
             index_path: "/wiki/index.mdx".to_string(),
-            pages: contract_wiki_pages(root),
+            pages: wiki_pages,
         },
         agent,
+        lifecycle,
         canonical_truth,
         runtime_truth,
         agent_context: String::new(),

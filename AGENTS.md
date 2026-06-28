@@ -44,6 +44,13 @@ For frontend rewrite work, use the repo-local `shadcn` and `tailwind-design-syst
 - Sync recent codebase changes back into `wiki/log.mdx`, relevant plans, roadmap, and source pages when work happened before planning or made the wiki stale.
 - Update `wiki/index.mdx` when adding or materially changing durable wiki pages.
 
+### Product Lifecycle
+
+- hyperwiki guides each project through a canonical 6-phase product lifecycle at `wiki/plans/lifecycle/`: Purpose → Design System → UI Mocks → Backend Architecture → Onboarding → MVP Views. The runtime seeds it for every new and imported project.
+- Meaningful new-product work flows through the active phase and its completion gate. The active phase is the first whose gate is not cleared; only the active phase hands off to its sub-agent. See `.agents/skills/hyperwiki/references/lifecycle-contract.md` for the phases, gates, and per-phase sub-agent contracts.
+- Each phase loads specific repo-local skills (e.g. design system → `tailwind-design-system` + `shadcn`; UI mocks → `frontend-design`). Phase build work lives in the phase's own `childPlan` sub-plan (`plan > stages > units`); the lifecycle layer only tracks which phase is active.
+- Preserve the lifecycle phase frontmatter (`phaseId`/`phaseOrder`/`childPlan`/`gate`) and keep it in lockstep with the descriptor in `src/lib/lifecycle.ts`.
+
 ### Working Rules
 
 - Inspect existing files and Git state before writing.

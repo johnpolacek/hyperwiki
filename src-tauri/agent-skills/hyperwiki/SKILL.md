@@ -45,6 +45,7 @@ Before substantial MDX artifact work, read `references/mdx-artifact-patterns.md`
    - `bootstrap_new`: create a fresh MDX hyperwiki scaffold.
    - `import_existing`: add hyperwiki memory to an existing repo without overwriting user files.
    - `terminal_import_planning`: run imported-project Q&A in the terminal, then create MVP plan docs.
+   - `lifecycle_orchestrate`: maintain and advance the canonical 6-phase product lifecycle under `wiki/plans/lifecycle/`; determine the active phase, verify the prior phase's gate, and either dispatch the phase sub-agent or report the blocking gate.
    - `plan_feature`: create a decision-complete implementation plan before meaningful app changes.
    - `update_plan`: revise an existing plan after decisions, implementation discoveries, or validation.
    - `sync_changes`: reconcile recent code changes back into wiki/log/plans/source briefs.
@@ -68,6 +69,7 @@ Reaching gated previews: before capturing, ensure the full app is running — `p
 | `bootstrap_new` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md` |
 | `import_existing` | `references/canonical-bootstrap-contract.md`, `references/generated-baseline-artifacts.md`, `references/mdx-artifact-patterns.md`, `references/validation-checklist.md` |
 | `terminal_import_planning` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
+| `lifecycle_orchestrate` | `references/lifecycle-contract.md`, `references/plan-page-skeletons.md` |
 | `plan_feature` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
 | `update_plan` | `references/planning-contract.md`, `references/mdx-artifact-patterns.md`, `references/plan-page-skeletons.md` |
 | `sync_changes` | `references/planning-contract.md`; add `references/mdx-artifact-patterns.md` when creating or materially revising MDX |
@@ -123,6 +125,7 @@ A completed hyperwiki scaffold should create or preserve:
 - `wiki/log.mdx`
 - `wiki/sources.mdx`
 - `wiki/plans/index.mdx`
+- `wiki/plans/lifecycle/` — the canonical 6-phase product lifecycle (`index.mdx` plus `phase-01-purpose.mdx` … `phase-06-mvp-views.mdx`). The hyperwiki runtime seeds these for every new and imported project; preserve them and keep their `phaseId`/`phaseOrder`/`childPlan`/`gate` frontmatter intact. See `references/lifecycle-contract.md`.
 - `wiki/roadmap.mdx`
 
 Generate source briefs only when evidence justifies them:
@@ -152,6 +155,7 @@ End with a concise summary of created, updated, preserved, skipped, failed, bloc
 - `references/canonical-bootstrap-contract.md`
 - `references/generated-baseline-artifacts.md`
 - `references/intake-discovery-contract.md`
+- `references/lifecycle-contract.md`
 - `references/mdx-artifact-patterns.md`
 - `references/plan-page-skeletons.md`
 - `references/example-minimal-bootstrap.md`

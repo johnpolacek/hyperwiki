@@ -1,4 +1,4 @@
-import { LayoutDashboard, MessageSquareText, Settings } from "lucide-react";
+import { LayoutDashboard, MessageSquareText, Milestone, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ProjectRecord, ViewRoute } from "@/lib/types";
 
@@ -25,6 +25,12 @@ export function TopBar(props: {
           <LayoutDashboard aria-hidden="true" data-icon="inline-start" />
           Projects
         </Button>
+        {props.activeProject ? (
+          <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "lifecycle" })}>
+            <Milestone aria-hidden="true" data-icon="inline-start" />
+            Lifecycle
+          </Button>
+        ) : null}
         {props.activeProject && (props.feedbackCount || 0) > 0 ? (
           <Button className="h-8" size="sm" variant="ghost" onClick={() => props.onNavigate({ kind: "feedback-queue" })}>
             <MessageSquareText aria-hidden="true" data-icon="inline-start" />

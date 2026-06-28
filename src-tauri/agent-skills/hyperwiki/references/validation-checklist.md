@@ -74,6 +74,14 @@ Use this checklist to validate project wiki bootstrap, planning, maintenance, an
 - Updates roadmap, source index, source briefs, and wiki index only when recent code changes reveal durable project knowledge, UI design direction, or next-step changes.
 - Does not invent retrospective intent when the repo shows what changed but not why.
 
+## Product Lifecycle
+
+- `wiki/plans/lifecycle/` exists with `index.mdx` plus exactly six phase pages in canonical `phaseOrder` (1–6): purpose, design-system, ui-mocks, backend-arch, onboarding, mvp-views.
+- Each phase page carries `phaseId`, `phaseOrder`, and `gate` frontmatter; `childPlan` is present for execute phases (2, 3, 5, 6) and intentionally omitted for purpose (1) and backend-arch (4).
+- Phase frontmatter matches the canonical descriptor in `src/lib/lifecycle.ts` / `src-tauri/src/domain/lifecycle.rs` (no divergence in id, order, gate, or childPlan).
+- `phaseOrder` values are monotonic and unique; gate values are one of `childPlan`, `manual`, `import-validated`.
+- The lifecycle plan is preserved on import/upgrade — never overwrite or delete its phase frontmatter.
+
 ## Smoke Test Expectations
 
 - Disposable output is written under `.tmp/`.

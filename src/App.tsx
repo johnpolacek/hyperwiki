@@ -66,6 +66,8 @@ import { TerminalPane } from "@/components/terminal/TerminalPane";
 import { XtermSession } from "@/components/terminal/XtermSession";
 import { appendTerminalTranscriptText, cleanInitialTerminalDisplayText, isLiveTerminalSession, isStandbySession, newestSession, sessionSortMs, fileToBase64, isDetachedDevSession, isPendingTerminalSession, isVisibleTerminalPaneSession, listenTerminalCompletion, listenTerminalOutput, logTerminalPlainText, openTerminalWebLink, previewDetachedDevSession, saveTerminalDroppedFiles, selectDevTerminalSession, sendInput, sendResize, terminalBracketedPaste, terminalBytesToText, terminalClipboardImageFiles, terminalCollapsedSummary, terminalDisplayDebugTail, terminalDisplayHasVisibleText, terminalDisplayTextForXterm, terminalPaneLabel, terminalPaneStatusLabel, terminalPasteImageFileName, terminalStartupNotice, terminalTextForParsing, terminalTranscriptTextForDisplay, terminalXtermScrollback, worktreePreviewForSlug, xtermRenderSnapshot, xtermRenderSnapshotSummary } from "@/lib/terminal";
 import { isReactRenderedMdxPath } from "@/lib/wiki-pages";
+import { lifecyclePhases, lifecycleRootPath } from "@/lib/lifecycle";
+import { orchestratorPrompt, phaseAgentPrompt } from "@/lib/lifecycle-prompts";
 import { bugLandingPath, buildSidebarModel, childPlanPages, defaultWikiPath, cleanPageTitle, compactUnitLabel, currentPlanWorkPath, displayWikiPath, firstIncompleteWorkPath, isBugIndexPath, isBugPath, isCompletedPage, isCompletedTopLevelPlanPage, isDeletablePlanRootPage, isDuplicateSlugChildPage, isImmediateChildPlanPage, isPlansIndexPage, isProjectWikiPage, isTopLevelPlanPage, isUnitPage, pageStatus, pathContainsSelectedPage, pathIsCompletedPage, planLandingPath, planPageActionState, planScopeIsComplete, planSortKey, planTreeBasePath, titleForPath, unitExplorationDir, unitScreenshotDir, type SidebarModel } from "@/lib/wiki-pages";
 import { clearPendingImportProject, readPendingImportProject } from "@/lib/pending-import";
 import { DISABLE_TEXT_CORRECTION_PROPS, slugify } from "@/lib/utils";
@@ -2881,6 +2883,59 @@ function App() {
         });
         setStatus("Plan creation terminal started");
       }
+      if (action === "orchestrate") {
+        const phases = lifecyclePhases(wikiPages);
+        const lifecycleRoute: ViewRoute = { kind: "wiki", path: lifecycleRootPath };
+        await openVisibleAgentPromptSession({
+          kind: "planning",
+          label: "Ask the Orchestrator",
+          prompt: orchestratorPrompt(phases),
+          currentPage: lifecycleRootPath,
+          scope: scopeForRoute(lifecycleRoute),
+          targetRoute: lifecycleRoute,
+          forceNewSession: true,
+        });
+        setStatus("Orchestrator started");
+      }
+      if (action === "lifecycle-phase") {
+        const phases = lifecyclePhases(wikiPages);
+        const phase = phases.find((candidate) => candidate.phaseId === payload?.phase);
+        if (!phase) {
+          setStatus("Unknown lifecycle phase");
+          return;
+        }
+        // Enablement guard mirrors the dashboard: only the active phase can hand
+        // off, unless the user explicitly reopens an already-cleared earlier phase.
+        const allowReopen = payload?.reopen === "true" && phase.gateCleared;
+        if (!phase.isActive && !allowReopen) {
+          setStatus(`Phase "${phase.label}" is locked until earlier phases clear`);
+          return;
+        }
+        // Phase 1 (Purpose) reuses the existing import-planning interview rather
+        // than spawning a parallel one when the project is an imported project
+        // still in planning. Greenfield falls through to the generic purpose
+        // handoff, which already runs grill-with-docs to author the PRD.
+        if (phase.phaseId === "purpose" && activeProject) {
+          const importStatus = activeProject.importPlanning?.status;
+          if (importStatus === "incomplete" || importStatus === "needsRepair") {
+            await startTerminalImportPlanning(activeProject, "resume");
+            setStatus("Resumed import planning interview");
+            return;
+          }
+        }
+        const targetPath = phase.page ? displayWikiPath(phase.page.path) : lifecycleRootPath;
+        const phaseRoute: ViewRoute = { kind: "wiki", path: targetPath };
+        await openVisibleAgentPromptSession({
+          kind: phase.descriptor.archetype === "execute" ? "execute" : "planning",
+          label: `Phase: ${phase.label}`,
+          prompt: phaseAgentPrompt(phase, activeProject),
+          currentPage: targetPath,
+          scope: scopeForRoute(phaseRoute),
+          targetRoute: phaseRoute,
+          forceNewSession: true,
+        });
+        setStatus(`Handed off to ${phase.label} agent`);
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error));
     }
@@ -3499,6 +3554,7 @@ function routeFromLocation(): ViewRoute {
   if (window.location.pathname.endsWith("/plans/new") || window.location.pathname === "/plans/new") return { kind: "wiki", path: "/wiki/plans/index.mdx" };
   if (window.location.pathname === "/settings") return { kind: "settings" };
   if (window.location.pathname === "/feedback") return { kind: "feedback-queue" };
+  if (window.location.pathname === "/lifecycle") return { kind: "lifecycle" };
   if (window.location.pathname.startsWith("/wiki/")) return { kind: "wiki", path: displayWikiPath(window.location.pathname) };
   return { kind: "wiki", path: defaultWikiPath };
 }
@@ -3517,6 +3573,7 @@ function urlForRoute(route: ViewRoute, activeProject: ProjectRecord | null) {
   if (route.kind === "new-project") return "/projects/new";
   if (route.kind === "settings") return "/settings";
   if (route.kind === "feedback-queue") return "/feedback";
+  if (route.kind === "lifecycle") return "/lifecycle";
   const projectPrefix = activeProject ? `/workspace/${activeProject.projectSlug}/${activeProject.worktreeSlug}` : "";
   return projectPrefix ? `${projectPrefix}#${route.path}` : route.path;
 }

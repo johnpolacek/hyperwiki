@@ -1,0 +1,45 @@
+---
+title: "Phase 3 — UI Mocks"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "planned"
+phaseId: "ui-mocks"
+phaseOrder: 3
+childPlan: "/wiki/plans/ui-mocks/index.mdx"
+gate: "childPlan"
+---
+
+<PlanHero title="Phase 3 — UI Mocks" status="planned" description="Mock the main user flows with real components, refining the design system and composing reusable blocks." />
+
+<PlanSummary>
+  - Status: planned
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: UI Mocks (execute archetype)
+  - Skills: frontend-design, make-interfaces-feel-better
+  - Sub-plan: /wiki/plans/ui-mocks/
+  - Gate: childPlan
+</PlanSummary>
+
+## Phase goal
+
+Mock every main flow from the user stories using the Phase 2 components — surfacing gaps that feed back into the design system, and extracting recurring sections into reusable **blocks**.
+
+## Entry gate
+
+Phase 2 cleared (design system in place).
+
+## Sub-agent contract
+
+- **Skills**: `frontend-design` and `make-interfaces-feel-better`.
+- **Produces**: mock screens (specified with `Screen`/`Mockup` in the sub-plan), updates to the design-system components where mocks expose gaps, and a set of composable blocks. Tracked in `/wiki/plans/ui-mocks/`.
+
+<Verification>
+
+- Each main user-story flow has a mock.
+- Design-system components updated where mocks required it; blocks documented.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  The phase page is `complete` and `/wiki/plans/ui-mocks/index.mdx` is `complete`. Then the Backend Architecture phase activates.
+</CompletionGate>

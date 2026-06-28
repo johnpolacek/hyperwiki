@@ -3,7 +3,8 @@ export type ViewRoute =
   | { kind: "projects" }
   | { kind: "new-project" }
   | { kind: "settings" }
-  | { kind: "feedback-queue" };
+  | { kind: "feedback-queue" }
+  | { kind: "lifecycle" };
 
 export interface FeedbackItem {
   id: string;
@@ -139,8 +140,18 @@ export interface UnitDesignChatMessageInput {
   attachments: UnitDesignChatAttachment[];
 }
 
-export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan";
+export type CommandAction = "execute-main" | "execute-worktree" | "modify" | "review" | "new-plan" | "orchestrate" | "lifecycle-phase";
 export type AgentRunKind = "modify" | "execute" | "worktree" | "review" | "planning" | "exploration" | "bug";
+
+// Canonical 6-phase product lifecycle. Stable ids the lifecycle plan pages and
+// the project contract agree on. See wiki/plans/lifecycle/ and src/lib/lifecycle.ts.
+export type LifecyclePhaseId =
+  | "purpose"
+  | "design-system"
+  | "ui-mocks"
+  | "backend-arch"
+  | "onboarding"
+  | "mvp-views";
 export type AgentRunPhase = "idle" | "starting" | "waiting" | "sent" | "exploring" | "editing" | "checking" | "complete" | "blocked";
 export type ThinkingEffort = "low" | "medium" | "high" | "xhigh";
 

@@ -975,6 +975,51 @@ fn unique_project_root(title: &str) -> Result<PathBuf, String> {
     Ok(candidate)
 }
 
+// The canonical 6-phase product lifecycle, embedded at compile time from
+// hyperwiki's own wiki/plans/lifecycle/ so every scaffolded project receives the
+// identical methodology with no drift between the authored pages and the seed.
+// The frontmatter (phaseId/phaseOrder/childPlan/gate/status) is what
+// src/lib/lifecycle.ts and the project contract read.
+fn lifecycle_pages() -> [(&'static str, &'static str); 7] {
+    [
+        (
+            "wiki/plans/lifecycle/index.mdx",
+            include_str!("../../../wiki/plans/lifecycle/index.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-01-purpose.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-01-purpose.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-02-design-system.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-02-design-system.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-03-ui-mocks.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-03-ui-mocks.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-04-backend-arch.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-04-backend-arch.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-05-onboarding.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-05-onboarding.mdx"),
+        ),
+        (
+            "wiki/plans/lifecycle/phase-06-mvp-views.mdx",
+            include_str!("../../../wiki/plans/lifecycle/phase-06-mvp-views.mdx"),
+        ),
+    ]
+}
+
+fn write_lifecycle_plan(root: &Path, overwrite: bool) -> Result<(), String> {
+    for (relative, content) in lifecycle_pages() {
+        write_if_safe(&root.join(relative), content, overwrite)?;
+    }
+    Ok(())
+}
+
 fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), String> {
     if !options.source_document.trim().is_empty() {
         return write_import_wiki(root, options);
@@ -1155,6 +1200,7 @@ fn write_basic_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), Str
     for (relative, content) in pages {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
     }
+    write_lifecycle_plan(root, options.overwrite)?;
     Ok(())
 }
 
@@ -1199,6 +1245,7 @@ fn write_import_wiki(root: &Path, options: &InitProjectOptions) -> Result<(), St
     for (relative, content) in imported_source_pages(options) {
         write_if_safe(&root.join(relative), &content, options.overwrite)?;
     }
+    write_lifecycle_plan(root, options.overwrite)?;
     Ok(())
 }
 
@@ -2357,6 +2404,19 @@ mod tests {
         .unwrap();
         assert!(plans.contains("Status: planning"));
         assert!(plans.contains("no generated MVP stage tree"));
+        // The canonical 6-phase product lifecycle is seeded for every project.
+        let lifecycle_dir = created
+            .project
+            .root
+            .join("wiki")
+            .join("plans")
+            .join("lifecycle");
+        let lifecycle_root = fs::read_to_string(lifecycle_dir.join("index.mdx")).unwrap();
+        assert!(lifecycle_root.contains("Product Lifecycle"));
+        assert!(lifecycle_dir.join("phase-01-purpose.mdx").is_file());
+        assert!(lifecycle_dir.join("phase-06-mvp-views.mdx").is_file());
+        let phase_one = fs::read_to_string(lifecycle_dir.join("phase-01-purpose.mdx")).unwrap();
+        assert!(phase_one.contains("phaseId: \"purpose\""));
         let agents = fs::read_to_string(created.project.root.join("AGENTS.md")).unwrap();
         let config =
             fs::read_to_string(created.project.root.join(".hyperwiki").join("config.json"))

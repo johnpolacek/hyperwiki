@@ -1,0 +1,45 @@
+---
+title: "Phase 2 — Design System"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "planned"
+phaseId: "design-system"
+phaseOrder: 2
+childPlan: "/wiki/plans/design-system/index.mdx"
+gate: "childPlan"
+---
+
+<PlanHero title="Phase 2 — Design System" status="planned" description="Establish design tokens, then a customized shadcn/ui component layer built on them." />
+
+<PlanSummary>
+  - Status: planned
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: Design System (execute archetype)
+  - Skills: tailwind-design-system, shadcn
+  - Sub-plan: /wiki/plans/design-system/
+  - Gate: childPlan
+</PlanSummary>
+
+## Phase goal
+
+A coherent design foundation: tokens (color, spacing, type, radius, dark mode) first, then a customized shadcn/ui component set consuming those tokens — not default shadcn.
+
+## Entry gate
+
+Phase 1 cleared (purpose and user stories settled).
+
+## Sub-agent contract
+
+- **Skills**: load `tailwind-design-system` then `shadcn` before changing tokens or components.
+- **Produces**: design tokens, a customized shadcn/ui layer, and the `/wiki/plans/design-system/` sub-plan documenting the token system and component inventory with `Screen`-level specs where components are visual.
+
+<Verification>
+
+- The token system is defined once and consumed by components (no hardcoded values).
+- The `design-system` sub-plan is complete and its units verified.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  The phase page is `complete` and `/wiki/plans/design-system/index.mdx` is `complete`. Then the UI Mocks phase activates.
+</CompletionGate>

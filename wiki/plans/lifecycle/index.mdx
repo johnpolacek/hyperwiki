@@ -1,0 +1,42 @@
+---
+title: "Product Lifecycle"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "active"
+---
+
+<PlanHero title="Product Lifecycle" status="active" description="The canonical 6-phase path hyperwiki guides a project through, from purpose to shipped MVP views." />
+
+<PlanSummary>
+  - Status: active
+  - Shape: lifecycle plan, 6 phases
+  - Current phase: Phase 1 — Purpose & User Stories
+  - Next action: hand off to the Purpose agent (or Ask the Orchestrator)
+  - Blockers: none
+  - Validation: each phase clears its gate before the next begins
+</PlanSummary>
+
+## How this works
+
+A project advances through six phases in order. The **active phase** is the first phase whose gate is not yet cleared; only its handoff is enabled. A master **orchestrator** (Ask the Orchestrator) reads this lifecycle, names the active phase and its blocking gate, and recommends the next handoff — it never executes phase work itself. Each phase hands off to a specialized sub-agent that loads the right repo-local skills.
+
+<StageTrack title="Phases">
+  <StageItem label="Phase 1 — Purpose & User Stories" status="current" detail="produces wiki/sources/prd.mdx" href="./phase-01-purpose.mdx" />
+  <StageItem label="Phase 2 — Design System" status="planned" detail="tokens → custom shadcn" href="./phase-02-design-system.mdx" />
+  <StageItem label="Phase 3 — UI Mocks" status="planned" detail="main flows, blocks" href="./phase-03-ui-mocks.mdx" />
+  <StageItem label="Phase 4 — Backend Architecture" status="planned" detail="decision record" href="./phase-04-backend-arch.mdx" />
+  <StageItem label="Phase 5 — Onboarding" status="planned" detail="onboarding views" href="./phase-05-onboarding.mdx" />
+  <StageItem label="Phase 6 — MVP Views" status="planned" detail="build the MVP" href="./phase-06-mvp-views.mdx" />
+</StageTrack>
+
+## Gate algorithm
+
+The active phase is the first phase, in order, whose gate is not cleared:
+
+- `gate: childPlan` — cleared when the phase page is `complete` and its linked `childPlan` is `complete`.
+- `gate: manual` — cleared when the phase page is marked `complete` (used for the Phase 4 architecture decision).
+- `gate: import-validated` — cleared when `wiki/sources/prd.mdx` has user stories, or the imported-project plan artifacts validate.
+
+<Aside>
+Phase 1 has no `childPlan`: it establishes purpose and produces `wiki/sources/prd.mdx`. The MVP **build** sub-plan is owned by Phase 6 (`childPlan: /wiki/plans/mvp/`), keeping "establish purpose" distinct from "build the views".
+</Aside>

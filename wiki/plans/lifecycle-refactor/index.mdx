@@ -4,15 +4,15 @@ description: "hyperwiki plan page."
 wikiKind: "plan"
 ---
 
-<PlanHero title="Lifecycle Refactor" status="planned" description="Reshape hyperwiki's methodology around a canonical 6-phase product lifecycle, driven by a master orchestrator and surfaced through a lifecycle dashboard." />
+<PlanHero title="Lifecycle Refactor" status="complete" description="Reshape hyperwiki's methodology around a canonical 6-phase product lifecycle, driven by a master orchestrator and surfaced through a lifecycle dashboard." />
 
 <PlanSummary>
-  - Status: planned
+  - Status: complete
   - Shape: staged plan, 7 stages
-  - Current stage: stage 01 — data model & derivation
-  - Next action: execute stage 01 unit 01 (types + lifecycle.ts)
+  - Current stage: all 7 stages complete
+  - Next action: review and commit; then drive a real project through the lifecycle
   - Blockers: none
-  - Validation: per-stage completion gates; backward-compat fixture locks existing plan derivation
+  - Validation: `pnpm check:all` green (tsc + frontend smokes + 4 new lifecycle tests + all cargo tests + integration smokes); backward-compat fixture locks existing plan derivation
 </PlanSummary>
 
 ## Why
@@ -22,13 +22,13 @@ hyperwiki's `wiki/` MDX tree is both the app's content and its executable develo
 The existing Tauri shell, terminals, wiki renderer, theme system, and agent provider are preserved. The change is additive: it reuses the existing plan engine rather than building a parallel system.
 
 <StageTrack title="Stages">
-  <StageItem label="Stage 01 — Lifecycle data model & derivation" status="current" detail="types + lifecycle.ts + regression fixture" href="./stage-01-data-model.mdx" />
-  <StageItem label="Stage 02 — Lifecycle methodology content" status="planned" detail="author wiki/plans/lifecycle/ MDX" href="./stage-02-methodology-content.mdx" />
-  <StageItem label="Stage 03 — Scaffold seeding + project contract" status="planned" detail="Rust: projects.rs + verification.rs" href="./stage-03-scaffold-and-contract.mdx" />
-  <StageItem label="Stage 04 — Orchestrator + phase dispatch" status="planned" detail="prompts + runCommandAction cases" href="./stage-04-orchestrator-dispatch.mdx" />
-  <StageItem label="Stage 05 — Lifecycle dashboard view" status="planned" detail="LifecycleDashboardView + routing" href="./stage-05-dashboard-view.mdx" />
-  <StageItem label="Stage 06 — Methodology encoding (skill + AGENTS)" status="planned" detail="SKILL.md + references + AGENTS" href="./stage-06-methodology-encoding.mdx" />
-  <StageItem label="Stage 07 — Phase-1 ↔ import-planning integration" status="planned" detail="reuse existing interview" href="./stage-07-phase1-integration.mdx" />
+  <StageItem label="Stage 01 — Lifecycle data model & derivation" status="done" detail="types + lifecycle.ts + regression fixture" href="./stage-01-data-model.mdx" />
+  <StageItem label="Stage 02 — Lifecycle methodology content" status="done" detail="author wiki/plans/lifecycle/ MDX" href="./stage-02-methodology-content.mdx" />
+  <StageItem label="Stage 03 — Scaffold seeding + project contract" status="done" detail="Rust: projects.rs + verification.rs" href="./stage-03-scaffold-and-contract.mdx" />
+  <StageItem label="Stage 04 — Orchestrator + phase dispatch" status="done" detail="prompts + runCommandAction cases" href="./stage-04-orchestrator-dispatch.mdx" />
+  <StageItem label="Stage 05 — Lifecycle dashboard view" status="done" detail="LifecycleDashboardView + routing" href="./stage-05-dashboard-view.mdx" />
+  <StageItem label="Stage 06 — Methodology encoding (skill + AGENTS)" status="done" detail="SKILL.md + references + AGENTS" href="./stage-06-methodology-encoding.mdx" />
+  <StageItem label="Stage 07 — Phase-1 ↔ import-planning integration" status="done" detail="reuse existing interview" href="./stage-07-phase1-integration.mdx" />
 </StageTrack>
 
 ## The 6 phases (the methodology being encoded)

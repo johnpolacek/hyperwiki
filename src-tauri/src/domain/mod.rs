@@ -9,6 +9,7 @@ pub mod feedback;
 pub mod git;
 pub mod import_onboarding_runtime;
 pub mod import_planning;
+pub mod lifecycle;
 pub mod mcp;
 pub mod previews;
 pub mod project_env;

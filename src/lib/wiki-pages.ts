@@ -88,6 +88,15 @@ export function displayWikiPath(path: string) {
     .replace(/^\/projects\/[^/]+/, "")
 }
 
+// Lifecycle methodology pages live under /wiki/plans/lifecycle/. They participate
+// in the sidebar plan tree (via the generic top-level/child logic) but must NOT
+// drive the legacy "current work" / Execute Unit derivation — that is owned by the
+// lifecycle dashboard and src/lib/lifecycle.ts. Kept as a local path check to avoid
+// a circular import with src/lib/lifecycle.ts.
+export function isLifecyclePlanPath(path: string) {
+  return displayWikiPath(path).includes("/wiki/plans/lifecycle/");
+}
+
 export function isTopLevelPlanPage(page: WikiPage) {
   const path = displayWikiPath(page.path);
   if (path.endsWith("/wiki/plans/index.mdx")) return true;
@@ -209,7 +218,7 @@ export function planPageActionState(path: string, pages: WikiPage[]): PlanPageAc
   const isPlanPage = displayPath.includes("/wiki/plans/") && displayPath.endsWith(".mdx");
   const page = pages.find((candidate) => displayWikiPath(candidate.path) === displayPath);
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
-  const roots = sorted.filter((candidate) => isTopLevelPlanPage(candidate) && !isCompletedTopLevelPlanPage(candidate));
+  const roots = sorted.filter((candidate) => isTopLevelPlanPage(candidate) && !isCompletedTopLevelPlanPage(candidate) && !isLifecyclePlanPath(candidate.path));
   const currentPath = currentPlanWorkPath(sorted, roots);
   const currentDisplayPath = displayWikiPath(currentPath);
   const currentPage = pages.find((candidate) => displayWikiPath(candidate.path) === currentDisplayPath);
@@ -252,7 +261,7 @@ export function currentPlanWorkPath(pages: WikiPage[], roots: WikiPage[]) {
 
 export function planLandingPath(pages: WikiPage[]) {
   const sorted = [...pages].sort((a, b) => planSortKey(a).localeCompare(planSortKey(b)));
-  const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page));
+  const roots = sorted.filter((page) => isTopLevelPlanPage(page) && !isCompletedTopLevelPlanPage(page) && !isLifecyclePlanPath(page.path));
   const currentPath = currentPlanWorkPath(sorted, roots);
   if (currentPath && currentPath !== defaultWikiPath) return currentPath;
   return defaultWikiPath;

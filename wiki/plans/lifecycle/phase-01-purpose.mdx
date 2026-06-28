@@ -1,0 +1,45 @@
+---
+title: "Phase 1 — Purpose & User Stories"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+status: "active"
+phaseId: "purpose"
+phaseOrder: 1
+gate: "import-validated"
+---
+
+<PlanHero title="Phase 1 — Purpose & User Stories" status="active" description="Settle what the product is and who it serves, and capture the MVP user stories." />
+
+<PlanSummary>
+  - Status: active
+  - Lifecycle: [Product Lifecycle](./index.mdx)
+  - Sub-agent: Purpose (planning archetype)
+  - Skills: grill-with-docs; existing import-planning interview when importing
+  - Next action: run the purpose interview, write wiki/sources/prd.mdx
+  - Gate: import-validated
+</PlanSummary>
+
+## Phase goal
+
+Produce a clear product purpose and a concrete set of MVP user stories that every later phase builds against.
+
+## Entry gate
+
+None — this is the first phase.
+
+## Sub-agent contract
+
+- **Imported project** (has `wiki/sources/`): resume the existing import-planning interview rather than starting a new one.
+- **Greenfield**: run `grill-with-docs`-style questioning — one focused question at a time — to author the briefs first.
+- **Produces**: `wiki/sources/prd.mdx` with the product purpose and an explicit user-stories section.
+
+<Verification>
+
+- `wiki/sources/prd.mdx` exists and contains user stories.
+- For imported projects, the planning artifacts validate (`validate_import_plan_artifacts`).
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  The PRD names the purpose and lists MVP user stories (or imported-project artifacts validate). The gate then clears and the Design System phase activates.
+</CompletionGate>
