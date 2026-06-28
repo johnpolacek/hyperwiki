@@ -1,0 +1,74 @@
+---
+title: "Stage 06 — Methodology Encoding (Skill + AGENTS)"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 06 — Methodology Encoding" status="planned" description="Teach the hyperwiki skill and agent guidance about the lifecycle: a new mode, the phase contract, skeletons, and validation." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — skill mode + references
+  - Next action: add lifecycle_orchestrate to SKILL.md
+  - Blockers: none
+  - Validation: audit_or_upgrade passes; no broken references; bootstrap includes the lifecycle
+</PlanSummary>
+
+## Stage Goal
+
+The methodology contract lives in the skill, not only in code. Agents reading the skill learn the 6 phases, their gates, the per-phase sub-agent contracts, and that a hyperwiki scaffold includes the lifecycle. Can land in parallel once Stage 02 fixes the canonical shape.
+
+<Dependencies>
+
+- Stage 02 (canonical lifecycle MDX shape the references describe).
+- Stage 03 (Rust seeding the bootstrap contract must mirror).
+
+</Dependencies>
+
+### Unit 01 — Skill mode + lifecycle contract reference
+
+<Scope>
+
+- `src-tauri/agent-skills/hyperwiki/SKILL.md`; new `references/lifecycle-contract.md`.
+
+</Scope>
+
+<ImplementationNotes>
+
+- SKILL.md: add a `lifecycle_orchestrate` mode to the Workflow list and the Reference Loading table; update the `bootstrap_new`/`import_existing` mode contracts so a scaffold *includes* `wiki/plans/lifecycle/` (mirroring Stage 03 seeding).
+- `references/lifecycle-contract.md`: per-phase goal, entry gate, skills, artifacts, exit `CompletionGate`, plus the frontmatter + gate-algorithm spec from the [index](./index.mdx).
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- The skill's `audit_or_upgrade` checklist passes; no dangling reference links.
+
+</Verification>
+
+### Unit 02 — Skeletons, validation, and AGENTS routing
+
+<Scope>
+
+- `references/plan-page-skeletons.md`, `references/validation-checklist.md`, root `AGENTS.md`, `wiki/AGENTS.mdx`.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Skeletons: add a lifecycle-root and a lifecycle-phase skeleton.
+- Validation checklist: exactly 6 phases in canonical `phaseOrder`; each has a `gate`; `childPlan` present or explicitly omitted; monotonic order.
+- AGENTS.md + wiki/AGENTS.mdx: a thin "Product Lifecycle" subsection routing to the lifecycle plan + contract (follow the `react-shadcn-mdx-rewrite` precedent at AGENTS.md line 42). Keep the heavy contract in the skill reference.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- A dry-run of the validation checklist over the Stage 02 lifecycle pages passes all new checks.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  The skill defines the lifecycle mode and contract, scaffolding guidance matches the Rust seeding, skeletons and validation cover lifecycle pages, and AGENTS files route to them. Record in `wiki/log.mdx`.
+</CompletionGate>

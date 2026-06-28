@@ -1,0 +1,75 @@
+---
+title: "Stage 02 — Lifecycle Methodology Content"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 02 — Lifecycle Methodology Content" status="planned" description="Author the canonical lifecycle plan: a root page and six phase pages carrying the frontmatter contract." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — lifecycle root
+  - Next action: author wiki/plans/lifecycle/index.mdx
+  - Blockers: none
+  - Validation: hyperwiki plan validation; `lifecyclePhases()` returns 6 in order; renders in the sidebar
+</PlanSummary>
+
+## Stage Goal
+
+`wiki/plans/lifecycle/` exists as a valid hyperwiki plan: a root that renders the 6-phase track, plus six phase pages each carrying `phaseId`/`phaseOrder`/`childPlan`/`gate` and a sub-agent contract.
+
+<Dependencies>
+
+- Stage 01 (`lifecycle.ts` helpers and the frontmatter contract they read).
+
+</Dependencies>
+
+### Unit 01 — Lifecycle root
+
+<Scope>
+
+- `wiki/plans/lifecycle/index.mdx`. Wiki content only — no code.
+
+</Scope>
+
+<ImplementationNotes>
+
+- `PlanHero` + `PlanSummary`, then a `StageTrack` with one `StageItem` per phase (`href` to each phase page) so the track stays truthful as phases complete.
+- Restate the gate algorithm and active-phase rule for the orchestrator reading raw MDX.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- `lifecyclePhases(pages)` (from Stage 01) returns 6 phases in `phaseOrder`.
+- hyperwiki plan validation passes on the root page.
+
+</Verification>
+
+### Unit 02 — Six phase pages
+
+<Scope>
+
+- `wiki/plans/lifecycle/phase-01-purpose.mdx` … `phase-06-mvp-views.mdx`. Wiki content only.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Each page carries the frontmatter contract: `phaseId`, `phaseOrder`, `childPlan` (omitted for `purpose` and `backend-arch`), `gate`.
+- Body: phase goal, entry gate, the repo-local skill(s) the sub-agent loads, the artifacts it must produce, and an exit `CompletionGate`. Use `Decision` for Phase 4 architecture framing and `Screen`/`Mockup` references where a phase produces UI.
+- Phase 1 `childPlan` is absent; its gate is `import-validated`. Phase 4 gate is `manual` on `wiki/architecture.mdx`. Phases 2/3/5/6 gate on their `childPlan`.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- After authoring, confirm in the running app (Stage 05 dashboard not required yet) that `lifecyclePhases()` resolves each page's frontmatter and that the sidebar lists the lifecycle plan via generic logic.
+- If the rendered sidebar title/order is wrong, add the minimal `cleanPageTitle`/`planSortKey` special-case (mirroring the mvp cases) — otherwise leave `wiki-pages.ts` untouched.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  All 7 lifecycle pages validate, `lifecyclePhases()` returns 6 ordered phases, and the lifecycle plan appears in the sidebar without disturbing existing plans (re-run the Stage 01 fixture).
+</CompletionGate>

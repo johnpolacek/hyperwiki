@@ -1,0 +1,110 @@
+---
+title: "Stage 05 — Lifecycle Dashboard View"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 05 — Lifecycle Dashboard View" status="planned" description="Surface the 6 phases as a board with per-phase status, gates, and handoff controls." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — dashboard component
+  - Next action: build LifecycleDashboardView
+  - Blockers: none
+  - Validation: only the active phase's handoff is enabled; buttons start the right run; screenshots captured
+</PlanSummary>
+
+## Stage Goal
+
+A new lifecycle dashboard, reachable from the TopBar, renders the 6 phases with truthful status and gate state, an "Ask the Orchestrator" action, and a per-phase handoff that respects the enablement rule.
+
+<Dependencies>
+
+- Stage 04 (the `"orchestrate"` / `"lifecycle-phase"` dispatch the buttons call).
+
+</Dependencies>
+
+## Screen content & layout
+
+Shared frame: the standard workspace header with the project switcher; the dashboard body replaces the wiki/terminal pane when `route.kind === "lifecycle"`. A top action row holds "Ask the Orchestrator". Below it, a vertical phase board.
+
+<Screen name="Lifecycle dashboard" route="#/lifecycle">
+
+Purpose. Show where the project is in the 6-phase lifecycle and offer the single correct next handoff.
+
+<Mockup title="Lifecycle dashboard">
+
+```
+┌─ Product Lifecycle ─────────────────────────────┐
+│ [ Ask the Orchestrator ]                         │
+│                                                  │
+│ ✓ 1 Purpose            gate: cleared   [Reopen]  │
+│ ● 2 Design System      gate: open      [Hand off]│
+│ ○ 3 UI Mocks           gate: open       —        │
+│ ○ 4 Backend Arch       gate: open       —        │
+│ ○ 5 Onboarding         gate: open       —        │
+│ ○ 6 MVP Views          gate: open       —        │
+└──────────────────────────────────────────────────┘
+```
+
+</Mockup>
+
+- Heading. "Product Lifecycle"; subhead names the active phase.
+- Layout (top → bottom): (1) action row with "Ask the Orchestrator"; (2) one row per phase in `phaseOrder` showing status glyph, phase label, gate state, and a trailing control.
+- Per-phase control. Active phase → "Hand off to Phase Agent"; cleared phases → "Reopen phase"; later (locked) phases → disabled/no control.
+- States. Phase row: cleared (✓), active (●), locked (○); gate: cleared / open.
+- Backed by. `lifecyclePhases(pages)` for rows; controls commit `onRunCommand("orchestrate")` and `onRunCommand("lifecycle-phase", { phase })`.
+
+</Screen>
+
+### Unit 01 — LifecycleDashboardView
+
+<Scope>
+
+- New `src/components/views/LifecycleDashboardView.tsx`. Reuses the `StageTrack` visual language.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Render rows from `lifecyclePhases(pages)`; compute enablement from `activeLifecyclePhase` + `phaseGateCleared`.
+- "Hand off" enabled only for the active phase; cleared phases show "Reopen phase"; later phases disabled.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- Only the active phase's handoff is enabled; "Reopen phase" re-enables an earlier one.
+- Each control starts the correct tracked run from Stage 04.
+
+</Verification>
+
+### Unit 02 — Routing + entry point
+
+<Scope>
+
+- `src/components/views/WorkspacePane.tsx` (branch on `route.kind === "lifecycle"`), `src/App.tsx` (`routeFromLocation`/`urlForRoute` round-trip), and a TopBar/sidebar entry calling `navigate({ kind: "lifecycle" })`.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Mirror the existing non-wiki route branches (`projects`/`new-project`/`settings`/`feedback-queue`).
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- `#/lifecycle` round-trips through `routeFromLocation`/`urlForRoute`; the TopBar entry navigates to the dashboard.
+
+</Verification>
+
+## Screenshot capture
+
+- Route: `#/lifecycle`. Auth: none (local desktop app). Precondition: a project with a seeded lifecycle plan in a mid-lifecycle state (at least Phase 1 cleared) so the active/cleared/locked states are all visible.
+- Shoot: `01-lifecycle-dashboard.png` (full board), `02-orchestrator-handoff.png` (after "Ask the Orchestrator" starts a run).
+
+<CompletionGate title="Completion gate">
+  The dashboard renders all phase states, enablement matches the rule, both buttons drive the Stage 04 dispatch, and fresh screenshots are captured. Record in `wiki/log.mdx`.
+</CompletionGate>

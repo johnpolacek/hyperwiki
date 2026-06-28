@@ -1,0 +1,74 @@
+---
+title: "Stage 04 — Orchestrator + Phase Dispatch"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 04 — Orchestrator + Phase Dispatch" status="planned" description="Wire the master orchestrator and per-phase handoff into the existing command → agent-run → scoped-terminal machinery." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — prompt builders
+  - Next action: author lifecycle-prompts.ts
+  - Blockers: none
+  - Validation: prompt snapshot tests; dispatch starts the correct tracked run + scoped terminal
+</PlanSummary>
+
+## Stage Goal
+
+`runCommandAction` handles `"orchestrate"` and `"lifecycle-phase"`, reusing the `"planning"` and `"execute"` archetypes — the orchestrator reports the active phase and blocking gate, and a phase handoff scopes a terminal to the phase's current work with the right skill referenced.
+
+<Dependencies>
+
+- Stage 01 (`CommandAction` values, `lifecycle.ts` derivation).
+- Stage 03 (the contract's lifecycle block is the orchestrator's source of truth).
+
+</Dependencies>
+
+### Unit 01 — Prompt builders
+
+<Scope>
+
+- New `src/lib/lifecycle-prompts.ts`, alongside the `workflowPrompt`/`planCreationPrompt` pattern in `App.tsx`.
+
+</Scope>
+
+<ImplementationNotes>
+
+- `orchestratorPrompt(state)` — wiki-only: instruct the agent to read lifecycle state, name the active phase and its blocking gate, and recommend (not perform) the next handoff. No code edits.
+- `phaseAgentPrompt(phaseId, state)` — per-phase brief: the phase goal, the repo-local skill(s) to load, the `childPlan` (or PRD target) to work in, and the exit gate.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm test lifecycle-prompts</CommandBlock>
+  - Snapshot tests for the orchestrator prompt and each of the 6 phase prompts.
+</Verification>
+
+### Unit 02 — Dispatch cases in runCommandAction
+
+<Scope>
+
+- `src/App.tsx`, `runCommandAction` (~line 2805). No new completion-arming branches.
+
+</Scope>
+
+<ImplementationNotes>
+
+- `case "orchestrate"`: open a planning-style visible session via `sendTrackedAgentPrompt("planning", "Ask the Orchestrator", orchestratorPrompt(state), …)` scoped to `wiki/plans/lifecycle/index.mdx`.
+- `case "lifecycle-phase"`: read `payload.phase`, gate-check with `phaseGateCleared`; if not the active phase and not an explicit reopen, refuse. Branch archetype: planning phases → `openVisibleAgentPromptSession`; execute phases → the existing `stageExecuteUnitPrompt` flow scoped to the phase's `childPlan` current unit.
+- Audit the submit-timing/completion-arming switches so `"planning"`/`"execute"` defaults apply unchanged.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- Manual: trigger each action from a temporary control (the dashboard arrives in Stage 05) and confirm a tracked run starts with the expected scope and prompt.
+- The orchestrator run makes no code edits.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  Both dispatch cases route through existing plumbing with no new `AgentRunKind`; prompt snapshots are committed; orchestrator stays wiki-only. Record the dispatch wiring in `wiki/log.mdx`.
+</CompletionGate>

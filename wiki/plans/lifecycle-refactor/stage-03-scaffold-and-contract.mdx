@@ -1,0 +1,70 @@
+---
+title: "Stage 03 — Scaffold Seeding + Project Contract"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 03 — Scaffold Seeding + Project Contract" status="planned" description="Make the lifecycle hyperwiki's default methodology: every new/imported project gets it, and the project contract reports phase state." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — scaffold seeding
+  - Next action: extend write_project_scaffold in projects.rs
+  - Blockers: none
+  - Validation: a freshly initialized project contains wiki/plans/lifecycle/; contract + MCP report phase state
+</PlanSummary>
+
+## Stage Goal
+
+The lifecycle is not a feature of this one repo — it is the default. New and imported projects are scaffolded with `wiki/plans/lifecycle/`, and `/api/project-contract` (plus its MCP surface) reports the active phase and gate status so agents never scrape rendered MDX.
+
+<Dependencies>
+
+- Stage 02 (the canonical lifecycle MDX shape these pages are seeded from).
+
+</Dependencies>
+
+### Unit 01 — Seed lifecycle scaffold
+
+<Scope>
+
+- `src-tauri/src/domain/projects.rs`, `write_project_scaffold` (and the page-builder helpers it calls, alongside `plans_index_page` / the existing mvp scaffold writers).
+
+</Scope>
+
+<ImplementationNotes>
+
+- Write `wiki/plans/lifecycle/index.mdx` + the six `phase-NN-*.mdx` pages for every new and imported project, mirroring the Stage 02 content (keep the seeded copy and the authored copy in sync).
+- Leave the existing mvp scaffold writers intact; lifecycle is additive.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>cargo test -p hyperwiki projects</CommandBlock>
+  - Initialize a throwaway project and confirm `wiki/plans/lifecycle/` with 7 pages is present.
+</Verification>
+
+### Unit 02 — Expose lifecycle in the project contract
+
+<Scope>
+
+- `src-tauri/src/domain/verification.rs`, `project_contract`. The MCP `get_project_contract` path inherits the change for free.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Add a `lifecycle` block to the contract: `{ activePhaseId, phaseOrder, gateStatus[], childPlan }`, derived from the lifecycle pages with the same gate algorithm as `src/lib/lifecycle.ts` (keep the two implementations behaviorally equivalent — note this in `wiki/log.mdx`).
+- Surface Phase 1's `import-validated` gate by reusing the existing `validate_import_plan_artifacts` result rather than re-deriving it.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>cargo test -p hyperwiki verification</CommandBlock>
+  - `GET /api/project-contract` and the MCP `get_project_contract` tool both return the lifecycle block with the correct active phase for a seeded project.
+</Verification>
+
+<CompletionGate title="Completion gate">
+  A fresh project is born with the lifecycle plan, the contract reports phase/gate state over both HTTP and MCP, and the Rust gate logic matches the TS `phaseGateCleared` for the same fixture. Record parity in `wiki/log.mdx`.
+</CompletionGate>

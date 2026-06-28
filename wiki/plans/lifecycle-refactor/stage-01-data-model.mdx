@@ -1,0 +1,94 @@
+---
+title: "Stage 01 — Lifecycle Data Model & Derivation"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 01 — Lifecycle Data Model & Derivation" status="current" description="Add the lifecycle types and pure derivation helpers, with a fixture that locks existing plan derivation against regression." />
+
+<PlanSummary>
+  - Status: current
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — types
+  - Next action: extend types.ts, then author lifecycle.ts
+  - Blockers: none
+  - Validation: `pnpm` type-check + new fixture/unit tests; existing derivation unchanged
+</PlanSummary>
+
+## Stage Goal
+
+The app can derive lifecycle phase state (which phase is active, whether each gate is cleared) from `wiki/plans/lifecycle/` pages, entirely in new code, without altering any existing exported function in `wiki-pages.ts`.
+
+<Dependencies>
+
+- None. This stage is additive and ships before any wiki content or UI exists.
+
+</Dependencies>
+
+### Unit 01 — Lifecycle types
+
+<Scope>
+
+- `src/lib/types.ts` only.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Add `export type LifecyclePhaseId = "purpose" | "design-system" | "ui-mocks" | "backend-arch" | "onboarding" | "mvp-views";`
+- Extend `CommandAction` with `"orchestrate" | "lifecycle-phase"`.
+- Add `{ kind: "lifecycle" }` to the `ViewRoute` union.
+- Do **not** add a new `AgentRunKind` — the orchestrator reuses `"planning"`.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm typecheck</CommandBlock>
+  - Confirm every `switch`/exhaustive check over `CommandAction` and `ViewRoute` still compiles (no non-exhaustive errors).
+</Verification>
+
+### Unit 02 — lifecycle.ts derivation
+
+<Scope>
+
+- New file `src/lib/lifecycle.ts`. Reuses `childPlanPages`, `pageStatus`, `isCompletedPage` from `wiki-pages.ts` without editing them.
+
+</Scope>
+
+<ImplementationNotes>
+
+- `LIFECYCLE_PHASES`: ordered descriptor array — `{ phaseId, label, phaseOrder, archetype: "planning" | "execute", skills: string[], childPlan?: string, gate: "childPlan" | "manual" | "import-validated" }` matching the [index](./index.mdx) phase table.
+- Pure helpers: `isLifecyclePlanPage(page)`, `lifecyclePhases(pages)` (returns the 6 phase pages joined to their descriptors, in `phaseOrder`), `phaseGateCleared(phase, pages)` (implements the three-case gate algorithm), `activeLifecyclePhase(pages)` (first phase whose gate is not cleared).
+- Read `phaseId`/`phaseOrder`/`childPlan`/`gate` from page frontmatter; fall back to the descriptor when a page omits them.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm test lifecycle</CommandBlock>
+  - Unit tests for `phaseGateCleared` across all three gate kinds and for `activeLifecyclePhase` ordering, mirroring the existing `wiki-pages` test style in `tests/`.
+</Verification>
+
+### Unit 03 — Backward-compat regression fixture
+
+<Scope>
+
+- New test fixture + assertions in `tests/`. No production code.
+
+</Scope>
+
+<ImplementationNotes>
+
+- Build a wiki fixture containing `mvp` + `features/*` + `zzz_completed` + `lifecycle` pages together.
+- Assert `firstIncompleteWorkPath`, `buildSidebarModel`, and `planSortKey` produce identical output with and without the lifecycle pages present (lifecycle must not perturb existing derivation).
+- Assert `activeLifecyclePhase` is computed separately and does not appear in the legacy active-plan path.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+  <CommandBlock>pnpm test</CommandBlock>
+  - Full suite green; the fixture is the guardrail for every later stage.
+</Verification>
+
+<CompletionGate title="Completion gate">
+  Type-check passes, lifecycle unit tests and the regression fixture are green, and no existing exported function in `wiki-pages.ts` was modified. Record the fixture baseline in `wiki/log.mdx`.
+</CompletionGate>

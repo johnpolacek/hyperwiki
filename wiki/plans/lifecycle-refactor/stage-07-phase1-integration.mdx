@@ -1,0 +1,55 @@
+---
+title: "Stage 07 — Phase-1 ↔ Import-Planning Integration"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Stage 07 — Phase-1 ↔ Import-Planning Integration" status="planned" description="Route Phase 1 into the existing import-planning interview instead of building a new one, and surface its gate." />
+
+<PlanSummary>
+  - Status: planned
+  - Plan: [Lifecycle Refactor](./index.mdx)
+  - Current unit: Unit 01 — Phase-1 routing + gate
+  - Next action: branch Phase-1 dispatch on import context
+  - Blockers: none
+  - Validation: imported project resumes the real interview; greenfield grills; gate flips on PRD/validation
+</PlanSummary>
+
+## Stage Goal
+
+Phase 1 reuses the machinery that already establishes purpose and user stories. No new interview is written. Phase 1's gate reflects the existing `validate_import_plan_artifacts` result and the presence of user stories.
+
+<Dependencies>
+
+- Stage 04 (the `"lifecycle-phase"` dispatch this stage specializes for `purpose`).
+- Existing import-planning flow: `src-tauri/src/domain/import_planning.rs`, `onPlanImportedProject`, `ImportedPlanningQAView`.
+
+</Dependencies>
+
+### Unit 01 — Phase-1 routing + gate surfacing
+
+<Scope>
+
+- The `purpose`-phase branch of the Stage 04 dispatch; read-only use of `import_planning.rs` (surface its existing gate only — no new interview logic).
+
+</Scope>
+
+<ImplementationNotes>
+
+- Detect import context via `activeProject.importPlanning.status`. If importing → route into the existing `onPlanImportedProject` / `ImportedPlanningQAView` flow rather than spawning a parallel interview.
+- Greenfield (no briefs) → fall back to `grill-with-docs`-style questioning to author `wiki/sources/prd.mdx` first.
+- Surface `validate_import_plan_artifacts` (and user-stories-present) as the Phase-1 `import-validated` gate, wired through the Stage 03 contract block.
+
+</ImplementationNotes>
+
+<Verification title="Verification">
+
+- Imported project: the Phase-1 handoff resumes the existing interview (no duplicate flow).
+- Greenfield project: the Phase-1 handoff starts grill questioning and produces `wiki/sources/prd.mdx` with user stories.
+- The Phase-1 gate flips to cleared once user stories exist / the mvp artifacts validate, and the dashboard advances the active phase to Design System.
+
+</Verification>
+
+<CompletionGate title="Completion gate">
+  Phase 1 drives the existing interview with a greenfield fallback, no new interview code was added, and the gate is sourced from `validate_import_plan_artifacts`. Record the end-to-end run in `wiki/log.mdx`.
+</CompletionGate>

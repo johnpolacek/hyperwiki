@@ -1,0 +1,92 @@
+---
+title: "Lifecycle Refactor"
+description: "hyperwiki plan page."
+wikiKind: "plan"
+---
+
+<PlanHero title="Lifecycle Refactor" status="planned" description="Reshape hyperwiki's methodology around a canonical 6-phase product lifecycle, driven by a master orchestrator and surfaced through a lifecycle dashboard." />
+
+<PlanSummary>
+  - Status: planned
+  - Shape: staged plan, 7 stages
+  - Current stage: stage 01 — data model & derivation
+  - Next action: execute stage 01 unit 01 (types + lifecycle.ts)
+  - Blockers: none
+  - Validation: per-stage completion gates; backward-compat fixture locks existing plan derivation
+</PlanSummary>
+
+## Why
+
+hyperwiki's `wiki/` MDX tree is both the app's content and its executable development methodology (`plan > stages > units`). Today that methodology is generic — any plan shape goes. This refactor makes a canonical **6-phase product lifecycle** the default path hyperwiki guides any project through: Purpose → Design System → UI Mocks → Backend Architecture → Onboarding → MVP Views. A **master orchestrator** (a prompt mode + visible wiki-only handoff) reads lifecycle state, names the active phase and its blocking gate, and hands off to a **specialized phase sub-agent**. A new **lifecycle dashboard** surfaces phase status with a per-phase handoff.
+
+The existing Tauri shell, terminals, wiki renderer, theme system, and agent provider are preserved. The change is additive: it reuses the existing plan engine rather than building a parallel system.
+
+<StageTrack title="Stages">
+  <StageItem label="Stage 01 — Lifecycle data model & derivation" status="current" detail="types + lifecycle.ts + regression fixture" href="./stage-01-data-model.mdx" />
+  <StageItem label="Stage 02 — Lifecycle methodology content" status="planned" detail="author wiki/plans/lifecycle/ MDX" href="./stage-02-methodology-content.mdx" />
+  <StageItem label="Stage 03 — Scaffold seeding + project contract" status="planned" detail="Rust: projects.rs + verification.rs" href="./stage-03-scaffold-and-contract.mdx" />
+  <StageItem label="Stage 04 — Orchestrator + phase dispatch" status="planned" detail="prompts + runCommandAction cases" href="./stage-04-orchestrator-dispatch.mdx" />
+  <StageItem label="Stage 05 — Lifecycle dashboard view" status="planned" detail="LifecycleDashboardView + routing" href="./stage-05-dashboard-view.mdx" />
+  <StageItem label="Stage 06 — Methodology encoding (skill + AGENTS)" status="planned" detail="SKILL.md + references + AGENTS" href="./stage-06-methodology-encoding.mdx" />
+  <StageItem label="Stage 07 — Phase-1 ↔ import-planning integration" status="planned" detail="reuse existing interview" href="./stage-07-phase1-integration.mdx" />
+</StageTrack>
+
+## The 6 phases (the methodology being encoded)
+
+| Phase | phaseId | archetype | repo-local skill(s) | childPlan |
+| --- | --- | --- | --- | --- |
+| 1 Purpose + User Stories | `purpose` | planning | import-planning interview / `grill-with-docs` | none (gate via PRD / import validation) |
+| 2 Design System | `design-system` | execute | `tailwind-design-system`, `shadcn` | `/wiki/plans/design-system/` |
+| 3 UI Mocks | `ui-mocks` | execute | `frontend-design`, `make-interfaces-feel-better` | `/wiki/plans/ui-mocks/` |
+| 4 Backend Architecture | `backend-arch` | planning | `grill-with-docs` (+ `Decision`) | none — `gate: manual` on `wiki/architecture.mdx` |
+| 5 Onboarding | `onboarding` | execute | `frontend-design` | `/wiki/plans/onboarding/` |
+| 6 MVP Views | `mvp-views` | execute | `frontend-design`, `parallel-dev-worktrees` | `/wiki/plans/mvp/` |
+
+## Lifecycle contract (agents must not invent this)
+
+<CodeBlock title="wiki/plans/lifecycle/phase-NN-*.mdx frontmatter" language="yaml">
+phaseId: "design-system"      # stable id from the table above
+phaseOrder: 2                 # 1..6, canonical order
+childPlan: "/wiki/plans/design-system/index.mdx"   # or omitted when none
+gate: "childPlan"             # one of: childPlan | manual | import-validated
+</CodeBlock>
+
+Gate algorithm (`phaseGateCleared` in `src/lib/lifecycle.ts`):
+
+- `gate: "childPlan"` — cleared when the phase page is `complete` **and** its `childPlan` page is `complete`.
+- `gate: "manual"` — cleared when the phase page frontmatter `status == complete` (used for the Phase 4 architecture decision).
+- `gate: "import-validated"` (Phase 1 only) — cleared when `wiki/sources/prd.mdx` contains user stories **or** `validate_import_plan_artifacts == valid`.
+
+**Active phase** = the first phase in `phaseOrder` whose gate is not cleared. **Phase 1 creation order:** `childPlan` is initially absent; Phase 1 produces `wiki/sources/prd.mdx` (purpose + user stories). The MVP *build* sub-plan is authored later and owned by **Phase 6** (`childPlan: /wiki/plans/mvp/`), keeping "establish purpose" distinct from "build MVP views". **Handoff enablement:** only the active phase's handoff is enabled; cleared phases offer an explicit "Reopen phase" action; later phases are disabled.
+
+<Decision title="Three tiers, reusing the existing plan engine">
+  The lifecycle is a plan root; each phase is a stage; each phase may link its own sub-plan via `childPlan`. Phases 2 and 6 are multi-unit bodies of work, so flattening them into single stages would not hold. Reusing `childPlanPages`/`pageStatus`/`isCompletedPage` means Execute Unit, screenshots, design explorations, and review gates keep working unchanged.
+</Decision>
+
+<Decision title="No new agent kinds, no Rust orchestrator">
+  The orchestrator and phase handoffs reuse the existing `AgentRunKind` `"planning"` and `"execute"` archetypes. We add only two `CommandAction` values (`"orchestrate"`, `"lifecycle-phase"`) and one `ViewRoute` (`{ kind: "lifecycle" }`). The orchestrator is a prompt mode surfaced as a visible wiki-only handoff — it reports and recommends, it does not execute. The only durable artifact is the lifecycle plan.
+</Decision>
+
+<Decision title="Leave wiki/plans/mvp/ semantics intact">
+  The MVP plan is `status="complete"` in this repo and hardcoded in `cleanPageTitle`/`isTopLevelPlanPage`/`planSortKey`/`isImmediateChildPlanPage`. The lifecycle sits above MVP plans and produces them — it is not one. Lifecycle recognition lives in `src/lib/lifecycle.ts`; the generic `isTopLevelPlanPage` regex already matches `/wiki/plans/lifecycle/index.mdx` and the generic child logic already matches `phase-NN-*.mdx`, so `wiki-pages.ts` is touched only if the rendered sidebar proves it needs polish.
+</Decision>
+
+## Non-goals
+
+- No rewrite of the Tauri shell, terminals, wiki renderer, theme system, or agent provider.
+- No new backend runtime concept for the orchestrator (it is a prompt mode + visible handoff).
+- No changes to how existing `mvp` / `features/*` / `zzz_completed` plans derive or execute.
+- No new Phase-1 interview — Phase 1 reuses the existing import-planning flow.
+
+## Risks
+
+| Risk | Severity | Mitigation |
+| --- | --- | --- |
+| Two-tier derivation drift (phase vs linked sub-plan) | high | encode the link as validated `childPlan:`/`gate:` frontmatter, never free-text the orchestrator parses |
+| Regression in existing plan derivation | high | Stage 01 fixture locks `firstIncompleteWorkPath`/`buildSidebarModel`/`planSortKey` against an `mvp + features + zzz + lifecycle` fixture |
+| Orchestrator running ahead through gates | medium | `orchestrate` run is wiki-only (no code edits); phase work only on explicit human handoff |
+| Lifecycle becomes a repo-local feature, not the methodology | medium | Stage 03 seeds `wiki/plans/lifecycle/` for every new/imported project and exposes it in the project contract |
+
+## Sequencing
+
+Critical path: **01 → 02 → 03 → 04 → 05** (data model → content → scaffold/contract → dispatch → dashboard, end-to-end clickable). **06** (methodology docs) lands in parallel after 02; **07** (import-aware Phase 1) lands last, after 04.
