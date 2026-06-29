@@ -11,3 +11,7 @@ src-tauri/gen/
 .hyperwiki/*.log
 
 .DS_Store
+
+# Local env (never commit secrets)
+.env.local
+.env*.local
